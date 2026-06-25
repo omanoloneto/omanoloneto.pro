@@ -1,0 +1,203 @@
+/* ============================================================
+   Design tokens + reset + utilitários globais
+   ============================================================ */
+
+:root {
+  /* Paleta — dark, com acento esmeralda/teal */
+  --bg: #0a0e14;
+  --bg-soft: #11161f;
+  --bg-card: #141b26;
+  --bg-card-hover: #1a2230;
+  --border: #232c3b;
+  --border-strong: #34405a;
+
+  --text: #e6edf6;
+  --text-soft: #aab4c5;
+  --text-dim: #6b7689;
+
+  --accent: #34d399;       /* emerald 400 */
+  --accent-strong: #10b981; /* emerald 500 */
+  --accent-2: #38bdf8;     /* sky 400 — segundo acento */
+  --accent-glow: rgba(52, 211, 153, 0.15);
+
+  /* Tipografia */
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Layout */
+  --maxw: 1080px;
+  --radius: 14px;
+  --radius-sm: 9px;
+
+  /* Sombra / transição */
+  --shadow: 0 10px 40px -12px rgba(0, 0, 0, 0.6);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 90px;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.65;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Fundo decorativo sutil */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(60rem 40rem at 80% -10%, rgba(56, 189, 248, 0.08), transparent 60%),
+    radial-gradient(50rem 40rem at 0% 0%, rgba(52, 211, 153, 0.07), transparent 55%);
+  pointer-events: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+h1, h2, h3 {
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: var(--accent-glow);
+  color: var(--text);
+}
+
+/* ----- Utilitários ----- */
+.container {
+  width: 100%;
+  max-width: var(--maxw);
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+
+.section {
+  padding-block: clamp(56px, 9vw, 110px);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.eyebrow::before {
+  content: '';
+  width: 26px;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+.section-title {
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  margin-block: 12px 14px;
+}
+
+.section-lead {
+  color: var(--text-soft);
+  max-width: 56ch;
+  font-size: 1.05rem;
+}
+
+/* Botões */
+.btn {
+  --_bg: var(--accent);
+  --_fg: #04130d;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 20px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 0.18s var(--ease), background 0.2s, box-shadow 0.2s, border-color 0.2s;
+  background: var(--_bg);
+  color: var(--_fg);
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px -10px var(--accent-glow);
+}
+.btn--ghost {
+  --_bg: transparent;
+  --_fg: var(--text);
+  border-color: var(--border-strong);
+}
+.btn--ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+/* Chips / tags */
+.chip {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+/* Animação de entrada (revelar ao rolar) */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+}
+[data-reveal].is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}

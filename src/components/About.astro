@@ -1,0 +1,112 @@
+---
+import Icon from './Icon.astro';
+
+const stats = [
+  { num: '4+', label: 'Jogos em produção' },
+  { num: '3', label: 'Engines dominadas' },
+  { num: '∞', label: 'Alunos impactados' },
+];
+---
+<section class="section" id="sobre">
+  <div class="container about-grid">
+    <div class="about-text" data-reveal>
+      <p class="eyebrow">Sobre mim</p>
+      <h2 class="section-title">Código que vira produto. Conhecimento que vira gente nova.</h2>
+      <p class="section-lead">
+        Sou desenvolvedor full-stack com foco em jogos e aplicações multiplataforma. Trabalho do
+        conceito ao deploy: design, arquitetura, implementação e publicação. Hoje toco a franquia
+        <strong>VMonsters</strong> — uma família de jogos construídos em Flutter, Godot e Unity.
+      </p>
+      <p class="section-lead">
+        Em paralelo, sou professor. Acredito que ensinar é a melhor forma de dominar um assunto — e
+        que bom código e boa didática nascem do mesmo lugar: clareza. Gosto de transformar
+        conceitos densos em algo que qualquer pessoa consiga construir.
+      </p>
+
+      <ul class="about-points">
+        <li><Icon name="spark" size={18} /> Do protótipo à loja: ciclo completo de produto</li>
+        <li><Icon name="spark" size={18} /> Código limpo, testável e fácil de manter</li>
+        <li><Icon name="spark" size={18} /> Didática que parte do "porquê", não da decoreba</li>
+      </ul>
+    </div>
+
+    <div class="stats" data-reveal>
+      {
+        stats.map((s) => (
+          <div class="stat">
+            <span class="stat-num">{s.num}</span>
+            <span class="stat-label">{s.label}</span>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .about-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: clamp(32px, 5vw, 64px);
+    align-items: center;
+  }
+  .about-text .section-lead + .section-lead { margin-top: 16px; }
+  .about-text strong { color: var(--text); font-weight: 600; }
+
+  .about-points {
+    list-style: none;
+    margin-top: 26px;
+    display: grid;
+    gap: 12px;
+  }
+  .about-points li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-soft);
+  }
+  .about-points :global(svg) { color: var(--accent); flex-shrink: 0; }
+
+  .stats {
+    display: grid;
+    gap: 16px;
+  }
+  .stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 26px;
+    transition: border-color 0.25s, transform 0.25s var(--ease);
+  }
+  .stat:hover {
+    border-color: var(--border-strong);
+    transform: translateX(4px);
+  }
+  .stat-num {
+    display: block;
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    line-height: 1;
+  }
+  .stat-label {
+    color: var(--text-soft);
+    font-size: 0.95rem;
+    margin-top: 6px;
+    display: block;
+  }
+
+  @media (max-width: 760px) {
+    .about-grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(3, 1fr); }
+    .stat { padding: 18px; }
+    .stat-num { font-size: 1.8rem; }
+  }
+  @media (max-width: 480px) {
+    .stats { grid-template-columns: 1fr; }
+  }
+</style>

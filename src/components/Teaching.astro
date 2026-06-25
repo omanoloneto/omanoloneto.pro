@@ -1,0 +1,71 @@
+---
+import Icon from './Icon.astro';
+
+const ofertas = [
+  {
+    titulo: 'Aulas de programação',
+    desc: 'Lógica, web e desenvolvimento de jogos. Do zero ao primeiro projeto publicado, no seu ritmo.',
+  },
+  {
+    titulo: 'Mentoria de carreira',
+    desc: 'Orientação para quem quer entrar na área ou migrar para game dev. Roadmap, portfólio e prática.',
+  },
+  {
+    titulo: 'Game dev na prática',
+    desc: 'Construa um jogo de verdade em Godot, Unity ou Flutter — aprendendo arquitetura e publicação.',
+  },
+];
+---
+<section class="section" id="ensino">
+  <div class="container">
+    <div class="teach-grid">
+      <div class="teach-intro" data-reveal>
+        <p class="eyebrow"><Icon name="teach" size={16} /> Professor</p>
+        <h2 class="section-title">Ensino as pessoas a construírem o que imaginam</h2>
+        <p class="section-lead">
+          Mais do que passar conteúdo, gosto de destravar pessoas. Aula prática, projeto real e
+          foco no entendimento — porque quem entende o "porquê" aprende qualquer "como".
+        </p>
+        <a href="#contato" class="btn" style="margin-top:24px">
+          Quero aprender <Icon name="arrow" size={18} />
+        </a>
+      </div>
+
+      <div class="teach-cards">
+        {
+          ofertas.map((o) => (
+            <div class="teach-card" data-reveal>
+              <h3>{o.titulo}</h3>
+              <p>{o.desc}</p>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .teach-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr;
+    gap: clamp(32px, 5vw, 60px);
+    align-items: center;
+  }
+  .teach-cards { display: grid; gap: 14px; }
+  .teach-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 20px 22px;
+    transition: transform 0.25s var(--ease), background 0.25s;
+  }
+  .teach-card:hover { transform: translateX(5px); background: var(--bg-card-hover); }
+  .teach-card h3 { font-size: 1.1rem; margin-bottom: 6px; }
+  .teach-card p { color: var(--text-soft); font-size: 0.95rem; }
+
+  @media (max-width: 800px) {
+    .teach-grid { grid-template-columns: 1fr; }
+  }
+</style>
