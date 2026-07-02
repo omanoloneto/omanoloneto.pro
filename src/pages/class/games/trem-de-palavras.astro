@@ -1,0 +1,912 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { palavras, palavrasExtras, niveis, distratores, config } from '../../../data/trem-de-palavras';
+
+const dadosJson = JSON.stringify({ palavras, palavrasExtras, niveis, distratores, config });
+
+const title = 'Trem de Palavras — monte palavras com sílabas | Manolo Neto';
+const description =
+  'Jogo educativo para crianças montarem palavras: arraste os vagões-sílaba para o trilho e faça o trem partir. Níveis de 2, 3 e 4 sílabas, em português.';
+---
+
+<Layout title={title} description={description}>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="tp" data-game role="application" aria-label="Jogo: monte palavras com os vagões de sílabas">
+    <!-- Cenário -->
+    <div class="ceu" aria-hidden="true">
+      <span class="sol"></span>
+      <span class="nuvem nuvem--1"></span>
+      <span class="nuvem nuvem--2"></span>
+      <span class="montes"></span>
+    </div>
+
+    <!-- HUD -->
+    <header class="hud" role="status" aria-live="polite">
+      <div class="hud__bloco">
+        <span class="hud__label">Pontos</span>
+        <strong data-pontos>0</strong>
+      </div>
+      <div class="hud__bloco">
+        <span class="hud__label">Nível</span>
+        <strong data-nivel>1</strong>
+        <span class="hud__sub" data-nivel-total>de 3</span>
+      </div>
+      <div class="hud__bloco hud__bloco--nome" data-nivel-nome aria-hidden="true"></div>
+      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <span data-mute-icon>🔊</span>
+      </button>
+    </header>
+
+    <!-- Estação: cargas esperando (guiado) ou palavras entregues (livre) -->
+    <section class="estacao" aria-label="Estação" data-estacao>
+      <span class="estacao__titulo" data-estacao-titulo>📦 Cargas esperando:</span>
+      <div class="cargas" data-cargas></div>
+    </section>
+
+    <!-- Ferrovia: locomotiva + vagões montados -->
+    <section class="ferrovia" data-drop aria-label="Trilho: monte a palavra aqui">
+      <div class="comboio" data-comboio>
+        <svg class="loco" viewBox="0 0 150 96" aria-hidden="true">
+          <rect x="6" y="34" width="52" height="38" rx="5" fill="#c62f2f"/>
+          <rect x="12" y="40" width="18" height="14" rx="2" fill="#ffe9a8"/>
+          <rect x="52" y="46" width="72" height="26" rx="4" fill="#a32424"/>
+          <rect x="118" y="30" width="16" height="42" rx="3" fill="#c62f2f"/>
+          <rect x="121" y="18" width="10" height="16" rx="2" fill="#5a3d33"/>
+          <ellipse cx="126" cy="16" rx="8" ry="4" fill="#8d8d8d" opacity="0.7"/>
+          <rect x="2" y="70" width="140" height="7" rx="3" fill="#5a3d33"/>
+          <path d="M134 72 L150 86 H134 Z" fill="#e0a93b"/>
+          <circle cx="26" cy="82" r="11" fill="#33373f"/><circle cx="26" cy="82" r="5" fill="#8d8d8d"/>
+          <circle cx="62" cy="82" r="11" fill="#33373f"/><circle cx="62" cy="82" r="5" fill="#8d8d8d"/>
+          <circle cx="98" cy="82" r="11" fill="#33373f"/><circle cx="98" cy="82" r="5" fill="#8d8d8d"/>
+          <circle cx="124" cy="84" r="8" fill="#33373f"/><circle cx="124" cy="84" r="3.5" fill="#8d8d8d"/>
+        </svg>
+        <div class="trem" data-trem></div>
+        <span class="fumaca f1" aria-hidden="true"></span>
+        <span class="fumaca f2" aria-hidden="true"></span>
+        <span class="fumaca f3" aria-hidden="true"></span>
+      </div>
+      <div class="trilho" aria-hidden="true"></div>
+      <button class="partir" type="button" data-partir>🚩 Partir!</button>
+    </section>
+
+    <!-- Pátio: vagões disponíveis -->
+    <section class="patio" aria-label="Vagões disponíveis">
+      <span class="patio__titulo">🚃 Vagões — toque ou arraste para o trilho:</span>
+      <div class="patio__vagoes" data-patio></div>
+    </section>
+
+    <!-- Toast -->
+    <div class="toast" data-toast aria-live="polite" hidden></div>
+    <p class="sr-only" data-anuncio aria-live="assertive"></p>
+
+    <!-- Modal: instruções -->
+    <div class="modal" data-intro>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="placa__topo" id="intro-title">🚂 Trem de Palavras</div>
+        <div class="placa__corpo">
+          <ol class="regras">
+            <li>Olhe as <b>figuras</b> das cargas esperando na estação. 📦</li>
+            <li><b>Toque ou arraste</b> os vagões-sílaba para o trilho e forme o nome da carga.</li>
+            <li>Aperte <b>Partir!</b> — se a palavra estiver certa, o trem leva a carga e você ganha pontos! 🎉</li>
+            <li>Cada viagem leva <b>mais cargas</b>, e palavra maior vale <b>mais pontos</b>.</li>
+            <li>No fim, a <b>Estação Livre</b>: invente suas palavras — vale qualquer palavra de verdade! ✨</li>
+          </ol>
+          <button class="botao botao--go" type="button" data-comecar>Tudo a bordo!</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: nível completo -->
+    <div class="modal" data-nivel-done hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="nivel-done-title">
+        <div class="placa__topo" id="nivel-done-title" data-nivel-done-title>Nível completo!</div>
+        <div class="placa__corpo center">
+          <p class="grande">🎉 Todas as cargas entregues!</p>
+          <p class="placar">Pontos até agora: <strong data-nivel-score>0</strong></p>
+          <p class="aviso" data-nivel-next-label></p>
+          <button class="botao botao--go" type="button" data-next-nivel>Próximo nível</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: vitória -->
+    <div class="modal" data-win hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="win-title">
+        <div class="placa__topo" id="win-title">Parabéns, maquinista! 🚂🎉</div>
+        <div class="placa__corpo center">
+          <p class="grande">Você entregou todas as cargas!</p>
+          <p class="placar">Sua pontuação: <strong data-final-score>0</strong></p>
+          <p class="aviso" data-final-msg></p>
+          <button class="botao botao--go" type="button" data-replay>Jogar de novo</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <style is:global>
+    body.is-game { background: #7ec8f0; overflow: hidden; }
+    body.is-game::before { display: none !important; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    .tp {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      color: #23303c;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== Cenário ===== */
+    .ceu {
+      position: absolute; inset: 0; z-index: 0;
+      background: linear-gradient(180deg, #4ba3e8 0%, #7ec8f0 45%, #c9ecff 100%);
+    }
+    .sol {
+      position: absolute; top: 7%; right: 8%;
+      width: 74px; height: 74px; border-radius: 50%;
+      background: radial-gradient(circle, #ffe873 55%, #ffd23f 75%, rgba(255, 210, 63, 0) 100%);
+      box-shadow: 0 0 46px 14px rgba(255, 220, 90, 0.55);
+    }
+    .nuvem {
+      position: absolute;
+      background: radial-gradient(closest-side, rgba(255, 255, 255, 0.97), rgba(255, 255, 255, 0) 72%);
+      border-radius: 50%; filter: blur(1px);
+    }
+    .nuvem--1 { width: 220px; height: 82px; top: 9%; left: 10%; }
+    .nuvem--2 { width: 170px; height: 66px; top: 20%; left: 46%; opacity: 0.85; }
+    .montes {
+      position: absolute; left: -6%; right: -6%; bottom: 0; height: 44%;
+      border-radius: 60% 44% 0 0 / 100% 90% 0 0;
+      background: linear-gradient(180deg, #8fce58 0%, #5fa838 60%, #48862a 100%);
+    }
+
+    /* ===== HUD ===== */
+    .hud {
+      position: relative; z-index: 30;
+      display: flex; align-items: center; gap: 18px;
+      padding: 8px 16px;
+      background: rgba(20, 50, 75, 0.55);
+      color: #fff;
+      backdrop-filter: blur(2px);
+    }
+    .hud__bloco { display: flex; align-items: baseline; gap: 7px; }
+    .hud__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
+    .hud__bloco strong { font-size: 1.55rem; line-height: 1; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); transition: transform 0.18s ease; }
+    .hud__bloco strong.pop { transform: scale(1.4); color: #c8ffce; }
+    .hud__sub { font-size: 0.75rem; opacity: 0.85; }
+    .hud__bloco--nome { flex: 1; font-size: 0.95rem; font-weight: 700; opacity: 0.95; justify-content: center; }
+    .hud__mute {
+      width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.16);
+      font-size: 1.15rem; display: grid; place-items: center; color: #fff;
+    }
+    .hud__mute:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* ===== Estação (cargas) ===== */
+    .estacao {
+      position: relative; z-index: 20;
+      display: flex; align-items: center; gap: 14px;
+      padding: 10px 16px 6px;
+    }
+    .estacao__titulo {
+      font-size: 0.95rem; font-weight: 700; color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+      white-space: nowrap;
+    }
+    .cargas { display: flex; gap: 12px; flex-wrap: wrap; }
+    .carga {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      min-width: 92px; padding: 8px 12px;
+      background: #fff7e0;
+      border: 3px solid #d9a13c;
+      border-radius: 14px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22);
+      transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease;
+    }
+    .carga__emoji { font-size: 2.2rem; line-height: 1.1; }
+    .carga__palavra {
+      font-size: 0.85rem; font-weight: 800; letter-spacing: 0.06em; color: #2f7d33;
+      min-height: 1.1em;
+    }
+    .carga--ok { background: #e2f6dc; border-color: #4caf2f; transform: scale(0.96); }
+    .carga--ok .carga__emoji { opacity: 0.75; }
+    /* Modo livre: chip só com a palavra entregue (sem emoji) */
+    .carga--chip { min-width: 0; padding: 8px 14px; }
+    .carga--chip .carga__palavra { font-size: 1.05rem; }
+
+    /* ===== Ferrovia ===== */
+    .ferrovia {
+      position: relative; z-index: 10;
+      flex: 1;
+      min-height: 190px;
+      display: flex; align-items: flex-end;
+      padding: 0 12px;
+      border-radius: 10px;
+      transition: box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .ferrovia--hot { background: rgba(255, 255, 255, 0.14); box-shadow: inset 0 0 0 4px rgba(255, 255, 255, 0.65); }
+    .comboio {
+      position: relative;
+      display: flex; align-items: flex-end; gap: 6px;
+      padding-bottom: 26px;
+      transition: transform 1.25s cubic-bezier(0.45, 0.05, 0.75, 0.2);
+    }
+    .comboio.partiu { transform: translateX(-120vw); }
+    .comboio.sem-transicao { transition: none; }
+    .comboio.treme { animation: treme 0.45s; }
+    @keyframes treme {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); } 40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); } 80% { transform: translateX(6px); }
+    }
+    /* Locomotiva desenhada olhando pra direita — espelha pra puxar pra esquerda */
+    .loco { width: 138px; height: 88px; flex-shrink: 0; filter: drop-shadow(0 4px 5px rgba(0, 0, 0, 0.3)); transform: scaleX(-1); }
+    .trem { display: flex; align-items: flex-end; gap: 6px; min-height: 78px; }
+    .trem:empty::after {
+      content: 'monte a palavra aqui →  ';
+      align-self: center;
+      font-size: 0.88rem; font-weight: 700; color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      border: 2px dashed rgba(255, 255, 255, 0.75);
+      border-radius: 12px;
+      padding: 18px 16px;
+    }
+    .trilho {
+      position: absolute; left: 0; right: 0; bottom: 10px; height: 18px;
+      background:
+        linear-gradient(180deg, transparent 0 4px, #7d7d7d 4px 7px, transparent 7px 11px, #7d7d7d 11px 14px, transparent 14px),
+        repeating-linear-gradient(90deg, #5a3d33 0 14px, transparent 14px 34px);
+      opacity: 0.95;
+    }
+
+    /* Fumaça */
+    .fumaca {
+      position: absolute; left: 8px; top: -6px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      opacity: 0; pointer-events: none;
+    }
+    .comboio.partiu .fumaca { animation: fumaca 1.1s ease-out; }
+    .comboio.partiu .f2 { animation-delay: 0.18s; }
+    .comboio.partiu .f3 { animation-delay: 0.36s; }
+    @keyframes fumaca {
+      0% { opacity: 0.9; transform: translate(0, 0) scale(0.6); }
+      100% { opacity: 0; transform: translate(28px, -48px) scale(1.8); }
+    }
+
+    /* Botão Partir */
+    .partir {
+      position: absolute; right: 18px; bottom: 42px; z-index: 25;
+      padding: 14px 26px;
+      font-family: inherit; font-size: 1.25rem; font-weight: 800; color: #fff;
+      background: linear-gradient(180deg, #6cc24a 0%, #43a431 55%, #2e8a28 100%);
+      border: 3px solid #256b20; border-radius: 16px; cursor: pointer;
+      box-shadow: 0 6px 0 #1d5619, 0 10px 18px rgba(0, 0, 0, 0.3);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.15s ease;
+    }
+    .partir:hover { filter: brightness(1.07); }
+    .partir:active { transform: translateY(4px); box-shadow: 0 2px 0 #1d5619, 0 5px 10px rgba(0, 0, 0, 0.3); }
+    .partir:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .partir[disabled] { filter: grayscale(0.5) brightness(0.85); cursor: default; }
+
+    /* ===== Vagões ===== */
+    .vagao {
+      position: relative;
+      min-width: 86px; height: 64px;
+      padding: 6px 14px 14px;
+      display: inline-flex; align-items: center; justify-content: center;
+      /* fonte explícita: durante o arraste o vagão vira filho do <body> (outra fonte) */
+      font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+      font-size: 1.65rem; font-weight: 800; letter-spacing: 0.04em;
+      color: #fff; text-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
+      background: var(--vg, #3f8fd2);
+      border: 3px solid rgba(0, 0, 0, 0.25); border-radius: 12px 12px 8px 8px;
+      cursor: grab;
+      touch-action: none;
+      box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.35), 0 4px 8px rgba(0, 0, 0, 0.28);
+      transition: transform 0.12s ease;
+    }
+    .vagao::before, .vagao::after {
+      content: ''; position: absolute; bottom: -12px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: radial-gradient(circle, #8d8d8d 0 28%, #33373f 32% 100%);
+      box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+    }
+    .vagao::before { left: 12px; }
+    .vagao::after { right: 12px; }
+    .vagao:hover { transform: translateY(-3px); }
+    .vagao:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .vagao.is-dragging {
+      cursor: grabbing; z-index: 1000;
+      transform: scale(1.1);
+      filter: drop-shadow(0 10px 16px rgba(0, 0, 0, 0.4));
+    }
+    .patio__vagoes .vagao { opacity: 0.96; }
+
+    /* ===== Pátio ===== */
+    .patio {
+      position: relative; z-index: 15;
+      /* SEM backdrop-filter: ele viraria containing block do position:fixed
+         e o vagão sumiria da tela durante o arraste. */
+      background: rgba(20, 50, 75, 0.62);
+      padding: 10px 16px 22px;
+    }
+    .patio__titulo {
+      display: block;
+      font-size: 0.9rem; font-weight: 700; color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      margin-bottom: 10px;
+    }
+    .patio__vagoes { display: flex; flex-wrap: wrap; gap: 14px 12px; min-height: 78px; }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: absolute; left: 50%; top: 46%;
+      transform: translate(-50%, 0) translateY(8px);
+      z-index: 40;
+      max-width: min(88vw, 480px);
+      padding: 13px 20px;
+      border-radius: 14px;
+      font-size: 1.05rem; font-weight: 700; text-align: center; color: #fff;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .toast.ok { background: linear-gradient(180deg, #4cc35e, #2f9d40); }
+    .toast.err { background: linear-gradient(180deg, #ff6b6b, #e03b3b); }
+    .toast.info { background: linear-gradient(180deg, #4aa3e0, #2f7fc0); }
+
+    /* ===== Modais (placa de estação) ===== */
+    .modal {
+      position: absolute; inset: 0; z-index: 60;
+      display: grid; place-items: center; padding: 20px;
+      background: rgba(10, 30, 45, 0.45);
+    }
+    .modal[hidden] { display: none; }
+    .placa {
+      width: min(94vw, 460px);
+      background: #fff9ea;
+      border: 4px solid #8a5d33;
+      border-radius: 18px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      animation: placa-pop 0.25s ease;
+    }
+    @keyframes placa-pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .placa__topo {
+      padding: 12px 18px;
+      background: linear-gradient(180deg, #3da431, #2e8a28);
+      color: #fff; font-size: 1.15rem; font-weight: 800;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      border-bottom: 4px solid #8a5d33;
+    }
+    .placa__corpo { padding: 18px 22px 22px; color: #3a2c1e; }
+    .placa__corpo.center { text-align: center; }
+    .regras { margin: 0 0 18px 20px; display: grid; gap: 10px; font-size: 0.98rem; line-height: 1.45; }
+    .grande { font-size: 1.2rem; font-weight: 800; margin-bottom: 10px; }
+    .placar { font-size: 1.05rem; margin-bottom: 6px; }
+    .placar strong { font-size: 1.6rem; color: #2e8a28; }
+    .aviso { color: #6b5b48; font-size: 0.95rem; margin-bottom: 16px; min-height: 1.2em; }
+    .botao {
+      font-family: inherit; cursor: pointer; font-weight: 800;
+      padding: 11px 26px; border-radius: 12px; font-size: 1.05rem;
+      border: 3px solid #256b20; color: #fff;
+      background: linear-gradient(180deg, #6cc24a 0%, #43a431 55%, #2e8a28 100%);
+      box-shadow: 0 4px 0 #1d5619;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .botao:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d5619; }
+    .botao:focus-visible { outline: 3px solid #2e8a28; outline-offset: 2px; }
+
+    /* ===== Responsivo (Chromebook / telas baixas) ===== */
+    @media (max-height: 760px) {
+      .carga { min-width: 78px; padding: 5px 9px; }
+      .carga__emoji { font-size: 1.8rem; }
+      .ferrovia { min-height: 150px; }
+      .vagao { min-width: 76px; height: 56px; font-size: 1.4rem; }
+      .patio { padding-bottom: 16px; }
+    }
+    @media (max-width: 700px) {
+      .hud__bloco--nome { display: none; }
+      .estacao { flex-direction: column; align-items: flex-start; gap: 6px; }
+      .partir { right: 10px; bottom: 34px; padding: 11px 18px; font-size: 1.05rem; }
+      .loco { width: 104px; height: 68px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .comboio, .toast, .vagao, .carga, .hud__bloco strong { transition: none !important; }
+      .comboio.treme, .comboio.partiu .fumaca, .placa { animation: none !important; }
+    }
+  </style>
+
+  <script>
+    // ===== Dados =====
+    const dados = JSON.parse(document.querySelector('[data-dados]').textContent);
+    const POOL = dados.palavras;
+    const NIVEIS = dados.niveis;
+    const DISTRATORES = dados.distratores;
+    const CFG = dados.config;
+    // Dicionário do modo livre: cargas + palavras extras (sem emoji).
+    const DICIONARIO = [...POOL, ...dados.palavrasExtras];
+    const VALIDAS = new Set(DICIONARIO.map((p) => p.palavra));
+    const semMov = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const $ = (s) => document.querySelector(s);
+    const cargasEl = $('[data-cargas]');
+    const tremEl = $('[data-trem]');
+    const patioEl = $('[data-patio]');
+    const comboioEl = $('[data-comboio]');
+    const ferroviaEl = $('[data-drop]');
+    const partirBtn = $('[data-partir]');
+    const toastEl = $('[data-toast]');
+    const anuncioEl = $('[data-anuncio]');
+    const introModal = $('[data-intro]');
+    const nivelDoneModal = $('[data-nivel-done]');
+    const winModal = $('[data-win]');
+
+    const CORES = ['#e05a4e', '#3f8fd2', '#5aa838', '#c9862e', '#8a5fc0', '#2fa3a0'];
+
+    const estado = {
+      nivelIdx: 0,
+      pontos: 0,       // acumula entre níveis; zera no "Jogar de novo"
+      cargas: [],      // guiado: [{palavra, silabas, emoji, entregue, el}]
+      entregues: [],   // livre: palavras já entregues
+      mudo: false,
+      iniciado: false,
+      animando: false, // trava o Partir durante a animação
+    };
+
+    // ===== Áudio (Web Audio, sem arquivos) =====
+    let actx = null;
+    function initAudio() {
+      if (actx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    function tom(freq, inicio, dur, tipo, vol) {
+      if (!actx) return;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = tipo; o.frequency.value = freq;
+      o.connect(g); g.connect(actx.destination);
+      const t = actx.currentTime + inicio;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur + 0.03);
+    }
+    // Apito de trem: duas notas juntas, longas.
+    function somApito() {
+      if (estado.mudo) return;
+      tom(520, 0, 0.4, 'triangle', 0.2);
+      tom(660, 0, 0.4, 'triangle', 0.18);
+      tom(520, 0.5, 0.55, 'triangle', 0.2);
+      tom(660, 0.5, 0.55, 'triangle', 0.18);
+    }
+    function somErr() { if (estado.mudo) return; tom(150, 0, 0.3, 'square', 0.16); }
+    function somClique() { if (estado.mudo) return; tom(760, 0, 0.06, 'triangle', 0.12); }
+    function somNivel() { if (estado.mudo) return; [523, 659, 784, 1046].forEach((f, i) => tom(f, i * 0.12, 0.22, 'triangle', 0.2)); }
+
+    // ===== Mudo =====
+    const muteBtn = $('[data-mute]');
+    const muteIcon = $('[data-mute-icon]');
+    function aplicarMudo() {
+      muteBtn.setAttribute('aria-pressed', String(estado.mudo));
+      muteIcon.textContent = estado.mudo ? '🔈' : '🔊';
+      muteBtn.setAttribute('aria-label', estado.mudo ? 'Ligar o som' : 'Desligar o som');
+    }
+    (function initMudo() {
+      const salvo = localStorage.getItem('trem-palavras:mudo');
+      estado.mudo = salvo === null ? !CFG.somLigadoInicial : salvo === '1';
+      aplicarMudo();
+    })();
+    muteBtn.addEventListener('click', () => {
+      estado.mudo = !estado.mudo;
+      localStorage.setItem('trem-palavras:mudo', estado.mudo ? '1' : '0');
+      aplicarMudo();
+    });
+
+    // ===== Utilidades =====
+    function embaralhar(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function anunciar(msg) { anuncioEl.textContent = ''; requestAnimationFrame(() => { anuncioEl.textContent = msg; }); }
+
+    let toastTimer = null;
+    function mostrarToast(html, tipo, ms) {
+      toastEl.innerHTML = html;
+      toastEl.className = 'toast ' + tipo;
+      toastEl.hidden = false;
+      requestAnimationFrame(() => toastEl.classList.add('show'));
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toastEl.classList.remove('show');
+        setTimeout(() => { toastEl.hidden = true; }, 250);
+      }, ms || 2200);
+    }
+
+    function atualizarPlacar() {
+      const el = $('[data-pontos]');
+      el.textContent = String(estado.pontos);
+      el.classList.add('pop');
+      setTimeout(() => el.classList.remove('pop'), 200);
+    }
+
+    // ===== Montar nível =====
+    let corIdx = 0;
+    function criarVagao(silaba) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'vagao';
+      btn.dataset.silaba = silaba;
+      btn.style.setProperty('--vg', CORES[corIdx++ % CORES.length]);
+      btn.textContent = silaba;
+      btn.setAttribute('aria-label', 'Vagão ' + silaba);
+      ligarInteracao(btn);
+      return btn;
+    }
+
+    function rotuloTamanhos(t) {
+      return t.length === 1 ? t[0] + ' sílabas' : t[0] + ' a ' + t[t.length - 1] + ' sílabas';
+    }
+
+    // Monta um nível (NÃO zera os pontos — eles acumulam; só o replay zera).
+    function montarNivel(idx) {
+      estado.nivelIdx = idx;
+      const nivel = NIVEIS[idx];
+      estado.cargas = [];
+      estado.entregues = [];
+      cargasEl.innerHTML = '';
+      tremEl.innerHTML = '';
+      patioEl.innerHTML = '';
+
+      if (nivel.modo === 'livre') {
+        // ------- Estação Livre: sem figuras; pátio semeado pelo dicionário -------
+        $('[data-estacao-titulo]').textContent =
+          '🚉 Estação Livre — monte palavras de verdade! (0 de ' + nivel.palavras + ')';
+        // União-multiset das sílabas das sementes: se UMA palavra precisa de
+        // 2× a mesma sílaba (BANANA → 2×NA), o pátio ganha 2 vagões dela.
+        const contagem = {};
+        for (const p of embaralhar(DICIONARIO)) {
+          const local = {};
+          for (const s of p.silabas) local[s] = (local[s] || 0) + 1;
+          for (const s in local) contagem[s] = Math.max(contagem[s] || 0, local[s]);
+          const total = Object.values(contagem).reduce((a, b) => a + b, 0);
+          if (total >= nivel.silabasPatio) break;
+        }
+        const silabas = [];
+        for (const s in contagem) for (let i = 0; i < contagem[s]; i++) silabas.push(s);
+        for (const s of embaralhar(silabas)) patioEl.appendChild(criarVagao(s));
+
+        $('[data-nivel-nome]').textContent = nivel.nome + ' — invente palavras!';
+        anunciar('Estação Livre! Monte ' + nivel.palavras + ' palavras de verdade com as sílabas do pátio.');
+      } else {
+        // ------- Guiado: cargas com figura -------
+        $('[data-estacao-titulo]').textContent = '📦 Cargas esperando:';
+        // sorteio balanceado entre os tamanhos permitidos (round-robin)
+        const filas = nivel.tamanhos.map((t) => embaralhar(POOL.filter((p) => p.silabas.length === t)));
+        const sorteadas = [];
+        let ti = 0;
+        while (sorteadas.length < nivel.palavras && filas.some((f) => f.length)) {
+          const fila = filas[ti % filas.length];
+          ti++;
+          if (fila.length) sorteadas.push(fila.pop());
+        }
+
+        estado.cargas = sorteadas.map((p) => {
+          const div = document.createElement('div');
+          div.className = 'carga';
+          div.dataset.carga = '';
+          div.dataset.palavra = p.palavra;
+          div.setAttribute('role', 'img');
+          div.setAttribute('aria-label', 'Carga: ' + p.palavra.toLowerCase());
+          div.innerHTML =
+            '<span class="carga__emoji">' + p.emoji + '</span>' +
+            '<span class="carga__palavra"></span>';
+          cargasEl.appendChild(div);
+          return { ...p, entregue: false, el: div };
+        });
+
+        const silabas = sorteadas.flatMap((p) => p.silabas);
+        const extras = embaralhar(DISTRATORES).slice(0, nivel.distratores);
+        for (const s of embaralhar([...silabas, ...extras])) {
+          patioEl.appendChild(criarVagao(s));
+        }
+
+        $('[data-nivel-nome]').textContent = nivel.nome + ' (' + rotuloTamanhos(nivel.tamanhos) + ')';
+        anunciar('Nível ' + (idx + 1) + ': ' + nivel.nome + '. ' + sorteadas.length +
+          (sorteadas.length === 1 ? ' carga esperando.' : ' cargas esperando.'));
+      }
+
+      // HUD comum
+      $('[data-nivel]').textContent = String(idx + 1);
+      $('[data-nivel-total]').textContent = 'de ' + NIVEIS.length;
+      $('[data-pontos]').textContent = String(estado.pontos);
+    }
+
+    // ===== Mover vagões (tap + drag) =====
+    function indiceInsercao(x) {
+      const filhos = [...tremEl.children];
+      for (let i = 0; i < filhos.length; i++) {
+        const r = filhos[i].getBoundingClientRect();
+        if (x < r.left + r.width / 2) return i;
+      }
+      return filhos.length;
+    }
+
+    function limparEstilos(el) {
+      el.style.position = '';
+      el.style.left = '';
+      el.style.top = '';
+      el.style.width = '';
+      el.style.margin = '';
+      el.style.zIndex = '';
+      el.classList.remove('is-dragging');
+    }
+
+    function paraOTrem(el, idx) {
+      limparEstilos(el);
+      const filhos = [...tremEl.children];
+      if (idx === undefined || idx >= filhos.length) tremEl.appendChild(el);
+      else tremEl.insertBefore(el, filhos[idx]);
+      somClique();
+    }
+    function paraOPatio(el) {
+      limparEstilos(el);
+      patioEl.appendChild(el);
+    }
+
+    const LIMIAR = 8;
+    function ligarInteracao(el) {
+      let drag = null;
+
+      function finalizar(e, checarDrop) {
+        if (!drag || (e && e.pointerId !== drag.id)) return;
+        try { el.releasePointerCapture(drag.id); } catch (_) {}
+        ferroviaEl.classList.remove('ferrovia--hot');
+        const d = drag;
+        drag = null;
+        if (!d.ativo) {
+          if (checarDrop) {
+            // toque: alterna entre pátio e trem
+            if (el.parentElement === patioEl) paraOTrem(el);
+            else paraOPatio(el);
+          }
+          return;
+        }
+        const r = ferroviaEl.getBoundingClientRect();
+        const dentro = checarDrop && e &&
+          e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (dentro) paraOTrem(el, indiceInsercao(e.clientX));
+        else paraOPatio(el); // fora do trilho (ou captura perdida): volta pro pátio
+      }
+
+      el.addEventListener('pointerdown', (e) => {
+        if (!estado.iniciado || estado.animando || e.button > 0) return;
+        e.preventDefault();
+        if (drag) { limparEstilos(el); drag = null; }
+        drag = { id: e.pointerId, startX: e.clientX, startY: e.clientY, ativo: false, offsetX: 0, offsetY: 0 };
+        try { el.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      el.addEventListener('pointermove', (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const dx = e.clientX - drag.startX;
+        const dy = e.clientY - drag.startY;
+        if (!drag.ativo) {
+          if (Math.hypot(dx, dy) < LIMIAR) return;
+          const r = el.getBoundingClientRect();
+          drag.ativo = true;
+          drag.offsetX = drag.startX - r.left;
+          drag.offsetY = drag.startY - r.top;
+          el.classList.add('is-dragging');
+          el.style.position = 'fixed';
+          el.style.left = r.left + 'px';
+          el.style.top = r.top + 'px';
+          el.style.width = r.width + 'px';
+          el.style.margin = '0';
+          el.style.zIndex = '1000';
+        }
+        el.style.left = (e.clientX - drag.offsetX) + 'px';
+        el.style.top = (e.clientY - drag.offsetY) + 'px';
+        const r = ferroviaEl.getBoundingClientRect();
+        const dentro = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        ferroviaEl.classList.toggle('ferrovia--hot', dentro);
+      });
+
+      el.addEventListener('pointerup', (e) => finalizar(e, true));
+      el.addEventListener('pointercancel', (e) => finalizar(e, true));
+      // Backstop: navegador soltou a captura no meio do arraste → volta pro pátio.
+      el.addEventListener('lostpointercapture', (e) => {
+        if (drag && drag.id === e.pointerId && drag.ativo) finalizar(e, false);
+      });
+
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (!estado.iniciado || estado.animando) return;
+          if (el.parentElement === patioEl) paraOTrem(el);
+          else paraOPatio(el);
+        }
+      });
+    }
+
+    // ===== Partir! =====
+    function palavraDoTrem() {
+      return [...tremEl.children].map((v) => v.dataset.silaba).join('');
+    }
+
+    function tremeErro() {
+      comboioEl.classList.remove('treme');
+      void comboioEl.offsetWidth;
+      comboioEl.classList.add('treme');
+    }
+
+    // Anima a partida; `aoVoltar` roda quando o trem "reaparece" vazio.
+    function animarPartida(aoVoltar) {
+      estado.animando = true;
+      partirBtn.disabled = true;
+      const depois = () => {
+        aoVoltar();
+        comboioEl.classList.add('sem-transicao');
+        comboioEl.classList.remove('partiu');
+        void comboioEl.offsetWidth;
+        comboioEl.classList.remove('sem-transicao');
+        estado.animando = false;
+        partirBtn.disabled = false;
+      };
+      if (semMov) { depois(); }
+      else {
+        comboioEl.classList.add('partiu');
+        setTimeout(depois, 1350);
+      }
+    }
+
+    partirBtn.addEventListener('click', () => {
+      if (!estado.iniciado || estado.animando) return;
+      const vagoes = [...tremEl.children];
+      if (!vagoes.length) {
+        mostrarToast('🚃 Coloque vagões no trilho primeiro!', 'info', 1800);
+        return;
+      }
+      const palavra = palavraDoTrem();
+      const nivel = NIVEIS[estado.nivelIdx];
+
+      // ------- Estação Livre: vale qualquer palavra do dicionário -------
+      if (nivel.modo === 'livre') {
+        if (estado.entregues.includes(palavra)) {
+          somErr();
+          tremeErro();
+          mostrarToast('✋ <b>' + palavra + '</b> já foi entregue! Tente outra.', 'err', 2200);
+          anunciar(palavra + ' já foi entregue. Monte outra palavra.');
+          return;
+        }
+        if (!VALIDAS.has(palavra)) {
+          somErr();
+          tremeErro();
+          mostrarToast('✗ <b>' + palavra + '</b> não existe! Tente outra palavra.', 'err', 2200);
+          anunciar('Essa palavra não existe. Tente outra.');
+          return;
+        }
+        // válida!
+        estado.entregues.push(palavra);
+        const ganhos = vagoes.length * CFG.pontosPorSilaba;
+        estado.pontos += ganhos;
+        atualizarPlacar();
+        somApito();
+        mostrarToast('✓ <b>' + palavra + '</b> existe! +' + ganhos + ' pontos 🎉', 'ok', 2400);
+        anunciar('Muito bem! ' + palavra + ' entregue. Mais ' + ganhos + ' pontos. ' +
+          estado.entregues.length + ' de ' + nivel.palavras + '.');
+
+        const chip = document.createElement('div');
+        chip.className = 'carga carga--ok carga--chip';
+        chip.innerHTML = '<span class="carga__palavra">' + palavra + '</span>';
+        cargasEl.appendChild(chip);
+        $('[data-estacao-titulo]').textContent =
+          '🚉 Estação Livre — monte palavras de verdade! (' + estado.entregues.length + ' de ' + nivel.palavras + ')';
+
+        animarPartida(() => {
+          // sílabas são reutilizáveis: os vagões voltam ao pátio
+          for (const v of vagoes) paraOPatio(v);
+          if (estado.entregues.length >= nivel.palavras) concluirNivel();
+        });
+        return;
+      }
+
+      // ------- Guiado: a palavra precisa ser uma carga da estação -------
+      const carga = estado.cargas.find((c) => !c.entregue && c.palavra === palavra);
+
+      if (!carga) {
+        somErr();
+        tremeErro();
+        mostrarToast('✗ <b>' + palavra + '</b> não é uma carga de hoje! Olhe as figuras da estação.', 'err', 2400);
+        anunciar('Essa palavra não é uma das cargas. Tente de novo.');
+        return;
+      }
+
+      // Acertou!
+      carga.entregue = true;
+      const ganhos = carga.silabas.length * CFG.pontosPorSilaba;
+      estado.pontos += ganhos;
+      atualizarPlacar();
+      somApito();
+      mostrarToast('✓ <b>' + carga.palavra + '</b> entregue! +' + ganhos + ' pontos 🎉', 'ok', 2400);
+      anunciar('Certo! ' + carga.palavra + ' entregue. Mais ' + ganhos + ' pontos.');
+      carga.el.classList.add('carga--ok');
+      carga.el.querySelector('.carga__palavra').textContent = carga.palavra;
+
+      animarPartida(() => {
+        tremEl.innerHTML = ''; // vagões viajaram com a carga
+        if (estado.cargas.every((c) => c.entregue)) concluirNivel();
+      });
+    });
+
+    // ===== Nível / vitória =====
+    function concluirNivel() {
+      if (estado.nivelIdx < NIVEIS.length - 1) {
+        somNivel();
+        $('[data-nivel-done-title]').textContent = 'Nível ' + (estado.nivelIdx + 1) + ' completo!';
+        $('[data-nivel-score]').textContent = String(estado.pontos);
+        const prox = NIVEIS[estado.nivelIdx + 1];
+        $('[data-nivel-next-label]').textContent = prox.modo === 'livre'
+          ? 'Agora a Estação Livre: invente palavras de verdade — sem figuras!'
+          : 'Próxima estação: ' + prox.nome + ' — ' + prox.palavras +
+            (prox.palavras === 1 ? ' carga!' : ' cargas!');
+        nivelDoneModal.hidden = false;
+        setTimeout(() => $('[data-next-nivel]').focus(), 60);
+      } else {
+        venceu();
+      }
+    }
+
+    function venceu() {
+      somNivel();
+      $('[data-final-score]').textContent = String(estado.pontos);
+      $('[data-final-msg]').textContent =
+        'Você completou todas as estações — até a Livre! Que viagem! 🌟';
+      winModal.hidden = false;
+      setTimeout(() => $('[data-replay]').focus(), 60);
+    }
+
+    // ===== Fluxo =====
+    function comecar() {
+      initAudio();
+      if (actx && actx.state === 'suspended') actx.resume();
+      estado.iniciado = true;
+      introModal.hidden = true;
+    }
+    $('[data-comecar]').addEventListener('click', comecar);
+    $('[data-next-nivel]').addEventListener('click', () => {
+      nivelDoneModal.hidden = true;
+      montarNivel(estado.nivelIdx + 1);
+    });
+    $('[data-replay]').addEventListener('click', () => {
+      winModal.hidden = true;
+      estado.pontos = 0;
+      montarNivel(0);
+    });
+
+    // ===== Boot =====
+    document.body.classList.add('is-game');
+    introModal.hidden = false;
+    montarNivel(0);
+    setTimeout(() => $('[data-comecar]').focus(), 60);
+  </script>
+</Layout>

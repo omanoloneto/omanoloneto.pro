@@ -1,0 +1,260 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Icon from '../../components/Icon.astro';
+
+const title = 'Controle de Aula — Extensão para Chromebook | Manolo Neto';
+const description =
+  'Baixe a extensão Controle de Aula: o professor comanda os Chromebooks da turma pelo celular, pela rede local, sem nuvem. Guia de instalação passo a passo.';
+
+const VERSAO = '0.1.0';
+const ZIP = '/downloads/controle-de-aula-extensao.zip';
+
+const passos = [
+  { t: 'Baixe e descompacte o ZIP', d: 'Clique no botão acima e extraia o arquivo. Vai aparecer uma pasta chamada controle-de-aula.' },
+  { t: 'Abra a página de extensões', d: 'No Chrome do Chromebook, digite chrome://extensions na barra de endereço.' },
+  { t: 'Ative o Modo do desenvolvedor', d: 'É o botão no canto superior direito da página de extensões.' },
+  { t: 'Carregar sem compactação', d: 'Clique no botão "Carregar sem compactação" e selecione a pasta controle-de-aula que você extraiu.' },
+  { t: 'Aceite a permissão de rede', d: 'A extensão pede acesso http://*/* — é como ela encontra o celular do professor na rede local da escola. Nada sai da rede.' },
+];
+---
+
+<Layout title={title} description={description}>
+  <header class="topo">
+    <div class="container topo__bar">
+      <a href="/" class="topo__voltar">← omanoloneto.pro</a>
+      <span class="chip">v{VERSAO} · em desenvolvimento</span>
+    </div>
+  </header>
+
+  <main class="pagina">
+    <!-- Hero -->
+    <section class="section hero-ext">
+      <div class="container">
+        <p class="eyebrow">Projeto · Controle de Aula</p>
+        <h1 class="titulo">Extensão para o Chromebook da turma</h1>
+        <p class="section-lead">
+          O professor comanda os Chromebooks dos alunos <strong>pelo celular</strong>,
+          pela <strong>rede local da escola</strong> — sem nuvem, sem cadastro. A extensão
+          encontra o celular do professor sozinha e abre o site que ele mandar.
+        </p>
+
+        <div class="acoes">
+          <a class="btn btn--big" href={ZIP} download>
+            ⬇️&nbsp; Baixar extensão (.zip)
+          </a>
+          <a class="btn btn--ghost" href="https://github.com/omanoloneto/chromebook-controller-extension" target="_blank" rel="noopener">
+            <Icon name="github" size={18} /> Código-fonte
+          </a>
+        </div>
+        <p class="mini">
+          Requer <strong>Chrome 144+</strong> · Grátis, código aberto (MIT) ·
+          Criptografia ponta-a-ponta (X25519 + AES-256-GCM)
+        </p>
+
+        <div class="aviso">
+          <strong>Por que não tem “instalar com 1 clique”?</strong> O Chrome só permite
+          instalação direta a partir da Chrome Web Store — instalação por sites foi desativada
+          pelo Google. Enquanto a extensão não está na Web Store, instala-se
+          pelo <em>Modo do desenvolvedor</em> (leva ~1 minuto, passo a passo abaixo).
+        </div>
+      </div>
+    </section>
+
+    <!-- Instalação -->
+    <section class="section section--inst">
+      <div class="container">
+        <p class="eyebrow">Instalação</p>
+        <h2 class="section-title">Passo a passo (~1 minuto por máquina)</h2>
+        <ol class="passos">
+          {passos.map((p, i) => (
+            <li class="passo">
+              <span class="passo__num">{i + 1}</span>
+              <div>
+                <h3>{p.t}</h3>
+                <p>{p.d}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+
+    <!-- Como funciona / uso -->
+    <section class="section">
+      <div class="container duas">
+        <div>
+          <p class="eyebrow">Como funciona</p>
+          <h2 class="section-title">Sem pareamento manual</h2>
+          <ul class="lista">
+            <li>O <strong>celular do professor</strong> roda o app e vira um servidor na rede local (porta 47615).</li>
+            <li>A extensão <strong>varre a rede, acha o celular e se vincula</strong> ao primeiro professor encontrado — o ícone fica verde.</li>
+            <li>O vínculo é <strong>exclusivo</strong>: o Chromebook só obedece àquele celular.</li>
+            <li>Tudo viaja <strong>criptografado</strong> dentro da rede da escola. Nada vai pra internet.</li>
+          </ul>
+        </div>
+        <div>
+          <p class="eyebrow">Problemas comuns</p>
+          <h2 class="section-title">Se não conectar</h2>
+          <ul class="lista">
+            <li>Chromebook e celular precisam estar na <strong>mesma Wi-Fi</strong>, sem isolamento de cliente (AP isolation).</li>
+            <li>Não achou sozinho? Abra o popup da extensão e digite o <strong>IP mostrado no app</strong> do professor.</li>
+            <li>Trocar de professor: popup → <strong>“Desvincular professor”</strong>.</li>
+            <li>Teste rápido: abra <code>http://IP-DO-CELULAR:47615/</code> numa aba — deve responder um texto com <code>"app":"controle-de-aula"</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer class="rodape">
+      <div class="container">
+        <p>
+          Projeto de <a href="/">Manolo Neto</a> · extensão
+          <a href="https://github.com/omanoloneto/chromebook-controller-extension" target="_blank" rel="noopener">chromebook-controller-extension</a>
+          · app do professor
+          <a href="https://github.com/omanoloneto/chromebook-controller-app" target="_blank" rel="noopener">chromebook-controller-app</a>
+          · MIT
+        </p>
+      </div>
+    </footer>
+  </main>
+</Layout>
+
+<style>
+  .topo {
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-soft);
+  }
+  .topo__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 58px;
+  }
+  .topo__voltar {
+    color: var(--text-soft);
+    font-size: 0.92rem;
+    font-weight: 600;
+    transition: color 0.2s;
+  }
+  .topo__voltar:hover { color: var(--accent); }
+
+  .hero-ext { padding-bottom: clamp(30px, 5vw, 60px); }
+  .titulo {
+    font-size: clamp(2rem, 5vw, 3.1rem);
+    margin-block: 14px 16px;
+    background: linear-gradient(180deg, #fff 30%, #c4cedd);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero-ext .section-lead strong { color: var(--text); }
+
+  .acoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 30px;
+  }
+  .btn--big { font-size: 1.1rem; padding: 15px 26px; }
+  .mini { color: var(--text-dim); font-size: 0.88rem; margin-top: 14px; }
+  .mini strong { color: var(--text-soft); }
+
+  .aviso {
+    margin-top: 28px;
+    max-width: 62ch;
+    padding: 14px 18px;
+    border: 1px solid var(--border-strong);
+    border-left: 3px solid var(--accent-2);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    color: var(--text-soft);
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+  .aviso strong { color: var(--text); }
+
+  .section--inst {
+    background: var(--bg-soft);
+    border-block: 1px solid var(--border);
+  }
+  .passos {
+    list-style: none;
+    margin-top: 30px;
+    display: grid;
+    gap: 14px;
+    max-width: 640px;
+  }
+  .passo {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .passo__num {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #04130d;
+  }
+  .passo h3 { font-size: 1.02rem; margin-bottom: 4px; }
+  .passo p { color: var(--text-soft); font-size: 0.93rem; }
+
+  .duas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(28px, 5vw, 60px);
+  }
+  .lista {
+    list-style: none;
+    margin-top: 20px;
+    display: grid;
+    gap: 12px;
+  }
+  .lista li {
+    color: var(--text-soft);
+    font-size: 0.96rem;
+    line-height: 1.55;
+    padding-left: 18px;
+    position: relative;
+  }
+  .lista li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .lista strong { color: var(--text); }
+  .lista code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 6px;
+  }
+
+  .rodape {
+    border-top: 1px solid var(--border);
+    padding-block: 24px;
+    color: var(--text-dim);
+    font-size: 0.88rem;
+  }
+  .rodape a { color: var(--text-soft); }
+  .rodape a:hover { color: var(--accent); }
+
+  @media (max-width: 720px) {
+    .duas { grid-template-columns: 1fr; }
+  }
+</style>
