@@ -5,15 +5,15 @@
 export const site = {
   nome: 'Manolo Neto',
   // Título curto usado no <title> e no header.
-  titulo: 'Manolo Neto — Desenvolvedor & Professor',
+  titulo: 'Manolo Neto — faço jogos e ensino crianças a fazer os delas',
   // Frase de impacto do topo (hero).
-  tagline: 'Desenvolvedor de jogos e software. Professor.',
+  tagline: 'Faço jogos. E ensino crianças a fazer os delas.',
   // Parágrafo de apresentação do hero.
   descricao:
-    'Crio jogos e aplicações do conceito ao deploy — e ensino outras pessoas a fazerem o mesmo. Foco em Flutter, Godot e Unity, com obsessão por código limpo e experiências que funcionam.',
+    'Desenvolvo a franquia VMonsters em três engines ao mesmo tempo — Unity, Godot e Flutter — e dou aula de tecnologia pra crianças. Quando a aula precisa de um jogo que não existe, eu faço o jogo.',
   // Usado em meta tags de SEO / compartilhamento.
   descricaoSEO:
-    'Portfólio de Mano Neto — desenvolvedor de jogos e software (Flutter, Godot, Unity) e professor de programação.',
+    'Manolo Neto: desenvolvedor de jogos (franquia VMonsters — Unity, Godot, Flutter) e professor. Jogos educativos gratuitos para sala de aula em omanoloneto.pro/class.',
   email: 'mano.afonso93@gmail.com',
   localizacao: 'Brasil',
 } as const;
@@ -27,9 +27,9 @@ export type SocialLink = {
 
 export const socials: SocialLink[] = [
   { nome: 'GitHub', url: 'https://github.com/omanoloneto', icone: 'github' },
-  { nome: 'LinkedIn', url: 'https://linkedin.com/in/', icone: 'linkedin' },
   { nome: 'Email', url: 'mailto:mano.afonso93@gmail.com', icone: 'email' },
-  // Descomente / ajuste conforme seus perfis:
-  // { nome: 'itch.io', url: 'https://itch.io/', icone: 'itchio' },
-  // { nome: 'YouTube', url: 'https://youtube.com/', icone: 'youtube' },
+  // Adicione quando tiver os perfis:
+  // { nome: 'LinkedIn', url: 'https://linkedin.com/in/SEU-PERFIL', icone: 'linkedin' },
+  // { nome: 'itch.io', url: 'https://SEU-USUARIO.itch.io', icone: 'itchio' },
+  // { nome: 'YouTube', url: 'https://youtube.com/@SEU-CANAL', icone: 'youtube' },
 ];

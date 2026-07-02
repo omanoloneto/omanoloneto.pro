@@ -13,4 +13,8 @@ export default defineConfig({
     format: 'directory',
   },
   integrations: [sitemap()],
+  redirects: {
+    // /class/games sem jogo específico → hub da sala de aula
+    '/class/games': '/class',
+  },
 });

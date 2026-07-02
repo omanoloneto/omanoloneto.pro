@@ -5,7 +5,7 @@ import Icon from './Icon.astro';
 <section class="hero" id="conteudo">
   <div class="container hero-grid">
     <div class="hero-copy">
-      <p class="eyebrow" data-reveal>Olá, eu sou {site.nome}</p>
+      <p class="eyebrow" data-reveal>Manolo Neto · dev &amp; professor</p>
 
       <h1 class="hero-title" data-reveal>
         {site.tagline}
@@ -15,9 +15,9 @@ import Icon from './Icon.astro';
 
       <div class="hero-actions" data-reveal>
         <a href="#projetos" class="btn">
-          Ver projetos <Icon name="arrow" size={18} />
+          Ver meus jogos <Icon name="arrow" size={18} />
         </a>
-        <a href="#contato" class="btn btn--ghost">Entrar em contato</a>
+        <a href="/class/" class="btn btn--ghost">🎒 Sala de aula</a>
       </div>
 
       <div class="hero-socials" data-reveal>
@@ -31,22 +31,30 @@ import Icon from './Icon.astro';
       </div>
     </div>
 
-    <!-- Terminal decorativo -->
+    <!-- Save slot: cartão de "continuar jogo" -->
     <div class="hero-card" data-reveal aria-hidden="true">
-      <div class="term">
-        <div class="term-bar">
-          <span></span><span></span><span></span>
-          <em>~/dev/sobre.ts</em>
+      <div class="save">
+        <div class="save__top">— CONTINUAR? —</div>
+        <div class="save__body">
+          <div class="save__row save__slot">SLOT 01 <span class="save__cursor">▮</span></div>
+          <div class="save__row save__nome">MANOLO NETO</div>
+          <dl class="save__stats">
+            <div><dt>CLASSE</dt><dd>DEV · PROFESSOR</dd></div>
+            <div><dt>MISSÃO</dt><dd>FRANQUIA VMONSTERS</dd></div>
+            <div><dt>ENGINES</dt><dd>UNITY · GODOT · FLUTTER</dd></div>
+            <div><dt>PARTY</dt><dd>1 TURMA DE CRIANÇAS</dd></div>
+          </dl>
+          <div class="save__prog">
+            <span class="save__prog-label">PROGRESSO</span>
+            <span class="save__prog-bar"><i></i></span>
+            <span class="save__prog-pct">87%*</span>
+          </div>
+          <p class="save__nota">*nunca chega em 100. sempre tem update.</p>
         </div>
-        <pre class="term-body"><code><span class="c-kw">const</span> <span class="c-var">eu</span> = {'{'}
-  <span class="c-prop">nome</span>: <span class="c-str">'{site.nome}'</span>,
-  <span class="c-prop">faz</span>: [<span class="c-str">'jogos'</span>, <span class="c-str">'apps'</span>, <span class="c-str">'aulas'</span>],
-  <span class="c-prop">stack</span>: [<span class="c-str">'Flutter'</span>, <span class="c-str">'Godot'</span>, <span class="c-str">'Unity'</span>],
-  <span class="c-prop">cafe</span>: <span class="c-bool">true</span>,
-{'}'};
-
-<span class="c-var">eu</span>.<span class="c-fn">construir</span>(<span class="c-str">'algo incrível'</span>);
-<span class="c-cmt">// → enviando... ✓</span></code></pre>
+        <div class="save__acoes">
+          <a href="#projetos">▶ CONTINUAR</a>
+          <a href="#contato">+ NOVO JOGO</a>
+        </div>
       </div>
     </div>
   </div>
@@ -72,7 +80,7 @@ import Icon from './Icon.astro';
     align-items: center;
   }
   .hero-title {
-    font-size: clamp(2.3rem, 6vw, 4rem);
+    font-size: clamp(2.2rem, 5.6vw, 3.7rem);
     margin-block: 16px 20px;
     background: linear-gradient(180deg, #fff 30%, #c4cedd);
     -webkit-background-clip: text;
@@ -111,57 +119,89 @@ import Icon from './Icon.astro';
     transform: translateY(-2px);
   }
 
-  /* Terminal */
-  .term {
+  /* ===== Save slot ===== */
+  .save {
+    font-family: var(--font-mono);
     background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
+    border: 2px solid var(--border-strong);
+    box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--border), var(--shadow);
+    border-radius: 6px;
     overflow: hidden;
-    transform: perspective(1200px) rotateY(-6deg) rotateX(2deg);
-    transition: transform 0.4s var(--ease);
+    max-width: 430px;
+    margin-inline: auto;
   }
-  .term:hover { transform: none; }
-  .term-bar {
+  .save__top {
+    text-align: center;
+    padding: 10px;
+    font-size: 0.78rem;
+    letter-spacing: 0.35em;
+    color: var(--accent);
+    border-bottom: 2px solid var(--border);
+    background: var(--bg-soft);
+  }
+  .save__body { padding: 20px 22px 14px; }
+  .save__slot {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    letter-spacing: 0.2em;
+  }
+  .save__cursor { color: var(--accent); animation: pisca 1.1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  .save__nome {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    margin: 4px 0 14px;
+  }
+  .save__stats { display: grid; gap: 7px; margin: 0; }
+  .save__stats div { display: flex; gap: 10px; font-size: 0.78rem; }
+  .save__stats dt { color: var(--text-dim); min-width: 72px; }
+  .save__stats dd { color: var(--text-soft); margin: 0; }
+
+  .save__prog {
     display: flex;
     align-items: center;
-    gap: 7px;
-    padding: 12px 14px;
-    background: var(--bg-soft);
-    border-bottom: 1px solid var(--border);
+    gap: 10px;
+    margin-top: 16px;
+    font-size: 0.72rem;
   }
-  .term-bar span {
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    background: #2c3647;
+  .save__prog-label { color: var(--text-dim); letter-spacing: 0.1em; }
+  .save__prog-bar {
+    flex: 1;
+    height: 10px;
+    border: 1px solid var(--border-strong);
+    padding: 1.5px;
+    display: block;
   }
-  .term-bar span:nth-child(1) { background: #ff5f57; }
-  .term-bar span:nth-child(2) { background: #febc2e; }
-  .term-bar span:nth-child(3) { background: #28c840; }
-  .term-bar em {
-    margin-left: auto;
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
+  .save__prog-bar i {
+    display: block;
+    height: 100%;
+    width: 87%;
+    background: repeating-linear-gradient(90deg, var(--accent) 0 6px, transparent 6px 8px);
+  }
+  .save__prog-pct { color: var(--accent); }
+  .save__nota {
+    margin-top: 8px;
+    font-size: 0.68rem;
     color: var(--text-dim);
-    font-style: normal;
+    font-style: italic;
   }
-  .term-body {
-    margin: 0;
-    padding: 20px;
-    font-family: var(--font-mono);
-    font-size: 0.86rem;
-    line-height: 1.8;
-    overflow-x: auto;
+  .save__acoes {
+    display: flex;
+    border-top: 2px solid var(--border);
+  }
+  .save__acoes a {
+    flex: 1;
+    text-align: center;
+    padding: 12px 8px;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
     color: var(--text-soft);
+    transition: background 0.15s, color 0.15s;
   }
-  .c-kw { color: #c084fc; }
-  .c-var { color: var(--accent-2); }
-  .c-prop { color: #f0b8a0; }
-  .c-str { color: var(--accent); }
-  .c-bool { color: #fbbf24; }
-  .c-fn { color: #f0b8a0; }
-  .c-cmt { color: var(--text-dim); font-style: italic; }
+  .save__acoes a:first-child { border-right: 2px solid var(--border); color: var(--accent); }
+  .save__acoes a:hover { background: var(--bg-card-hover); color: var(--accent); }
 
   .scroll-hint {
     position: absolute;
@@ -191,8 +231,10 @@ import Icon from './Icon.astro';
 
   @media (max-width: 860px) {
     .hero-grid { grid-template-columns: 1fr; }
-    .hero-card { order: -1; max-width: 460px; }
-    .term { transform: none; }
+    .hero-card { order: -1; }
     .scroll-hint { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .save__cursor { animation: none; }
   }
 </style>

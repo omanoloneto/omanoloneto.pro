@@ -4,9 +4,10 @@ import { site } from '../data/site';
 const nav = [
   { label: 'Sobre', href: '#sobre' },
   { label: 'Projetos', href: '#projetos' },
-  { label: 'Skills', href: '#skills' },
+  { label: 'Stack', href: '#skills' },
   { label: 'Ensino', href: '#ensino' },
   { label: 'Contato', href: '#contato' },
+  { label: '🎒 Aulas', href: '/class/', destaque: true },
 ];
 const iniciais = site.nome
   .split(' ')
@@ -23,7 +24,7 @@ const iniciais = site.nome
     </a>
 
     <nav class="nav" aria-label="Navegação principal">
-      {nav.map((item) => <a href={item.href}>{item.label}</a>)}
+      {nav.map((item) => <a href={item.href} class:list={[{ 'nav-cta': item.destaque }]}>{item.label}</a>)}
     </nav>
 
     <button class="menu-toggle" aria-label="Abrir menu" aria-expanded="false" data-menu-toggle>
@@ -115,6 +116,15 @@ const iniciais = site.nome
   .nav a:hover {
     color: var(--text);
     background: var(--bg-card);
+  }
+  .nav a.nav-cta {
+    color: var(--accent);
+    border: 1px solid var(--border-strong);
+    margin-left: 6px;
+  }
+  .nav a.nav-cta:hover {
+    border-color: var(--accent);
+    background: var(--accent-glow);
   }
 
   .menu-toggle {
