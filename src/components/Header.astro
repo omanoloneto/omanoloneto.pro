@@ -149,6 +149,9 @@ const iniciais = site.nome
     padding: 8px 24px 20px;
     gap: 2px;
   }
+  /* O media query abaixo liga display:flex — sem isto, a regra de autor
+     venceria o [hidden] do navegador e o menu ficaria SEMPRE aberto. */
+  .mobile-nav[hidden] { display: none !important; }
   .mobile-nav a {
     padding: 12px 8px;
     color: var(--text-soft);

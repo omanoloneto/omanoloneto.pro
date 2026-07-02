@@ -230,8 +230,13 @@ import Icon from './Icon.astro';
   }
 
   @media (max-width: 860px) {
-    .hero-grid { grid-template-columns: 1fr; }
-    .hero-card { order: -1; }
+    /* Mobile: título primeiro (é o gancho), save slot depois; sem esticar 100svh */
+    .hero {
+      min-height: auto;
+      padding-top: 100px;
+      padding-bottom: 48px;
+    }
+    .hero-grid { grid-template-columns: 1fr; gap: 40px; }
     .scroll-hint { display: none; }
   }
   @media (prefers-reduced-motion: reduce) {
