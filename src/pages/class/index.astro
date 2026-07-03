@@ -17,12 +17,12 @@ const categorias = [
     breve: false,
   },
   {
-    url: null,
+    url: '/class/sims/windows-98/',
     emoji: null, // usa a janelinha retrô desenhada em CSS
     nome: 'Simuladores',
-    desc: 'Viaje no tempo: explore sistemas antigos como o Windows 98.',
-    meta: 'Em breve',
-    breve: true,
+    desc: 'Viaje no tempo: explore o Windows 98, o sistema de 1998.',
+    meta: '1 simulador',
+    breve: false,
   },
 ];
 ---
@@ -60,7 +60,18 @@ const categorias = [
               </div>
             ) : (
               <a class="cat" href={c.url}>
-                <span class="cat__icone" aria-hidden="true">{c.emoji}</span>
+                <span class="cat__icone" aria-hidden="true">
+                  {c.emoji ? (
+                    c.emoji
+                  ) : (
+                    <span class="win98">
+                      <span class="win98__barra">
+                        <i />
+                      </span>
+                      <span class="win98__corpo">C:\&gt;_</span>
+                    </span>
+                  )}
+                </span>
                 <span class="cat__info">
                   <span class="cat__nome">{c.nome}</span>
                   <span class="cat__desc">{c.desc}</span>

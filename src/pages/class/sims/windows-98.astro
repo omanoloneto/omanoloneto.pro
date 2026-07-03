@@ -1,0 +1,1021 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+
+const title = 'Simulador do Windows 98 — viaje até 1998 | Sala do Professor Manolo';
+const description =
+  'Um Windows 98 de mentirinha pra crianças explorarem: ligue o computador, abra as janelas, descubra o disquete e a internet discada. Grátis, em português, direto no navegador.';
+
+// ============================================================
+//  Conteúdo das janelas — EDITE livremente. Cada janela tem um
+//  texto explicativo (tom pra criança) e uma curiosidade.
+// ============================================================
+type Janela = { id: string; titulo: string; icone: string; html: string };
+
+const janelas: Janela[] = [
+  {
+    id: 'meu-computador',
+    titulo: 'Meu Computador',
+    icone: 'i-computador',
+    html: `
+      <p>Aqui você via tudo o que morava dentro do computador: o disco rígido <b>(C:)</b>,
+      o CD-ROM <b>(D:)</b> e o disquete <b>(A:)</b>.</p>
+      <p>O disquete era um quadradinho de plástico que guardava só <b>1,44 MB</b> —
+      pra guardar UMA foto de celular de hoje, você precisaria de mais de 20 disquetes!</p>
+      <p class="dica">💡 <b>Curiosidade:</b> o botão de salvar dos programas até hoje é um
+      desenho de disquete — agora você sabe de onde veio!</p>`,
+  },
+  {
+    id: 'meus-documentos',
+    titulo: 'Meus Documentos',
+    icone: 'i-pasta',
+    html: `
+      <p>Esta era a pasta onde cada pessoa guardava seus textos, desenhos e trabalhos
+      da escola. Cada coisa guardada se chama <b>arquivo</b>, e as pastas servem pra
+      organizar tudo, como gavetas de um armário.</p>
+      <p class="dica">💡 <b>Curiosidade:</b> em 1998 quase ninguém tinha foto no computador —
+      as câmeras usavam filme, que precisava ser revelado na loja!</p>`,
+  },
+  {
+    id: 'lixeira',
+    titulo: 'Lixeira',
+    icone: 'i-lixeira',
+    html: `
+      <p>Quando você apagava um arquivo, ele não sumia na hora: vinha parar aqui.
+      Se você se arrependesse, dava pra abrir a Lixeira e pegar o arquivo de volta —
+      como resgatar um brinquedo do lixo antes do caminhão passar.</p>
+      <p class="dica">💡 <b>Curiosidade:</b> pra apagar de verdade era preciso
+      "esvaziar a Lixeira" — e o ícone mudava de cheio pra vazio.</p>`,
+  },
+  {
+    id: 'internet-explorer',
+    titulo: 'Internet Explorer',
+    icone: 'i-ie',
+    html: `
+      <p>Este era o programa pra entrar na internet: o <b>navegador</b>.</p>
+      <p>Mas a internet era <b>discada</b>: o computador ligava pro provedor usando o
+      telefone de casa, fazendo um barulho esquisito — <i>piiiii… crrrrrrr…</i> —
+      e enquanto alguém navegava, o telefone da casa ficava ocupado!</p>
+      <p class="dica">💡 <b>Curiosidade:</b> uma música que hoje baixa em 1 segundo
+      demorava mais de MEIA HORA pra chegar.</p>`,
+  },
+  {
+    id: 'leiame',
+    titulo: 'Leia-me.txt — Bloco de Notas',
+    icone: 'i-bloco',
+    html: `
+      <p>Olá, turma! Bem-vindos a <b>1998</b>! 👋</p>
+      <p>Este é o Windows 98, o sistema que os computadores usavam quando o professor
+      Manolo era criança. Explorem à vontade: cliquem nos ícones da tela e nos itens
+      do menu <b>Iniciar</b>. Pra fechar uma janela, use o botãozinho ✕.</p>
+      <p class="dica">💡 <b>Curiosidade:</b> antigamente era preciso clicar DUAS vezes
+      bem rapidinho pra abrir um ícone. Aqui deixamos um clique só — de nada. 😄</p>`,
+  },
+  {
+    id: 'programas',
+    titulo: 'Programas',
+    icone: 'i-programas',
+    html: `
+      <p>Aqui ficavam os programas do computador. Os mais famosos: o <b>Paint</b>
+      (pra desenhar), o <b>Bloco de Notas</b> (pra escrever) e os joguinhos
+      <b>Campo Minado</b> e <b>Paciência</b>.</p>
+      <p class="dica">💡 <b>Curiosidade:</b> não existia loja de aplicativos — programa
+      novo vinha num CD ou disquete comprado na loja!</p>`,
+  },
+  {
+    id: 'documentos',
+    titulo: 'Documentos',
+    icone: 'i-pasta',
+    html: `
+      <p>Este menu mostrava os últimos arquivos que você tinha usado, pra abrir de novo
+      rapidinho, sem precisar procurar.</p>
+      <p class="dica">💡 <b>Curiosidade:</b> o computador inteiro guardava menos coisa
+      que um celular de hoje — o disco tinha uns 4 GB, um celular atual tem 30 vezes mais!</p>`,
+  },
+  {
+    id: 'configuracoes',
+    titulo: 'Configurações',
+    icone: 'i-config',
+    html: `
+      <p>Aqui dava pra deixar o computador com a sua cara: mudar as cores, o papel de
+      parede e os sons. O mais divertido era o <b>protetor de tela</b>: se você parasse
+      de mexer no mouse, apareciam canos coloridos ou estrelinhas voando.</p>
+      <p class="dica">💡 <b>Curiosidade:</b> o protetor de tela existia pra proteger os
+      monitores antigos, de tubo, que podiam ficar com a imagem "gravada" pra sempre.</p>`,
+  },
+  {
+    id: 'ajuda',
+    titulo: 'Ajuda',
+    icone: 'i-ajuda',
+    html: `
+      <p>Não dava pra perguntar pra internet — a Ajuda era um livrão dentro do próprio
+      Windows, explicando cada botão. As pessoas também liam manuais de papel!</p>
+      <p class="dica">💡 <b>Curiosidade:</b> nos programas de escrever existia um clipe
+      de papel animado, o <b>Clippy</b>, que ficava dando conselhos sem ninguém pedir.</p>`,
+  },
+  {
+    id: 'executar',
+    titulo: 'Executar',
+    icone: 'i-executar',
+    html: `
+      <p>Esta janelinha era pros espertos: você digitava o nome secreto de um programa
+      e ele abria na hora. Escrever <b>winmine</b> abria o Campo Minado!</p>
+      <p class="dica">💡 <b>Curiosidade:</b> muita gente preferia digitar comandos porque
+      era mais rápido que caçar no menu — os programadores fazem isso até hoje.</p>`,
+  },
+];
+
+// Ícones da área de trabalho (na ordem da coluna)
+const iconesDesktop = [
+  { id: 'meu-computador', icone: 'i-computador', rotulo: 'Meu Computador' },
+  { id: 'meus-documentos', icone: 'i-pasta', rotulo: 'Meus Documentos' },
+  { id: 'lixeira', icone: 'i-lixeira', rotulo: 'Lixeira' },
+  { id: 'internet-explorer', icone: 'i-ie', rotulo: 'Internet Explorer' },
+  { id: 'leiame', icone: 'i-bloco', rotulo: 'Leia-me.txt' },
+];
+
+// Itens do menu Iniciar (flat — Desligar é separado no markup)
+const itensMenu = [
+  { id: 'programas', icone: 'i-programas', rotulo: 'Programas' },
+  { id: 'documentos', icone: 'i-pasta', rotulo: 'Documentos' },
+  { id: 'configuracoes', icone: 'i-config', rotulo: 'Configurações' },
+  { id: 'ajuda', icone: 'i-ajuda', rotulo: 'Ajuda' },
+  { id: 'executar', icone: 'i-executar', rotulo: 'Executar…' },
+];
+---
+
+<Layout title={title} description={description}>
+  <main id="conteudo" class="w98" role="application" aria-label="Simulador do Windows 98">
+    <!-- Ícones desenhados (sem marcas registradas de verdade — tudo genérico) -->
+    <svg hidden aria-hidden="true">
+      <symbol id="i-logo" viewBox="0 0 24 24">
+        <g transform="skewY(-6) translate(0 3)">
+          <rect x="2" y="2" width="9" height="9" fill="#f25022"></rect>
+          <rect x="13" y="2" width="9" height="9" fill="#7fba00"></rect>
+          <rect x="2" y="13" width="9" height="9" fill="#00a4ef"></rect>
+          <rect x="13" y="13" width="9" height="9" fill="#ffb900"></rect>
+        </g>
+      </symbol>
+      <symbol id="i-computador" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="13" rx="1" fill="#c0c0c0" stroke="#404040"></rect>
+        <rect x="5" y="5" width="14" height="9" fill="#008080"></rect>
+        <rect x="9" y="17" width="6" height="2" fill="#808080"></rect>
+        <rect x="6" y="19" width="12" height="2.5" rx="0.5" fill="#c0c0c0" stroke="#404040" stroke-width="0.6"></rect>
+      </symbol>
+      <symbol id="i-pasta" viewBox="0 0 24 24">
+        <path d="M2 6 L9 6 L11 8 L22 8 L22 20 L2 20 Z" fill="#ffd24a" stroke="#8a6d1a" stroke-width="1"></path>
+        <path d="M2 10 L22 10 L22 20 L2 20 Z" fill="#ffe173"></path>
+      </symbol>
+      <symbol id="i-lixeira" viewBox="0 0 24 24">
+        <path d="M7 8 L17 8 L16 21 L8 21 Z" fill="#d7d7d7" stroke="#555"></path>
+        <path d="M9 10 L9.5 19 M12 10 L12 19 M15 10 L14.5 19" stroke="#888" stroke-width="1.2" fill="none"></path>
+        <rect x="6" y="5.5" width="12" height="2.4" rx="1" fill="#bdbdbd" stroke="#555" stroke-width="0.8"></rect>
+        <rect x="10" y="3.6" width="4" height="2" rx="0.8" fill="#bdbdbd" stroke="#555" stroke-width="0.8"></rect>
+      </symbol>
+      <symbol id="i-ie" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="#2f7fd0"></circle>
+        <text x="12" y="17" text-anchor="middle" font-family="Georgia, serif" font-size="14" font-weight="bold" fill="#fff">e</text>
+        <path d="M2 10 Q12 4 23 9" stroke="#ffd24a" stroke-width="1.8" fill="none"></path>
+      </symbol>
+      <symbol id="i-bloco" viewBox="0 0 24 24">
+        <rect x="5" y="3" width="14" height="18" fill="#fff" stroke="#555"></rect>
+        <path d="M8 8 H16 M8 11 H16 M8 14 H13" stroke="#7a9ac9" stroke-width="1.2"></path>
+      </symbol>
+      <symbol id="i-disquete" viewBox="0 0 24 24">
+        <path d="M4 4 H18 L20 6 V20 H4 Z" fill="#2b4fa0" stroke="#122a5c"></path>
+        <rect x="8" y="4" width="8" height="6" fill="#cfd8ea"></rect>
+        <rect x="13" y="5" width="2" height="4" fill="#2b4fa0"></rect>
+        <rect x="7" y="13" width="10" height="7" fill="#e8e8e8"></rect>
+      </symbol>
+      <symbol id="i-ajuda" viewBox="0 0 24 24">
+        <path d="M5 4 Q12 2 19 4 V20 Q12 18 5 20 Z" fill="#b48ae0" stroke="#5a3a9c"></path>
+        <text x="12" y="16" text-anchor="middle" font-family="Georgia, serif" font-size="12" font-weight="bold" fill="#fff">?</text>
+      </symbol>
+      <symbol id="i-config" viewBox="0 0 24 24">
+        <rect x="4" y="4" width="16" height="16" rx="2" fill="#c0c0c0" stroke="#404040"></rect>
+        <path d="M7 9 H17 M7 13 H17 M7 17 H17" stroke="#808080" stroke-width="1.4"></path>
+        <rect x="9" y="7.4" width="3" height="3.2" fill="#2f7fd0" stroke="#123"></rect>
+        <rect x="13" y="11.4" width="3" height="3.2" fill="#e05a4e" stroke="#311"></rect>
+        <rect x="8" y="15.4" width="3" height="3.2" fill="#7fba00" stroke="#131"></rect>
+      </symbol>
+      <symbol id="i-executar" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="14" fill="#000" stroke="#555"></rect>
+        <text x="6" y="15.5" font-family="'Courier New', monospace" font-size="8" font-weight="bold" fill="#0f0">C:\&gt;_</text>
+      </symbol>
+      <symbol id="i-programas" viewBox="0 0 24 24">
+        <rect x="3" y="6" width="13" height="11" fill="#fff" stroke="#404040"></rect>
+        <rect x="3" y="6" width="13" height="3" fill="#000080"></rect>
+        <rect x="8" y="10" width="13" height="11" fill="#fff" stroke="#404040"></rect>
+        <rect x="8" y="10" width="13" height="3" fill="#1084d0"></rect>
+      </symbol>
+      <symbol id="i-som" viewBox="0 0 24 24">
+        <path d="M4 10 H8 L13 5 V19 L8 14 H4 Z" fill="#404040"></path>
+        <path d="M16 9 Q19 12 16 15 M18 6 Q23 12 18 18" stroke="#404040" stroke-width="1.6" fill="none"></path>
+      </symbol>
+      <symbol id="i-som-mudo" viewBox="0 0 24 24">
+        <path d="M4 10 H8 L13 5 V19 L8 14 H4 Z" fill="#404040"></path>
+        <path d="M16 9 L22 15 M22 9 L16 15" stroke="#c22" stroke-width="2" fill="none"></path>
+      </symbol>
+    </svg>
+
+    <!-- ===== Tela: boot ===== -->
+    <div class="tela tela--boot" data-tela="boot">
+      <div class="boot__arte">
+        <svg class="boot__logo" aria-hidden="true"><use href="#i-logo"></use></svg>
+        <p class="boot__nome">Windows<b>98</b></p>
+        <p class="boot__sub">Simulador — Sala do Professor Manolo</p>
+      </div>
+      <div class="boot__barra" aria-hidden="true"><i></i></div>
+    </div>
+
+    <!-- ===== Tela: desktop ===== -->
+    <div class="tela tela--desktop" data-tela="desktop" hidden>
+      <div class="area" data-area>
+        <div class="icones" role="group" aria-label="Ícones da área de trabalho">
+          {
+            iconesDesktop.map((i) => (
+              <button class="icone" type="button" data-abre={i.id}>
+                <svg class="icone__img" aria-hidden="true"><use href={'#' + i.icone}></use></svg>
+                <span class="icone__nome">{i.rotulo}</span>
+              </button>
+            ))
+          }
+        </div>
+
+        {
+          janelas.map((j, n) => (
+            <section
+              class="janela"
+              data-janela={j.id}
+              data-nx={n}
+              role="dialog"
+              aria-labelledby={'jt-' + j.id}
+              tabindex="-1"
+              hidden
+            >
+              <header class="janela__barra" data-arrasta>
+                <svg class="janela__icone" aria-hidden="true"><use href={'#' + j.icone}></use></svg>
+                <span class="janela__titulo" id={'jt-' + j.id}>{j.titulo}</span>
+                <span class="janela__acoes">
+                  <button type="button" class="bisel-alto" data-min aria-label="Minimizar">▁</button>
+                  <button type="button" class="bisel-alto" data-max aria-label="Maximizar">▢</button>
+                  <button type="button" class="bisel-alto" data-fecha aria-label="Fechar">✕</button>
+                </span>
+              </header>
+              <div class="janela__corpo bisel-campo" set:html={j.html} />
+            </section>
+          ))
+        }
+      </div>
+
+      <nav class="menu bisel-alto" data-menu hidden aria-label="Menu Iniciar">
+        <span class="menu__faixa" aria-hidden="true">Windows<b>98</b></span>
+        <ul>
+          {
+            itensMenu.map((m) => (
+              <li>
+                <button type="button" data-abre={m.id}>
+                  <svg aria-hidden="true"><use href={'#' + m.icone}></use></svg>
+                  {m.rotulo}
+                </button>
+              </li>
+            ))
+          }
+          <li class="menu__sep" aria-hidden="true"></li>
+          <li>
+            <button type="button" data-desligar>
+              <svg aria-hidden="true"><use href="#i-computador"></use></svg>
+              Desligar…
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      <footer class="barra bisel-alto">
+        <button class="iniciar bisel-alto" type="button" data-iniciar aria-expanded="false" aria-haspopup="true">
+          <svg aria-hidden="true"><use href="#i-logo"></use></svg>
+          Iniciar
+        </button>
+        <div class="barra__tarefas" data-tarefas></div>
+        <div class="bandeja bisel-baixo">
+          <button class="bandeja__som" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+            <svg aria-hidden="true"><use data-mute-use href="#i-som"></use></svg>
+          </button>
+          <span data-relogio>--:--</span>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ===== Tela: desligado ===== -->
+    <div class="tela tela--desligado" data-tela="desligado" hidden>
+      <p class="desligado__aguarde" data-aguarde hidden>O Windows está sendo desligado…</p>
+      <p class="desligado__msg" data-msg-final hidden>Agora é seguro desligar o seu computador.</p>
+      <button class="desligado__religar bisel-alto" type="button" data-religar hidden>🔌 Ligar de novo</button>
+    </div>
+
+    <p class="sr-only" data-anuncio aria-live="polite"></p>
+  </main>
+
+  <style is:global>
+    body.is-game { background: #000; overflow: hidden; }
+    body.is-game::before { display: none !important; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    .w98 {
+      position: fixed;
+      inset: 0;
+      font-family: Tahoma, 'MS Sans Serif', 'Segoe UI', Geneva, sans-serif;
+      font-size: 13px;
+      color: #000;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: default;
+    }
+
+    /* ===== Bisel (o "3D" do Windows 98) ===== */
+    .w98 .bisel-alto {
+      border: 1px solid;
+      border-color: #dfdfdf #404040 #404040 #dfdfdf;
+      box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080;
+      background: #c0c0c0;
+    }
+    .w98 .bisel-baixo {
+      border: 1px solid;
+      border-color: #404040 #dfdfdf #dfdfdf #404040;
+      box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;
+      background: #c0c0c0;
+    }
+    .w98 .bisel-campo {
+      border: 2px solid;
+      border-color: #808080 #fff #fff #808080;
+      background: #fff;
+    }
+    .w98 button { font-family: inherit; font-size: inherit; cursor: pointer; }
+    .w98 button:active {
+      border-color: #404040 #dfdfdf #dfdfdf #404040;
+      box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;
+    }
+
+    /* ===== Telas ===== */
+    .w98 .tela { position: fixed; inset: 0; }
+    .w98 .tela[hidden] { display: none; }
+
+    /* ---- Boot ---- */
+    .tela--boot {
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      color: #fff;
+    }
+    .boot__arte { text-align: center; }
+    .boot__logo { width: clamp(90px, 18vw, 150px); height: clamp(90px, 18vw, 150px); }
+    .boot__nome { font-size: clamp(2rem, 7vw, 3.4rem); font-weight: 400; letter-spacing: -0.02em; margin-top: 8px; }
+    .boot__nome b { font-weight: 800; }
+    .boot__sub { color: #9a9aa0; font-size: 0.85rem; margin-top: 6px; }
+    .boot__barra {
+      width: min(70vw, 420px);
+      height: 14px;
+      border: 2px solid #555;
+      overflow: hidden;
+      position: relative;
+    }
+    .boot__barra i {
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 30%;
+      background: repeating-linear-gradient(90deg, #1084d0 0 12px, #000080 12px 24px);
+      animation: boot-anda 1.4s linear infinite;
+    }
+    @keyframes boot-anda {
+      from { left: -30%; }
+      to { left: 100%; }
+    }
+
+    /* ---- Desligado ---- */
+    .tela--desligado {
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 34px;
+      padding: 24px;
+      text-align: center;
+    }
+    .desligado__aguarde { color: #fff; font-size: clamp(1rem, 3vw, 1.5rem); }
+    .desligado__msg {
+      color: #ffa500;
+      font-size: clamp(1.3rem, 4.5vw, 2.4rem);
+      font-weight: 700;
+      text-shadow: 0 2px 6px rgba(255, 165, 0, 0.25);
+      max-width: 26ch;
+      line-height: 1.35;
+    }
+    .desligado__religar { padding: 10px 26px; font-size: 1rem; font-weight: 700; }
+
+    /* ===== Desktop ===== */
+    .area {
+      position: absolute;
+      inset: 0 0 34px 0;
+      background: #008080 url('/class/sims/wallpaper-98.jpg') center / cover no-repeat;
+      /* clip (não hidden): focar uma janela meio pra fora da tela NÃO pode rolar a área */
+      overflow: hidden;
+      overflow: clip;
+    }
+
+    /* ---- Ícones ---- */
+    .icones {
+      position: absolute;
+      inset: 8px;
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 10px;
+      pointer-events: none; /* cliques no vazio passam pra área */
+    }
+    .icone {
+      pointer-events: auto;
+      width: 86px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 2px;
+      background: none;
+      border: 1px solid transparent;
+    }
+    .w98 .icone:active { border-color: transparent; box-shadow: none; }
+    .icone__img { width: 40px; height: 40px; filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.45)); }
+    .icone__nome {
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.25;
+      text-align: center;
+      text-shadow: 1px 1px 0 #000, 0 0 4px rgba(0, 0, 0, 0.7);
+      padding: 1px 3px;
+    }
+    .icone:hover .icone__nome { background: rgba(0, 0, 128, 0.55); }
+    .icone:focus-visible { outline: 1px dotted #fff; }
+    .icone:focus-visible .icone__nome { background: #000080; }
+
+    /* ---- Janela ---- */
+    .janela {
+      position: absolute;
+      left: 90px;
+      top: 40px;
+      width: min(430px, calc(100% - 16px));
+      background: #c0c0c0;
+      border: 1px solid;
+      border-color: #dfdfdf #404040 #404040 #dfdfdf;
+      box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080, 3px 3px 8px rgba(0, 0, 0, 0.35);
+      padding: 3px;
+    }
+    .janela[hidden] { display: none; }
+    .janela--max { left: 0 !important; top: 0 !important; width: 100% !important; height: 100%; display: flex; flex-direction: column; }
+    .janela--max .janela__corpo { flex: 1; max-height: none; }
+
+    .janela__barra {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 4px;
+      background: linear-gradient(90deg, #808080, #b5b5b5);
+      color: #fff;
+      touch-action: none; /* arraste em touch */
+      cursor: grab;
+    }
+    .janela.ativa .janela__barra { background: linear-gradient(90deg, #000080, #1084d0); }
+    .janela__icone { width: 16px; height: 16px; flex-shrink: 0; }
+    .janela__titulo {
+      flex: 1;
+      font-weight: 700;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
+    }
+    .janela__acoes { display: flex; gap: 2px; flex-shrink: 0; }
+    .janela__acoes button {
+      width: 18px;
+      height: 16px;
+      font-size: 9px;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      color: #000;
+      padding: 0;
+    }
+
+    .janela__corpo {
+      margin-top: 3px;
+      padding: 12px 14px;
+      line-height: 1.55;
+      max-height: min(60vh, 420px);
+      overflow: auto;
+      user-select: text;
+      -webkit-user-select: text;
+      cursor: auto;
+    }
+    .janela__corpo p { margin-bottom: 10px; }
+    .janela__corpo p:last-child { margin-bottom: 0; }
+    .janela__corpo .dica {
+      margin-top: 12px;
+      padding: 8px 10px;
+      background: #ffffd5;
+      border: 1px solid #c9c37a;
+      font-size: 12px;
+    }
+
+    /* ---- Menu Iniciar ---- */
+    .menu {
+      position: absolute;
+      left: 2px;
+      bottom: 36px;
+      width: min(230px, calc(100vw - 8px));
+      max-height: calc(100% - 60px);
+      overflow: auto;
+      display: flex;
+      z-index: 5000;
+      padding: 2px;
+    }
+    .menu[hidden] { display: none; }
+    .menu__faixa {
+      flex-shrink: 0;
+      width: 26px;
+      background: linear-gradient(0deg, #1084d0, #000080 70%, #000);
+      color: #c0c0c0;
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      padding: 8px 3px;
+      display: flex;
+      align-items: center;
+    }
+    .menu__faixa b { color: #fff; font-weight: 800; }
+    .menu ul { list-style: none; margin: 0; padding: 0; flex: 1; }
+    .menu li button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: none;
+      border: 0;
+      box-shadow: none;
+      text-align: left;
+      font-size: 13px;
+    }
+    .menu li button svg { width: 22px; height: 22px; flex-shrink: 0; }
+    .menu li button:hover,
+    .menu li button:focus-visible {
+      background: #000080;
+      color: #fff;
+      outline: none;
+    }
+    .w98 .menu li button:active { border: 0; box-shadow: none; }
+    .menu__sep { height: 1px; margin: 3px 6px; background: #808080; box-shadow: 0 1px 0 #fff; }
+
+    /* ---- Barra de tarefas ---- */
+    .barra {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 4px;
+      z-index: 6000;
+    }
+    .iniciar {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px 3px 6px;
+      font-weight: 800;
+      font-size: 13px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .iniciar svg { width: 17px; height: 17px; }
+    .iniciar[aria-expanded='true'] {
+      border-color: #404040 #dfdfdf #dfdfdf #404040;
+      box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;
+    }
+    .barra__tarefas {
+      flex: 1;
+      display: flex;
+      gap: 3px;
+      overflow: hidden;
+      height: 26px;
+    }
+    .tarefa {
+      flex: 0 1 170px;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      font-size: 12px;
+    }
+    .tarefa svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .tarefa span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tarefa--ativa {
+      border-color: #404040 #dfdfdf #dfdfdf #404040;
+      box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;
+      background: repeating-linear-gradient(90deg, #fff 0 1px, #c0c0c0 1px 2px);
+      font-weight: 700;
+    }
+    .bandeja {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 26px;
+      padding: 2px 8px;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .bandeja__som {
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      background: none;
+      border: 0;
+      box-shadow: none;
+      display: grid;
+      place-items: center;
+    }
+    .w98 .bandeja__som:active { border: 0; box-shadow: none; }
+    .bandeja__som svg { width: 16px; height: 16px; }
+
+    /* ===== Responsivo ===== */
+    @media (max-width: 640px) {
+      .icone { width: 72px; }
+      .icone__img { width: 34px; height: 34px; }
+      .janela { width: calc(100vw - 8px); }
+      .janela__corpo { max-height: 62vh; }
+      .tarefa { flex-basis: 110px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .boot__barra i { animation: none; width: 60%; left: 20%; }
+    }
+  </style>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => [...document.querySelectorAll(s)];
+
+    const areaEl = $('[data-area]');
+    const menuEl = $('[data-menu]');
+    const iniciarBtn = $('[data-iniciar]');
+    const tarefasEl = $('[data-tarefas]');
+    const anuncioEl = $('[data-anuncio]');
+    const aguardeEl = $('[data-aguarde]');
+    const msgFinalEl = $('[data-msg-final]');
+    const religarBtn = $('[data-religar]');
+
+    const semMov = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const estado = {
+      tela: 'boot',
+      zTopo: 10,
+      abertas: {}, // id -> { min, abridor }
+      menuAberto: false,
+      bootTimer: 0,
+      desligarTimer: 0,
+      mudo: false,
+    };
+
+    function anunciar(msg) {
+      anuncioEl.textContent = '';
+      requestAnimationFrame(() => { anuncioEl.textContent = msg; });
+    }
+
+    // ===== Áudio (Web Audio, sem arquivos — acorde próprio, não o som real) =====
+    let actx = null;
+    function initAudio() {
+      if (actx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    function tom(freq, inicio, dur, tipo, vol) {
+      if (!actx || actx.state !== 'running') return;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = tipo; o.frequency.value = freq;
+      o.connect(g); g.connect(actx.destination);
+      const t = actx.currentTime + inicio;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur + 0.05);
+    }
+    function somLigar() {
+      if (estado.mudo) return;
+      [392, 523, 659].forEach((f, i) => tom(f, i * 0.09, 0.8, 'triangle', 0.15));
+    }
+    function somClique() { if (estado.mudo) return; tom(880, 0, 0.04, 'square', 0.05); }
+    // Primeiro gesto em qualquer lugar libera o áudio
+    document.addEventListener('pointerdown', () => {
+      initAudio();
+      if (actx && actx.state === 'suspended') actx.resume();
+    }, { once: true, capture: true });
+
+    // ===== Mudo (alto-falante da bandeja) =====
+    const muteBtn = $('[data-mute]');
+    const muteUse = $('[data-mute-use]');
+    function aplicarMudo() {
+      muteBtn.setAttribute('aria-pressed', String(estado.mudo));
+      muteUse.setAttribute('href', estado.mudo ? '#i-som-mudo' : '#i-som');
+      muteBtn.setAttribute('aria-label', estado.mudo ? 'Ligar o som' : 'Desligar o som');
+    }
+    (function initMudo() {
+      estado.mudo = localStorage.getItem('win98:mudo') === '1';
+      aplicarMudo();
+    })();
+    muteBtn.addEventListener('click', () => {
+      estado.mudo = !estado.mudo;
+      localStorage.setItem('win98:mudo', estado.mudo ? '1' : '0');
+      aplicarMudo();
+    });
+
+    // ===== Telas =====
+    function trocarTela(nome) {
+      estado.tela = nome;
+      $$('.tela').forEach((t) => { t.hidden = t.dataset.tela !== nome; });
+    }
+
+    function ligar() {
+      clearTimeout(estado.bootTimer);
+      clearTimeout(estado.desligarTimer);
+      fecharTodas();
+      alternarMenu(false);
+      trocarTela('boot');
+      estado.bootTimer = setTimeout(entrarNoDesktop, semMov ? 800 : 3000);
+    }
+
+    function entrarNoDesktop() {
+      trocarTela('desktop');
+      somLigar();
+      anunciar('Computador ligado. Você está na área de trabalho do Windows 98. Use Tab pra passear pelos ícones e Enter pra abrir.');
+      const primeiro = $('.icone');
+      if (primeiro) primeiro.focus({ preventScroll: true });
+    }
+
+    function desligar() {
+      alternarMenu(false);
+      trocarTela('desligado');
+      aguardeEl.hidden = false;
+      msgFinalEl.hidden = true;
+      religarBtn.hidden = true;
+      anunciar('O Windows está sendo desligado.');
+      estado.desligarTimer = setTimeout(() => {
+        aguardeEl.hidden = true;
+        msgFinalEl.hidden = false;
+        religarBtn.hidden = false;
+        religarBtn.focus();
+        anunciar('Agora é seguro desligar o seu computador. Aperte o botão pra ligar de novo.');
+      }, semMov ? 300 : 1400);
+    }
+    religarBtn.addEventListener('click', ligar);
+
+    // ===== Janelas =====
+    function janelaEl(id) { return document.querySelector('[data-janela="' + id + '"]'); }
+    function tituloDe(sec) { return sec.querySelector('.janela__titulo').textContent; }
+
+    function abrirJanela(id, abridor) {
+      const sec = janelaEl(id);
+      if (!sec) return;
+      somClique();
+      if (estado.abertas[id]) {
+        if (estado.abertas[id].min) restaurar(id);
+        focarJanela(id);
+        sec.focus({ preventScroll: true });
+        return;
+      }
+      estado.abertas[id] = { min: false, abridor: abridor || null };
+      sec.hidden = false;
+      posicionarCascata(sec);
+      criarBotaoTarefa(id, sec);
+      focarJanela(id);
+      sec.focus({ preventScroll: true });
+      anunciar('Janela aberta: ' + tituloDe(sec));
+    }
+
+    function fecharJanela(id) {
+      const sec = janelaEl(id);
+      const info = estado.abertas[id];
+      if (!sec || !info) return;
+      sec.hidden = true;
+      sec.classList.remove('janela--max', 'ativa');
+      const btn = tarefasEl.querySelector('[data-tarefa="' + id + '"]');
+      if (btn) btn.remove();
+      delete estado.abertas[id];
+      if (info.abridor) info.abridor.focus({ preventScroll: true });
+      anunciar('Janela fechada.');
+    }
+
+    function fecharTodas() {
+      Object.keys(estado.abertas).forEach((id) => {
+        const sec = janelaEl(id);
+        if (sec) { sec.hidden = true; sec.classList.remove('janela--max', 'ativa'); }
+      });
+      estado.abertas = {};
+      tarefasEl.innerHTML = '';
+      estado.zTopo = 10;
+    }
+
+    function minimizar(id) {
+      const sec = janelaEl(id);
+      const info = estado.abertas[id];
+      if (!sec || !info) return;
+      sec.hidden = true;
+      info.min = true;
+      atualizarTarefas();
+      const btn = tarefasEl.querySelector('[data-tarefa="' + id + '"]');
+      if (btn) btn.focus();
+    }
+
+    function restaurar(id) {
+      const sec = janelaEl(id);
+      const info = estado.abertas[id];
+      if (!sec || !info) return;
+      sec.hidden = false;
+      info.min = false;
+    }
+
+    function alternarMax(id) {
+      const sec = janelaEl(id);
+      if (!sec) return;
+      sec.classList.toggle('janela--max');
+      focarJanela(id);
+    }
+
+    function focarJanela(id) {
+      const sec = janelaEl(id);
+      if (!sec) return;
+      sec.style.zIndex = String(++estado.zTopo);
+      $$('.janela').forEach((j) => j.classList.toggle('ativa', j === sec));
+      atualizarTarefas();
+    }
+
+    function janelaAtiva() {
+      const sec = document.querySelector('.janela.ativa:not([hidden])');
+      return sec ? sec.dataset.janela : null;
+    }
+
+    function atualizarTarefas() {
+      $$('.tarefa').forEach((b) => {
+        const sec = janelaEl(b.dataset.tarefa);
+        b.classList.toggle('tarefa--ativa', !!sec && sec.classList.contains('ativa') && !sec.hidden);
+      });
+    }
+
+    function posicionarCascata(sec) {
+      const n = (parseInt(sec.dataset.nx, 10) || 0) % 6;
+      const estreito = window.innerWidth < 640;
+      let left = estreito ? 4 : 90 + n * 26;
+      let top = estreito ? 8 + n * 18 : 40 + n * 26;
+      left = Math.max(0, Math.min(left, areaEl.clientWidth - 120));
+      top = Math.max(0, Math.min(top, areaEl.clientHeight - 60));
+      sec.style.left = left + 'px';
+      sec.style.top = top + 'px';
+    }
+
+    function criarBotaoTarefa(id, sec) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tarefa bisel-alto';
+      btn.dataset.tarefa = id;
+      const icone = sec.querySelector('.janela__barra use').getAttribute('href');
+      btn.innerHTML =
+        '<svg aria-hidden="true"><use href="' + icone + '"></use></svg><span>' + tituloDe(sec) + '</span>';
+      btn.addEventListener('click', () => {
+        const info = estado.abertas[id];
+        if (!info) return;
+        somClique();
+        if (info.min) {
+          restaurar(id);
+          focarJanela(id);
+        } else if (sec.classList.contains('ativa')) {
+          minimizar(id);
+        } else {
+          focarJanela(id);
+        }
+      });
+      tarefasEl.appendChild(btn);
+    }
+
+    // ===== Arraste das janelas (pointer capture + backstop, regras da casa) =====
+    function ligarArrasteJanela(sec) {
+      const barra = sec.querySelector('[data-arrasta]');
+      let drag = null;
+
+      function finalizar(e) {
+        if (!drag || e.pointerId !== drag.id) return;
+        try { barra.releasePointerCapture(drag.id); } catch { /* já solto */ }
+        drag = null;
+      }
+
+      barra.addEventListener('pointerdown', (e) => {
+        focarJanela(sec.dataset.janela);
+        if (e.target.closest('[data-min],[data-max],[data-fecha]')) return;
+        if (sec.classList.contains('janela--max')) return;
+        drag = { id: e.pointerId, dx: e.clientX - sec.offsetLeft, dy: e.clientY - sec.offsetTop };
+        try { barra.setPointerCapture(e.pointerId); } catch { /* segue sem captura */ }
+      });
+      barra.addEventListener('pointermove', (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const areaW = areaEl.clientWidth;
+        const areaH = areaEl.clientHeight;
+        const larg = sec.offsetWidth;
+        const x = Math.max(-larg + 60, Math.min(e.clientX - drag.dx, areaW - 60));
+        const y = Math.max(0, Math.min(e.clientY - drag.dy, areaH - 24));
+        sec.style.left = x + 'px';
+        sec.style.top = y + 'px';
+      });
+      barra.addEventListener('pointerup', finalizar);
+      barra.addEventListener('pointercancel', finalizar);
+      barra.addEventListener('lostpointercapture', (e) => finalizar(e));
+    }
+
+    $$('.janela').forEach((sec) => {
+      const id = sec.dataset.janela;
+      ligarArrasteJanela(sec);
+      sec.addEventListener('pointerdown', () => focarJanela(id));
+      sec.querySelector('[data-min]').addEventListener('click', () => { somClique(); minimizar(id); });
+      sec.querySelector('[data-max]').addEventListener('click', () => { somClique(); alternarMax(id); });
+      sec.querySelector('[data-fecha]').addEventListener('click', () => { somClique(); fecharJanela(id); });
+    });
+
+    // ===== Abridores (ícones do desktop + itens do menu) =====
+    $$('[data-abre]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        alternarMenu(false);
+        abrirJanela(btn.dataset.abre, btn);
+      });
+    });
+    $('[data-desligar]').addEventListener('click', desligar);
+
+    // ===== Menu Iniciar =====
+    function alternarMenu(abrir) {
+      const alvo = typeof abrir === 'boolean' ? abrir : menuEl.hidden;
+      estado.menuAberto = alvo;
+      menuEl.hidden = !alvo;
+      iniciarBtn.setAttribute('aria-expanded', String(alvo));
+      if (alvo) {
+        somClique();
+        const primeiro = menuEl.querySelector('button');
+        if (primeiro) primeiro.focus();
+      }
+    }
+    iniciarBtn.addEventListener('click', () => alternarMenu());
+    document.addEventListener('pointerdown', (e) => {
+      if (!estado.menuAberto) return;
+      if (e.target.closest('[data-menu],[data-iniciar]')) return;
+      alternarMenu(false);
+    });
+
+    // ===== Teclado =====
+    window.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (estado.menuAberto) {
+        alternarMenu(false);
+        iniciarBtn.focus();
+        return;
+      }
+      const ativa = janelaAtiva();
+      if (ativa) fecharJanela(ativa);
+    });
+
+    // ===== Relógio (hora de verdade, como manda o figurino) =====
+    const relogioEl = $('[data-relogio]');
+    function atualizarRelogio() {
+      relogioEl.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      setTimeout(atualizarRelogio, 60000 - (Date.now() % 60000) + 250);
+    }
+
+    // Cinto e suspensório: se algo ainda rolar a área (navegador antigo), volta pro zero
+    areaEl.addEventListener('scroll', () => {
+      areaEl.scrollLeft = 0;
+      areaEl.scrollTop = 0;
+    });
+
+    // ===== Boot =====
+    document.body.classList.add('is-game');
+    atualizarRelogio();
+    ligar();
+  </script>
+</Layout>
