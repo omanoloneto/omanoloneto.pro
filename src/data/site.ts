@@ -27,9 +27,9 @@ export type SocialLink = {
 
 export const socials: SocialLink[] = [
   { nome: 'GitHub', url: 'https://github.com/omanoloneto', icone: 'github' },
-  { nome: 'Email', url: 'mailto:mano.afonso93@gmail.com', icone: 'email' },
-  // Adicione quando tiver os perfis:
-  // { nome: 'LinkedIn', url: 'https://linkedin.com/in/SEU-PERFIL', icone: 'linkedin' },
-  // { nome: 'itch.io', url: 'https://SEU-USUARIO.itch.io', icone: 'itchio' },
-  // { nome: 'YouTube', url: 'https://youtube.com/@SEU-CANAL', icone: 'youtube' },
+  // Troque SEU-PERFIL pelo handle real e descomente:
+  //{ nome: 'LinkedIn', url: 'https://linkedin.com/in/SEU-PERFIL', icone: 'linkedin' },
+  { nome: 'Instagram', url: 'https://instagram.com/omanoloneto', icone: 'instagram' },
+  { nome: 'YouTube', url: 'https://www.youtube.com/@omanoloneto', icone: 'youtube' },
+  //{ nome: 'Email', url: 'mailto:mano.afonso93@gmail.com', icone: 'email' },
 ];
