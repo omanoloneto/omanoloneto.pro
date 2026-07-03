@@ -145,6 +145,7 @@ const description =
           <ol class="regras">
             <li>Os inimigos descem trazendo uma <b>LETRA</b>. 👾</li>
             <li><b>Aperte a tecla</b> da letra — a nave atira sozinha! 💥</li>
+            <li>Nave com <b>DUAS letras</b>? Acerte as duas pra derrubar! 💪</li>
             <li>Cada nível traz <b>letras novas</b> e inimigos mais rápidos.</li>
           </ol>
           <p class="escolha__titulo">Como você quer jogar?</p>
@@ -319,14 +320,28 @@ const description =
       color: var(--cor, #ff6ba9);
       filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
     }
-    .inimigo__letra {
+    .inimigo__letras {
       position: absolute; bottom: -14px;
+      display: flex; gap: 5px;
+    }
+    .inimigo__letra {
       padding: 1px 11px;
       background: #fff;
       border: 3px solid rgba(0, 0, 0, 0.25);
       border-radius: 10px;
       font-size: 1.5rem; font-weight: 800; color: #23303c;
       box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+    }
+    /* Nave de 2 letras: um pouco maior, cada letra aguenta um tiro */
+    .inimigo--dupla { width: 90px; height: 90px; }
+    .inimigo__letra--pop { animation: letra-pop 0.28s ease-out forwards; }
+    @keyframes letra-pop {
+      to { transform: scale(1.7); opacity: 0; }
+    }
+    .inimigo--hit .inimigo__svg { animation: hit-pisca 0.3s ease; }
+    @keyframes hit-pisca {
+      0%, 100% { filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4)); }
+      40% { filter: drop-shadow(0 0 12px #fff) brightness(1.9); }
     }
     .mov--parado .inimigo { animation: flutua 2s ease-in-out infinite; }
     @keyframes flutua {
@@ -516,7 +531,9 @@ const description =
     /* ===== Responsivo ===== */
     @media (max-height: 760px) {
       .inimigo { width: 62px; height: 62px; }
-      .inimigo__letra { font-size: 1.25rem; bottom: -12px; padding: 1px 9px; }
+      .inimigo--dupla { width: 74px; height: 74px; }
+      .inimigo__letras { bottom: -12px; }
+      .inimigo__letra { font-size: 1.25rem; padding: 1px 9px; }
       .nave { width: 84px; }
       .hud__bloco strong { font-size: 1.2rem; }
       .tecla { min-width: 42px; height: 42px; font-size: 1.1rem; }
@@ -526,7 +543,9 @@ const description =
       .hud { gap: 12px; }
       .hud__bloco--nome { display: none; }
       .inimigo { width: 62px; height: 62px; }
-      .inimigo__letra { font-size: 1.25rem; bottom: -12px; padding: 1px 9px; }
+      .inimigo--dupla { width: 74px; height: 74px; }
+      .inimigo__letras { bottom: -12px; }
+      .inimigo__letra { font-size: 1.25rem; padding: 1px 9px; }
       .nave { width: 84px; }
     }
 
@@ -565,6 +584,7 @@ const description =
 
     const CORES = ['#ff6ba9', '#4dd9e8', '#ffd23f', '#9b7bff', '#6ee7a0', '#ff9a5c'];
     const VARIANTES = 4;
+    const VOGAIS = new Set(['A', 'E', 'I', 'O', 'U']);
     let idSeq = 0;
 
     const estado = {
@@ -575,8 +595,8 @@ const description =
       vidas: 0,
       abatesNoNivel: 0,
       abatesTotal: 0,
-      inimigos: [],       // {id, letra, x, y, alvo, parado, el}
-      tiros: [],          // {t, x0, y0, alvoId, el}
+      inimigos: [],       // {id, letras:[{ch, mirada, viva}], x, y, fator, parado, el}
+      tiros: [],          // {t, x0, y0, alvoId, letraIdx, el}
       coracoesVoando: [], // {t, x0, y0, x1, y1, el}
       proximoSpawn: 0,
       ultimoTempo: 0,
@@ -606,6 +626,8 @@ const description =
     }
     function somTiro() { if (estado.mudo) return; tom(920, 0, 0.07, 'sawtooth', 0.08); tom(680, 0.05, 0.08, 'sawtooth', 0.07); }
     function somExplosao() { if (estado.mudo) return; tom(180, 0, 0.18, 'square', 0.14); tom(1200, 0.03, 0.08, 'triangle', 0.1); tom(1500, 0.09, 0.1, 'triangle', 0.08); }
+    // Acerto parcial (nave dupla): blip alegre, sem explosão cheia
+    function somAcerto() { if (estado.mudo) return; tom(700, 0, 0.08, 'triangle', 0.14); tom(950, 0.06, 0.1, 'triangle', 0.12); }
     // Erro bem suave: grave, curto e baixinho — sem susto.
     function somErroSuave() { if (estado.mudo) return; tom(200, 0, 0.22, 'sine', 0.08); }
     function somCoracao() { if (estado.mudo) return; tom(660, 0, 0.12, 'triangle', 0.16); tom(990, 0.12, 0.2, 'triangle', 0.16); }
@@ -691,18 +713,30 @@ const description =
 
     // ===== Inimigos =====
     function letrasVivas() {
-      return new Set(estado.inimigos.map((i) => i.letra));
+      return new Set(estado.inimigos.flatMap((i) => i.letras.map((l) => l.ch)));
     }
-    function escolherLetra(nivel) {
+    // Sorteia `qtd` letras livres (nunca repete letra que já está na tela)
+    function escolherLetras(nivel, qtd) {
       const vivas = letrasVivas();
       const livres = nivel.letras.filter((l) => !vivas.has(l));
-      if (!livres.length) return null;
-      return livres[Math.floor(Math.random() * livres.length)];
+      if (livres.length < qtd) return null;
+      const sorteadas = [];
+      for (let n = 0; n < qtd; n++) {
+        sorteadas.push(livres.splice(Math.floor(Math.random() * livres.length), 1)[0]);
+      }
+      return sorteadas;
     }
 
     function criarInimigo(nivel) {
-      const letra = escolherLetra(nivel);
-      if (!letra) return false;
+      // Nave dupla: duas letras, cada uma aguenta um tiro (a partir do nível 3)
+      let letras = Math.random() < nivel.chanceDupla ? escolherLetras(nivel, 2) : null;
+      if (!letras) letras = escolherLetras(nivel, 1);
+      if (!letras) return false;
+      // Velocidade própria: dupla é mais lenta; vogal solta fica mais
+      // rápida nos níveis com vogaisRapidas
+      let fator = 1;
+      if (letras.length === 2) fator = CFG.fatorDupla;
+      else if (nivel.vogaisRapidas && VOGAIS.has(letras[0])) fator = CFG.fatorVogal;
       // x aleatório afastado dos inimigos vivos (até 12 tentativas)
       let x = 0.08 + Math.random() * 0.84;
       for (let t = 0; t < 12; t++) {
@@ -715,12 +749,22 @@ const description =
       mov.className = 'mov';
       mov.setAttribute('aria-hidden', 'true');
       mov.innerHTML =
-        '<div class="inimigo" style="--cor:' + CORES[id % CORES.length] + '">' +
+        '<div class="inimigo' + (letras.length === 2 ? ' inimigo--dupla' : '') + '" style="--cor:' + CORES[id % CORES.length] + '">' +
         '<svg class="inimigo__svg" viewBox="0 0 100 100"><use href="#inimigo-' + (1 + (id % VARIANTES)) + '"></use></svg>' +
-        '<span class="inimigo__letra">' + letra + '</span>' +
+        '<span class="inimigo__letras">' +
+        letras.map((l) => '<span class="inimigo__letra" data-letra="' + l + '">' + l + '</span>').join('') +
+        '</span>' +
         '</div>';
       inimigosEl.appendChild(mov);
-      estado.inimigos.push({ id, letra, x, y: -0.1, alvo: false, parado: false, el: mov });
+      estado.inimigos.push({
+        id,
+        letras: letras.map((ch) => ({ ch, mirada: false, viva: true })),
+        x,
+        y: -0.1,
+        fator,
+        parado: false,
+        el: mov,
+      });
       return true;
     }
 
@@ -739,24 +783,28 @@ const description =
     // ===== Tiro e impacto =====
     function processarLetra(letra) {
       if (estado.fase !== 'jogando') return;
-      const inimigo = estado.inimigos.find((i) => !i.alvo && i.letra === letra);
+      let alvoIdx = -1;
+      const inimigo = estado.inimigos.find((i) => {
+        alvoIdx = i.letras.findIndex((l) => l.viva && !l.mirada && l.ch === letra);
+        return alvoIdx !== -1;
+      });
       if (inimigo) {
-        atirar(inimigo);
+        atirar(inimigo, alvoIdx);
       } else {
         somErroSuave();
         tremerNave();
       }
     }
 
-    function atirar(inimigo) {
-      inimigo.alvo = true;
+    function atirar(inimigo, letraIdx) {
+      inimigo.letras[letraIdx].mirada = true;
       const mov = document.createElement('div');
       mov.className = 'mov';
       mov.setAttribute('aria-hidden', 'true');
       mov.innerHTML = '<span class="tiro"></span>';
       mov.style.transform = 'translate3d(' + estado.campo.naveX * estado.campo.w + 'px, ' + estado.campo.naveY * estado.campo.h + 'px, 0)';
       tirosEl.appendChild(mov);
-      estado.tiros.push({ t: 0, x0: estado.campo.naveX, y0: estado.campo.naveY, alvoId: inimigo.id, el: mov });
+      estado.tiros.push({ t: 0, x0: estado.campo.naveX, y0: estado.campo.naveY, alvoId: inimigo.id, letraIdx, el: mov });
       somTiro();
     }
 
@@ -770,18 +818,38 @@ const description =
       setTimeout(() => mov.remove(), 700);
     }
 
-    function impacto(alvoId) {
-      const idx = estado.inimigos.findIndex((i) => i.id === alvoId);
-      if (idx === -1) return;
-      const inimigo = estado.inimigos[idx];
-      estado.inimigos.splice(idx, 1);
+    function acertarLetra(alvoId, letraIdx) {
+      const inimigo = estado.inimigos.find((i) => i.id === alvoId);
+      if (!inimigo) return;
+      const letra = inimigo.letras[letraIdx];
+      letra.viva = false;
+      estado.pontos += CFG.pontosPorAcerto;
+      atualizarPlacar();
+      if (inimigo.letras.some((l) => l.viva)) {
+        // Acerto parcial na nave dupla: a placa pipoca, a nave pisca e segue
+        const placa = inimigo.el.querySelector('[data-letra="' + letra.ch + '"]');
+        if (placa) {
+          placa.classList.add('inimigo__letra--pop');
+          setTimeout(() => placa.remove(), 280);
+        }
+        const corpo = inimigo.el.querySelector('.inimigo');
+        corpo.classList.remove('inimigo--hit');
+        void corpo.offsetWidth;
+        corpo.classList.add('inimigo--hit');
+        somAcerto();
+        return;
+      }
+      destruirInimigo(inimigo);
+    }
+
+    function destruirInimigo(inimigo) {
+      const idx = estado.inimigos.indexOf(inimigo);
+      if (idx !== -1) estado.inimigos.splice(idx, 1);
       inimigo.el.remove();
       explodir(inimigo.x, inimigo.y);
       somExplosao();
-      estado.pontos += CFG.pontosPorAcerto;
       estado.abatesNoNivel++;
       estado.abatesTotal++;
-      atualizarPlacar();
       atualizarAbates();
       if (estado.modo === 'vidas' && estado.vidas < CFG.vidasMaximas && Math.random() < CFG.chanceCoracao) {
         soltarCoracao(inimigo.x, inimigo.y);
@@ -879,14 +947,22 @@ const description =
       if (estado.nivelIdx < NIVEIS.length - 1) {
         estado.fase = 'entreniveis';
         somNivel();
+        const atual = NIVEIS[estado.nivelIdx];
         const prox = NIVEIS[estado.nivelIdx + 1];
-        const atuais = new Set(NIVEIS[estado.nivelIdx].letras);
+        const atuais = new Set(atual.letras);
         const novas = prox.letras.filter((l) => !atuais.has(l));
         $('[data-nivel-done-title]').textContent = 'Nível ' + (estado.nivelIdx + 1) + ' completo!';
         $('[data-nivel-score]').textContent = String(estado.pontos);
-        $('[data-nivel-next-label]').textContent = novas.length
+        let aviso = novas.length
           ? 'Letras novas chegando: ' + novas.join(', ') + '!'
           : 'Prepare-se: ' + prox.nome + '!';
+        if (prox.chanceDupla > 0 && atual.chanceDupla === 0) {
+          aviso += ' Cuidado: naves com 2 letras — acerte as duas!';
+        }
+        if (prox.vogaisRapidas && !atual.vogaisRapidas) {
+          aviso += ' Atenção: as vogais estão mais rápidas!';
+        }
+        $('[data-nivel-next-label]').textContent = aviso;
         nivelDoneModal.hidden = false;
         setTimeout(() => $('[data-next-nivel]').focus(), 60);
         anunciar('Nível completo!' + (novas.length ? ' Letras novas: ' + novas.join(', ') + '.' : ''));
@@ -933,11 +1009,13 @@ const description =
 
       spawn(dt, nivel);
 
-      // Inimigos descem
+      // Inimigos descem (cada um com seu fator: dupla lenta, vogal rápida)
       for (const i of estado.inimigos.slice()) {
         if (!i.parado) {
-          i.y += nivel.velocidade * (dt / 1000);
-          if (i.y >= CFG.linhaEspera && !i.alvo) {
+          i.y += nivel.velocidade * i.fator * (dt / 1000);
+          // Só "chega" se ainda tem letra viva sem tiro a caminho
+          const aindaVivo = i.letras.some((l) => l.viva && !l.mirada);
+          if (i.y >= CFG.linhaEspera && aindaVivo) {
             inimigoChegou(i);
             if (estado.fase !== 'jogando') return;
             if (!i.parado) continue; // fugiu: já saiu do array
@@ -958,7 +1036,7 @@ const description =
         if (t.t >= 1) {
           t.el.remove();
           estado.tiros.splice(estado.tiros.indexOf(t), 1);
-          impacto(t.alvoId);
+          acertarLetra(t.alvoId, t.letraIdx);
           if (estado.fase !== 'jogando') return;
           continue;
         }

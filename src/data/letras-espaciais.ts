@@ -19,6 +19,11 @@ export type Nivel = {
   abates: number;
   // quantos inimigos podem estar na tela ao mesmo tempo
   maxInimigos: number;
+  // chance (0 a 1) de nascer uma nave com DUAS letras — cada letra
+  // aguenta um tiro; acertar as duas derruba a nave
+  chanceDupla: number;
+  // true = vogais descem mais rápido neste nível (ver fatorVogal)
+  vogaisRapidas: boolean;
 };
 
 export const config = {
@@ -33,6 +38,10 @@ export const config = {
   maxInimigosEsperando: 5,
   // tempo que o tiro leva da nave até o inimigo, em milissegundos
   duracaoTiroMs: 260,
+  // nave de 2 letras: fração da velocidade normal (0.7 = 30% mais lenta)
+  fatorDupla: 0.7,
+  // vogais em níveis com vogaisRapidas: multiplicador (1.3 = 30% mais rápida)
+  fatorVogal: 1.3,
   // altura da linha onde o inimigo para (tranquilo) ou foge (vidas):
   // fração da tela, 0 = topo, 1 = fundo
   linhaEspera: 0.8,
@@ -50,6 +59,8 @@ export const niveis: Nivel[] = [
     intervaloSpawn: 4200,
     abates: 8,
     maxInimigos: 3,
+    chanceDupla: 0,
+    vogaisRapidas: false,
   },
   {
     id: 'nivel-2',
@@ -59,6 +70,8 @@ export const niveis: Nivel[] = [
     intervaloSpawn: 3800,
     abates: 10,
     maxInimigos: 3,
+    chanceDupla: 0,
+    vogaisRapidas: false,
   },
   {
     id: 'nivel-3',
@@ -68,6 +81,8 @@ export const niveis: Nivel[] = [
     intervaloSpawn: 3400,
     abates: 10,
     maxInimigos: 4,
+    chanceDupla: 0.25,
+    vogaisRapidas: false,
   },
   {
     id: 'nivel-4',
@@ -77,6 +92,8 @@ export const niveis: Nivel[] = [
     intervaloSpawn: 3000,
     abates: 12,
     maxInimigos: 4,
+    chanceDupla: 0.3,
+    vogaisRapidas: false,
   },
   {
     id: 'nivel-5',
@@ -86,6 +103,8 @@ export const niveis: Nivel[] = [
     intervaloSpawn: 2700,
     abates: 12,
     maxInimigos: 5,
+    chanceDupla: 0.35,
+    vogaisRapidas: true,
   },
   {
     id: 'nivel-6',
@@ -95,5 +114,7 @@ export const niveis: Nivel[] = [
     intervaloSpawn: 2500,
     abates: 14,
     maxInimigos: 5,
+    chanceDupla: 0.4,
+    vogaisRapidas: true,
   },
 ];
