@@ -12,7 +12,12 @@ export default defineConfig({
     // Gera /sobre/index.html em vez de /sobre.html — URLs limpas em qualquer host.
     format: 'directory',
   },
-  integrations: [sitemap()],
+  integrations: [
+    sitemap({
+      // /class/app é o Controle de Aula — página pessoal, fora do sitemap
+      filter: (page) => !page.includes('/class/app'),
+    }),
+  ],
   redirects: {
     // /class/games sem jogo específico → hub da sala de aula
     '/class/games': '/class',

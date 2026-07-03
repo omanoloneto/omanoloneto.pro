@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+# Pagina pessoal do professor - fora de busca
+Disallow: /class/app/
 
 Sitemap: https://omanoloneto.pro/sitemap-index.xml
