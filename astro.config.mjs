@@ -18,8 +18,4 @@ export default defineConfig({
       filter: (page) => !page.includes('/class/app'),
     }),
   ],
-  redirects: {
-    // /class/games sem jogo específico → hub da sala de aula
-    '/class/games': '/class',
-  },
 });
