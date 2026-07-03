@@ -1,23 +1,167 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Header from '../components/Header.astro';
-import Hero from '../components/Hero.astro';
-import About from '../components/About.astro';
-import Projects from '../components/Projects.astro';
-import Skills from '../components/Skills.astro';
-import Teaching from '../components/Teaching.astro';
-import Contact from '../components/Contact.astro';
-import Footer from '../components/Footer.astro';
+import Icon from '../components/Icon.astro';
+import { site, socials } from '../data/site';
+
+// Home enxuta: um cartão de visitas. Nome, uma linha, redes e dois atalhos.
+// Textos e links vêm de src/data/site.ts — edite lá.
+const atalhos = [
+  { emoji: '🎮', nome: 'Jogos pra sala de aula', url: '/class/' },
+  { emoji: '📱', nome: 'Controle de Aula', url: '/class/controle-de-aula/' },
+];
 ---
+
 <Layout>
-  <Header />
-  <main>
-    <Hero />
-    <About />
-    <Projects />
-    <Skills />
-    <Teaching />
-    <Contact />
+  <main class="cartao-wrap" id="conteudo">
+    <section class="cartao" data-reveal>
+      <span class="cartao__avatar" aria-hidden="true">MN</span>
+      <h1 class="cartao__nome">{site.nome}</h1>
+      <p class="cartao__tagline">{site.tagline}</p>
+
+      <nav class="redes" aria-label="Redes e contato">
+        {
+          socials.map((s) => (
+            <a class="redes__link" href={s.url} target={s.url.startsWith('http') ? '_blank' : undefined} rel="noopener" aria-label={s.nome} title={s.nome}>
+              <Icon name={s.icone} size={22} />
+            </a>
+          ))
+        }
+      </nav>
+
+      <div class="atalhos">
+        {
+          atalhos.map((a) => (
+            <a class="atalhos__link" href={a.url}>
+              <span aria-hidden="true">{a.emoji}</span>
+              {a.nome}
+              <Icon name="arrow" size={16} class="atalhos__seta" />
+            </a>
+          ))
+        }
+      </div>
+
+      <p class="cartao__pe">{site.localizacao} · © {site.nome}</p>
+    </section>
   </main>
-  <Footer />
 </Layout>
+
+<style>
+  .cartao-wrap {
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+
+  .cartao {
+    width: min(92vw, 420px);
+    text-align: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) * 1.5);
+    box-shadow: var(--shadow);
+    padding: clamp(32px, 6vh, 48px) clamp(24px, 5vw, 40px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .cartao__avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 1.7rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #06281c;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 8px 24px rgba(52, 211, 153, 0.25);
+  }
+
+  .cartao__nome {
+    font-size: 1.65rem;
+    letter-spacing: -0.01em;
+    color: var(--text);
+    margin-top: 4px;
+  }
+
+  .cartao__tagline {
+    color: var(--text-soft);
+    font-size: 0.98rem;
+    line-height: 1.55;
+    max-width: 30ch;
+  }
+
+  /* ===== Redes ===== */
+  .redes {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .redes__link {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--text-soft);
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  }
+  .redes__link:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .redes__link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* ===== Atalhos ===== */
+  .atalhos {
+    width: 100%;
+    display: grid;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .atalhos__link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 18px;
+    border-radius: var(--radius);
+    background: var(--bg-soft);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+  }
+  .atalhos__link:hover {
+    border-color: var(--accent);
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+  }
+  .atalhos__link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .atalhos__link :global(.atalhos__seta) {
+    color: var(--text-dim);
+  }
+  .atalhos__link:hover :global(.atalhos__seta) {
+    color: var(--accent);
+  }
+
+  .cartao__pe {
+    margin-top: 12px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+</style>
