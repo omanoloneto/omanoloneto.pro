@@ -1,0 +1,1068 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { niveis, config } from '../../../data/letras-espaciais';
+
+const dadosJson = JSON.stringify({ niveis, config });
+
+const title = 'Letras Espaciais — aperte a letra e a nave atira! | Manolo Neto';
+const description =
+  'Jogo educativo de digitação para crianças do 1º ano: os inimigos espaciais trazem letras do alfabeto — aperte a tecla certa e a nave atira sozinha! Modo com vidas ou modo tranquilo, em português.';
+---
+
+<Layout title={title} description={description}>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="le" data-game role="application" aria-label="Jogo: aperte a tecla da letra do inimigo para a nave atirar">
+    <!-- Cenário espacial -->
+    <div class="espaco" aria-hidden="true">
+      <span class="estrelas estrelas--1"></span>
+      <span class="estrelas estrelas--2"></span>
+      <svg class="planeta" viewBox="0 0 200 200">
+        <ellipse cx="100" cy="104" rx="104" ry="26" fill="none" stroke="#ffd23f" stroke-width="10" opacity="0.8" transform="rotate(-14 100 104)"></ellipse>
+        <circle cx="100" cy="100" r="68" fill="#ff9a5c"></circle>
+        <circle cx="66" cy="122" r="8" fill="#e0733d" opacity="0.7"></circle>
+        <circle cx="134" cy="66" r="10" fill="#e0733d" opacity="0.7"></circle>
+        <circle cx="80" cy="86" r="5" fill="#23303c"></circle>
+        <circle cx="120" cy="86" r="5" fill="#23303c"></circle>
+        <path d="M84 106 Q100 118 116 106" stroke="#23303c" stroke-width="5" fill="none" stroke-linecap="round"></path>
+      </svg>
+      <svg class="lua" viewBox="0 0 80 80">
+        <circle cx="40" cy="40" r="30" fill="#f2ecd8"></circle>
+        <circle cx="30" cy="32" r="6" fill="#d9d2ba"></circle>
+        <circle cx="50" cy="48" r="8" fill="#d9d2ba"></circle>
+        <circle cx="44" cy="24" r="4" fill="#d9d2ba"></circle>
+      </svg>
+    </div>
+
+    <!-- HUD -->
+    <header class="hud" role="status" aria-live="polite">
+      <div class="hud__bloco">
+        <span class="hud__label">Pontos</span>
+        <strong data-pontos>0</strong>
+      </div>
+      <div class="hud__bloco">
+        <span class="hud__label">Nível</span>
+        <strong data-nivel>1</strong>
+        <span class="hud__sub">de {niveis.length}</span>
+      </div>
+      <div class="hud__bloco">
+        <span class="hud__label">Inimigos</span>
+        <strong data-abates>0</strong>
+        <span class="hud__sub" data-abates-total>de {niveis[0].abates}</span>
+      </div>
+      <div class="hud__bloco hud__bloco--vidas" data-vidas-wrap hidden>
+        <span class="hud__label">Vidas</span>
+        <span class="vidas" data-vidas></span>
+      </div>
+      <div class="hud__bloco hud__bloco--nome" data-nivel-nome aria-hidden="true"></div>
+      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <span data-mute-icon>🔊</span>
+      </button>
+    </header>
+
+    <!-- Campo: tudo que se move vive aqui -->
+    <section class="campo" data-campo aria-label="Espaço: os inimigos descem por aqui">
+      <div class="linha-espera" data-linha-espera aria-hidden="true" hidden></div>
+      <div data-inimigos></div>
+      <div data-tiros></div>
+      <div class="nave" data-nave aria-hidden="true">
+        <svg viewBox="0 0 120 150">
+          <g class="nave__chama">
+            <path d="M46 118 Q60 150 74 118 Q67 127 60 122 Q53 127 46 118 Z" fill="#ff9a3d"></path>
+            <path d="M52 118 Q60 138 68 118 Z" fill="#ffd23f"></path>
+          </g>
+          <path d="M32 78 Q12 92 14 118 L36 102 Z" fill="#ff6ba9"></path>
+          <path d="M88 78 Q108 92 106 118 L84 102 Z" fill="#ff6ba9"></path>
+          <path d="M60 6 Q88 34 88 76 Q88 106 74 118 L46 118 Q32 106 32 76 Q32 34 60 6 Z" fill="#e8ecf7"></path>
+          <path d="M60 6 Q46 20 39 44 L81 44 Q74 20 60 6 Z" fill="#ff5b7f"></path>
+          <circle cx="60" cy="68" r="17" fill="#4dd9e8" stroke="#2b6f8a" stroke-width="4"></circle>
+          <circle cx="60" cy="71" r="9" fill="#ffe1c4"></circle>
+          <circle cx="56.5" cy="69" r="1.6" fill="#23303c"></circle>
+          <circle cx="63.5" cy="69" r="1.6" fill="#23303c"></circle>
+          <path d="M56.5 74 Q60 77 63.5 74" stroke="#23303c" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
+          <rect x="42" y="108" width="36" height="10" rx="4" fill="#8a93b8"></rect>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Teclado de tela (tablets e Chromebooks touch) -->
+    <div class="teclado" data-teclado role="group" aria-label="Letras deste nível — toque na letra do inimigo"></div>
+
+    <!-- Toast + anúncios pra leitor de tela -->
+    <div class="toast" data-toast aria-live="polite" hidden></div>
+    <p class="sr-only" data-anuncio aria-live="assertive"></p>
+
+    <!-- Sprites dos inimigos e do coração -->
+    <svg hidden aria-hidden="true">
+      <symbol id="inimigo-1" viewBox="0 0 100 100">
+        <path d="M35 24 L28 9" stroke="currentColor" stroke-width="5" stroke-linecap="round"></path>
+        <path d="M65 24 L72 9" stroke="currentColor" stroke-width="5" stroke-linecap="round"></path>
+        <circle cx="27" cy="8" r="6" fill="#ffd23f"></circle>
+        <circle cx="73" cy="8" r="6" fill="#ffd23f"></circle>
+        <circle cx="50" cy="55" r="33" fill="currentColor"></circle>
+        <circle cx="50" cy="47" r="13" fill="#fff"></circle>
+        <circle cx="50" cy="47" r="6.5" fill="#23303c"></circle>
+        <circle cx="52.5" cy="44.5" r="2" fill="#fff"></circle>
+        <path d="M38 66 Q50 76 62 66" stroke="#23303c" stroke-width="4.5" fill="none" stroke-linecap="round"></path>
+      </symbol>
+      <symbol id="inimigo-2" viewBox="0 0 100 100">
+        <path d="M50 10 L50 22" stroke="currentColor" stroke-width="4" stroke-linecap="round"></path>
+        <circle cx="50" cy="9" r="5" fill="#ffd23f"></circle>
+        <path d="M30 50 Q30 22 50 22 Q70 22 70 50 Z" fill="#cfeefc"></path>
+        <circle cx="43" cy="38" r="2.6" fill="#23303c"></circle>
+        <circle cx="57" cy="38" r="2.6" fill="#23303c"></circle>
+        <path d="M44 44 Q50 48 56 44" stroke="#23303c" stroke-width="2.5" fill="none" stroke-linecap="round"></path>
+        <ellipse cx="50" cy="58" rx="40" ry="16" fill="currentColor"></ellipse>
+        <circle cx="24" cy="60" r="4" fill="#fff" opacity="0.85"></circle>
+        <circle cx="50" cy="66" r="4" fill="#fff" opacity="0.85"></circle>
+        <circle cx="76" cy="60" r="4" fill="#fff" opacity="0.85"></circle>
+      </symbol>
+      <symbol id="inimigo-3" viewBox="0 0 100 100">
+        <path d="M22 55 Q22 20 50 20 Q78 20 78 55 L78 70 Q72 63 66 70 Q60 76 54 70 Q50 66 46 70 Q40 76 34 70 Q28 63 22 70 Z" fill="currentColor"></path>
+        <circle cx="40" cy="44" r="7" fill="#fff"></circle>
+        <circle cx="40" cy="44" r="3.5" fill="#23303c"></circle>
+        <circle cx="60" cy="44" r="7" fill="#fff"></circle>
+        <circle cx="60" cy="44" r="3.5" fill="#23303c"></circle>
+        <path d="M42 57 Q50 63 58 57" stroke="#23303c" stroke-width="3.5" fill="none" stroke-linecap="round"></path>
+      </symbol>
+      <symbol id="inimigo-4" viewBox="0 0 100 100">
+        <path d="M50 6 L61 36 L94 38 L68 58 L78 90 L50 71 L22 90 L32 58 L6 38 L39 36 Z" fill="currentColor"></path>
+        <circle cx="42" cy="46" r="3" fill="#23303c"></circle>
+        <circle cx="58" cy="46" r="3" fill="#23303c"></circle>
+        <ellipse cx="50" cy="57" rx="6" ry="4.5" fill="#23303c"></ellipse>
+        <ellipse cx="50" cy="59" rx="3.5" ry="2" fill="#ff8fa8"></ellipse>
+      </symbol>
+      <symbol id="coracao" viewBox="0 0 32 32">
+        <path d="M16 29 C8 22 2 16.5 2 10.5 C2 6 5.5 3 9.5 3 C12.3 3 14.8 4.6 16 7 C17.2 4.6 19.7 3 22.5 3 C26.5 3 30 6 30 10.5 C30 16.5 24 22 16 29 Z" fill="#ff5b7f" stroke="#c22c53" stroke-width="1.5"></path>
+      </symbol>
+    </svg>
+
+    <!-- Modal: instruções + escolha de modo -->
+    <div class="modal" data-intro>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="placa__topo" id="intro-title">🚀 Letras Espaciais</div>
+        <div class="placa__corpo">
+          <ol class="regras">
+            <li>Os inimigos descem trazendo uma <b>LETRA</b>. 👾</li>
+            <li><b>Aperte a tecla</b> da letra — a nave atira sozinha! 💥</li>
+            <li>Cada nível traz <b>letras novas</b> e inimigos mais rápidos.</li>
+          </ol>
+          <p class="escolha__titulo">Como você quer jogar?</p>
+          <div class="escolha">
+            <button class="botao-modo botao-modo--vidas" type="button" data-modo="vidas">
+              <span class="botao-modo__titulo">❤️❤️❤️ Com vidas</span>
+              <small>Se um inimigo passar, você perde um coração. Derrube inimigos pra ganhar corações de volta!</small>
+            </button>
+            <button class="botao-modo botao-modo--tranquilo" type="button" data-modo="tranquilo">
+              <span class="botao-modo__titulo">🛸 Tranquilo</span>
+              <small>Sem pressa: os inimigos param e esperam você. Ninguém perde!</small>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: nível completo -->
+    <div class="modal" data-nivel-done hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="nivel-done-title">
+        <div class="placa__topo" id="nivel-done-title" data-nivel-done-title>Nível completo!</div>
+        <div class="placa__corpo center">
+          <p class="grande">🎉 Missão cumprida, astronauta!</p>
+          <p class="placar">Pontos até agora: <strong data-nivel-score>0</strong></p>
+          <p class="aviso" data-nivel-next-label></p>
+          <button class="botao botao--go" type="button" data-next-nivel>Próximo nível</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: vitória -->
+    <div class="modal" data-win hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="win-title">
+        <div class="placa__topo" id="win-title">Parabéns, astronauta! 🚀🎉</div>
+        <div class="placa__corpo center">
+          <p class="grande">Você conhece o alfabeto inteiro!</p>
+          <p class="placar">Sua pontuação: <strong data-final-score>0</strong></p>
+          <p class="aviso" data-final-msg></p>
+          <button class="botao botao--go" type="button" data-replay>Jogar de novo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: fim gentil (só no modo com vidas) -->
+    <div class="modal" data-fim hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="fim-title">
+        <div class="placa__topo" id="fim-title">Que voo incrível! 🌟</div>
+        <div class="placa__corpo center">
+          <p class="grande" data-fim-msg></p>
+          <p class="placar">Seus pontos: <strong data-fim-score>0</strong></p>
+          <p class="aviso">Toda tentativa deixa você mais rápido no teclado. Bora de novo?</p>
+          <button class="botao botao--go" type="button" data-replay-fim>Jogar de novo</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <style is:global>
+    body.is-game { background: #1a1052; overflow: hidden; }
+    body.is-game::before { display: none !important; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    .le {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== Cenário ===== */
+    .espaco {
+      position: absolute; inset: 0; z-index: 0;
+      background: linear-gradient(180deg, #140b45 0%, #241768 55%, #3b2a8f 100%);
+    }
+    .estrelas { position: absolute; inset: 0; background-repeat: repeat; }
+    .estrelas--1 {
+      background-image:
+        radial-gradient(2px 2px at 22px 34px, #fff, transparent),
+        radial-gradient(1.6px 1.6px at 120px 80px, #cfe6ff, transparent),
+        radial-gradient(2px 2px at 200px 140px, #fff, transparent),
+        radial-gradient(1.4px 1.4px at 68px 170px, #ffd9ec, transparent),
+        radial-gradient(1.8px 1.8px at 170px 30px, #fff, transparent);
+      background-size: 240px 210px;
+      opacity: 0.9;
+    }
+    .estrelas--2 {
+      background-image:
+        radial-gradient(2.6px 2.6px at 40px 60px, #fff, transparent),
+        radial-gradient(2px 2px at 150px 120px, #ffe8a3, transparent),
+        radial-gradient(2.4px 2.4px at 250px 40px, #fff, transparent),
+        radial-gradient(1.8px 1.8px at 90px 200px, #bfe9ff, transparent);
+      background-size: 320px 260px;
+      animation: piscar 3.2s ease-in-out infinite alternate;
+    }
+    @keyframes piscar { from { opacity: 0.5; } to { opacity: 1; } }
+    .planeta {
+      position: absolute; left: -46px; bottom: 8%;
+      width: 170px; height: 170px; opacity: 0.9;
+    }
+    .lua {
+      position: absolute; top: 9%; right: 6%;
+      width: 64px; height: 64px; opacity: 0.9;
+    }
+
+    /* ===== HUD ===== */
+    .hud {
+      position: relative; z-index: 30;
+      display: flex; align-items: center; gap: 18px;
+      padding: 8px 16px;
+      background: rgba(16, 10, 50, 0.6);
+      color: #fff;
+      backdrop-filter: blur(2px);
+    }
+    .hud__bloco { display: flex; align-items: baseline; gap: 7px; }
+    .hud__bloco[hidden] { display: none; }
+    .hud__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
+    .hud__bloco strong { font-size: 1.55rem; line-height: 1; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); transition: transform 0.18s ease; }
+    .hud__bloco strong.pop { transform: scale(1.4); color: #ffe8a3; }
+    .hud__sub { font-size: 0.75rem; opacity: 0.85; }
+    .hud__bloco--nome { flex: 1; font-size: 0.95rem; font-weight: 700; opacity: 0.95; justify-content: center; }
+    .hud__bloco--vidas { align-items: center; }
+    .vidas { display: inline-flex; gap: 4px; }
+    .vida { width: 24px; height: 24px; transition: opacity 0.25s ease, filter 0.25s ease; }
+    .vida--vazia { opacity: 0.22; filter: grayscale(1); }
+    .vida--pop { animation: vida-pop 0.45s ease; }
+    @keyframes vida-pop {
+      0% { transform: scale(0.4); }
+      55% { transform: scale(1.5); }
+      100% { transform: scale(1); }
+    }
+    .hud__mute {
+      width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.16);
+      font-size: 1.15rem; display: grid; place-items: center; color: #fff;
+    }
+    .hud__mute:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* ===== Campo ===== */
+    .campo { position: relative; z-index: 10; flex: 1; }
+
+    .linha-espera {
+      position: absolute; left: 3%; right: 3%;
+      border-top: 3px dashed rgba(255, 255, 255, 0.35);
+    }
+
+    /* Âncora movida por JS: o filho se centraliza e anima por conta própria,
+       então a animação CSS nunca briga com o transform do JS. */
+    .mov {
+      position: absolute; left: 0; top: 0;
+      width: 0; height: 0;
+      will-change: transform;
+    }
+
+    /* ===== Inimigos ===== */
+    .inimigo {
+      position: relative;
+      width: 76px; height: 76px;
+      transform: translate(-50%, -50%);
+      display: grid; place-items: center;
+    }
+    .inimigo__svg {
+      width: 100%; height: 100%;
+      color: var(--cor, #ff6ba9);
+      filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+    }
+    .inimigo__letra {
+      position: absolute; bottom: -14px;
+      padding: 1px 11px;
+      background: #fff;
+      border: 3px solid rgba(0, 0, 0, 0.25);
+      border-radius: 10px;
+      font-size: 1.5rem; font-weight: 800; color: #23303c;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+    }
+    .mov--parado .inimigo { animation: flutua 2s ease-in-out infinite; }
+    @keyframes flutua {
+      0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+      50% { transform: translate(-50%, -50%) translateY(-7px); }
+    }
+    .mov--fugiu .inimigo { animation: fugir 0.85s ease-in forwards; }
+    @keyframes fugir {
+      to {
+        transform: translate(-50%, -50%) translateX(calc(var(--fuga, 1) * 70vw)) rotate(calc(var(--fuga, 1) * 40deg));
+        opacity: 0;
+      }
+    }
+    .mov--sai .inimigo { animation: sai-poof 0.45s ease forwards; }
+    @keyframes sai-poof {
+      to { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
+    }
+
+    /* ===== Tiro / explosão / coração ===== */
+    .tiro {
+      display: block; width: 16px; height: 16px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff 25%, #ffd23f 60%, rgba(255, 210, 63, 0) 100%);
+      box-shadow: 0 0 14px 5px rgba(255, 220, 90, 0.65);
+      animation: tiro-pulsa 0.2s ease-in-out infinite alternate;
+    }
+    @keyframes tiro-pulsa {
+      from { scale: 0.85; }
+      to { scale: 1.15; }
+    }
+    .explosao {
+      position: relative;
+      display: grid; place-items: center;
+      width: 76px; height: 76px;
+      transform: translate(-50%, -50%);
+      font-size: 2.6rem; line-height: 1;
+      animation: explode 0.6s ease-out forwards;
+    }
+    .explosao::before {
+      content: '';
+      position: absolute; inset: 8px;
+      border-radius: 50%;
+      border: 4px solid #ffd23f;
+      animation: anel 0.6s ease-out forwards;
+    }
+    .explosao::after { content: '💥'; }
+    @keyframes explode {
+      0% { opacity: 1; scale: 0.5; }
+      70% { opacity: 1; scale: 1.15; }
+      100% { opacity: 0; scale: 1.3; }
+    }
+    @keyframes anel {
+      0% { scale: 0.4; opacity: 1; }
+      100% { scale: 1.9; opacity: 0; }
+    }
+    .coracao-voa {
+      display: block; width: 32px; height: 32px;
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 0 8px rgba(255, 120, 160, 0.8));
+      animation: tiro-pulsa 0.3s ease-in-out infinite alternate;
+    }
+
+    /* ===== Nave ===== */
+    .nave {
+      position: absolute; left: 50%; bottom: 6px; z-index: 15;
+      width: 104px;
+      transform: translateX(-50%);
+    }
+    .nave svg { width: 100%; height: auto; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45)); }
+    .nave__chama {
+      transform-origin: 60px 118px;
+      animation: chama 0.28s ease-in-out infinite alternate;
+    }
+    @keyframes chama {
+      from { transform: scaleY(0.75); }
+      to { transform: scaleY(1.1); }
+    }
+    .nave--treme { animation: nave-treme 0.35s ease; }
+    @keyframes nave-treme {
+      0%, 100% { transform: translateX(-50%); }
+      20% { transform: translateX(-50%) translateX(-8px); }
+      40% { transform: translateX(-50%) translateX(8px); }
+      60% { transform: translateX(-50%) translateX(-6px); }
+      80% { transform: translateX(-50%) translateX(6px); }
+    }
+
+    /* ===== Teclado de tela ===== */
+    .teclado {
+      position: relative; z-index: 20;
+      display: none;
+      flex-wrap: wrap; justify-content: center; gap: 6px;
+      padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(16, 10, 50, 0.72);
+    }
+    .teclado--on { display: flex; }
+    @media (pointer: coarse) { .teclado { display: flex; } }
+    .tecla {
+      min-width: 48px; height: 48px;
+      font-family: inherit; font-size: 1.3rem; font-weight: 800;
+      color: #23303c; background: #fff;
+      border: 2px solid rgba(0, 0, 0, 0.3); border-radius: 10px;
+      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-user-select: none; user-select: none;
+    }
+    .tecla:active { transform: translateY(3px); box-shadow: none; }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: absolute; left: 50%; top: 42%;
+      transform: translate(-50%, 0) translateY(8px);
+      z-index: 40;
+      max-width: min(88vw, 480px);
+      padding: 13px 20px;
+      border-radius: 14px;
+      font-size: 1.05rem; font-weight: 700; text-align: center; color: #fff;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .toast.ok { background: linear-gradient(180deg, #4cc35e, #2f9d40); }
+    .toast.info { background: linear-gradient(180deg, #7a5fd0, #5a3a9c); }
+
+    /* ===== Modais ===== */
+    .modal {
+      position: absolute; inset: 0; z-index: 60;
+      display: grid; place-items: center; padding: 20px;
+      background: rgba(8, 5, 30, 0.55);
+    }
+    .modal[hidden] { display: none; }
+    .placa {
+      width: min(94vw, 480px);
+      max-height: 92svh; overflow: auto;
+      background: #f4f0ff;
+      border: 4px solid #5a4a9c;
+      border-radius: 18px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+      animation: placa-pop 0.25s ease;
+    }
+    @keyframes placa-pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .placa__topo {
+      padding: 12px 18px;
+      background: linear-gradient(180deg, #7a5fd0, #5a3a9c);
+      color: #fff; font-size: 1.15rem; font-weight: 800;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      border-bottom: 4px solid #5a4a9c;
+    }
+    .placa__corpo { padding: 18px 22px 22px; color: #2c2344; }
+    .placa__corpo.center { text-align: center; }
+    .regras { margin: 0 0 16px 20px; display: grid; gap: 10px; font-size: 0.98rem; line-height: 1.45; }
+    .grande { font-size: 1.2rem; font-weight: 800; margin-bottom: 10px; }
+    .placar { font-size: 1.05rem; margin-bottom: 6px; }
+    .placar strong { font-size: 1.6rem; color: #5a3a9c; }
+    .aviso { color: #5c5478; font-size: 0.95rem; margin-bottom: 16px; min-height: 1.2em; }
+    .botao {
+      font-family: inherit; cursor: pointer; font-weight: 800;
+      padding: 11px 26px; border-radius: 12px; font-size: 1.05rem;
+      border: 3px solid #256b20; color: #fff;
+      background: linear-gradient(180deg, #6cc24a 0%, #43a431 55%, #2e8a28 100%);
+      box-shadow: 0 4px 0 #1d5619;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .botao:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d5619; }
+    .botao:focus-visible { outline: 3px solid #5a3a9c; outline-offset: 2px; }
+
+    /* Escolha de modo */
+    .escolha__titulo { font-weight: 800; font-size: 1.05rem; margin-bottom: 10px; }
+    .escolha { display: grid; gap: 10px; }
+    .botao-modo {
+      font-family: inherit; cursor: pointer; text-align: left;
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 12px 16px; border-radius: 14px;
+      border: 3px solid transparent;
+      transition: transform 0.12s ease, filter 0.15s ease;
+    }
+    .botao-modo:hover { transform: translateY(-2px); filter: brightness(1.04); }
+    .botao-modo:focus-visible { outline: 3px solid #5a3a9c; outline-offset: 2px; }
+    .botao-modo__titulo { font-size: 1.1rem; font-weight: 800; color: #2c2344; }
+    .botao-modo small { font-size: 0.85rem; line-height: 1.4; color: #4c4266; }
+    .botao-modo--vidas { background: linear-gradient(135deg, #ffe4ee, #ffd0e0); border-color: #e05a8a; }
+    .botao-modo--tranquilo { background: linear-gradient(135deg, #dff7f5, #c8eff0); border-color: #2fa3a0; }
+
+    /* ===== Responsivo ===== */
+    @media (max-height: 760px) {
+      .inimigo { width: 62px; height: 62px; }
+      .inimigo__letra { font-size: 1.25rem; bottom: -12px; padding: 1px 9px; }
+      .nave { width: 84px; }
+      .hud__bloco strong { font-size: 1.2rem; }
+      .tecla { min-width: 42px; height: 42px; font-size: 1.1rem; }
+      .planeta { width: 120px; height: 120px; }
+    }
+    @media (max-width: 700px) {
+      .hud { gap: 12px; }
+      .hud__bloco--nome { display: none; }
+      .inimigo { width: 62px; height: 62px; }
+      .inimigo__letra { font-size: 1.25rem; bottom: -12px; padding: 1px 9px; }
+      .nave { width: 84px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .estrelas--2, .nave__chama, .tiro, .coracao-voa { animation: none !important; }
+      .mov--parado .inimigo { animation: none !important; }
+      .nave--treme { animation: none !important; }
+      .placa { animation: none !important; }
+      .toast, .vida, .hud__bloco strong { transition: none !important; }
+      .explosao { animation-duration: 0.35s; }
+      .explosao::before { animation: none; opacity: 0; }
+    }
+  </style>
+
+  <script>
+    // ===== Dados =====
+    const dados = JSON.parse(document.querySelector('[data-dados]').textContent);
+    const NIVEIS = dados.niveis;
+    const CFG = dados.config;
+
+    const $ = (s) => document.querySelector(s);
+    const campoEl = $('[data-campo]');
+    const inimigosEl = $('[data-inimigos]');
+    const tirosEl = $('[data-tiros]');
+    const naveEl = $('[data-nave]');
+    const tecladoEl = $('[data-teclado]');
+    const toastEl = $('[data-toast]');
+    const anuncioEl = $('[data-anuncio]');
+    const introModal = $('[data-intro]');
+    const nivelDoneModal = $('[data-nivel-done]');
+    const winModal = $('[data-win]');
+    const fimModal = $('[data-fim]');
+    const vidasWrapEl = $('[data-vidas-wrap]');
+    const vidasEl = $('[data-vidas]');
+    const linhaEsperaEl = $('[data-linha-espera]');
+
+    const CORES = ['#ff6ba9', '#4dd9e8', '#ffd23f', '#9b7bff', '#6ee7a0', '#ff9a5c'];
+    const VARIANTES = 4;
+    let idSeq = 0;
+
+    const estado = {
+      fase: 'inicio',   // 'inicio' | 'jogando' | 'entreniveis' | 'vitoria' | 'fim'
+      modo: null,       // 'vidas' | 'tranquilo'
+      nivelIdx: 0,
+      pontos: 0,
+      vidas: 0,
+      abatesNoNivel: 0,
+      abatesTotal: 0,
+      inimigos: [],       // {id, letra, x, y, alvo, parado, el}
+      tiros: [],          // {t, x0, y0, alvoId, el}
+      coracoesVoando: [], // {t, x0, y0, x1, y1, el}
+      proximoSpawn: 0,
+      ultimoTempo: 0,
+      rafId: 0,
+      campo: { w: 0, h: 0, left: 0, top: 0, naveX: 0.5, naveY: 0.9 },
+      mudo: false,
+    };
+
+    // ===== Áudio (Web Audio, sem arquivos) =====
+    let actx = null;
+    function initAudio() {
+      if (actx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    function tom(freq, inicio, dur, tipo, vol) {
+      if (!actx) return;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = tipo; o.frequency.value = freq;
+      o.connect(g); g.connect(actx.destination);
+      const t = actx.currentTime + inicio;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur + 0.03);
+    }
+    function somTiro() { if (estado.mudo) return; tom(920, 0, 0.07, 'sawtooth', 0.08); tom(680, 0.05, 0.08, 'sawtooth', 0.07); }
+    function somExplosao() { if (estado.mudo) return; tom(180, 0, 0.18, 'square', 0.14); tom(1200, 0.03, 0.08, 'triangle', 0.1); tom(1500, 0.09, 0.1, 'triangle', 0.08); }
+    // Erro bem suave: grave, curto e baixinho — sem susto.
+    function somErroSuave() { if (estado.mudo) return; tom(200, 0, 0.22, 'sine', 0.08); }
+    function somCoracao() { if (estado.mudo) return; tom(660, 0, 0.12, 'triangle', 0.16); tom(990, 0.12, 0.2, 'triangle', 0.16); }
+    function somEscapou() { if (estado.mudo) return; tom(500, 0, 0.18, 'sine', 0.12); tom(380, 0.16, 0.24, 'sine', 0.12); }
+    function somNivel() { if (estado.mudo) return; [523, 659, 784, 1046].forEach((f, i) => tom(f, i * 0.12, 0.22, 'triangle', 0.2)); }
+    // Fim gentil: acorde quente subindo — nunca som de "derrota".
+    function somFimGentil() { if (estado.mudo) return; tom(392, 0, 0.5, 'triangle', 0.14); tom(494, 0.14, 0.5, 'triangle', 0.14); tom(587, 0.28, 0.6, 'triangle', 0.14); }
+
+    // ===== Mudo =====
+    const muteBtn = $('[data-mute]');
+    const muteIcon = $('[data-mute-icon]');
+    function aplicarMudo() {
+      muteBtn.setAttribute('aria-pressed', String(estado.mudo));
+      muteIcon.textContent = estado.mudo ? '🔈' : '🔊';
+      muteBtn.setAttribute('aria-label', estado.mudo ? 'Ligar o som' : 'Desligar o som');
+    }
+    (function initMudo() {
+      const salvo = localStorage.getItem('letras-espaciais:mudo');
+      estado.mudo = salvo === null ? !CFG.somLigadoInicial : salvo === '1';
+      aplicarMudo();
+    })();
+    muteBtn.addEventListener('click', () => {
+      estado.mudo = !estado.mudo;
+      localStorage.setItem('letras-espaciais:mudo', estado.mudo ? '1' : '0');
+      aplicarMudo();
+    });
+
+    // ===== Utilidades =====
+    function anunciar(msg) { anuncioEl.textContent = ''; requestAnimationFrame(() => { anuncioEl.textContent = msg; }); }
+
+    let toastTimer = null;
+    function mostrarToast(html, tipo, ms) {
+      toastEl.innerHTML = html;
+      toastEl.className = 'toast ' + tipo;
+      toastEl.hidden = false;
+      requestAnimationFrame(() => toastEl.classList.add('show'));
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toastEl.classList.remove('show');
+        setTimeout(() => { toastEl.hidden = true; }, 250);
+      }, ms || 2200);
+    }
+
+    function atualizarPlacar() {
+      const el = $('[data-pontos]');
+      el.textContent = String(estado.pontos);
+      el.classList.add('pop');
+      setTimeout(() => el.classList.remove('pop'), 200);
+    }
+
+    function atualizarAbates() {
+      $('[data-abates]').textContent = String(estado.abatesNoNivel);
+      $('[data-abates-total]').textContent = 'de ' + NIVEIS[estado.nivelIdx].abates;
+    }
+
+    function atualizarVidas(pop) {
+      let html = '';
+      for (let i = 0; i < CFG.vidasMaximas; i++) {
+        const cheio = i < estado.vidas;
+        const classes = 'vida' + (cheio ? '' : ' vida--vazia') + (pop && i === estado.vidas - 1 ? ' vida--pop' : '');
+        html += '<svg class="' + classes + '" viewBox="0 0 32 32" aria-hidden="true"><use href="#coracao"></use></svg>';
+      }
+      vidasEl.innerHTML = html;
+      vidasWrapEl.setAttribute('aria-label', 'Vidas: ' + estado.vidas + ' de ' + CFG.vidasMaximas);
+    }
+
+    function medirCampo() {
+      const r = campoEl.getBoundingClientRect();
+      estado.campo.w = r.width || 1;
+      estado.campo.h = r.height || 1;
+      estado.campo.left = r.left;
+      estado.campo.top = r.top;
+      const n = naveEl.getBoundingClientRect();
+      estado.campo.naveX = (n.left + n.width / 2 - r.left) / estado.campo.w;
+      estado.campo.naveY = (n.top + 4 - r.top) / estado.campo.h;
+    }
+
+    function tremerNave() {
+      naveEl.classList.remove('nave--treme');
+      void naveEl.offsetWidth; // reinicia a animação
+      naveEl.classList.add('nave--treme');
+    }
+
+    // ===== Inimigos =====
+    function letrasVivas() {
+      return new Set(estado.inimigos.map((i) => i.letra));
+    }
+    function escolherLetra(nivel) {
+      const vivas = letrasVivas();
+      const livres = nivel.letras.filter((l) => !vivas.has(l));
+      if (!livres.length) return null;
+      return livres[Math.floor(Math.random() * livres.length)];
+    }
+
+    function criarInimigo(nivel) {
+      const letra = escolherLetra(nivel);
+      if (!letra) return false;
+      // x aleatório afastado dos inimigos vivos (até 12 tentativas)
+      let x = 0.08 + Math.random() * 0.84;
+      for (let t = 0; t < 12; t++) {
+        const cand = 0.08 + Math.random() * 0.84;
+        x = cand;
+        if (estado.inimigos.every((i) => Math.abs(i.x - cand) >= 0.14)) break;
+      }
+      const id = ++idSeq;
+      const mov = document.createElement('div');
+      mov.className = 'mov';
+      mov.setAttribute('aria-hidden', 'true');
+      mov.innerHTML =
+        '<div class="inimigo" style="--cor:' + CORES[id % CORES.length] + '">' +
+        '<svg class="inimigo__svg" viewBox="0 0 100 100"><use href="#inimigo-' + (1 + (id % VARIANTES)) + '"></use></svg>' +
+        '<span class="inimigo__letra">' + letra + '</span>' +
+        '</div>';
+      inimigosEl.appendChild(mov);
+      estado.inimigos.push({ id, letra, x, y: -0.1, alvo: false, parado: false, el: mov });
+      return true;
+    }
+
+    function spawn(dt, nivel) {
+      estado.proximoSpawn -= dt;
+      if (estado.proximoSpawn > 0) return;
+      if (estado.inimigos.length >= nivel.maxInimigos) return;
+      if (estado.modo === 'tranquilo') {
+        const parados = estado.inimigos.filter((i) => i.parado).length;
+        if (parados >= CFG.maxInimigosEsperando) return;
+      }
+      // Sem letra livre? Tenta de novo daqui a pouco.
+      estado.proximoSpawn = criarInimigo(nivel) ? nivel.intervaloSpawn : 600;
+    }
+
+    // ===== Tiro e impacto =====
+    function processarLetra(letra) {
+      if (estado.fase !== 'jogando') return;
+      const inimigo = estado.inimigos.find((i) => !i.alvo && i.letra === letra);
+      if (inimigo) {
+        atirar(inimigo);
+      } else {
+        somErroSuave();
+        tremerNave();
+      }
+    }
+
+    function atirar(inimigo) {
+      inimigo.alvo = true;
+      const mov = document.createElement('div');
+      mov.className = 'mov';
+      mov.setAttribute('aria-hidden', 'true');
+      mov.innerHTML = '<span class="tiro"></span>';
+      mov.style.transform = 'translate3d(' + estado.campo.naveX * estado.campo.w + 'px, ' + estado.campo.naveY * estado.campo.h + 'px, 0)';
+      tirosEl.appendChild(mov);
+      estado.tiros.push({ t: 0, x0: estado.campo.naveX, y0: estado.campo.naveY, alvoId: inimigo.id, el: mov });
+      somTiro();
+    }
+
+    function explodir(x, y) {
+      const mov = document.createElement('div');
+      mov.className = 'mov';
+      mov.setAttribute('aria-hidden', 'true');
+      mov.innerHTML = '<span class="explosao"></span>';
+      mov.style.transform = 'translate3d(' + x * estado.campo.w + 'px, ' + y * estado.campo.h + 'px, 0)';
+      tirosEl.appendChild(mov);
+      setTimeout(() => mov.remove(), 700);
+    }
+
+    function impacto(alvoId) {
+      const idx = estado.inimigos.findIndex((i) => i.id === alvoId);
+      if (idx === -1) return;
+      const inimigo = estado.inimigos[idx];
+      estado.inimigos.splice(idx, 1);
+      inimigo.el.remove();
+      explodir(inimigo.x, inimigo.y);
+      somExplosao();
+      estado.pontos += CFG.pontosPorAcerto;
+      estado.abatesNoNivel++;
+      estado.abatesTotal++;
+      atualizarPlacar();
+      atualizarAbates();
+      if (estado.modo === 'vidas' && estado.vidas < CFG.vidasMaximas && Math.random() < CFG.chanceCoracao) {
+        soltarCoracao(inimigo.x, inimigo.y);
+      }
+      if (estado.abatesNoNivel >= NIVEIS[estado.nivelIdx].abates) concluirNivel();
+    }
+
+    // ===== Coração bônus (voa sozinho até o HUD) =====
+    function soltarCoracao(x, y) {
+      const alvo = vidasWrapEl.getBoundingClientRect();
+      const x1 = (alvo.left + alvo.width / 2 - estado.campo.left) / estado.campo.w;
+      const y1 = (alvo.top + alvo.height / 2 - estado.campo.top) / estado.campo.h;
+      const mov = document.createElement('div');
+      mov.className = 'mov';
+      mov.setAttribute('aria-hidden', 'true');
+      mov.innerHTML = '<svg class="coracao-voa" viewBox="0 0 32 32"><use href="#coracao"></use></svg>';
+      mov.style.transform = 'translate3d(' + x * estado.campo.w + 'px, ' + y * estado.campo.h + 'px, 0)';
+      tirosEl.appendChild(mov);
+      estado.coracoesVoando.push({ t: 0, x0: x, y0: y, x1, y1, el: mov });
+    }
+
+    // ===== Inimigo chegou na linha =====
+    function inimigoChegou(inimigo) {
+      if (estado.modo === 'tranquilo') {
+        inimigo.parado = true;
+        inimigo.y = CFG.linhaEspera;
+        inimigo.el.classList.add('mov--parado');
+        return;
+      }
+      // Modo com vidas: o inimigo foge voando pro lado (nada de bater na nave)
+      const idx = estado.inimigos.indexOf(inimigo);
+      if (idx !== -1) estado.inimigos.splice(idx, 1);
+      inimigo.el.style.setProperty('--fuga', inimigo.x < 0.5 ? '-1' : '1');
+      inimigo.el.classList.add('mov--fugiu');
+      setTimeout(() => inimigo.el.remove(), 900);
+      perderVida();
+    }
+
+    function perderVida() {
+      estado.vidas--;
+      atualizarVidas(false);
+      somEscapou();
+      tremerNave();
+      anunciar('Ih, um inimigo passou! Você tem ' + estado.vidas + (estado.vidas === 1 ? ' vida.' : ' vidas.'));
+      if (estado.vidas <= 0) fimDeJogo();
+    }
+
+    // ===== Fluxo de níveis =====
+    function limparCampo() {
+      estado.inimigos.forEach((i) => {
+        i.el.classList.add('mov--sai');
+        setTimeout(() => i.el.remove(), 500);
+      });
+      estado.tiros.forEach((t) => t.el.remove());
+      estado.coracoesVoando.forEach((c) => c.el.remove());
+      estado.inimigos = [];
+      estado.tiros = [];
+      estado.coracoesVoando = [];
+    }
+
+    function montarTeclado(nivel) {
+      tecladoEl.innerHTML = '';
+      nivel.letras.forEach((letra) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tecla';
+        btn.textContent = letra;
+        btn.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          processarLetra(letra);
+        });
+        tecladoEl.appendChild(btn);
+      });
+    }
+
+    function montarNivel(idx) {
+      estado.nivelIdx = idx;
+      estado.abatesNoNivel = 0;
+      estado.proximoSpawn = 900; // respiro antes do primeiro inimigo
+      inimigosEl.innerHTML = '';
+      tirosEl.innerHTML = '';
+      estado.inimigos = [];
+      estado.tiros = [];
+      estado.coracoesVoando = [];
+      const nivel = NIVEIS[idx];
+      $('[data-nivel]').textContent = String(idx + 1);
+      $('[data-nivel-nome]').textContent = nivel.nome;
+      atualizarAbates();
+      montarTeclado(nivel);
+      anunciar('Nível ' + (idx + 1) + ': ' + nivel.nome + '. Letras: ' + nivel.letras.join(', ') + '.');
+    }
+
+    function concluirNivel() {
+      limparCampo();
+      if (estado.nivelIdx < NIVEIS.length - 1) {
+        estado.fase = 'entreniveis';
+        somNivel();
+        const prox = NIVEIS[estado.nivelIdx + 1];
+        const atuais = new Set(NIVEIS[estado.nivelIdx].letras);
+        const novas = prox.letras.filter((l) => !atuais.has(l));
+        $('[data-nivel-done-title]').textContent = 'Nível ' + (estado.nivelIdx + 1) + ' completo!';
+        $('[data-nivel-score]').textContent = String(estado.pontos);
+        $('[data-nivel-next-label]').textContent = novas.length
+          ? 'Letras novas chegando: ' + novas.join(', ') + '!'
+          : 'Prepare-se: ' + prox.nome + '!';
+        nivelDoneModal.hidden = false;
+        setTimeout(() => $('[data-next-nivel]').focus(), 60);
+        anunciar('Nível completo!' + (novas.length ? ' Letras novas: ' + novas.join(', ') + '.' : ''));
+      } else {
+        venceu();
+      }
+    }
+
+    function venceu() {
+      estado.fase = 'vitoria';
+      somNivel();
+      $('[data-final-score]').textContent = String(estado.pontos);
+      $('[data-final-msg]').textContent =
+        'Você derrubou ' + estado.abatesTotal + ' inimigos e passou por todas as letras, de A a Z! 🌟';
+      winModal.hidden = false;
+      setTimeout(() => $('[data-replay]').focus(), 60);
+      anunciar('Parabéns! Você venceu o jogo com ' + estado.pontos + ' pontos.');
+    }
+
+    function fimDeJogo() {
+      estado.fase = 'fim';
+      limparCampo();
+      somFimGentil();
+      $('[data-fim-msg]').textContent =
+        'Você derrubou ' + estado.abatesTotal + (estado.abatesTotal === 1 ? ' inimigo' : ' inimigos') +
+        ' e chegou ao nível ' + (estado.nivelIdx + 1) + '!';
+      $('[data-fim-score]').textContent = String(estado.pontos);
+      fimModal.hidden = false;
+      setTimeout(() => $('[data-replay-fim]').focus(), 60);
+      anunciar('Fim do voo! Você fez ' + estado.pontos + ' pontos. Aperte o botão pra jogar de novo.');
+    }
+
+    // ===== Loop =====
+    function loop(ts) {
+      estado.rafId = requestAnimationFrame(loop);
+      if (!estado.ultimoTempo) { estado.ultimoTempo = ts; return; }
+      const dt = Math.min(ts - estado.ultimoTempo, 50);
+      estado.ultimoTempo = ts;
+      if (estado.fase !== 'jogando') return;
+
+      const nivel = NIVEIS[estado.nivelIdx];
+      const cw = estado.campo.w;
+      const ch = estado.campo.h;
+
+      spawn(dt, nivel);
+
+      // Inimigos descem
+      for (const i of estado.inimigos.slice()) {
+        if (!i.parado) {
+          i.y += nivel.velocidade * (dt / 1000);
+          if (i.y >= CFG.linhaEspera && !i.alvo) {
+            inimigoChegou(i);
+            if (estado.fase !== 'jogando') return;
+            if (!i.parado) continue; // fugiu: já saiu do array
+          }
+        }
+        i.el.style.transform = 'translate3d(' + i.x * cw + 'px, ' + i.y * ch + 'px, 0)';
+      }
+
+      // Tiros perseguem o alvo (lerp de duração fixa — chegada garantida)
+      for (const t of estado.tiros.slice()) {
+        const alvo = estado.inimigos.find((i) => i.id === t.alvoId);
+        if (!alvo) {
+          t.el.remove();
+          estado.tiros.splice(estado.tiros.indexOf(t), 1);
+          continue;
+        }
+        t.t += dt / CFG.duracaoTiroMs;
+        if (t.t >= 1) {
+          t.el.remove();
+          estado.tiros.splice(estado.tiros.indexOf(t), 1);
+          impacto(t.alvoId);
+          if (estado.fase !== 'jogando') return;
+          continue;
+        }
+        const x = t.x0 + (alvo.x - t.x0) * t.t;
+        const y = t.y0 + (alvo.y - t.y0) * t.t;
+        t.el.style.transform = 'translate3d(' + x * cw + 'px, ' + y * ch + 'px, 0)';
+      }
+
+      // Corações voando até o HUD
+      for (const c of estado.coracoesVoando.slice()) {
+        c.t += dt / 700;
+        if (c.t >= 1) {
+          c.el.remove();
+          estado.coracoesVoando.splice(estado.coracoesVoando.indexOf(c), 1);
+          estado.vidas = Math.min(estado.vidas + 1, CFG.vidasMaximas);
+          atualizarVidas(true);
+          somCoracao();
+          mostrarToast('💖 Você ganhou um coração!', 'ok', 1600);
+          anunciar('Você ganhou um coração! Vidas: ' + estado.vidas + '.');
+          continue;
+        }
+        const k = c.t;
+        const x = c.x0 + (c.x1 - c.x0) * k;
+        const y = c.y0 + (c.y1 - c.y0) * k - Math.sin(k * Math.PI) * 0.06; // leve arco
+        c.el.style.transform = 'translate3d(' + x * cw + 'px, ' + y * ch + 'px, 0)';
+      }
+    }
+
+    // ===== Fluxo =====
+    function comecarJogo(modo) {
+      initAudio();
+      if (actx && actx.state === 'suspended') actx.resume();
+      estado.modo = modo;
+      estado.pontos = 0;
+      estado.abatesTotal = 0;
+      estado.vidas = modo === 'vidas' ? CFG.vidasIniciais : 0;
+      vidasWrapEl.hidden = modo !== 'vidas';
+      linhaEsperaEl.hidden = modo !== 'tranquilo';
+      if (modo === 'vidas') atualizarVidas(false);
+      atualizarPlacar();
+      introModal.hidden = true;
+      estado.fase = 'jogando';
+      medirCampo();
+      montarNivel(0);
+      if (!estado.rafId) estado.rafId = requestAnimationFrame(loop);
+    }
+
+    function reiniciar() {
+      estado.fase = 'inicio';
+      limparCampo();
+      nivelDoneModal.hidden = true;
+      winModal.hidden = true;
+      fimModal.hidden = true;
+      vidasWrapEl.hidden = true;
+      linhaEsperaEl.hidden = true;
+      estado.pontos = 0;
+      estado.abatesTotal = 0;
+      atualizarPlacar();
+      introModal.hidden = false;
+      setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+    }
+
+    document.querySelectorAll('[data-modo]').forEach((btn) => {
+      btn.addEventListener('click', () => comecarJogo(btn.dataset.modo));
+    });
+    $('[data-next-nivel]').addEventListener('click', () => {
+      nivelDoneModal.hidden = true;
+      estado.fase = 'jogando';
+      medirCampo();
+      montarNivel(estado.nivelIdx + 1);
+    });
+    $('[data-replay]').addEventListener('click', reiniciar);
+    $('[data-replay-fim]').addEventListener('click', reiniciar);
+
+    // ===== Entrada: teclado físico =====
+    window.addEventListener('keydown', (e) => {
+      if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (estado.fase !== 'jogando') return;
+      if (e.key.length !== 1) return;
+      // Maiúscula + remove acento (Ç vira C — vizinha do L no teclado ABNT)
+      const letra = e.key.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (!/^[A-Z]$/.test(letra)) return;
+      processarLetra(letra);
+    });
+
+    // Dispositivo touch sem teclado físico: mostra a barra de letras
+    window.addEventListener('touchstart', () => tecladoEl.classList.add('teclado--on'), { once: true, passive: true });
+
+    // ===== Pausa / medidas =====
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        cancelAnimationFrame(estado.rafId);
+        estado.rafId = 0;
+        estado.ultimoTempo = 0;
+      } else if (estado.modo && !estado.rafId) {
+        estado.rafId = requestAnimationFrame(loop);
+      }
+    });
+    window.addEventListener('resize', medirCampo);
+
+    // ===== Boot =====
+    document.body.classList.add('is-game');
+    linhaEsperaEl.style.top = CFG.linhaEspera * 100 + '%';
+    medirCampo();
+    setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+  </script>
+</Layout>
