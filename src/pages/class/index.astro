@@ -3,264 +3,316 @@ import Layout from '../../layouts/Layout.astro';
 
 const title = 'Sala de Aula do Professor Manolo — jogos pra aprender brincando';
 const description =
-  'Jogos educativos gratuitos, em português, direto no navegador: hardware × software, montar palavras com sílabas e mais. Feitos por um professor pras próprias turmas.';
+  'Jogos educativos gratuitos, em português, direto no navegador: hardware × software, montar palavras com sílabas, digitação espacial e mais. Feitos por um professor pras próprias turmas.';
 
+// Ícone: coloque um .jpg quadrado (ex.: 512×512) em public/class/icons/
+// com o mesmo nome do arquivo indicado abaixo. Sem imagem, o emoji aparece.
 const jogos = [
   {
     url: '/class/games/desktop-organizer/',
+    icone: '/class/icons/desktop-organizer.jpg',
     emoji: '🖥️',
     nome: 'Organizador da Área de Trabalho',
     linha: 'Hardware ou Software? Arraste cada ícone pra pasta certa!',
-    tema: 'azul',
-    tags: ['arrastar e soltar', '3 fases'],
+    fundo: 'linear-gradient(135deg, #4ba3e8, #2f7fc0)',
+    busca: 'organizador area de trabalho hardware software desktop arrastar',
   },
   {
     url: '/class/games/trem-de-palavras/',
+    icone: '/class/icons/trem-de-palavras.jpg',
     emoji: '🚂',
     nome: 'Trem de Palavras',
     linha: 'Monte palavras com os vagões de sílabas e faça o trem partir!',
-    tema: 'verde',
-    tags: ['sílabas', '7 níveis'],
+    fundo: 'linear-gradient(135deg, #6cc24a, #2e8a28)',
+    busca: 'trem de palavras silabas ler escrever alfabetizacao',
   },
   {
     url: '/class/games/letras-espaciais/',
+    icone: '/class/icons/letras-espaciais.jpg',
     emoji: '🚀',
     nome: 'Letras Espaciais',
-    linha: 'Aperte a letra do inimigo e a nave atira! Do A ao Z, defendendo o espaço.',
-    tema: 'roxo',
-    tags: ['letras', 'digitação', '2 modos'],
+    linha: 'Aperte a letra do inimigo e a nave atira! Do A ao Z.',
+    fundo: 'linear-gradient(135deg, #7a5fd0, #3b2a8f)',
+    busca: 'letras espaciais nave digitacao teclado alfabeto atirar',
   },
 ];
 ---
 
 <Layout title={title} description={description}>
   <main class="sala" id="conteudo">
-    <div class="ceu" aria-hidden="true">
-      <span class="sol"></span>
-      <span class="nuvem n1"></span>
-      <span class="nuvem n2"></span>
-      <span class="nuvem n3"></span>
-      <span class="montes"></span>
-    </div>
+    <header class="topo">
+      <a class="topo__marca" href="/class/">
+        <span class="topo__logo" aria-hidden="true">🎮</span>
+        <span class="topo__nome">Sala do <b>Professor Manolo</b></span>
+      </a>
+      <label class="busca">
+        <span class="busca__lupa" aria-hidden="true">🔍</span>
+        <input
+          class="busca__campo"
+          type="search"
+          placeholder="Buscar jogo…"
+          aria-label="Buscar jogo pelo nome"
+          data-busca
+          autocomplete="off"
+        />
+      </label>
+    </header>
 
-    <div class="conteudo">
-      <header class="cab">
-        <p class="cab__prof">a sala de aula do</p>
-        <h1 class="cab__titulo">Professor Manolo</h1>
-        <p class="cab__sub">🎮 Jogos pra aprender brincando — é só escolher e jogar!</p>
-      </header>
+    <section class="grade" aria-label="Escolha seu jogo" data-grade>
+      {
+        jogos.map((j) => (
+          <a
+            class="app"
+            href={j.url}
+            title={j.linha}
+            aria-label={j.nome + ' — ' + j.linha}
+            data-app
+            data-nome={(j.nome + ' ' + j.busca).toLowerCase()}
+          >
+            <span class="app__icone" style={`background:${j.fundo}`}>
+              <img
+                src={j.icone}
+                alt=""
+                loading="lazy"
+                onerror="this.style.display='none'"
+              />
+              <span class="app__emoji" aria-hidden="true">{j.emoji}</span>
+            </span>
+            <span class="app__nome">{j.nome}</span>
+          </a>
+        ))
+      }
 
-      <section class="jogos" aria-label="Escolha seu jogo">
-        {
-          jogos.map((j) => (
-            <a class:list={['jogo', 'jogo--' + j.tema]} href={j.url}>
-              <span class="jogo__emoji" aria-hidden="true">{j.emoji}</span>
-              <span class="jogo__info">
-                <span class="jogo__nome">{j.nome}</span>
-                <span class="jogo__linha">{j.linha}</span>
-                <span class="jogo__tags">
-                  {j.tags.map((t) => <i>{t}</i>)}
-                </span>
-              </span>
-              <span class="jogo__play" aria-hidden="true">JOGAR ▶</span>
-            </a>
-          ))
-        }
+      <div class="app app--breve" aria-hidden="true" data-breve>
+        <span class="app__icone app__icone--breve">
+          <span class="app__emoji">🎁</span>
+        </span>
+        <span class="app__nome">Em breve…</span>
+      </div>
+    </section>
 
-        <div class="jogo jogo--breve" aria-hidden="true">
-          <span class="jogo__emoji">🎁</span>
-          <span class="jogo__info">
-            <span class="jogo__nome">Em breve…</span>
-            <span class="jogo__linha">O professor está preparando o próximo jogo!</span>
-          </span>
-        </div>
-      </section>
+    <p class="vazio" data-vazio aria-live="polite" hidden>
+      Nenhum jogo encontrado 🔭 Tente outro nome!
+    </p>
 
-      <footer class="pe">
-        <p class="pe__prof">
-          👩‍🏫 Professor(a)? Os jogos são livres pra usar na sua escola.
-          Conheça também o <a href="/class/controle-de-aula/">Controle de Aula</a> —
-          comande os Chromebooks da turma pelo celular.
-        </p>
-        <a class="pe__site" href="/">← site do Manolo</a>
-      </footer>
-    </div>
+    <footer class="pe">
+      <p>
+        👩‍🏫 Professor(a)? Os jogos são livres pra usar na sua escola. Conheça também
+        o <a href="/class/controle-de-aula/">Controle de Aula</a> — comande os Chromebooks da turma pelo celular.
+      </p>
+      <a class="pe__site" href="/">← site do Manolo</a>
+    </footer>
   </main>
 </Layout>
 
 <style is:global>
-  body.is-class { background: #6db3e8; overflow-x: hidden; }
+  body.is-class { background: #fff; overflow-x: hidden; }
   body.is-class::before { display: none !important; }
 </style>
 
 <script>
   document.body.classList.add('is-class');
+
+  // Busca: filtra os quadradinhos pelo nome (sem acento, sem maiúscula)
+  const campo = document.querySelector('[data-busca]');
+  const apps = [...document.querySelectorAll('[data-app]')];
+  const breve = document.querySelector('[data-breve]');
+  const vazio = document.querySelector('[data-vazio]');
+  const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  campo.addEventListener('input', () => {
+    const q = norm(campo.value.trim());
+    let visiveis = 0;
+    for (const app of apps) {
+      const bate = !q || norm(app.dataset.nome).includes(q);
+      app.hidden = !bate;
+      if (bate) visiveis++;
+    }
+    breve.hidden = !!q;
+    vazio.hidden = visiveis > 0;
+  });
 </script>
 
 <style>
   .sala {
-    position: relative;
     min-height: 100svh;
+    display: flex;
+    flex-direction: column;
     font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
-    color: #23303c;
-    display: flex;
-    flex-direction: column;
+    color: #1c1c1e;
+    background: #fff;
   }
 
-  /* ===== Cenário ===== */
-  .ceu {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    background: linear-gradient(180deg, #4ba3e8 0%, #7ec8f0 50%, #c9ecff 100%);
-  }
-  .sol {
-    position: absolute; top: 6%; right: 7%;
-    width: 90px; height: 90px; border-radius: 50%;
-    background: radial-gradient(circle, #ffe873 55%, #ffd23f 75%, rgba(255, 210, 63, 0) 100%);
-    box-shadow: 0 0 50px 16px rgba(255, 220, 90, 0.55);
-  }
-  .nuvem {
-    position: absolute;
-    background: radial-gradient(closest-side, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0) 72%);
-    border-radius: 50%;
-  }
-  .n1 { width: 240px; height: 90px; top: 8%; left: 6%; }
-  .n2 { width: 180px; height: 70px; top: 18%; left: 55%; opacity: 0.9; }
-  .n3 { width: 150px; height: 60px; top: 34%; left: 24%; opacity: 0.75; }
-  .montes {
-    position: absolute; left: -6%; right: -6%; bottom: 0; height: 34%;
-    border-radius: 58% 46% 0 0 / 100% 88% 0 0;
-    background: linear-gradient(180deg, #8fce58 0%, #5fa838 60%, #48862a 100%);
-  }
-
-  .conteudo {
-    position: relative;
-    z-index: 1;
-    width: min(760px, 92vw);
-    margin-inline: auto;
-    padding: clamp(28px, 6vh, 64px) 0 28px;
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-  }
-
-  /* ===== Cabeçalho ===== */
-  .cab { text-align: center; color: #fff; margin-bottom: clamp(22px, 4vh, 40px); }
-  .cab__prof {
-    font-size: 0.95rem;
-    letter-spacing: 0.06em;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-  }
-  .cab__titulo {
-    font-size: clamp(2.1rem, 6vw, 3.4rem);
-    line-height: 1.05;
-    margin: 2px 0 12px;
-    text-shadow: 0 3px 0 rgba(35, 80, 30, 0.35), 0 6px 18px rgba(0, 0, 0, 0.3);
-    letter-spacing: -0.01em;
-  }
-  .cab__sub {
-    font-size: clamp(1rem, 2.6vw, 1.15rem);
-    font-weight: 700;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-  }
-
-  /* ===== Cartões de jogo ===== */
-  .jogos { display: grid; gap: 16px; }
-  .jogo {
+  /* ===== Topo: marca + busca ===== */
+  .topo {
+    position: sticky;
+    top: 0;
+    z-index: 10;
     display: flex;
     align-items: center;
-    gap: 18px;
-    padding: 18px 22px;
-    border-radius: 20px;
-    background: #fff;
-    border: 3px solid rgba(0, 0, 0, 0.12);
-    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.14), 0 12px 26px rgba(0, 0, 0, 0.18);
-    color: #23303c;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px clamp(16px, 4vw, 40px);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid #ececec;
   }
-  a.jogo:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 0 rgba(0, 0, 0, 0.14), 0 18px 32px rgba(0, 0, 0, 0.22);
+  .topo__marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #1c1c1e;
+    text-decoration: none;
+    min-width: 0;
   }
-  a.jogo:active { transform: translateY(0); box-shadow: 0 3px 0 rgba(0, 0, 0, 0.14); }
-  a.jogo:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
+  .topo__logo { font-size: 1.6rem; line-height: 1; }
+  .topo__nome {
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topo__nome b { font-weight: 800; }
 
-  .jogo--azul { background: linear-gradient(135deg, #e8f4ff, #d3e9fc); border-color: #2f7fc0; }
-  .jogo--verde { background: linear-gradient(135deg, #eefae4, #ddf3cd); border-color: #43a431; }
-  .jogo--roxo { background: linear-gradient(135deg, #f0eaff, #e0d4fa); border-color: #7a4fc0; }
-  .jogo--breve {
-    background: rgba(255, 255, 255, 0.55);
-    border-style: dashed;
-    border-color: rgba(255, 255, 255, 0.9);
-    box-shadow: none;
-    color: #2c4a5e;
-  }
-
-  .jogo__emoji {
-    font-size: clamp(2.6rem, 7vw, 3.6rem);
-    line-height: 1;
-    flex-shrink: 0;
-    filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.2));
-  }
-  .jogo__info { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-  .jogo__nome { font-size: clamp(1.1rem, 3vw, 1.35rem); font-weight: 800; }
-  .jogo__linha { font-size: clamp(0.86rem, 2.4vw, 0.98rem); color: #40566a; }
-  .jogo__tags { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
-  .jogo__tags i {
-    font-style: normal;
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 3px 10px;
+  .busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border: 1.5px solid #e2e2e6;
     border-radius: 999px;
-    background: rgba(0, 0, 0, 0.08);
+    background: #f6f6f8;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
   }
-  .jogo__play {
-    flex-shrink: 0;
-    font-weight: 800;
+  .busca:focus-within {
+    border-color: #7a5fd0;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(122, 95, 208, 0.15);
+  }
+  .busca__lupa { font-size: 0.95rem; opacity: 0.7; }
+  .busca__campo {
+    border: 0;
+    background: transparent;
+    outline: none;
+    font-family: inherit;
+    font-size: 0.92rem;
+    color: #1c1c1e;
+    width: clamp(110px, 22vw, 230px);
+  }
+  .busca__campo::placeholder { color: #9a9aa0; }
+
+  /* ===== Grade de apps (estilo iPhone) ===== */
+  .grade {
+    width: min(880px, 100%);
+    margin-inline: auto;
+    padding: clamp(24px, 5vh, 48px) clamp(16px, 4vw, 32px) 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+    gap: 26px 18px;
+    justify-items: center;
+    align-content: start;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    max-width: 128px;
+    color: #1c1c1e;
+    text-decoration: none;
+    transition: transform 0.15s ease;
+  }
+  .app[hidden] { display: none; }
+  a.app:hover { transform: translateY(-3px); }
+  a.app:active { transform: scale(0.96); }
+  a.app:focus-visible { outline: none; }
+  a.app:focus-visible .app__icone {
+    outline: 3px solid #7a5fd0;
+    outline-offset: 3px;
+  }
+
+  .app__icone {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 24%;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 4px 14px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.15s ease;
+  }
+  a.app:hover .app__icone {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14), 0 10px 24px rgba(0, 0, 0, 0.16);
+  }
+  .app__icone img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .app__emoji {
+    font-size: clamp(2.4rem, 6vw, 3.2rem);
+    line-height: 1;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+  }
+
+  .app__nome {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .app--breve .app__icone--breve {
+    background: #f2f2f5;
+    border: 2px dashed #cfcfd6;
+    box-shadow: none;
+  }
+  .app--breve .app__nome { color: #8e8e93; }
+  .app--breve .app__emoji { filter: grayscale(0.4); opacity: 0.8; }
+
+  .vazio {
+    text-align: center;
+    color: #6b6b70;
     font-size: 0.95rem;
-    letter-spacing: 0.04em;
-    color: #fff;
-    padding: 12px 18px;
-    border-radius: 14px;
-    background: linear-gradient(180deg, #6cc24a 0%, #43a431 55%, #2e8a28 100%);
-    border: 2px solid #256b20;
-    box-shadow: 0 4px 0 #1d5619;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    padding: 12px 20px;
   }
-  a.jogo:hover .jogo__play { filter: brightness(1.08); }
 
   /* ===== Rodapé ===== */
   .pe {
     margin-top: auto;
-    padding-top: clamp(26px, 5vh, 44px);
+    padding: 28px clamp(16px, 4vw, 40px) 24px;
+    border-top: 1px solid #ececec;
     text-align: center;
-  }
-  .pe__prof {
-    font-size: 0.88rem;
-    color: #fff;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
-    max-width: 54ch;
-    margin-inline: auto;
+    font-size: 0.84rem;
+    color: #6b6b70;
     line-height: 1.6;
   }
-  .pe__prof a {
-    color: #ffe873;
-    font-weight: 700;
-    text-decoration: underline;
-  }
+  .pe a { color: #7a5fd0; font-weight: 700; }
   .pe__site {
     display: inline-block;
-    margin-top: 14px;
-    font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.85);
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: #9a9aa0;
+    text-decoration: none;
   }
-  .pe__site:hover { color: #fff; }
+  .pe__site:hover { color: #1c1c1e; }
 
-  @media (max-width: 560px) {
-    .jogo { flex-direction: column; text-align: center; gap: 10px; }
-    .jogo__info { align-items: center; }
-    .jogo__play { width: 100%; text-align: center; }
+  @media (max-width: 480px) {
+    .topo__nome { font-size: 0.88rem; }
+    .grade {
+      grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+      gap: 20px 12px;
+    }
+    .app { max-width: 104px; }
+    .app__nome { font-size: 0.72rem; }
   }
 </style>
