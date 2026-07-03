@@ -1,236 +1,146 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import Icon from '../components/Icon.astro';
 import { site, socials } from '../data/site';
 
-// Home: um "editor de código" aberto no arquivo manolo.ts, com um
-// terminal embaixo servindo os links. Conteúdo vem de src/data/site.ts.
-const linksTerminal = socials.map((s) => ({
-  nome: s.nome,
-  url: s.url,
-  exibe: s.url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, ''),
-}));
+// Home: cartão de visitas tipográfico. A hierarquia faz o trabalho:
+// nome → statement grande → uma linha de contexto → CTA → redes.
+// Textos e links vêm de src/data/site.ts.
 ---
 
 <Layout>
-  <main class="editor-wrap" id="conteudo">
-    <h1 class="sr-only">{site.titulo}</h1>
+  <main class="cartao" id="conteudo">
+    <div class="cartao__miolo">
+      <p class="eyebrow" data-reveal>{site.nome} · {site.localizacao}</p>
 
-    <div class="janela" data-reveal>
-      <!-- Barra da janela -->
-      <div class="janela__barra" aria-hidden="true">
-        <span class="luzes"><i></i><i></i><i></i></span>
-        <span class="aba aba--ativa">manolo.ts</span>
-        <span class="aba">vmonsters.ts</span>
-        <span class="aba aba--extra">aula-de-quinta.md</span>
+      <h1 class="statement" data-reveal>
+        <span class="statement__destaque">Faço jogos.</span><br />
+        E ensino crianças a fazer os delas.
+      </h1>
+
+      <p class="contexto" data-reveal>
+        Franquia VMonsters em Unity, Godot e Flutter. Quando a aula precisa
+        de um jogo que não existe, eu faço o jogo.
+      </p>
+
+      <div class="acoes" data-reveal>
+        <a href="/class/" class="btn">
+          Jogos pra sala de aula <Icon name="arrow" size={18} />
+        </a>
       </div>
 
-      <!-- Código -->
-      <pre class="codigo" aria-label="Apresentação em forma de código"><code
-><span class="ln">1</span><span class="tk-com">// quem faz e quem ensina</span>
-<span class="ln">2</span><span class="tk-kw">const</span> <span class="tk-var">manolo</span> <span class="tk-pun">=</span> <span class="tk-pun">&#123;</span>
-<span class="ln">3</span>  <span class="tk-prop">nome</span><span class="tk-pun">:</span> <span class="tk-str">'{site.nome}'</span><span class="tk-pun">,</span>
-<span class="ln">4</span>  <span class="tk-prop">faz</span><span class="tk-pun">:</span> <span class="tk-str">'jogos'</span><span class="tk-pun">,</span>
-<span class="ln">5</span>  <span class="tk-prop">ensina</span><span class="tk-pun">:</span> <span class="tk-str">'crianças a fazer os delas'</span><span class="tk-pun">,</span>
-<span class="ln">6</span>  <span class="tk-prop">missao</span><span class="tk-pun">:</span> <span class="tk-str">'franquia VMonsters'</span><span class="tk-pun">,</span>
-<span class="ln">7</span>  <span class="tk-prop">engines</span><span class="tk-pun">:</span> <span class="tk-pun">[</span><span class="tk-str">'Unity'</span><span class="tk-pun">,</span> <span class="tk-str">'Godot'</span><span class="tk-pun">,</span> <span class="tk-str">'Flutter'</span><span class="tk-pun">]</span><span class="tk-pun">,</span>
-<span class="ln">8</span>  <span class="tk-prop">base</span><span class="tk-pun">:</span> <span class="tk-str">'{site.localizacao}'</span><span class="tk-pun">,</span>
-<span class="ln">9</span><span class="tk-pun">&#125;</span> <span class="tk-kw">as</span> <span class="tk-tipo">const</span><span class="tk-pun">;</span>
-<span class="ln">10</span>
-<span class="ln">11</span><span class="tk-kw">export default</span> <span class="tk-var">manolo</span><span class="tk-pun">;</span><span class="cursor" aria-hidden="true"></span></code></pre>
-
-      <!-- Terminal: os links -->
-      <nav class="term" aria-label="Links e redes">
-        <p class="term__titulo" aria-hidden="true">TERMINAL</p>
+      <nav class="redes" aria-label="Redes e contato" data-reveal>
         {
-          linksTerminal.map((l) => (
-            <p class="term__linha">
-              <span class="term__prompt" aria-hidden="true">$</span>
-              <span class="term__cmd" aria-hidden="true">open</span>
-              <a href={l.url} target="_blank" rel="noopener" aria-label={l.nome}>{l.exibe}</a>
-            </p>
+          socials.map((s) => (
+            <a class="redes__link" href={s.url} target="_blank" rel="noopener">
+              <Icon name={s.icone} size={18} />
+              <span>{s.nome}</span>
+            </a>
           ))
         }
-        <p class="term__linha">
-          <span class="term__prompt" aria-hidden="true">$</span>
-          <span class="term__cmd" aria-hidden="true">cd</span>
-          <a href="/class/">/class</a>
-          <span class="term__com" aria-hidden="true"># jogos pra sala de aula</span>
-        </p>
       </nav>
-
-      <!-- Barra de status -->
-      <div class="status" aria-hidden="true">
-        <span class="status__item status__item--ok">pt-BR</span>
-        <span class="status__item">TypeScript</span>
-        <span class="status__item">UTF-8</span>
-        <span class="status__item status__item--fim">Ln 11, Col 23</span>
-      </div>
     </div>
 
-    <p class="assinatura">© {site.nome}</p>
+    <p class="assinatura" data-reveal>© {site.nome}</p>
   </main>
 </Layout>
 
 <style>
-  .sr-only {
-    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-  }
-
-  .editor-wrap {
+  .cartao {
     min-height: 100svh;
-    display: grid;
-    place-items: center;
-    align-content: center;
-    gap: 18px;
-    padding: 32px 16px;
-  }
-
-  .janela {
-    width: min(94vw, 640px);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    box-shadow: var(--shadow), 0 0 80px rgba(52, 211, 153, 0.07);
-    overflow: hidden;
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-  }
-
-  /* ===== Barra da janela ===== */
-  .janela__barra {
     display: flex;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
-    gap: 10px;
-    padding: 10px 14px 0;
-    background: var(--bg-soft);
-    border-bottom: 1px solid var(--border);
+    padding: 48px 24px 28px;
+    gap: clamp(28px, 6vh, 56px);
   }
-  .luzes {
+
+  .cartao__miolo {
+    width: min(92vw, 660px);
     display: flex;
-    gap: 7px;
-    margin-right: 6px;
-    padding-bottom: 10px;
+    flex-direction: column;
+    align-items: flex-start;
   }
-  .luzes i {
-    width: 12px; height: 12px; border-radius: 50%;
-    background: #ff5f57;
-  }
-  .luzes i:nth-child(2) { background: #febc2e; }
-  .luzes i:nth-child(3) { background: #28c840; }
-  .aba {
-    font-size: 0.76rem;
+
+  /* ===== Eyebrow (traço vem do .eyebrow::before do global.css) ===== */
+  .eyebrow {
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     color: var(--text-dim);
-    padding: 7px 14px 9px;
-    border-radius: 8px 8px 0 0;
-    white-space: nowrap;
   }
-  .aba--ativa {
+
+  /* ===== Statement ===== */
+  .statement {
+    margin-block: 22px 18px;
+    font-size: clamp(2.3rem, 7.2vw, 4.1rem);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    font-weight: 800;
     color: var(--text);
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-bottom-color: var(--bg-card);
-    margin-bottom: -1px;
+    text-wrap: balance;
   }
-  .aba--extra { display: none; }
-  @media (min-width: 560px) { .aba--extra { display: inline; } }
+  .statement__destaque {
+    color: var(--accent);
+  }
 
-  /* ===== Código ===== */
-  .codigo {
-    margin: 0;
-    padding: 18px 18px 14px 10px;
-    font-size: clamp(0.72rem, 2.6vw, 0.88rem);
-    line-height: 1.75;
-    overflow-x: auto;
+  /* ===== Contexto ===== */
+  .contexto {
     color: var(--text-soft);
+    font-size: clamp(1rem, 2.6vw, 1.13rem);
+    line-height: 1.65;
+    max-width: 46ch;
   }
-  .ln {
-    display: inline-block;
-    width: 2.2em;
-    margin-right: 0.9em;
-    text-align: right;
-    color: var(--text-dim);
-    opacity: 0.55;
-    user-select: none;
-  }
-  .tk-com { color: var(--text-dim); font-style: italic; }
-  .tk-kw { color: var(--accent-2); }
-  .tk-var { color: var(--text); }
-  .tk-prop { color: #c4b5fd; }
-  .tk-str { color: var(--accent); }
-  .tk-pun { color: var(--text-dim); }
-  .tk-tipo { color: #f6c177; }
 
-  .cursor {
-    display: inline-block;
-    width: 0.55em;
-    height: 1.1em;
-    margin-left: 2px;
-    vertical-align: text-bottom;
-    background: var(--accent);
-    animation: pisca 1.1s steps(1) infinite;
+  /* ===== Ações ===== */
+  .acoes {
+    margin-top: 30px;
   }
-  @keyframes pisca { 50% { opacity: 0; } }
 
-  /* ===== Terminal ===== */
-  .term {
-    border-top: 1px solid var(--border);
-    background: var(--bg-soft);
-    padding: 12px 18px 16px;
-    font-size: clamp(0.72rem, 2.6vw, 0.85rem);
-    line-height: 2;
-  }
-  .term__titulo {
-    font-size: 0.62rem;
-    letter-spacing: 0.14em;
-    color: var(--text-dim);
-    margin-bottom: 6px;
-  }
-  .term__linha {
+  /* ===== Redes ===== */
+  .redes {
     display: flex;
-    gap: 0.6em;
-    align-items: baseline;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin-top: 34px;
   }
-  .term__prompt { color: var(--accent); }
-  .term__cmd { color: var(--text-soft); }
-  .term__com { color: var(--text-dim); font-style: italic; overflow: hidden; text-overflow: ellipsis; }
-  .term a {
-    color: var(--accent-2);
+  .redes__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text-dim);
     text-decoration: none;
-    border-bottom: 1px dashed transparent;
-    transition: border-color 0.15s ease, color 0.15s ease;
+    border-bottom: 1px solid transparent;
+    transition: color 0.18s ease, border-color 0.18s ease;
   }
-  .term a:hover {
+  .redes__link:hover {
     color: var(--accent);
     border-bottom-color: var(--accent);
   }
-  .term a:focus-visible {
+  .redes__link:focus-visible {
     outline: 2px solid var(--accent);
-    outline-offset: 2px;
+    outline-offset: 3px;
+    border-radius: 4px;
   }
-
-  /* ===== Barra de status ===== */
-  .status {
-    display: flex;
-    gap: 16px;
-    padding: 6px 14px;
-    background: var(--bg-soft);
-    border-top: 1px solid var(--border);
-    font-size: 0.66rem;
-    color: var(--text-dim);
-  }
-  .status__item--ok { color: var(--accent); }
-  .status__item--fim { margin-left: auto; }
 
   .assinatura {
-    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
     color: var(--text-dim);
-    font-family: var(--font-mono, monospace);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .cursor { animation: none; }
+  @media (max-width: 480px) {
+    .acoes :global(.btn) {
+      width: 100%;
+      justify-content: center;
+    }
+    .redes {
+      gap: 4px 18px;
+    }
   }
 </style>
