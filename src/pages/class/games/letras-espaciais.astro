@@ -145,7 +145,7 @@ const description =
           <ol class="regras">
             <li>Os inimigos descem trazendo uma <b>LETRA</b>. 👾</li>
             <li><b>Aperte a tecla</b> da letra — a nave atira sozinha! 💥</li>
-            <li>Nave com <b>DUAS letras</b>? Acerte as duas pra derrubar! 💪</li>
+            <li>Nave com <b>DUAS ou TRÊS letras</b>? Acerte todas pra derrubar! 💪</li>
             <li>Cada nível traz <b>letras novas</b> e inimigos mais rápidos.</li>
           </ol>
           <p class="escolha__titulo">Como você quer jogar?</p>
@@ -332,8 +332,10 @@ const description =
       font-size: 1.5rem; font-weight: 800; color: #23303c;
       box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
     }
-    /* Nave de 2 letras: um pouco maior, cada letra aguenta um tiro */
+    /* Naves de 2 e 3 letras: maiores, cada letra aguenta um tiro */
     .inimigo--dupla { width: 90px; height: 90px; }
+    .inimigo--tripla { width: 102px; height: 102px; }
+    .inimigo--tripla .inimigo__letra { font-size: 1.2rem; padding: 1px 8px; }
     .inimigo__letra--pop { animation: letra-pop 0.28s ease-out forwards; }
     @keyframes letra-pop {
       to { transform: scale(1.7); opacity: 0; }
@@ -532,6 +534,8 @@ const description =
     @media (max-height: 760px) {
       .inimigo { width: 62px; height: 62px; }
       .inimigo--dupla { width: 74px; height: 74px; }
+      .inimigo--tripla { width: 84px; height: 84px; }
+      .inimigo--tripla .inimigo__letra { font-size: 1rem; padding: 1px 7px; }
       .inimigo__letras { bottom: -12px; }
       .inimigo__letra { font-size: 1.25rem; padding: 1px 9px; }
       .nave { width: 84px; }
@@ -544,6 +548,8 @@ const description =
       .hud__bloco--nome { display: none; }
       .inimigo { width: 62px; height: 62px; }
       .inimigo--dupla { width: 74px; height: 74px; }
+      .inimigo--tripla { width: 84px; height: 84px; }
+      .inimigo--tripla .inimigo__letra { font-size: 1rem; padding: 1px 7px; }
       .inimigo__letras { bottom: -12px; }
       .inimigo__letra { font-size: 1.25rem; padding: 1px 9px; }
       .nave { width: 84px; }
@@ -728,14 +734,24 @@ const description =
     }
 
     function criarInimigo(nivel) {
-      // Nave dupla: duas letras, cada uma aguenta um tiro (a partir do nível 3)
-      let letras = Math.random() < nivel.chanceDupla ? escolherLetras(nivel, 2) : null;
-      if (!letras) letras = escolherLetras(nivel, 1);
+      // Sorteia o tamanho da nave: tripla, dupla ou solo.
+      // Se dupla+tripla somam 1, nave de 1 letra não nasce mais — e o
+      // fallback (quando faltam letras livres) também para no 2.
+      const r = Math.random();
+      let qtd = r < nivel.chanceTripla ? 3 : r < nivel.chanceTripla + nivel.chanceDupla ? 2 : 1;
+      const minimo = nivel.chanceTripla + nivel.chanceDupla >= 1 ? 2 : 1;
+      let letras = null;
+      while (qtd >= minimo) {
+        letras = escolherLetras(nivel, qtd);
+        if (letras) break;
+        qtd--;
+      }
       if (!letras) return false;
-      // Velocidade própria: dupla é mais lenta; vogal solta fica mais
+      // Velocidade própria: dupla/tripla mais lentas; vogal solta mais
       // rápida nos níveis com vogaisRapidas
       let fator = 1;
-      if (letras.length === 2) fator = CFG.fatorDupla;
+      if (letras.length === 3) fator = CFG.fatorTripla;
+      else if (letras.length === 2) fator = CFG.fatorDupla;
       else if (nivel.vogaisRapidas && VOGAIS.has(letras[0])) fator = CFG.fatorVogal;
       // x aleatório afastado dos inimigos vivos (até 12 tentativas)
       let x = 0.08 + Math.random() * 0.84;
@@ -749,7 +765,7 @@ const description =
       mov.className = 'mov';
       mov.setAttribute('aria-hidden', 'true');
       mov.innerHTML =
-        '<div class="inimigo' + (letras.length === 2 ? ' inimigo--dupla' : '') + '" style="--cor:' + CORES[id % CORES.length] + '">' +
+        '<div class="inimigo' + (letras.length === 2 ? ' inimigo--dupla' : letras.length === 3 ? ' inimigo--tripla' : '') + '" style="--cor:' + CORES[id % CORES.length] + '">' +
         '<svg class="inimigo__svg" viewBox="0 0 100 100"><use href="#inimigo-' + (1 + (id % VARIANTES)) + '"></use></svg>' +
         '<span class="inimigo__letras">' +
         letras.map((l) => '<span class="inimigo__letra" data-letra="' + l + '">' + l + '</span>').join('') +
@@ -771,13 +787,19 @@ const description =
     function spawn(dt, nivel) {
       estado.proximoSpawn -= dt;
       if (estado.proximoSpawn > 0) return;
-      if (estado.inimigos.length >= nivel.maxInimigos) return;
-      if (estado.modo === 'tranquilo') {
-        const parados = estado.inimigos.filter((i) => i.parado).length;
-        if (parados >= CFG.maxInimigosEsperando) return;
+      // Cada leva traz spawnsPorVez inimigos (respeitando os tetos)
+      let criou = false;
+      for (let n = 0; n < nivel.spawnsPorVez; n++) {
+        if (estado.inimigos.length >= nivel.maxInimigos) break;
+        if (estado.modo === 'tranquilo') {
+          const parados = estado.inimigos.filter((i) => i.parado).length;
+          if (parados >= CFG.maxInimigosEsperando) break;
+        }
+        if (!criarInimigo(nivel)) break; // sem letra livre
+        criou = true;
       }
-      // Sem letra livre? Tenta de novo daqui a pouco.
-      estado.proximoSpawn = criarInimigo(nivel) ? nivel.intervaloSpawn : 600;
+      // Nada nasceu? Tenta de novo daqui a pouco.
+      estado.proximoSpawn = criou ? nivel.intervaloSpawn : 600;
     }
 
     // ===== Tiro e impacto =====
@@ -959,8 +981,20 @@ const description =
         if (prox.chanceDupla > 0 && atual.chanceDupla === 0) {
           aviso += ' Cuidado: naves com 2 letras — acerte as duas!';
         }
+        if (prox.chanceTripla > 0 && atual.chanceTripla === 0) {
+          aviso += ' Cuidado: naves com 3 letras!';
+        }
         if (prox.vogaisRapidas && !atual.vogaisRapidas) {
           aviso += ' Atenção: as vogais estão mais rápidas!';
+        }
+        if (prox.velocidade > atual.velocidade * 1.15) {
+          aviso += ' Os inimigos estão bem mais rápidos!';
+        }
+        if (prox.chanceDupla + prox.chanceTripla >= 1 && atual.chanceDupla + atual.chanceTripla < 1) {
+          aviso += ' Agora toda nave tem 2 ou 3 letras!';
+        }
+        if (prox.spawnsPorVez > atual.spawnsPorVez) {
+          aviso += ' Os inimigos agora chegam de dois em dois!';
         }
         $('[data-nivel-next-label]').textContent = aviso;
         nivelDoneModal.hidden = false;
@@ -976,7 +1010,7 @@ const description =
       somNivel();
       $('[data-final-score]').textContent = String(estado.pontos);
       $('[data-final-msg]').textContent =
-        'Você derrubou ' + estado.abatesTotal + ' inimigos e passou por todas as letras, de A a Z! 🌟';
+        'Você derrubou ' + estado.abatesTotal + ' inimigos nas ' + NIVEIS.length + ' missões — do A ao Z! 🌟';
       winModal.hidden = false;
       setTimeout(() => $('[data-replay]').focus(), 60);
       anunciar('Parabéns! Você venceu o jogo com ' + estado.pontos + ' pontos.');
