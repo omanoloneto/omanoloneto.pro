@@ -26,7 +26,7 @@ hospedagem de arquivos:
 
 ### Funcionalidades
 
-- 🎮 **Jogos educativos** — Trem de Palavras (sílabas) e Letras Espaciais (teclado), com botão de tela cheia
+- 🎮 **Jogos educativos** — Trem de Palavras (sílabas), Letras Espaciais (teclado) e Volta ao Mundo (geografia: bandeira → achar o país no mapa), com botão de tela cheia
 - 🖥️ **Simulador do Windows 98** — história da computação pra crianças
 - 👩‍🏫 **Guia pra professores** — `/class/professores`: série indicada, como usar em aula
 - 📴 **PWA / offline** — a sala de aula funciona sem internet depois da primeira visita (service worker + manifest)
@@ -82,7 +82,8 @@ src/
 ├─ data/
 │  ├─ site.ts               # nome, bio, email, redes sociais
 │  ├─ trem-de-palavras.ts   # palavras/níveis do jogo
-│  └─ letras-espaciais.ts   # níveis do jogo
+│  ├─ letras-espaciais.ts   # níveis do jogo
+│  └─ volta-ao-mundo.ts     # mapa SVG + países/níveis (GERADO, ver scripts/)
 ├─ components/
 │  └─ Icon.astro            # ícones SVG inline
 ├─ layouts/
@@ -106,6 +107,7 @@ public/
 |-------|---------|
 | Nome, bio, email, redes | [`src/data/site.ts`](src/data/site.ts) |
 | Palavras / níveis dos jogos | [`src/data/trem-de-palavras.ts`](src/data/trem-de-palavras.ts), [`src/data/letras-espaciais.ts`](src/data/letras-espaciais.ts) |
+| Países / níveis do Volta ao Mundo | edite a lista `CURADOS` em [`scripts/volta-ao-mundo-gera-dados.mjs`](scripts/volta-ao-mundo-gera-dados.mjs) e rode `node scripts/volta-ao-mundo-gera-dados.mjs` |
 | Jogos e simuladores novos | `src/pages/class/…` (e inclua no precache de [`public/class/sw.js`](public/class/sw.js)) |
 | Cores / fontes / tema | [`src/styles/global.css`](src/styles/global.css) (bloco `:root`) |
 
@@ -134,6 +136,11 @@ A pasta pública neste host (Hostinger) é `domains/<dominio>/public_html/`.
 
 ---
 
-## 📄 Licença
+## 📄 Licença e créditos
 
 [MIT](LICENSE) © Manolo Neto
+
+Dados de terceiros usados no jogo Volta ao Mundo:
+
+- Mapa: [Natural Earth](https://www.naturalearthdata.com/) (domínio público), via [`world-atlas`](https://github.com/topojson/world-atlas)
+- Bandeiras: [`flag-icons`](https://github.com/lipis/flag-icons) (MIT)

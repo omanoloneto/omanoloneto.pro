@@ -3,7 +3,7 @@ import Layout from '../../../layouts/Layout.astro';
 
 const title = 'Sala de Aula do Professor Manolo — jogos pra aprender brincando';
 const description =
-  'Jogos educativos gratuitos, em português, direto no navegador: monte palavras com sílabas no Trem de Palavras e aprenda o teclado com as Letras Espaciais. Feitos por um professor pras próprias turmas.';
+  'Jogos educativos gratuitos, em português, direto no navegador: monte palavras com sílabas no Trem de Palavras, aprenda o teclado com as Letras Espaciais e ache países no mapa na Volta ao Mundo. Feitos por um professor pras próprias turmas.';
 
 // Ícone: coloque um .jpg quadrado (ex.: 512×512) em public/class/icons/
 // com o mesmo nome do arquivo indicado abaixo. Sem imagem, o emoji aparece.
@@ -25,6 +25,15 @@ const jogos = [
     linha: 'Aperte a letra do inimigo e a nave atira! Do A ao Z.',
     fundo: 'linear-gradient(135deg, #7a5fd0, #3b2a8f)',
     busca: 'letras espaciais nave digitacao teclado alfabeto atirar',
+  },
+  {
+    url: '/class/games/volta-ao-mundo/',
+    icone: '/class/icons/volta-ao-mundo.jpg',
+    emoji: '🌍',
+    nome: 'Volta ao Mundo',
+    linha: 'Veja a bandeira e ache o país no mapa! Continente por continente.',
+    fundo: 'linear-gradient(135deg, #4aa3e0, #0c5e94)',
+    busca: 'volta ao mundo mapa paises bandeiras geografia continentes',
   },
 ];
 ---

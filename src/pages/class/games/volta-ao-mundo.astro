@@ -1,0 +1,713 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { mapa, paises, niveis, config } from '../../../data/volta-ao-mundo';
+
+const dadosJson = JSON.stringify({ paises, niveis, config });
+
+const title = 'Volta ao Mundo — ache o país no mapa! | Manolo Neto';
+const description =
+  'Jogo educativo de geografia para crianças: veja a bandeira e o nome do país e encontre ele no mapa! Níveis por continente, dicas quando erra, em português. Modo com vidas ou modo tranquilo.';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': ['VideoGame', 'LearningResource'],
+  name: 'Volta ao Mundo',
+  url: 'https://omanoloneto.pro/class/games/volta-ao-mundo/',
+  description,
+  inLanguage: 'pt-BR',
+  isAccessibleForFree: true,
+  learningResourceType: 'Game',
+  educationalLevel: 'Ensino Fundamental I — 2º a 5º ano',
+  teaches: 'Geografia: continentes, países, bandeiras e orientação espacial no mapa',
+  audience: { '@type': 'EducationalAudience', educationalRole: 'student' },
+  gamePlatform: 'Navegador web',
+  author: { '@type': 'Person', name: 'Manolo Neto', url: 'https://omanoloneto.pro' },
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL' },
+};
+---
+
+<Layout
+  title={title}
+  description={description}
+  ogImage="/og/class.png"
+  ogImageAlt="Sala do Professor Manolo — jogos educativos gratuitos pra sala de aula"
+  jsonLd={jsonLd}
+  fontes={false}
+  manifest="/class/manifest.webmanifest"
+  sw="/class/sw.js"
+  themeColor="#ffffff"
+>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="vm" data-game role="application" aria-label="Jogo: encontre o país pedido tocando nele no mapa">
+    <!-- HUD -->
+    <header class="hud" role="status" aria-live="polite">
+      <div class="hud__bloco">
+        <span class="hud__label">Pontos</span>
+        <strong data-pontos>0</strong>
+      </div>
+      <div class="hud__bloco">
+        <span class="hud__label">Países</span>
+        <strong data-achados>0</strong>
+        <span class="hud__sub" data-achados-total>de 0</span>
+      </div>
+      <div class="hud__bloco hud__bloco--vidas" data-vidas-wrap hidden>
+        <span class="hud__label">Vidas</span>
+        <span class="vidas" data-vidas></span>
+      </div>
+      <div class="hud__bloco hud__bloco--nome" data-nivel-nome aria-hidden="true"></div>
+      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <span data-mute-icon>🔊</span>
+      </button>
+      <button class="hud__mute" type="button" data-fullscreen aria-pressed="false" aria-label="Entrar em tela cheia">
+        <span data-fullscreen-icon>⛶</span>
+      </button>
+    </header>
+
+    <!-- Missão: bandeira + pergunta + dica (aparece quando o jogo começa) -->
+    <section class="missao" data-missao aria-label="País para encontrar" hidden>
+      <span class="missao__moldura">
+        <img class="missao__bandeira" data-bandeira src="" alt="" width="88" height="66" />
+      </span>
+      <div class="missao__textos">
+        <p class="missao__pergunta">Onde fica <b data-alvo-nome>…</b>?</p>
+        <p class="missao__dica" data-dica aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- Mapa -->
+    <div class="mapa-wrap">
+      <svg
+        class="mapa"
+        data-mapa
+        viewBox={`0 0 ${config.largura} ${config.altura}`}
+        preserveAspectRatio="xMidYMid meet"
+        aria-hidden="true"
+      >
+        <g data-paises>
+          {mapa.map((p) => <path d={p.d} data-id={p.id} />)}
+        </g>
+      </svg>
+    </div>
+
+    <!-- Modal: introdução + escolha de modo -->
+    <div class="modal" data-intro>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="placa__topo" id="intro-title">🌍 Volta ao Mundo</div>
+        <div class="placa__corpo">
+          <ol class="regras">
+            <li>Aparece uma <b>bandeira</b> e o <b>nome de um país</b>. 🇧🇷</li>
+            <li><b>Toque no país</b> lá no mapa!</li>
+            <li>Errou? Sem problema: o jogo dá <b>dicas</b> até você achar. 🧭</li>
+            <li>Cada continente é uma fase — no fim, o <b>mundo todo</b>!</li>
+          </ol>
+          <p class="escolha__titulo">Como você quer viajar?</p>
+          <div class="escolha">
+            <button class="botao-modo botao-modo--vidas" type="button" data-modo="vidas">
+              <span class="botao-modo__titulo">❤️❤️❤️ Com vidas</span>
+              <small>Cada erro perde um coração. Acerte de primeira pra ganhar corações de volta!</small>
+            </button>
+            <button class="botao-modo botao-modo--tranquilo" type="button" data-modo="tranquilo">
+              <span class="botao-modo__titulo">🎈 Tranquilo</span>
+              <small>Sem pressa e sem perder: erre à vontade, as dicas te levam até o país.</small>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: nível completo -->
+    <div class="modal" data-nivel-done hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="nivel-done-title">
+        <div class="placa__topo" id="nivel-done-title" data-nivel-done-title>Continente completo!</div>
+        <div class="placa__corpo center">
+          <p class="grande">🧳 Malas prontas, próxima parada!</p>
+          <p class="placar">Pontos até agora: <strong data-nivel-score>0</strong></p>
+          <p class="aviso" data-nivel-next-label></p>
+          <button class="botao botao--go" type="button" data-next-nivel>Embarcar ✈️</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: fim de jogo (vidas zeradas) -->
+    <div class="modal" data-fim hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="fim-title">
+        <div class="placa__topo" id="fim-title">Fim da viagem!</div>
+        <div class="placa__corpo center">
+          <p class="grande">🛬 Dessa vez foi até aqui…</p>
+          <p class="placar">Pontos: <strong data-fim-score>0</strong> · Países achados: <strong data-fim-achados>0</strong></p>
+          <button class="botao botao--go" type="button" data-restart>🔄 Viajar de novo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: zerou o jogo -->
+    <div class="modal" data-zerou hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="zerou-title">
+        <div class="placa__topo" id="zerou-title">🏆 Você deu a VOLTA AO MUNDO!</div>
+        <div class="placa__corpo center">
+          <p class="grande">🎉 Parabéns, viajante! Conheceu o planeta inteirinho!</p>
+          <p class="placar">Pontos finais: <strong data-zerou-score>0</strong></p>
+          <button class="botao botao--go" type="button" data-restart>🔄 Viajar de novo</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="sr-only" data-anuncio aria-live="polite"></p>
+  </main>
+</Layout>
+
+<style is:global>
+  body.is-class { background: #fff; overflow-x: hidden; }
+  body.is-class::before { display: none !important; }
+</style>
+
+<style>
+  .vm {
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+    background: linear-gradient(180deg, #7ec3ea 0%, #a8d8f0 55%, #cfeafa 100%);
+    color: #fff;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  /* ===== HUD ===== */
+  .hud {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 3vw, 28px);
+    padding: 10px clamp(12px, 3vw, 24px);
+    background: rgba(12, 74, 110, 0.88);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+  .hud__bloco { display: flex; align-items: baseline; gap: 7px; }
+  .hud__bloco[hidden] { display: none; }
+  .hud__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
+  .hud__bloco strong { font-size: 1.55rem; line-height: 1; transition: transform 0.18s ease; }
+  .hud__bloco strong.pop { transform: scale(1.4); color: #ffe8a3; }
+  .hud__sub { font-size: 0.75rem; opacity: 0.85; }
+  .hud__bloco--nome { flex: 1; font-size: 0.95rem; font-weight: 700; opacity: 0.95; justify-content: center; }
+  .hud__bloco--vidas { align-items: center; }
+  .vidas { font-size: 1.1rem; letter-spacing: 2px; }
+  .hud__mute {
+    width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.16);
+    font-size: 1.15rem; display: grid; place-items: center; color: #fff;
+    flex-shrink: 0;
+  }
+  .hud__mute:hover { background: rgba(255, 255, 255, 0.3); }
+  .hud__mute[hidden] { display: none; }
+
+  /* ===== Missão ===== */
+  .missao[hidden] { display: none; }
+  .missao {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 10px auto 0;
+    padding: 10px 18px;
+    max-width: min(92vw, 560px);
+    background: #fffdf5;
+    border: 2px solid #e8ddc0;
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(12, 74, 110, 0.25);
+    color: #333;
+    z-index: 5;
+  }
+  .missao__moldura {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    padding: 3px;
+    background: #fff;
+    border: 1.5px solid #d9cfae;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  }
+  .missao__bandeira { display: block; width: 88px; height: 66px; object-fit: cover; border-radius: 4px; }
+  .missao__textos { min-width: 0; }
+  .missao__pergunta { font-size: clamp(1.02rem, 3vw, 1.3rem); font-weight: 700; color: #16425b; }
+  .missao__pergunta b { color: #c0392b; }
+  .missao__dica {
+    margin-top: 3px;
+    font-size: clamp(0.82rem, 2.4vw, 0.95rem);
+    font-weight: 700;
+    color: #7a5fd0;
+    min-height: 1.3em;
+  }
+
+  /* ===== Mapa ===== */
+  .mapa-wrap {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    padding: clamp(6px, 2vh, 18px);
+  }
+  .mapa {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 6px 14px rgba(12, 74, 110, 0.3));
+    transition: opacity 0.3s ease;
+  }
+  .mapa.trocando { opacity: 0; }
+
+  .mapa :global(path) {
+    fill: #f2ecd8;
+    stroke: #b8a878;
+    stroke-width: 0.7;
+    stroke-linejoin: round;
+    cursor: pointer;
+    transition: fill 0.15s ease;
+  }
+  .mapa :global(path:hover) { fill: #ffe9a8; }
+  .mapa :global(path.achado) { fill: #6cc24a; stroke: #3f8a2e; cursor: default; }
+  .mapa :global(path.achado:hover) { fill: #6cc24a; }
+  .mapa :global(path.errado) { animation: treme 0.4s ease; fill: #e8896c; }
+  .mapa :global(path.pisca) { animation: pisca 0.55s ease 2; }
+  .mapa :global(path.pulsa) { animation: pisca 1s ease infinite; }
+
+  @keyframes treme {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+  }
+  @keyframes pisca {
+    0%, 100% { fill: #f2ecd8; }
+    50% { fill: #ffd23f; }
+  }
+
+  /* ===== Modais (mesmo padrão dos outros jogos) ===== */
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(12, 40, 60, 0.55);
+    backdrop-filter: blur(3px);
+  }
+  .modal[hidden] { display: none; }
+
+  .placa {
+    width: min(94vw, 520px);
+    max-height: 92svh;
+    overflow: auto;
+    border-radius: 18px;
+    background: #fffdf5;
+    color: #333;
+    border: 3px solid #16425b;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  }
+  .placa__topo {
+    padding: 14px 20px;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(90deg, #1084d0, #16425b);
+  }
+  .placa__corpo { padding: 18px 20px 20px; }
+  .placa__corpo.center { text-align: center; }
+
+  .regras { padding-left: 22px; display: grid; gap: 9px; font-size: 0.94rem; line-height: 1.5; }
+  .escolha__titulo { margin: 16px 0 10px; font-weight: 800; font-size: 0.98rem; }
+  .escolha { display: grid; gap: 10px; }
+  .botao-modo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 2px solid #d9cfae;
+    background: #fff;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .botao-modo:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
+  .botao-modo--vidas:hover { border-color: #c0392b; }
+  .botao-modo--tranquilo:hover { border-color: #1084d0; }
+  .botao-modo__titulo { font-weight: 800; font-size: 1rem; color: #16425b; }
+  .botao-modo small { font-size: 0.8rem; color: #6b6b70; line-height: 1.4; }
+
+  .grande { font-size: 1.1rem; font-weight: 800; color: #16425b; }
+  .placar { margin-top: 10px; font-size: 0.95rem; color: #444; }
+  .placar strong { color: #c0392b; font-size: 1.2rem; }
+  .aviso { margin-top: 6px; font-size: 0.9rem; color: #6b6b70; }
+  .botao {
+    margin-top: 16px;
+    padding: 12px 26px;
+    border-radius: 14px;
+    border: 0;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(180deg, #4aa3e0 0%, #1084d0 55%, #0c5e94 100%);
+    box-shadow: 0 3px 0 #0a4a75;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  .botao:hover { filter: brightness(1.08); }
+  .botao:active { transform: translateY(2px); box-shadow: none; }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mapa :global(path.errado),
+    .mapa :global(path.pisca),
+    .mapa :global(path.pulsa) { animation: none !important; }
+    .mapa :global(path.pulsa) { fill: #ffd23f; }
+    .mapa { transition: none; }
+    .hud__bloco strong { transition: none; }
+  }
+
+  @media (max-width: 560px) {
+    .hud { flex-wrap: wrap; gap: 8px 14px; padding: 8px 12px; }
+    .hud__bloco strong { font-size: 1.2rem; }
+    .hud__bloco--nome { display: none; }
+    .hud__mute { width: 36px; height: 36px; }
+    .missao { gap: 10px; padding: 8px 12px; }
+    .missao__bandeira { width: 64px; height: 48px; }
+  }
+</style>
+
+<script>
+  document.body.classList.add('is-class');
+
+  (() => {
+    const $ = (s) => document.querySelector(s);
+    const dados = JSON.parse($('[data-dados]').textContent);
+    const { paises, niveis, config: CFG } = dados;
+    const porId = Object.fromEntries(paises.map((p) => [p.id, p]));
+
+    const svg = $('[data-mapa]');
+    const pontosEl = $('[data-pontos]');
+    const achadosEl = $('[data-achados]');
+    const achadosTotalEl = $('[data-achados-total]');
+    const nivelNomeEl = $('[data-nivel-nome]');
+    const vidasWrap = $('[data-vidas-wrap]');
+    const vidasEl = $('[data-vidas]');
+    const bandeiraEl = $('[data-bandeira]');
+    const alvoNomeEl = $('[data-alvo-nome]');
+    const dicaEl = $('[data-dica]');
+    const anuncioEl = $('[data-anuncio]');
+
+    const reduzMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const estado = {
+      modo: 'tranquilo',
+      mudo: false,
+      nivel: 0,
+      fila: [],        // ids ainda não achados no nível (o alvo é fila[0])
+      erros: 0,        // erros no alvo atual
+      pontos: 0,
+      vidas: CFG.vidasIniciais,
+      seguidas: 0,     // acertos de primeira seguidos (recupera vida)
+      achadosNivel: 0,
+      achadosTotal: 0,
+      travado: true,   // ignora cliques (modais, transições)
+    };
+
+    // ===== Áudio (Web Audio, sem arquivos) =====
+    let actx = null;
+    function initAudio() {
+      if (actx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    function tom(freq, inicio, dur, tipo, vol) {
+      if (!actx) return;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = tipo; o.frequency.value = freq;
+      o.connect(g); g.connect(actx.destination);
+      const t = actx.currentTime + inicio;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur + 0.03);
+    }
+    function somAcerto() { if (estado.mudo) return; tom(700, 0, 0.09, 'triangle', 0.16); tom(950, 0.07, 0.1, 'triangle', 0.14); tom(1250, 0.14, 0.14, 'triangle', 0.12); }
+    function somErro() { if (estado.mudo) return; tom(210, 0, 0.2, 'sine', 0.09); }
+    function somCoracao() { if (estado.mudo) return; tom(660, 0, 0.12, 'triangle', 0.16); tom(990, 0.12, 0.2, 'triangle', 0.16); }
+    function somNivel() { if (estado.mudo) return; [523, 659, 784, 1046].forEach((f, i) => tom(f, i * 0.12, 0.22, 'triangle', 0.2)); }
+    function somFim() { if (estado.mudo) return; [392, 330, 262].forEach((f, i) => tom(f, i * 0.18, 0.3, 'sine', 0.14)); }
+
+    // ===== Mudo =====
+    const muteBtn = $('[data-mute]');
+    const muteIcon = $('[data-mute-icon]');
+    function aplicarMudo() {
+      muteBtn.setAttribute('aria-pressed', String(estado.mudo));
+      muteIcon.textContent = estado.mudo ? '🔈' : '🔊';
+      muteBtn.setAttribute('aria-label', estado.mudo ? 'Ligar o som' : 'Desligar o som');
+    }
+    (function initMudo() {
+      estado.mudo = localStorage.getItem('volta-ao-mundo:mudo') === '1';
+      aplicarMudo();
+    })();
+    muteBtn.addEventListener('click', () => {
+      estado.mudo = !estado.mudo;
+      localStorage.setItem('volta-ao-mundo:mudo', estado.mudo ? '1' : '0');
+      aplicarMudo();
+    });
+
+    // ===== Tela cheia =====
+    const fsBtn = $('[data-fullscreen]');
+    if (!document.fullscreenEnabled) {
+      fsBtn.hidden = true; // iPad/navegadores sem suporte
+    } else {
+      fsBtn.addEventListener('click', () => {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const cheio = !!document.fullscreenElement;
+        fsBtn.setAttribute('aria-pressed', String(cheio));
+        fsBtn.setAttribute('aria-label', cheio ? 'Sair da tela cheia' : 'Entrar em tela cheia');
+        $('[data-fullscreen-icon]').textContent = cheio ? '⊡' : '⛶';
+      });
+    }
+
+    // ===== Utilidades =====
+    function embaralhar(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function anuncia(txt) { anuncioEl.textContent = txt; }
+    function pop(el) {
+      el.classList.remove('pop');
+      void el.offsetWidth;
+      el.classList.add('pop');
+    }
+    function pathDe(id) { return svg.querySelector('[data-id="' + id + '"]'); }
+    const alvo = () => porId[estado.fila[0]];
+
+    // ===== ViewBox (zoom do continente) =====
+    let vbAnim = null;
+    function setViewBox(str, animar) {
+      const fim = str.split(' ').map(Number);
+      if (!animar || reduzMotion) { svg.setAttribute('viewBox', str); return; }
+      const ini = svg.getAttribute('viewBox').split(' ').map(Number);
+      const t0 = performance.now();
+      const DUR = 600;
+      cancelAnimationFrame(vbAnim);
+      const passo = (t) => {
+        const k = Math.min(1, (t - t0) / DUR);
+        const e = 1 - Math.pow(1 - k, 3); // ease-out
+        const vb = ini.map((v, i) => v + (fim[i] - v) * e);
+        svg.setAttribute('viewBox', vb.join(' '));
+        if (k < 1) vbAnim = requestAnimationFrame(passo);
+      };
+      vbAnim = requestAnimationFrame(passo);
+    }
+
+    // ===== HUD =====
+    function atualizarHud() {
+      pontosEl.textContent = estado.pontos;
+      achadosEl.textContent = estado.achadosNivel;
+      achadosTotalEl.textContent = 'de ' + niveis[estado.nivel].paises.length;
+      const n = niveis[estado.nivel];
+      nivelNomeEl.textContent = n.emoji + ' ' + n.nome;
+      vidasEl.textContent = '❤️'.repeat(estado.vidas) + '🖤'.repeat(Math.max(0, CFG.vidasIniciais - estado.vidas));
+    }
+
+    // ===== Missão (bandeira + pergunta) =====
+    function mostrarAlvo() {
+      const p = alvo();
+      if (!p) return;
+      bandeiraEl.src = '/class/games/volta-ao-mundo/flags/' + p.cc + '.svg';
+      bandeiraEl.alt = 'Bandeira de ' + p.nome.replace(/^(o|a|os|as) /, '');
+      alvoNomeEl.textContent = p.nome;
+      dicaEl.textContent = '';
+      estado.erros = 0;
+      anuncia('Encontre ' + p.nome + ' no mapa.');
+    }
+
+    // ===== Dicas progressivas =====
+    function dicaDirecao(cliqueId) {
+      const p = alvo();
+      const c = porId[cliqueId];
+      // Sem centroide do clique (país fora da lista curada): compara com o centro da tela
+      let cx, cy;
+      if (c) { cx = c.cx; cy = c.cy; }
+      else {
+        const vb = svg.getAttribute('viewBox').split(' ').map(Number);
+        cx = vb[0] + vb[2] / 2; cy = vb[1] + vb[3] / 2;
+      }
+      const dx = p.cx - cx;
+      const dy = p.cy - cy;
+      const partes = [];
+      if (Math.abs(dy) > 12) partes.push(dy < 0 ? 'pra CIMA ⬆️' : 'pra BAIXO ⬇️');
+      if (Math.abs(dx) > 12) partes.push(dx < 0 ? 'pra ESQUERDA ⬅️' : 'pra DIREITA ➡️');
+      return partes.length ? 'Dica: é mais ' + partes.join(' e ') + '!' : 'Dica: é bem pertinho daí! 🔎';
+    }
+    function darDica(cliqueId) {
+      const p = alvo();
+      const el = pathDe(p.id);
+      if (estado.erros === 1) {
+        dicaEl.textContent = dicaDirecao(cliqueId);
+      } else if (estado.erros === 2) {
+        dicaEl.textContent = 'Olha o país piscando! ✨';
+        el.classList.remove('pisca');
+        void el.getBBox();
+        el.classList.add('pisca');
+        setTimeout(() => el.classList.remove('pisca'), 1300);
+      } else {
+        dicaEl.textContent = 'Toque no país amarelo brilhando! 💛';
+        el.classList.add('pulsa');
+      }
+      anuncia(dicaEl.textContent);
+    }
+
+    // ===== Fluxo do jogo =====
+    function comecarNivel(idx, animar) {
+      $('[data-missao]').hidden = false;
+      estado.nivel = idx;
+      estado.fila = embaralhar(niveis[idx].paises);
+      estado.achadosNivel = 0;
+      svg.querySelectorAll('.achado, .pulsa, .pisca').forEach((el) => el.classList.remove('achado', 'pulsa', 'pisca'));
+      setViewBox(niveis[idx].viewBox, animar);
+      atualizarHud();
+      mostrarAlvo();
+      estado.travado = false;
+    }
+
+    function acertou(el) {
+      const p = alvo();
+      el.classList.remove('pulsa', 'pisca');
+      el.classList.add('achado');
+      const primeira = estado.erros === 0;
+      estado.pontos += CFG.pontosAcerto + (primeira ? CFG.bonusPrimeira : 0);
+      estado.achadosNivel++;
+      estado.achadosTotal++;
+      estado.fila.shift();
+      somAcerto();
+      pop(pontosEl);
+      pop(achadosEl);
+      dicaEl.textContent = primeira ? 'De primeira! +' + (CFG.pontosAcerto + CFG.bonusPrimeira) + ' pontos! ⭐' : 'Achou! 🎉';
+      anuncia('Isso! Você achou ' + p.nome + '.');
+
+      // Recupera vida a cada N acertos de primeira (modo vidas)
+      if (estado.modo === 'vidas' && primeira) {
+        estado.seguidas++;
+        if (estado.seguidas >= CFG.acertosPraVida && estado.vidas < CFG.vidasIniciais) {
+          estado.seguidas = 0;
+          estado.vidas++;
+          somCoracao();
+          anuncia('Você recuperou um coração!');
+        }
+      } else if (!primeira) {
+        estado.seguidas = 0;
+      }
+      atualizarHud();
+
+      if (!estado.fila.length) {
+        estado.travado = true;
+        setTimeout(nivelCompleto, 700);
+      } else {
+        estado.travado = true;
+        setTimeout(() => { mostrarAlvo(); estado.travado = false; }, 900);
+      }
+    }
+
+    function errou(el, cliqueId) {
+      estado.erros++;
+      somErro();
+      if (el && !el.classList.contains('achado')) {
+        el.classList.remove('errado');
+        void el.getBBox();
+        el.classList.add('errado');
+        setTimeout(() => el.classList.remove('errado'), 450);
+      }
+      if (estado.modo === 'vidas') {
+        estado.vidas--;
+        estado.seguidas = 0;
+        atualizarHud();
+        if (estado.vidas <= 0) { fimDeJogo(); return; }
+      }
+      darDica(cliqueId);
+    }
+
+    function nivelCompleto() {
+      somNivel();
+      const prox = estado.nivel + 1;
+      if (prox >= niveis.length) { zerou(); return; }
+      $('[data-nivel-done-title]').textContent = niveis[estado.nivel].emoji + ' ' + niveis[estado.nivel].nome + ' completo!';
+      $('[data-nivel-score]').textContent = estado.pontos;
+      $('[data-nivel-next-label]').textContent = 'Próxima parada: ' + niveis[prox].emoji + ' ' + niveis[prox].nome;
+      $('[data-nivel-done]').hidden = false;
+      anuncia('Continente completo! Próxima parada: ' + niveis[prox].nome);
+    }
+
+    function fimDeJogo() {
+      estado.travado = true;
+      somFim();
+      $('[data-fim-score]').textContent = estado.pontos;
+      $('[data-fim-achados]').textContent = estado.achadosTotal;
+      $('[data-fim]').hidden = false;
+      anuncia('Fim da viagem. Você fez ' + estado.pontos + ' pontos.');
+    }
+
+    function zerou() {
+      $('[data-zerou-score]').textContent = estado.pontos;
+      $('[data-zerou]').hidden = false;
+      anuncia('Parabéns! Você deu a volta ao mundo com ' + estado.pontos + ' pontos!');
+    }
+
+    function reiniciar() {
+      estado.pontos = 0;
+      estado.vidas = CFG.vidasIniciais;
+      estado.seguidas = 0;
+      estado.achadosTotal = 0;
+      $('[data-fim]').hidden = true;
+      $('[data-zerou]').hidden = true;
+      comecarNivel(0, true);
+    }
+
+    // ===== Eventos =====
+    svg.addEventListener('click', (e) => {
+      if (estado.travado) return;
+      const el = e.target.closest('path[data-id]');
+      if (!el || el.classList.contains('achado')) return;
+      initAudio();
+      const id = el.dataset.id;
+      if (id === alvo().id) acertou(el);
+      else errou(el, id);
+    });
+
+    document.querySelectorAll('[data-modo]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        initAudio();
+        estado.modo = btn.dataset.modo;
+        vidasWrap.hidden = estado.modo !== 'vidas';
+        $('[data-intro]').hidden = true;
+        comecarNivel(0, true);
+      })
+    );
+
+    $('[data-next-nivel]').addEventListener('click', () => {
+      $('[data-nivel-done]').hidden = true;
+      comecarNivel(estado.nivel + 1, true);
+    });
+
+    document.querySelectorAll('[data-restart]').forEach((btn) => btn.addEventListener('click', reiniciar));
+  })();
+</script>

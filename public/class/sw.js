@@ -8,7 +8,13 @@
 
    Ao publicar mudança relevante, suba a versão do cache abaixo. */
 
-const CACHE = 'class-v1';
+const CACHE = 'class-v2';
+
+// Bandeiras do Volta ao Mundo (public/class/games/volta-ao-mundo/flags/).
+const BANDEIRAS = ('af ao ar au bo br ca cd cl cn co cr cu de dz ec eg es et fi fr gb gr gt gy hn id ie in iq ir is ' +
+  'it jp ke kr kz ly ma mg mn mx mz ng ni no nz pa pe ph pk pl pt py ro ru sa sd se sr th tr tz ua us uy ve vn za')
+  .split(' ')
+  .map((cc) => `/class/games/volta-ao-mundo/flags/${cc}.svg`);
 
 // Núcleo pré-cacheado na instalação: hub, listas e os jogos em si.
 const PRECACHE = [
@@ -16,15 +22,18 @@ const PRECACHE = [
   '/class/games/',
   '/class/games/trem-de-palavras/',
   '/class/games/letras-espaciais/',
+  '/class/games/volta-ao-mundo/',
   '/class/sims/',
   '/class/sims/windows-98/',
   '/class/professores/',
   '/class/manifest.webmanifest',
   '/class/icons/trem-de-palavras.jpg',
   '/class/icons/letras-espaciais.jpg',
+  '/class/icons/volta-ao-mundo.jpg',
   '/class/sims/wallpaper-98.jpg',
   '/favicon.png',
   '/icon-512.png',
+  ...BANDEIRAS,
 ];
 
 self.addEventListener('install', (event) => {
