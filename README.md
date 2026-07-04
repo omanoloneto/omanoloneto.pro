@@ -26,7 +26,7 @@ hospedagem de arquivos:
 
 ### Funcionalidades
 
-- 🎮 **Jogos educativos** — Trem de Palavras (sílabas), Letras Espaciais (teclado) e Volta ao Mundo (geografia: bandeira → achar o país no mapa), com botão de tela cheia
+- 🎮 **Jogos educativos** — Trem de Palavras (sílabas), Letras Espaciais (teclado), Volta ao Mundo (geografia no mapa) e O Pulo do Gato (plataforma troll: persistência e bom humor), com botão de tela cheia
 - 🖥️ **Simulador do Windows 98** — história da computação pra crianças
 - 👩‍🏫 **Guia pra professores** — `/class/professores`: série indicada, como usar em aula
 - 📴 **PWA / offline** — a sala de aula funciona sem internet depois da primeira visita (service worker + manifest)
@@ -83,6 +83,7 @@ src/
 │  ├─ site.ts               # nome, bio, email, redes sociais
 │  ├─ trem-de-palavras.ts   # palavras/níveis do jogo
 │  ├─ letras-espaciais.ts   # níveis do jogo
+│  ├─ pulo-do-gato.ts       # fases do plataforma (desenhadas em texto)
 │  └─ volta-ao-mundo.ts     # mapa SVG + países/níveis (GERADO, ver scripts/)
 ├─ components/
 │  └─ Icon.astro            # ícones SVG inline

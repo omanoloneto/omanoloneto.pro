@@ -1,0 +1,937 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { fases, config, mensagensQueda } from '../../../data/pulo-do-gato';
+
+const dadosJson = JSON.stringify({ fases, config, mensagensQueda });
+
+const title = 'O Pulo do Gato — o jogo de plataforma troll | Manolo Neto';
+const description =
+  'Jogo de plataforma troll pra rir e aprender a não desistir: chão falso, blocos invisíveis e bandeiras que fogem. Vidas infinitas, mortes engraçadas e recomeço instantâneo. Em português, direto no navegador.';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': ['VideoGame', 'LearningResource'],
+  name: 'O Pulo do Gato',
+  url: 'https://omanoloneto.pro/class/games/pulo-do-gato/',
+  description,
+  inLanguage: 'pt-BR',
+  isAccessibleForFree: true,
+  learningResourceType: 'Game',
+  educationalLevel: 'Ensino Fundamental',
+  teaches: 'Persistência e tolerância à frustração: errar, rir do erro, formular hipóteses e tentar de novo',
+  audience: { '@type': 'EducationalAudience', educationalRole: 'student' },
+  gamePlatform: 'Navegador web',
+  author: { '@type': 'Person', name: 'Manolo Neto', url: 'https://omanoloneto.pro' },
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL' },
+};
+---
+
+<Layout
+  title={title}
+  description={description}
+  ogImage="/og/class.png"
+  ogImageAlt="Sala do Professor Manolo — jogos educativos gratuitos pra sala de aula"
+  jsonLd={jsonLd}
+  fontes={false}
+  manifest="/class/manifest.webmanifest"
+  sw="/class/sw.js"
+  themeColor="#ffffff"
+>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="pg" data-game role="application" aria-label="Jogo de plataforma: leve o gato até a bandeira, desviando das pegadinhas">
+    <!-- HUD -->
+    <header class="hud" role="status" aria-live="polite">
+      <div class="hud__bloco">
+        <span class="hud__label">Pontos</span>
+        <strong data-pontos>0</strong>
+      </div>
+      <div class="hud__bloco">
+        <span class="hud__label">Fase</span>
+        <strong data-fase>1</strong>
+        <span class="hud__sub">de {fases.length}</span>
+      </div>
+      <div class="hud__bloco">
+        <span class="hud__label">Quedas</span>
+        <strong data-quedas>0</strong>
+        <span class="hud__sub">😹</span>
+      </div>
+      <div class="hud__bloco hud__bloco--nome" data-fase-nome aria-hidden="true"></div>
+      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <span data-mute-icon>🔊</span>
+      </button>
+      <button class="hud__mute" type="button" data-fullscreen aria-pressed="false" aria-label="Entrar em tela cheia">
+        <span data-fullscreen-icon>⛶</span>
+      </button>
+    </header>
+
+    <!-- Palco -->
+    <div class="palco">
+      <canvas class="tela" data-tela width="960" height="448" aria-hidden="true"></canvas>
+      <p class="toast" data-toast hidden></p>
+
+      <!-- Controles de toque (só aparecem em tela de toque) -->
+      <div class="controles" aria-hidden="true">
+        <div class="controles__lado">
+          <button class="ctl" type="button" data-ctl="esq">◀</button>
+          <button class="ctl" type="button" data-ctl="dir">▶</button>
+        </div>
+        <button class="ctl ctl--pulo" type="button" data-ctl="pulo">PULAR</button>
+      </div>
+    </div>
+
+    <!-- Modal: introdução + escolha de modo -->
+    <div class="modal" data-intro>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="placa__topo" id="intro-title">😼 O Pulo do Gato</div>
+        <div class="placa__corpo">
+          <ol class="regras">
+            <li>Leve o gato até a <b>bandeira</b> 🚩 — parece o joguinho de sempre…</li>
+            <li>…só que <b>este jogo TROLA você</b>: chão falso, blocos invisíveis, bandeira que foge! 😹</li>
+            <li>Morreu? <b>Não tem problema nenhum</b>: você volta na hora, com vidas infinitas.</li>
+            <li>O segredo: <b>observar, desconfiar e tentar de novo</b>. Esse é o pulo do gato!</li>
+          </ol>
+          <p class="regras__teclas">🎮 Setas ou <b>A</b>/<b>D</b> pra andar · <b>Espaço</b> ou ⬆️ pra pular · No tablet, botões na tela</p>
+          <p class="escolha__titulo">Como você quer jogar?</p>
+          <div class="escolha">
+            <button class="botao-modo botao-modo--troll" type="button" data-modo="troll">
+              <span class="botao-modo__titulo">😼 Troll total</span>
+              <small>As pegadinhas ficam 100% escondidas. Prepare o coração (e a risada).</small>
+            </button>
+            <button class="botao-modo botao-modo--dicas" type="button" data-modo="dicas">
+              <span class="botao-modo__titulo">😺 Com dicas</span>
+              <small>As armadilhas dão um brilhinho dourado. Bom pra jogar com os pequenos.</small>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: fase completa -->
+    <div class="modal" data-fase-done hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="fase-done-title">
+        <div class="placa__topo" id="fase-done-title" data-fase-done-title>Fase completa!</div>
+        <div class="placa__corpo center">
+          <p class="grande">🚩 Você achou a bandeira DE VERDADE!</p>
+          <p class="placar">Pontos: <strong data-fase-score>0</strong> · Quedas até aqui: <strong data-fase-quedas>0</strong> 😹</p>
+          <p class="aviso" data-fase-next-label></p>
+          <button class="botao botao--go" type="button" data-next-fase>Próxima fase 😼</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: zerou -->
+    <div class="modal" data-zerou hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="zerou-title">
+        <div class="placa__topo" id="zerou-title">🏆 VOCÊ ZEROU O PULO DO GATO!</div>
+        <div class="placa__corpo center">
+          <p class="grande">😹 O jogo tentou de tudo e você não desistiu. Isso é que é pulo do gato!</p>
+          <p class="placar">Pontos: <strong data-zerou-score>0</strong> · Quedas no total: <strong data-zerou-quedas>0</strong></p>
+          <p class="aviso">Cada queda foi uma lição. Conta pra turma quantas você levou!</p>
+          <button class="botao botao--go" type="button" data-restart>🔄 Jogar de novo</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="sr-only" data-anuncio aria-live="polite"></p>
+  </main>
+</Layout>
+
+<style is:global>
+  body.is-class { background: #fff; overflow-x: hidden; }
+  body.is-class::before { display: none !important; }
+</style>
+
+<style>
+  .pg {
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+    background: #78c0e8;
+    color: #fff;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  /* ===== HUD ===== */
+  .hud {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 3vw, 28px);
+    padding: 10px clamp(12px, 3vw, 24px);
+    background: rgba(43, 34, 74, 0.92);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    z-index: 5;
+  }
+  .hud__bloco { display: flex; align-items: baseline; gap: 7px; }
+  .hud__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
+  .hud__bloco strong { font-size: 1.55rem; line-height: 1; transition: transform 0.18s ease; }
+  .hud__bloco strong.pop { transform: scale(1.4); color: #ffe8a3; }
+  .hud__sub { font-size: 0.75rem; opacity: 0.85; }
+  .hud__bloco--nome { flex: 1; font-size: 0.95rem; font-weight: 700; opacity: 0.95; justify-content: center; }
+  .hud__mute {
+    width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.16);
+    font-size: 1.15rem; display: grid; place-items: center; color: #fff;
+    flex-shrink: 0;
+  }
+  .hud__mute:hover { background: rgba(255, 255, 255, 0.3); }
+  .hud__mute[hidden] { display: none; }
+
+  /* ===== Palco ===== */
+  .palco {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    padding: clamp(4px, 1.5vh, 14px);
+  }
+  .tela {
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 15 / 7;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(43, 34, 74, 0.35);
+    background: linear-gradient(180deg, #8ed0f5 0%, #bfe6fa 70%, #d8f0fc 100%);
+  }
+
+  .toast {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(18px, 12vh, 90px);
+    transform: translateX(-50%);
+    max-width: 90%;
+    padding: 10px 22px;
+    border-radius: 999px;
+    background: rgba(43, 34, 74, 0.92);
+    color: #ffe8a3;
+    font-weight: 800;
+    font-size: clamp(0.95rem, 2.6vw, 1.2rem);
+    text-align: center;
+    pointer-events: none;
+    animation: sobe 0.25s ease;
+    z-index: 6;
+  }
+  .toast[hidden] { display: none; }
+  @keyframes sobe {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* ===== Controles de toque ===== */
+  .controles {
+    position: absolute;
+    inset: auto 0 0 0;
+    display: none;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 18px 16px;
+    pointer-events: none;
+    z-index: 7;
+  }
+  @media (pointer: coarse) {
+    .controles { display: flex; }
+  }
+  .controles__lado { display: flex; gap: 12px; }
+  .ctl {
+    pointer-events: auto;
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    background: rgba(43, 34, 74, 0.55);
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  .ctl:active { background: rgba(43, 34, 74, 0.85); }
+  .ctl--pulo { width: 110px; font-size: 1rem; letter-spacing: 0.04em; }
+
+  /* ===== Modais (padrão da sala) ===== */
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(30, 22, 54, 0.6);
+    backdrop-filter: blur(3px);
+  }
+  .modal[hidden] { display: none; }
+  .placa {
+    width: min(94vw, 540px);
+    max-height: 92svh;
+    overflow: auto;
+    border-radius: 18px;
+    background: #fffdf5;
+    color: #333;
+    border: 3px solid #2b224a;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  }
+  .placa__topo {
+    padding: 14px 20px;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(90deg, #7a5fd0, #2b224a);
+  }
+  .placa__corpo { padding: 18px 20px 20px; }
+  .placa__corpo.center { text-align: center; }
+  .regras { padding-left: 22px; display: grid; gap: 9px; font-size: 0.94rem; line-height: 1.5; }
+  .regras__teclas {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #f4f1fb;
+    font-size: 0.82rem;
+    color: #55555c;
+  }
+  .escolha__titulo { margin: 14px 0 10px; font-weight: 800; font-size: 0.98rem; }
+  .escolha { display: grid; gap: 10px; }
+  .botao-modo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 2px solid #d9cfae;
+    background: #fff;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .botao-modo:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
+  .botao-modo--troll:hover { border-color: #2b224a; }
+  .botao-modo--dicas:hover { border-color: #e0a93b; }
+  .botao-modo__titulo { font-weight: 800; font-size: 1rem; color: #2b224a; }
+  .botao-modo small { font-size: 0.8rem; color: #6b6b70; line-height: 1.4; }
+  .grande { font-size: 1.1rem; font-weight: 800; color: #2b224a; }
+  .placar { margin-top: 10px; font-size: 0.95rem; color: #444; }
+  .placar strong { color: #c0392b; font-size: 1.2rem; }
+  .aviso { margin-top: 8px; font-size: 0.9rem; color: #6b6b70; }
+  .botao {
+    margin-top: 16px;
+    padding: 12px 26px;
+    border-radius: 14px;
+    border: 0;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(180deg, #8a6fe0 0%, #7a5fd0 55%, #5a3a9c 100%);
+    box-shadow: 0 3px 0 #4a2f80;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  .botao:hover { filter: brightness(1.08); }
+  .botao:active { transform: translateY(2px); box-shadow: none; }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (max-width: 560px) {
+    .hud { flex-wrap: wrap; gap: 8px 14px; padding: 8px 12px; }
+    .hud__bloco strong { font-size: 1.2rem; }
+    .hud__bloco--nome { display: none; }
+    .hud__mute { width: 36px; height: 36px; }
+  }
+</style>
+
+<script>
+  document.body.classList.add('is-class');
+
+  (() => {
+    const $ = (s) => document.querySelector(s);
+    const dados = JSON.parse($('[data-dados]').textContent);
+    const { fases, config: CFG, mensagensQueda } = dados;
+    const T = CFG.tile;
+
+    const canvas = $('[data-tela]');
+    const ctx = canvas.getContext('2d');
+    const pontosEl = $('[data-pontos]');
+    const faseEl = $('[data-fase]');
+    const quedasEl = $('[data-quedas]');
+    const faseNomeEl = $('[data-fase-nome]');
+    const toastEl = $('[data-toast]');
+    const anuncioEl = $('[data-anuncio]');
+
+    const reduzMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const estado = {
+      modo: 'troll',       // 'troll' | 'dicas'
+      mudo: false,
+      rodando: false,
+      fase: 0,
+      pontos: 0,
+      quedas: 0,
+      morto: 0,            // frames restantes de "morte" (congela e reinicia)
+      venceu: false,
+    };
+
+    // ===== Áudio (Web Audio, sem arquivos) =====
+    let actx = null;
+    function initAudio() {
+      if (actx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    function tom(freq, inicio, dur, tipo, vol) {
+      if (!actx) return;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = tipo; o.frequency.value = freq;
+      o.connect(g); g.connect(actx.destination);
+      const t = actx.currentTime + inicio;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur + 0.03);
+    }
+    function somPulo() { if (estado.mudo) return; tom(500, 0, 0.09, 'square', 0.06); tom(750, 0.05, 0.08, 'square', 0.05); }
+    function somPeixe() { if (estado.mudo) return; tom(880, 0, 0.07, 'triangle', 0.14); tom(1320, 0.06, 0.1, 'triangle', 0.12); }
+    function somPisao() { if (estado.mudo) return; tom(300, 0, 0.08, 'square', 0.12); tom(180, 0.06, 0.1, 'square', 0.1); }
+    function somMorte() { if (estado.mudo) return; [520, 390, 260, 160].forEach((f, i) => tom(f, i * 0.09, 0.14, 'square', 0.1)); }
+    function somTroll() { if (estado.mudo) return; tom(180, 0, 0.16, 'sawtooth', 0.08); tom(140, 0.12, 0.2, 'sawtooth', 0.07); }
+    function somPedra() { if (estado.mudo) return; tom(900, 0, 0.25, 'sine', 0.05); tom(500, 0.2, 0.2, 'sine', 0.06); }
+    function somFase() { if (estado.mudo) return; [523, 659, 784, 1046].forEach((f, i) => tom(f, i * 0.12, 0.22, 'triangle', 0.2)); }
+
+    // ===== Mudo / Tela cheia (padrão da sala) =====
+    const muteBtn = $('[data-mute]');
+    const muteIcon = $('[data-mute-icon]');
+    function aplicarMudo() {
+      muteBtn.setAttribute('aria-pressed', String(estado.mudo));
+      muteIcon.textContent = estado.mudo ? '🔈' : '🔊';
+      muteBtn.setAttribute('aria-label', estado.mudo ? 'Ligar o som' : 'Desligar o som');
+    }
+    estado.mudo = localStorage.getItem('pulo-do-gato:mudo') === '1';
+    aplicarMudo();
+    muteBtn.addEventListener('click', () => {
+      estado.mudo = !estado.mudo;
+      localStorage.setItem('pulo-do-gato:mudo', estado.mudo ? '1' : '0');
+      aplicarMudo();
+    });
+
+    const fsBtn = $('[data-fullscreen]');
+    if (!document.fullscreenEnabled) {
+      fsBtn.hidden = true;
+    } else {
+      fsBtn.addEventListener('click', () => {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const cheio = !!document.fullscreenElement;
+        fsBtn.setAttribute('aria-pressed', String(cheio));
+        fsBtn.setAttribute('aria-label', cheio ? 'Sair da tela cheia' : 'Entrar em tela cheia');
+        $('[data-fullscreen-icon]').textContent = cheio ? '⊡' : '⛶';
+      });
+    }
+
+    // ===== Toast / anúncios =====
+    let toastTimer = 0;
+    function toast(txt, ms) {
+      toastEl.textContent = txt;
+      toastEl.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toastEl.hidden = true; }, ms || 1800);
+      anuncioEl.textContent = txt;
+    }
+
+    // ===== Fase: parse do mapa =====
+    let grade = [];      // grade[r][c] = { t, revelado, pisado, sumiu, popped }
+    let cols = 0, linhas = 0;
+    let jogador = null;
+    let inimigos = [], pedras = [], bandeirasFalsas = [], peixes = [], espinhosOcultos = [];
+    let inicioX = 0, inicioY = 0;
+    let camX = 0;
+    let tempo = 0;
+
+    function montarFase(idx) {
+      const mapa = fases[idx].mapa;
+      linhas = mapa.length;
+      cols = Math.max(...mapa.map((l) => l.length));
+      grade = [];
+      inimigos = []; pedras = []; bandeirasFalsas = []; peixes = []; espinhosOcultos = [];
+      for (let r = 0; r < linhas; r++) {
+        const linha = mapa[r].padEnd(cols, '.');
+        grade[r] = [];
+        for (let c = 0; c < cols; c++) {
+          let ch = linha[c];
+          const x = c * T, y = r * T;
+          if (ch === 'P') { inicioX = x + 5; inicioY = y; ch = '.'; }
+          else if (ch === 'E') { inimigos.push({ x, y: y + 6, w: 26, h: 26, vx: -0.8, vivo: true }); ch = '.'; }
+          else if (ch === 'C') { peixes.push({ x: x + 4, y: y + 4, pego: false }); ch = '.'; }
+          else if (ch === 'g') { bandeirasFalsas.push({ x, y: y - T, fugiu: false, sumiu: false, animX: x }); ch = '.'; }
+          else if (ch === 's') { espinhosOcultos.push({ c, r, popped: false, alt: 0 }); ch = '.'; }
+          grade[r][c] = { t: ch, revelado: false, pisado: 0, sumiu: false };
+        }
+      }
+      jogador = { x: inicioX, y: inicioY, w: 22, h: 28, vx: 0, vy: 0, chao: false, cara: 1 };
+      camX = 0;
+      atualizarHud();
+    }
+
+    const celula = (c, r) => (r >= 0 && r < linhas && c >= 0 && c < cols ? grade[r][c] : null);
+    function solida(c, r) {
+      const t = celula(c, r);
+      if (!t || t.sumiu) return false;
+      return t.t === '#' || t.t === 'B' || t.t === 'X' || t.t === '?' || t.t === 'b' || t.t === 'I' || t.t === 'F';
+    }
+
+    // ===== Entrada =====
+    const input = { esq: false, dir: false, pulo: false, puloAntes: false };
+    const mapaTeclas = {
+      ArrowLeft: 'esq', a: 'esq', A: 'esq',
+      ArrowRight: 'dir', d: 'dir', D: 'dir',
+      ArrowUp: 'pulo', w: 'pulo', W: 'pulo', ' ': 'pulo',
+    };
+    document.addEventListener('keydown', (e) => {
+      const acao = mapaTeclas[e.key];
+      if (!acao) return;
+      e.preventDefault();
+      input[acao] = true;
+    });
+    document.addEventListener('keyup', (e) => {
+      const acao = mapaTeclas[e.key];
+      if (acao) input[acao] = false;
+    });
+    document.querySelectorAll('[data-ctl]').forEach((btn) => {
+      const acao = { esq: 'esq', dir: 'dir', pulo: 'pulo' }[btn.dataset.ctl];
+      const liga = (v) => (e) => { e.preventDefault(); input[acao] = v; };
+      btn.addEventListener('pointerdown', liga(true));
+      btn.addEventListener('pointerup', liga(false));
+      btn.addEventListener('pointercancel', liga(false));
+      btn.addEventListener('pointerleave', liga(false));
+    });
+
+    // ===== HUD =====
+    function pop(el) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+    function atualizarHud() {
+      pontosEl.textContent = estado.pontos;
+      faseEl.textContent = estado.fase + 1;
+      quedasEl.textContent = estado.quedas;
+      faseNomeEl.textContent = '😼 ' + fases[estado.fase].nome;
+    }
+
+    // ===== Morte (engraçada, recomeço instantâneo) =====
+    function morrer() {
+      if (estado.morto) return;
+      estado.morto = 45; // ~0,75s congelado
+      estado.quedas++;
+      somMorte();
+      toast(mensagensQueda[Math.floor(Math.random() * mensagensQueda.length)]);
+      pop(quedasEl);
+      atualizarHud();
+    }
+
+    // ===== Física do jogador =====
+    function passoJogador() {
+      const j = jogador;
+      j.vx = (input.dir ? CFG.velocidade : 0) - (input.esq ? CFG.velocidade : 0);
+      if (j.vx) j.cara = Math.sign(j.vx);
+
+      if (input.pulo && !input.puloAntes && j.chao) {
+        j.vy = CFG.pulo;
+        j.chao = false;
+        somPulo();
+      }
+      input.puloAntes = input.pulo;
+
+      // — eixo X —
+      j.x += j.vx;
+      if (j.x < 0) j.x = 0;
+      let c0 = Math.floor(j.x / T), c1 = Math.floor((j.x + j.w - 1) / T);
+      let r0 = Math.floor(j.y / T), r1 = Math.floor((j.y + j.h - 1) / T);
+      for (let r = r0; r <= r1; r++) {
+        for (let c = c0; c <= c1; c++) {
+          if (!solida(c, r)) continue;
+          const cel = celula(c, r);
+          if (cel.t === 'I' && !cel.revelado) { cel.revelado = true; somTroll(); }
+          if (j.vx > 0) j.x = c * T - j.w;
+          else if (j.vx < 0) j.x = (c + 1) * T;
+        }
+      }
+
+      // — eixo Y —
+      j.vy = Math.min(j.vy + CFG.gravidade, 12);
+      j.y += j.vy;
+      j.chao = false;
+      c0 = Math.floor(j.x / T); c1 = Math.floor((j.x + j.w - 1) / T);
+      r0 = Math.floor(j.y / T); r1 = Math.floor((j.y + j.h - 1) / T);
+      for (let r = r0; r <= r1; r++) {
+        for (let c = c0; c <= c1; c++) {
+          if (!solida(c, r)) continue;
+          const cel = celula(c, r);
+          if (j.vy > 0) {
+            j.y = r * T - j.h;
+            j.vy = 0;
+            j.chao = true;
+            if (cel.t === 'F' && !cel.pisado) cel.pisado = 6; // treme e some rápido (senão dá pra atravessar correndo)
+          } else if (j.vy < 0) {
+            j.y = (r + 1) * T;
+            j.vy = 0.5;
+            if (cel.t === 'I' && !cel.revelado) { cel.revelado = true; somTroll(); toast('Um bloco invisível?! 😾'); }
+            else if (cel.t === '?') { cel.t = 'X'; pedras.push({ x: c * T + 3, y: (r - 1) * T - 4, vy: -3 }); somPedra(); }
+            else if (cel.t === 'b') { cel.t = 'X'; estado.pontos += CFG.pontosPeixe; somPeixe(); toast('Peixinho de verdade! 🐟'); pop(pontosEl); atualizarHud(); }
+          }
+        }
+      }
+
+      // caiu do mapa
+      if (j.y > linhas * T + 60) morrer();
+
+      // espinhos fixos
+      c0 = Math.floor(j.x / T); c1 = Math.floor((j.x + j.w - 1) / T);
+      r0 = Math.floor(j.y / T); r1 = Math.floor((j.y + j.h - 1) / T);
+      for (let r = r0; r <= r1; r++)
+        for (let c = c0; c <= c1; c++) {
+          const cel = celula(c, r);
+          if (cel && cel.t === '^') morrer();
+        }
+    }
+
+    // ===== Blocos que reagem =====
+    function passoBlocos() {
+      for (let r = 0; r < linhas; r++)
+        for (let c = 0; c < cols; c++) {
+          const cel = grade[r][c];
+          if (cel.t === 'F' && cel.pisado > 0) {
+            cel.pisado--;
+            if (cel.pisado === 0) { cel.sumiu = true; somTroll(); }
+          }
+          // "Pedra do céu": bloco ? alto demais pra bater — cai sozinho
+          // quando o gato passa embaixo. (Fase "O céu está caindo".)
+          if (cel.t === '?' && r < CFG.linhaCeu) {
+            const bx = c * T + T / 2;
+            if (Math.abs(jogador.x + jogador.w / 2 - bx) < 22 && jogador.y > r * T) {
+              cel.t = '.'; // o bloco inteiro despenca virando pedra
+              pedras.push({ x: c * T + 3, y: r * T, vy: 0 });
+              somPedra();
+            }
+          }
+        }
+      for (const e of espinhosOcultos) {
+        if (e.popped) { e.alt = Math.min(e.alt + 4, T); continue; }
+        const ex = e.c * T + T / 2;
+        const ey = e.r * T;
+        if (Math.abs(jogador.x + jogador.w / 2 - ex) < 70 && Math.abs(jogador.y + jogador.h - ey) < 80) {
+          e.popped = true;
+          somTroll();
+        }
+      }
+      // espinho oculto ativo mata
+      for (const e of espinhosOcultos) {
+        if (!e.popped || e.alt < 12) continue;
+        const ex = e.c * T, ey = e.r * T - e.alt + T;
+        if (jogador.x < ex + T && jogador.x + jogador.w > ex && jogador.y < e.r * T + T && jogador.y + jogador.h > ey) morrer();
+      }
+    }
+
+    // ===== Inimigos =====
+    function passoInimigos() {
+      for (const ini of inimigos) {
+        if (!ini.vivo) continue;
+        ini.x += ini.vx;
+        const frenteC = Math.floor((ini.vx > 0 ? ini.x + ini.w + 1 : ini.x - 1) / T);
+        const meioR = Math.floor((ini.y + ini.h / 2) / T);
+        const peR = Math.floor((ini.y + ini.h + 2) / T);
+        if (solida(frenteC, meioR) || !solida(frenteC, peR)) ini.vx *= -1;
+
+        // encontro com o gato
+        const j = jogador;
+        if (j.x < ini.x + ini.w && j.x + j.w > ini.x && j.y < ini.y + ini.h && j.y + j.h > ini.y) {
+          if (j.vy > 0 && j.y + j.h - ini.y < 14) {
+            ini.vivo = false;
+            j.vy = -6.5;
+            estado.pontos += CFG.pontosInimigo;
+            somPisao();
+            pop(pontosEl);
+            atualizarHud();
+          } else morrer();
+        }
+      }
+    }
+
+    // ===== Pedras (do bloco "?") =====
+    function passoPedras() {
+      for (const p of pedras) {
+        p.vy = Math.min(p.vy + CFG.gravidade, 11);
+        p.y += p.vy;
+        const c = Math.floor((p.x + 13) / T), r = Math.floor((p.y + 26) / T);
+        if (solida(c, r)) { p.fim = true; continue; }
+        const j = jogador;
+        if (j.x < p.x + 26 && j.x + j.w > p.x && j.y < p.y + 26 && j.y + j.h > p.y) { p.fim = true; morrer(); }
+      }
+      pedras = pedras.filter((p) => !p.fim && p.y < linhas * T + 100);
+    }
+
+    // ===== Peixes e bandeiras =====
+    function passoItens() {
+      const j = jogador;
+      for (const p of peixes) {
+        if (p.pego) continue;
+        if (j.x < p.x + 24 && j.x + j.w > p.x && j.y < p.y + 24 && j.y + j.h > p.y) {
+          p.pego = true;
+          estado.pontos += CFG.pontosPeixe;
+          somPeixe();
+          pop(pontosEl);
+          atualizarHud();
+        }
+      }
+      for (const b of bandeirasFalsas) {
+        if (b.sumiu) continue;
+        b.x += (b.animX - b.x) * 0.15; // desliza quando foge
+        if (j.x < b.x + T && j.x + j.w > b.x && j.y < b.y + 2 * T && j.y + j.h > b.y) {
+          if (!b.fugiu) {
+            b.fugiu = true;
+            b.animX = b.x + 5 * T;
+            somTroll();
+            toast('Ei! A bandeira FUGIU! 😹');
+          } else {
+            b.sumiu = true;
+            somTroll();
+            toast('Era uma bandeira de mentira! 😹');
+          }
+        }
+      }
+      // bandeira de verdade: procura o G no mapa
+      const c = Math.floor((j.x + j.w / 2) / T), r = Math.floor((j.y + j.h / 2) / T);
+      const cel = celula(c, r);
+      if (cel && cel.t === 'G') faseCompleta();
+    }
+
+    // ===== Fluxo =====
+    function faseCompleta() {
+      if (!estado.rodando) return;
+      estado.rodando = false;
+      estado.pontos += CFG.pontosFase;
+      atualizarHud();
+      somFase();
+      const prox = estado.fase + 1;
+      if (prox >= fases.length) {
+        $('[data-zerou-score]').textContent = estado.pontos;
+        $('[data-zerou-quedas]').textContent = estado.quedas;
+        $('[data-zerou]').hidden = false;
+        anuncioEl.textContent = 'Você zerou o jogo com ' + estado.pontos + ' pontos e ' + estado.quedas + ' quedas!';
+        return;
+      }
+      $('[data-fase-done-title]').textContent = '😼 "' + fases[estado.fase].nome + '" completa!';
+      $('[data-fase-score]').textContent = estado.pontos;
+      $('[data-fase-quedas]').textContent = estado.quedas;
+      $('[data-fase-next-label]').textContent = 'Próxima: "' + fases[prox].nome + '" — ' + fases[prox].dica;
+      $('[data-fase-done]').hidden = false;
+      anuncioEl.textContent = 'Fase completa!';
+    }
+
+    function reiniciar() {
+      estado.pontos = 0;
+      estado.quedas = 0;
+      estado.fase = 0;
+      $('[data-zerou]').hidden = true;
+      montarFase(0);
+      estado.rodando = true;
+    }
+
+    // ===== Desenho =====
+    function bloco(x, y, cor, borda) {
+      ctx.fillStyle = cor;
+      ctx.fillRect(x, y, T, T);
+      ctx.strokeStyle = borda;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 1, y + 1, T - 2, T - 2);
+    }
+    function espinho(x, y, alt) {
+      ctx.fillStyle = '#8e9aa5';
+      for (let i = 0; i < 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x + i * (T / 2), y + T);
+        ctx.lineTo(x + i * (T / 2) + T / 4, y + T - alt);
+        ctx.lineTo(x + i * (T / 2) + T / 2, y + T);
+        ctx.fill();
+      }
+    }
+    function brilhoTroll(x, y) {
+      if (estado.modo !== 'dicas') return;
+      ctx.save();
+      ctx.globalAlpha = 0.35 + 0.25 * Math.sin(tempo / 10);
+      ctx.strokeStyle = '#ffd23f';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x + 2, y + 2, T - 4, T - 4);
+      ctx.restore();
+    }
+    function emoji(ch, x, y, tam, flip) {
+      ctx.save();
+      ctx.font = tam + 'px serif';
+      ctx.textBaseline = 'top';
+      if (flip) {
+        ctx.translate(x + tam, y);
+        ctx.scale(-1, 1);
+        ctx.fillText(ch, 0, 0);
+      } else {
+        ctx.fillText(ch, x, y);
+      }
+      ctx.restore();
+    }
+
+    function desenhar() {
+      const W = canvas.width, H = canvas.height;
+      // céu
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, '#8ed0f5');
+      grad.addColorStop(0.7, '#bfe6fa');
+      grad.addColorStop(1, '#d8f0fc');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      // nuvens (parallax simples)
+      ctx.globalAlpha = 0.8;
+      for (let i = 0; i < 5; i++) {
+        const nx = ((i * 260 - camX * 0.3) % (W + 200) + W + 200) % (W + 200) - 100;
+        emoji('☁️', nx, 30 + (i % 3) * 42, 40, false);
+      }
+      ctx.globalAlpha = 1;
+
+      ctx.save();
+      // câmera arredondada: evita frestas de anti-aliasing entre os blocos
+      ctx.translate(-Math.round(camX), 0);
+      const cIni = Math.floor(camX / T), cFim = Math.min(cols - 1, cIni + CFG.colunasTela + 1);
+
+      for (let r = 0; r < linhas; r++) {
+        for (let c = cIni; c <= cFim; c++) {
+          const cel = grade[r][c];
+          if (!cel || cel.sumiu) continue;
+          let x = c * T, y = r * T;
+          switch (cel.t) {
+            case '#':
+            case 'F': {
+              if (cel.t === 'F' && cel.pisado > 0 && !reduzMotion) x += Math.random() * 4 - 2;
+              ctx.fillStyle = '#9c6b3c';
+              ctx.fillRect(x, y, T, T);
+              if (!solida(c, r - 1)) { ctx.fillStyle = '#6cc24a'; ctx.fillRect(x, y, T, 8); }
+              if (cel.t === 'F') brilhoTroll(x, y);
+              break;
+            }
+            case 'B': bloco(x, y, '#d98a3d', '#a35f22'); break;
+            case 'X': bloco(x, y, '#b8b2a6', '#8e887c'); break;
+            case '?':
+            case 'b': {
+              bloco(x, y, '#ffd23f', '#d99e1b');
+              ctx.fillStyle = '#7a5205';
+              ctx.font = 'bold 20px Verdana';
+              ctx.textBaseline = 'top';
+              ctx.fillText('?', x + 10, y + 6);
+              if (cel.t === '?') brilhoTroll(x, y);
+              break;
+            }
+            case 'I': {
+              if (cel.revelado) {
+                ctx.save();
+                ctx.globalAlpha = 0.55;
+                bloco(x, y, '#e8f4fb', '#9cc7de');
+                ctx.restore();
+              } else brilhoTroll(x, y);
+              break;
+            }
+            case '^': espinho(x, y, T * 0.8); break;
+            case 'G': {
+              ctx.fillStyle = '#5a4632';
+              ctx.fillRect(x + T / 2 - 2, y - T, 4, 2 * T);
+              emoji('🚩', x + T / 2, y - T - 4, 26, false);
+              break;
+            }
+          }
+        }
+      }
+
+      // espinhos ocultos
+      for (const e of espinhosOcultos) {
+        if (e.popped) espinho(e.c * T, e.r * T, Math.min(e.alt, T * 0.8));
+        else if (estado.modo === 'dicas') brilhoTroll(e.c * T, e.r * T);
+      }
+      // peixes
+      for (const p of peixes) if (!p.pego) emoji('🐟', p.x, p.y + 2 * Math.sin(tempo / 14 + p.x), 22, false);
+      // pedras
+      for (const p of pedras) emoji('🪨', p.x, p.y, 26, false);
+      // bandeiras falsas (idênticas à verdadeira — a graça é essa)
+      for (const b of bandeirasFalsas) {
+        if (b.sumiu) continue;
+        ctx.fillStyle = '#5a4632';
+        ctx.fillRect(b.x + T / 2 - 2, b.y, 4, 2 * T);
+        emoji('🚩', b.x + T / 2, b.y - 4, 26, false);
+        if (estado.modo === 'dicas') brilhoTroll(b.x, b.y + T);
+      }
+      // inimigos
+      for (const ini of inimigos) if (ini.vivo) emoji('👾', ini.x - 2, ini.y - 2, 28, ini.vx > 0);
+      // gato
+      const j = jogador;
+      emoji(estado.morto ? '🙀' : '😼', j.x - 4, j.y - 3, 30, j.cara < 0);
+      ctx.restore();
+    }
+
+    // ===== Loop =====
+    let ultimo = 0, acum = 0;
+    function quadro(t) {
+      requestAnimationFrame(quadro);
+      const dt = Math.min(50, t - ultimo);
+      ultimo = t;
+      if (!estado.rodando) { desenhar(); return; }
+      acum += dt;
+      while (acum >= 1000 / 60) {
+        acum -= 1000 / 60;
+        tempo++;
+        if (estado.morto) {
+          estado.morto--;
+          if (estado.morto === 0) montarFase(estado.fase);
+          continue;
+        }
+        passoJogador();
+        passoBlocos();
+        passoInimigos();
+        passoPedras();
+        passoItens();
+        // câmera segue o gato
+        const alvoCam = Math.max(0, Math.min(jogador.x - canvas.width * 0.35, cols * T - canvas.width));
+        camX += (alvoCam - camX) * 0.12;
+      }
+      desenhar();
+    }
+
+    // ===== Botões =====
+    document.querySelectorAll('[data-modo]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        initAudio();
+        estado.modo = btn.dataset.modo;
+        $('[data-intro]').hidden = true;
+        montarFase(0);
+        estado.rodando = true;
+        anuncioEl.textContent = 'Fase 1: ' + fases[0].nome + '. Use as setas pra andar e espaço pra pular.';
+      })
+    );
+    $('[data-next-fase]').addEventListener('click', () => {
+      $('[data-fase-done]').hidden = true;
+      estado.fase++;
+      montarFase(estado.fase);
+      estado.rodando = true;
+    });
+    $('[data-restart]').addEventListener('click', reiniciar);
+
+    montarFase(0);
+    desenhar();
+    requestAnimationFrame(quadro);
+  })();
+</script>

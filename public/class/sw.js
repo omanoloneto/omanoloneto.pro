@@ -8,7 +8,7 @@
 
    Ao publicar mudança relevante, suba a versão do cache abaixo. */
 
-const CACHE = 'class-v2';
+const CACHE = 'class-v3';
 
 // Bandeiras do Volta ao Mundo (public/class/games/volta-ao-mundo/flags/).
 const BANDEIRAS = ('af ao ar au bo br ca cd cl cn co cr cu de dz ec eg es et fi fr gb gr gt gy hn id ie in iq ir is ' +
@@ -23,6 +23,7 @@ const PRECACHE = [
   '/class/games/trem-de-palavras/',
   '/class/games/letras-espaciais/',
   '/class/games/volta-ao-mundo/',
+  '/class/games/pulo-do-gato/',
   '/class/sims/',
   '/class/sims/windows-98/',
   '/class/professores/',
@@ -30,6 +31,7 @@ const PRECACHE = [
   '/class/icons/trem-de-palavras.jpg',
   '/class/icons/letras-espaciais.jpg',
   '/class/icons/volta-ao-mundo.jpg',
+  '/class/icons/pulo-do-gato.jpg',
   '/class/sims/wallpaper-98.jpg',
   '/favicon.png',
   '/icon-512.png',
