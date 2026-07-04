@@ -4,9 +4,9 @@ import { config, narrador } from '../../../data/golaco';
 
 const dadosJson = JSON.stringify({ config, narrador });
 
-const title = 'Golaço! — futebol arcade estilo videogame antigo | Manolo Neto';
+const title = 'Golaço! — futebol com câmera de TV, 11 contra 11 | Manolo Neto';
 const description =
-  'Futebol arcade pra jogar no navegador, no estilo dos videogames antigos: campo visto de cima, dois tempos, um botão de chute e troca automática de jogador. Felinos FC contra Robôs FC — em português e grátis.';
+  'Futebol arcade no navegador com cara de videogame de futebol clássico: câmera de TV acompanhando a bola, 11 contra 11, radar, passes e chutes no canto. Felinos FC contra Robôs FC — em português e grátis.';
 
 const jsonLd = {
   '@context': 'https://schema.org',
@@ -18,7 +18,7 @@ const jsonLd = {
   isAccessibleForFree: true,
   learningResourceType: 'Game',
   educationalLevel: 'Ensino Fundamental',
-  teaches: 'Coordenação motora, lateralidade, noção espacial e tomada de decisão rápida',
+  teaches: 'Coordenação motora, lateralidade, noção espacial e decisão rápida (passar, driblar ou chutar)',
   audience: { '@type': 'EducationalAudience', educationalRole: 'student' },
   gamePlatform: 'Navegador web',
   author: { '@type': 'Person', name: 'Manolo Neto', url: 'https://omanoloneto.pro' },
@@ -39,7 +39,7 @@ const jsonLd = {
 >
   <script type="application/json" data-dados set:html={dadosJson}></script>
 
-  <main id="conteudo" class="gl" data-game role="application" aria-label="Jogo de futebol: mova o jogador com as setas e chute com espaço">
+  <main id="conteudo" class="gl" data-game role="application" aria-label="Jogo de futebol: mova com as setas, passe com X e chute com espaço">
     <!-- HUD -->
     <header class="hud" role="status" aria-live="polite">
       <div class="hud__bloco hud__bloco--placar">
@@ -65,7 +65,7 @@ const jsonLd = {
 
     <!-- Palco -->
     <div class="palco">
-      <canvas class="tela" data-tela width={config.largura} height={config.altura} aria-hidden="true"></canvas>
+      <canvas class="tela" data-tela width={config.canvasL} height={config.canvasA} aria-hidden="true"></canvas>
       <p class="toast" data-toast hidden></p>
 
       <!-- Controles de toque -->
@@ -76,7 +76,10 @@ const jsonLd = {
           <button class="ctl dpad__dir" type="button" data-ctl="dir">▶</button>
           <button class="ctl dpad__baixo" type="button" data-ctl="baixo">▼</button>
         </div>
-        <button class="ctl ctl--chute" type="button" data-ctl="chute">CHUTAR</button>
+        <div class="acoes-toque">
+          <button class="ctl ctl--acao" type="button" data-ctl="passe">PASSE</button>
+          <button class="ctl ctl--acao ctl--chute" type="button" data-ctl="chute">CHUTE</button>
+        </div>
       </div>
     </div>
 
@@ -86,21 +89,21 @@ const jsonLd = {
         <div class="placa__topo" id="intro-title">⚽ Golaço!</div>
         <div class="placa__corpo">
           <ol class="regras">
-            <li>É o <b>{config.timeJogador.nome} {config.timeJogador.emoji}</b> contra o <b>{config.timeCpu.nome} {config.timeCpu.emoji}</b> — dois tempos de {config.minutosPorTempo} minutos.</li>
-            <li><b>Setas</b> movem o jogador — você controla sempre o que está <b>mais perto da bola</b> (a setinha amarela mostra quem é).</li>
-            <li><b>Espaço</b> chuta na direção em que você anda. Perto do gol… GOLAÇO! 🥅</li>
-            <li>Pra roubar a bola, é só <b>encostar</b> nela. Boa sorte, craque!</li>
+            <li>É o <b>{config.timeJogador.nome} {config.timeJogador.emoji}</b> contra o <b>{config.timeCpu.nome} {config.timeCpu.emoji}</b>: <b>11 contra 11</b>, câmera de TV e radar embaixo mostrando o campo inteiro.</li>
+            <li><b>Setas</b> movem — você controla quem está com a setinha amarela (troca sozinho pro mais perto da bola).</li>
+            <li><b>X</b> (ou Z) faz o <b>passe</b> pro companheiro na direção em que você aponta. Tabelinha é vida! 🔄</li>
+            <li><b>Espaço</b> é o <b>chute</b> — perto do gol, ele sai no canto longe do goleiro. 🥅</li>
           </ol>
-          <p class="regras__teclas">🎮 Setas ou <b>WASD</b> pra correr · <b>Espaço</b> pra chutar · No tablet, botões na tela</p>
+          <p class="regras__teclas">🎮 Setas/WASD correm · <b>X</b> passa · <b>Espaço</b> chuta · No tablet, botões na tela</p>
           <p class="escolha__titulo">Que jogo vai ser?</p>
           <div class="escolha">
             <button class="botao-modo botao-modo--amistoso" type="button" data-modo="amistoso">
               <span class="botao-modo__titulo">⚽ Amistoso</span>
-              <small>Os Robôs jogam devagarzinho. Bom pra aprender os controles e treinar o golaço.</small>
+              <small>Os Robôs jogam devagarzinho. Bom pra aprender a passar e chutar no canto.</small>
             </button>
             <button class="botao-modo botao-modo--decisao" type="button" data-modo="decisao">
               <span class="botao-modo__titulo">🏆 Decisão</span>
-              <small>Os Robôs vieram pra ganhar: são rápidos e chutam forte. Jogo de final de campeonato!</small>
+              <small>Os Robôs vieram pra ganhar: pressionam, tabelam e chutam forte. Final de campeonato!</small>
             </button>
           </div>
         </div>
@@ -134,7 +137,7 @@ const jsonLd = {
     display: flex;
     flex-direction: column;
     font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
-    background: #1e5c2e;
+    background: #123a1d;
     color: #fff;
     overflow: hidden;
     touch-action: manipulation;
@@ -182,7 +185,7 @@ const jsonLd = {
   .tela {
     max-width: 100%;
     max-height: 100%;
-    aspect-ratio: 20 / 11;
+    aspect-ratio: 16 / 9;
     border-radius: 10px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
     background: #2e7d3f;
@@ -235,6 +238,7 @@ const jsonLd = {
   .dpad__esq { grid-column: 1; grid-row: 2; }
   .dpad__dir { grid-column: 3; grid-row: 2; }
   .dpad__baixo { grid-column: 2; grid-row: 2; }
+  .acoes-toque { display: flex; gap: 10px; align-items: flex-end; }
   .ctl {
     pointer-events: auto;
     width: 56px;
@@ -252,7 +256,8 @@ const jsonLd = {
     touch-action: none;
   }
   .ctl:active { background: rgba(10, 40, 18, 0.9); }
-  .ctl--chute { width: 110px; height: 74px; font-size: 0.95rem; letter-spacing: 0.04em; border-radius: 20px; }
+  .ctl--acao { width: 92px; height: 66px; font-size: 0.9rem; letter-spacing: 0.04em; border-radius: 18px; }
+  .ctl--chute { height: 78px; }
 
   /* ===== Modais (padrão da sala) ===== */
   .modal {
@@ -267,7 +272,7 @@ const jsonLd = {
   }
   .modal[hidden] { display: none; }
   .placa {
-    width: min(94vw, 540px);
+    width: min(94vw, 560px);
     max-height: 92svh;
     overflow: auto;
     border-radius: 18px;
@@ -362,7 +367,8 @@ const jsonLd = {
 
     const canvas = $('[data-tela]');
     const ctx = canvas.getContext('2d');
-    const W = CFG.largura, H = CFG.altura, M = CFG.margem;
+    const TL = CFG.canvasL, TA = CFG.canvasA;       // tela
+    const W = CFG.campoL, H = CFG.campoA, M = CFG.margem; // mundo
     const CY = H / 2;
     const golY0 = CY - CFG.bocaGol / 2, golY1 = CY + CFG.bocaGol / 2;
 
@@ -379,14 +385,33 @@ const jsonLd = {
       rodando: false,
       golsA: 0,
       golsB: 0,
-      etapa: 1,          // 1º ou 2º tempo
+      etapa: 1,
       segundos: 0,
       frames: 0,
-      festejo: 0,        // frames de comemoração (jogo congela)
-      dono: null,        // quem está com a bola
-      controlado: null,  // jogador humano da vez
+      festejo: 0,
+      dono: null,
+      controlado: null,
+      passeAlvo: null,  // recebedor do passe em voo (trava a troca automática)
+      passeTimer: 0,
+      tempo: 0, // contador de quadros (animação)
     };
     const dif = () => CFG.modos[estado.modo];
+
+    // ===== Câmera de TV =====
+    const zoom = TL / CFG.camJanela;
+    const SQ = CFG.camSquash;
+    const cam = { x: W / 2, y: CY };
+    const visMeiaAltura = TA / 2 / (zoom * SQ);
+    function passoCamera(suave) {
+      const ax = Math.max(M + 470, Math.min(W - M - 470, bola.x));
+      const ay = Math.max(M + visMeiaAltura - 120, Math.min(H - M - visMeiaAltura + 120, bola.y));
+      const k = suave ? 0.06 : 1;
+      cam.x += (ax - cam.x) * k;
+      cam.y += (ay - cam.y) * k;
+    }
+    const px = (wx) => (wx - cam.x) * zoom + TL / 2;
+    const py = (wy) => (wy - cam.y) * zoom * SQ + TA / 2;
+    const escala = (wy) => 0.8 + 0.45 * ((wy - M) / (H - 2 * M));
 
     // ===== Áudio =====
     let actx = null;
@@ -408,6 +433,7 @@ const jsonLd = {
       o.start(t); o.stop(t + dur + 0.03);
     }
     function somChute() { if (estado.mudo) return; tom(220, 0, 0.06, 'square', 0.1); }
+    function somPasse() { if (estado.mudo) return; tom(320, 0, 0.04, 'square', 0.07); }
     function somApito() { if (estado.mudo) return; tom(2200, 0, 0.18, 'square', 0.06); tom(2200, 0.25, 0.3, 'square', 0.06); }
     function somRoubo() { if (estado.mudo) return; tom(340, 0, 0.05, 'triangle', 0.1); }
     function somTorcida() {
@@ -471,44 +497,49 @@ const jsonLd = {
     }
     const sorteia = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-    // ===== Jogadores =====
-    // Time A (humano) defende a ESQUERDA e ataca a DIREITA. Time B é o oposto.
-    // Formação: goleiro + zagueiro + dois alas.
+    // ===== Times (11 contra 11) =====
+    // Time A (humano) defende a ESQUERDA e ataca a DIREITA.
     function fazTime(time) {
-      const espelho = time === 'B' ? -1 : 1;
-      const gx = time === 'A' ? M + 18 : W - M - 18;
-      const base = (fx, fy) => ({ x: W / 2 + espelho * fx, y: CY + fy });
-      return [
-        { time, papel: 'goleiro', ...base(0, 0), x: gx, y: CY, baseX: gx, baseY: CY, cd: 0, segura: 0, dirX: espelho, dirY: 0 },
-        { time, papel: 'linha', ...pos(base(-250, 0)), cd: 0, dirX: espelho, dirY: 0 },
-        { time, papel: 'linha', ...pos(base(-80, -114)), cd: 0, dirX: espelho, dirY: 0 },
-        { time, papel: 'linha', ...pos(base(-80, 114)), cd: 0, dirX: espelho, dirY: 0 },
-      ];
-      function pos(p) { return { x: p.x, y: p.y, baseX: p.x, baseY: p.y }; }
+      const larg = W - 2 * M;
+      const meiaAlt = (H - 2 * M) / 2 - 60;
+      const lista = [];
+      const gx = time === 'A' ? M + 22 : W - M - 22;
+      lista.push({ time, papel: 'goleiro', x: gx, y: CY, baseX: gx, baseY: CY, cd: 0, segura: 0, dirX: time === 'A' ? 1 : -1, dirY: 0, anda: false });
+      for (const [fx, fy] of CFG.formacao) {
+        const x = time === 'A' ? M + fx * larg : W - M - fx * larg;
+        const y = CY + fy * meiaAlt;
+        lista.push({ time, papel: 'linha', x, y, baseX: x, baseY: y, cd: 0, dirX: time === 'A' ? 1 : -1, dirY: 0, anda: false });
+      }
+      return lista;
     }
     let jogadores = [];
-    const bola = { x: W / 2, y: CY, vx: 0, vy: 0, giro: 0 };
+    const bola = { x: W / 2, y: CY, vx: 0, vy: 0, z: 0, vz: 0, giro: 0 };
 
     function armarKickoff() {
       jogadores = [...fazTime('A'), ...fazTime('B')];
-      bola.x = W / 2; bola.y = CY; bola.vx = 0; bola.vy = 0;
+      bola.x = W / 2; bola.y = CY; bola.vx = 0; bola.vy = 0; bola.z = 0; bola.vz = 0;
       estado.dono = null;
-      estado.controlado = jogadores[1];
+      estado.controlado = jogadores.find((j) => j.time === 'A' && j.papel === 'linha' && Math.abs(j.baseY - CY) < 80);
+      cam.x = W / 2; cam.y = CY;
     }
 
     // ===== Entrada =====
-    const input = { esq: false, dir: false, cima: false, baixo: false, chute: false, chuteAntes: false };
+    // chuteTap/passeTap são "trincos": um toque mais curto que um quadro da
+    // simulação não pode se perder (teclado rápido ou aba lenta).
+    const input = { esq: false, dir: false, cima: false, baixo: false, chute: false, chuteTap: false, passe: false, passeTap: false };
     const mapaTeclas = {
       ArrowLeft: 'esq', a: 'esq', A: 'esq',
       ArrowRight: 'dir', d: 'dir', D: 'dir',
       ArrowUp: 'cima', w: 'cima', W: 'cima',
       ArrowDown: 'baixo', s: 'baixo', S: 'baixo',
-      ' ': 'chute', x: 'chute', X: 'chute',
+      ' ': 'chute',
+      x: 'passe', X: 'passe', z: 'passe', Z: 'passe',
     };
     document.addEventListener('keydown', (e) => {
       const acao = mapaTeclas[e.key];
       if (!acao) return;
       e.preventDefault();
+      if (!e.repeat && (acao === 'passe' || acao === 'chute')) input[acao + 'Tap'] = true;
       input[acao] = true;
     });
     document.addEventListener('keyup', (e) => {
@@ -517,7 +548,11 @@ const jsonLd = {
     });
     document.querySelectorAll('[data-ctl]').forEach((btn) => {
       const acao = btn.dataset.ctl;
-      const liga = (v) => (e) => { e.preventDefault(); input[acao] = v; };
+      const liga = (v) => (e) => {
+        e.preventDefault();
+        if (v && (acao === 'passe' || acao === 'chute')) input[acao + 'Tap'] = true;
+        input[acao] = v;
+      };
       btn.addEventListener('pointerdown', liga(true));
       btn.addEventListener('pointerup', liga(false));
       btn.addEventListener('pointercancel', liga(false));
@@ -529,35 +564,74 @@ const jsonLd = {
     function andaPara(j, tx, ty, vel) {
       const dx = tx - j.x, dy = ty - j.y;
       const d = Math.hypot(dx, dy);
+      j.anda = d > 3;
       if (d < 2) return;
       j.x += (dx / d) * Math.min(vel, d);
       j.y += (dy / d) * Math.min(vel, d);
       j.dirX = dx / d; j.dirY = dy / d;
     }
     function dentroDoCampo(j) {
-      j.x = Math.max(M + 6, Math.min(W - M - 6, j.x));
-      j.y = Math.max(M + 6, Math.min(H - M - 6, j.y));
+      j.x = Math.max(M + 8, Math.min(W - M - 8, j.x));
+      j.y = Math.max(M + 8, Math.min(H - M - 8, j.y));
     }
     function pop(el) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+    const goleiroDe = (time) => jogadores.find((g) => g.time === time && g.papel === 'goleiro');
 
-    // ===== Posse e chute =====
-    function chuta(j, dx, dy, forca) {
+    // ===== Posse, passe e chute =====
+    function chuta(j, dx, dy, forca, vz) {
       const d = Math.hypot(dx, dy) || 1;
       bola.vx = (dx / d) * forca;
       bola.vy = (dy / d) * forca;
+      bola.vz = vz || 0;
       estado.dono = null;
       j.cd = 18;
-      somChute();
+    }
+
+    function passar(j, dirx, diry) {
+      // 1ª escolha: companheiro no cone de ~±75° da direção apontada.
+      // Sem ninguém lá, vale qualquer companheiro razoável (criança apertou
+      // PASSE, a bola tem que ir pra ALGUÉM) — só não passa pra trás demais.
+      let melhor = null, melhorNota = -1;
+      for (const cone of [0.25, -0.5]) {
+        for (const t of jogadores) {
+          if (t.time !== j.time || t === j || t.papel === 'goleiro') continue;
+          const vx = t.x - j.x, vy = t.y - j.y;
+          const d = Math.hypot(vx, vy);
+          if (d < 60 || d > 750) continue;
+          const cos = (vx * dirx + vy * diry) / d;
+          if (cos < cone) continue;
+          const frente = j.time === 'A' ? (t.x - j.x) / 750 : (j.x - t.x) / 750;
+          const nota = cos * 2 + frente;
+          if (nota > melhorNota) { melhorNota = nota; melhor = t; }
+        }
+        if (melhor) break;
+      }
+      if (melhor) {
+        const lead = j.time === 'A' ? 34 : -34;
+        const dx = melhor.x + lead - j.x, dy = melhor.y - j.y;
+        const d = Math.hypot(dx, dy);
+        chuta(j, dx, dy, Math.min(CFG.forcaPasseMax, CFG.forcaPasseBase + d * CFG.forcaPassePorDist), 0);
+        somPasse();
+        if (j.time === 'A') {
+          // controle já vai pro recebedor e fica com ele até a bola chegar
+          estado.controlado = melhor;
+          estado.passeAlvo = melhor;
+          estado.passeTimer = 80;
+        }
+        return true;
+      }
+      // ninguém no cone: toco curto pra frente
+      chuta(j, dirx, diry, 6.2, 0);
+      somPasse();
+      return false;
     }
 
     function passoPosse() {
       const dono = estado.dono;
       if (dono) {
-        // bola colada no pé, na direção do movimento
-        bola.x = dono.x + dono.dirX * 16;
-        bola.y = dono.y + dono.dirY * 16;
-        bola.vx = 0; bola.vy = 0;
-        // desarme: adversário perto da BOLA rouba
+        bola.x = dono.x + dono.dirX * 18;
+        bola.y = dono.y + dono.dirY * 18;
+        bola.vx = 0; bola.vy = 0; bola.z = 0; bola.vz = 0;
         for (const j of jogadores) {
           if (j.time === dono.time || j.cd > 0 || j.papel === 'goleiro') continue;
           if (dist(j, bola) < CFG.distRoubo) {
@@ -569,10 +643,10 @@ const jsonLd = {
           }
         }
       } else {
-        // bola solta: quem chegar primeiro domina — mas bola RÁPIDA (chute)
-        // ninguém de linha consegue parar; só o goleiro pega (defesa!)
+        // bola alta ou rápida, jogador de linha não domina; só o goleiro pega
+        if (bola.z > CFG.alturaDominio) return;
         const velBola = Math.hypot(bola.vx, bola.vy);
-        if (velBola > 3.5) return;
+        if (velBola > CFG.velDominio) return;
         let melhor = null, melhorD = CFG.distDominio;
         for (const j of jogadores) {
           if (j.cd > 0) continue;
@@ -585,7 +659,14 @@ const jsonLd = {
 
     // ===== Cérebros =====
     function escolheControlado() {
-      // o humano controla o jogador de linha mais perto da bola (com histerese)
+      // passe em voo: controle preso no recebedor
+      if (estado.passeAlvo) {
+        if (estado.dono || estado.passeTimer-- <= 0) estado.passeAlvo = null;
+        else {
+          estado.controlado = estado.passeAlvo;
+          return;
+        }
+      }
       let melhor = null, melhorD = 1e9;
       for (const j of jogadores) {
         if (j.time !== 'A' || j.papel === 'goleiro') continue;
@@ -594,7 +675,13 @@ const jsonLd = {
       }
       const atual = estado.controlado;
       if (!atual || atual.papel === 'goleiro') estado.controlado = melhor;
-      else if (melhor !== atual && melhorD < dist(atual, bola) * 0.8) estado.controlado = melhor;
+      else if (melhor !== atual && atual !== estado.dono && melhorD < dist(atual, bola) * 0.8) estado.controlado = melhor;
+    }
+
+    function anchor(j) {
+      const ax = j.baseX + (bola.x - W / 2) * 0.4;
+      const ay = j.baseY + (bola.y - CY) * 0.3;
+      return [Math.max(M + 20, Math.min(W - M - 20, ax)), Math.max(M + 20, Math.min(H - M - 20, ay))];
     }
 
     function passoHumano() {
@@ -608,61 +695,80 @@ const jsonLd = {
         j.x += (dx / d) * vel;
         j.y += (dy / d) * vel;
         j.dirX = dx / d; j.dirY = dy / d;
+        j.anda = true;
+      } else j.anda = false;
+
+      // PASSE (trinco do toque)
+      if (input.passeTap && estado.dono === j) {
+        passar(j, dx || j.dirX, dy || j.dirY);
       }
-      // chute (na borda do apertar)
-      if (input.chute && !input.chuteAntes && estado.dono === j) {
+      input.passeTap = false;
+
+      // CHUTE (trinco do toque)
+      if (input.chuteTap && estado.dono === j) {
         let cx = dx, cy = dy;
         if (!cx && !cy) { cx = j.dirX; cy = j.dirY; }
-        // pertinho do gol e indo pra frente? ajuda a mirar no canto
-        // (de preferência no canto OPOSTO ao goleiro — o pulo do gato do futebol)
-        if (j.x > W - M - 320 && cx > 0) {
-          const goleiroB = jogadores.find((g) => g.time === 'B' && g.papel === 'goleiro');
-          // mira na trave mais longe do goleiro
-          const canto = goleiroB && goleiroB.y > CY ? golY0 + 14 : golY1 - 14;
-          cy = (canto - j.y) / 190;
-          cx = 1;
+        // na frente do ataque, mira assistida na trave mais longe do goleiro
+        if (j.x > W - M - 700 && cx >= 0) {
+          const golB = goleiroDe('B');
+          const canto = golB && golB.y > CY ? golY0 + 18 : golY1 - 18;
+          cx = W - M - j.x;
+          cy = canto - j.y;
         }
-        chuta(j, cx, cy, CFG.forcaChute);
+        chuta(j, cx, cy, CFG.forcaChute, 2.4);
+        somChute();
       }
-      input.chuteAntes = input.chute;
+      input.chuteTap = false;
 
-      // companheiros mantêm a formação (deslocada junto com a bola)
+      // companheiros: formação; se os robôs têm a bola, o mais perto ajuda a marcar
+      let marcador = null;
+      if (estado.dono && estado.dono.time === 'B') {
+        let melhorD = 1e9;
+        for (const t of jogadores) {
+          if (t.time !== 'A' || t.papel === 'goleiro' || t === j) continue;
+          const d = dist(t, bola);
+          if (d < melhorD) { melhorD = d; marcador = t; }
+        }
+      }
       for (const t of jogadores) {
         if (t.time !== 'A' || t === j || t.papel === 'goleiro') continue;
-        const ax = t.baseX + (bola.x - W / 2) * 0.35;
-        const ay = t.baseY + (bola.y - CY) * 0.3;
-        andaPara(t, ax, ay, CFG.velJogador * 0.85);
+        if (t === marcador) andaPara(t, bola.x, bola.y, CFG.velJogador * 0.9);
+        else {
+          const [ax, ay] = anchor(t);
+          andaPara(t, ax, ay, CFG.velJogador * 0.85);
+        }
       }
     }
 
     function passoCpu() {
       const D = dif();
       const dono = estado.dono;
-      // quem persegue: o robô de linha mais perto da bola
-      let perseguidor = null, melhorD = 1e9;
-      for (const j of jogadores) {
-        if (j.time !== 'B' || j.papel === 'goleiro') continue;
-        const d = dist(j, bola);
-        if (d < melhorD) { melhorD = d; perseguidor = j; }
-      }
-      for (const j of jogadores) {
-        if (j.time !== 'B' || j.papel === 'goleiro') continue;
+      // os dois robôs mais perto da bola pressionam
+      const linha = jogadores.filter((j) => j.time === 'B' && j.papel === 'linha');
+      const porPerto = [...linha].sort((a, b) => dist(a, bola) - dist(b, bola));
+      const cacadores = new Set([porPerto[0], porPerto[1]]);
+
+      for (const j of linha) {
         if (dono === j) {
-          // carrega pela própria ala (desloca o goleiro), mais devagar com a bola
-          andaPara(j, M + 30, j.y + (Math.random() * 24 - 12), D.velCpu * 0.88);
-          const pertoDoGol = j.x < M + 260;
-          const marcado = jogadores.some((h) => h.time === 'A' && dist(h, j) < 34);
-          if ((pertoDoGol || marcado) && Math.random() < D.reacaoCpu) {
-            // chuta na trave mais longe do goleiro humano
-            const goleiroA = jogadores.find((g) => g.time === 'A' && g.papel === 'goleiro');
-            const alvo = goleiroA && goleiroA.y > CY ? golY0 + 14 : golY1 - 14;
-            chuta(j, M - j.x, alvo - j.y, D.chuteCpu);
+          // carrega pela própria ala em direção ao gol esquerdo
+          andaPara(j, M + 40, j.y + (Math.random() * 24 - 12), D.velCpu * 0.88);
+          const pressionado = jogadores.some((h) => h.time === 'A' && h.papel === 'linha' && dist(h, j) < 45);
+          // pressionado? tenta tabela com companheiro mais livre
+          if (pressionado && Math.random() < D.passeCpu) {
+            passar(j, -1, Math.random() * 1.6 - 0.8);
+            continue;
           }
-        } else if (j === perseguidor && (!dono || dono.time === 'A')) {
+          const pertoDoGol = j.x < M + 320;
+          if ((pertoDoGol || (pressionado && j.x < W / 2)) && Math.random() < D.reacaoCpu) {
+            const golA = goleiroDe('A');
+            const alvo = golA && golA.y > CY ? golY0 + 18 : golY1 - 18;
+            chuta(j, M - j.x, alvo - j.y, D.chuteCpu, 2.2);
+            somChute();
+          }
+        } else if (cacadores.has(j) && (!dono || dono.time === 'A')) {
           andaPara(j, bola.x, bola.y, D.velCpu);
         } else {
-          const ax = j.baseX + (bola.x - W / 2) * 0.35;
-          const ay = j.baseY + (bola.y - CY) * 0.3;
+          const [ax, ay] = anchor(j);
           andaPara(j, ax, ay, D.velCpu * 0.85);
         }
       }
@@ -672,35 +778,36 @@ const jsonLd = {
       for (const g of jogadores) {
         if (g.papel !== 'goleiro') continue;
         if (estado.dono === g) {
-          // segura um pouquinho e repõe pro meio-campo
           g.segura++;
-          if (g.segura > 35) {
-            const alvoX = W / 2 + (g.time === 'A' ? 120 : -120);
-            chuta(g, alvoX - g.x, (Math.random() * 240 - 120), CFG.forcaChute);
+          if (g.segura > 40) {
+            // reposição alta pro meio-campo (a bola voa por cima de todo mundo)
+            const alvoX = W / 2 + (g.time === 'A' ? 260 : -260);
+            chuta(g, alvoX - g.x, Math.random() * 500 - 250, 12, 5);
+            somChute();
           }
           continue;
         }
-        const alvoY = Math.max(golY0 + 12, Math.min(golY1 - 12, bola.y));
+        const alvoY = Math.max(golY0 + 16, Math.min(golY1 - 16, bola.y));
         andaPara(g, g.baseX, alvoY, dif().velGoleiro);
-        // defende: pega a bola se ela chegar perto
-        if (g.cd === 0 && dist(g, bola) < 18 && estado.dono?.papel !== 'goleiro') {
-          if (estado.dono) estado.dono.cd = 40;
+        // defesa: o goleiro pega em qualquer altura (ele pula)
+        if (g.cd === 0 && dist(g, bola) < 24 && estado.dono?.papel !== 'goleiro' && !estado.dono) {
+          const veio = Math.hypot(bola.vx, bola.vy);
           estado.dono = g;
           g.segura = 0;
+          if (veio > 6) toast(sorteia(NARRA.defesa), 1300);
         }
       }
     }
 
-    // separação: ninguém fica amontoado
     function separa() {
       for (let i = 0; i < jogadores.length; i++)
         for (let k = i + 1; k < jogadores.length; k++) {
           const a = jogadores[i], b = jogadores[k];
           const d = dist(a, b);
-          if (d > 0 && d < 24) {
-            const px = (a.x - b.x) / d, py = (a.y - b.y) / d;
-            a.x += px; a.y += py;
-            b.x -= px; b.y -= py;
+          if (d > 0 && d < 26) {
+            const sx = (a.x - b.x) / d, sy = (a.y - b.y) / d;
+            a.x += sx; a.y += sy;
+            b.x -= sx; b.y -= sy;
           }
         }
     }
@@ -713,38 +820,43 @@ const jsonLd = {
       bola.vx *= CFG.atritoBola;
       bola.vy *= CFG.atritoBola;
       bola.giro += Math.hypot(bola.vx, bola.vy) * 0.06;
+      // altura
+      if (bola.z > 0 || bola.vz > 0) {
+        bola.z += bola.vz;
+        bola.vz -= 0.35;
+        if (bola.z <= 0) {
+          bola.z = 0;
+          bola.vz = bola.vz < -1.2 ? -bola.vz * 0.45 : 0;
+        }
+      }
       const r = CFG.raioBola;
-      // quica nas laterais de cima/baixo
       if (bola.y < M + r) { bola.y = M + r; bola.vy *= -0.8; }
       if (bola.y > H - M - r) { bola.y = H - M - r; bola.vy *= -0.8; }
       const naBoca = bola.y > golY0 && bola.y < golY1;
-      // GOL! (bola inteira passou da linha, dentro da boca)
       if (naBoca && bola.x < M - r) { gol('B'); return; }
       if (naBoca && bola.x > W - M + r) { gol('A'); return; }
-      // fora da boca: quica na linha de fundo
       if (!naBoca && bola.x < M + r) { bola.x = M + r; bola.vx *= -0.8; }
       if (!naBoca && bola.x > W - M - r) { bola.x = W - M - r; bola.vx *= -0.8; }
-      // fundo da rede segura a bola
       if (bola.x < M - CFG.fundoGol + r) { bola.x = M - CFG.fundoGol + r; bola.vx = 0; }
       if (bola.x > W - M + CFG.fundoGol - r) { bola.x = W - M + CFG.fundoGol - r; bola.vx = 0; }
     }
 
     function gol(time) {
-      estado.festejo = 130;
+      estado.festejo = 140;
       if (time === 'A') {
         estado.golsA++;
-        toast(sorteia(NARRA.gol), 2200);
+        toast(sorteia(NARRA.gol), 2300);
         pop(golsAEl);
       } else {
         estado.golsB++;
-        toast(sorteia(NARRA.golSofrido), 2200);
+        toast(sorteia(NARRA.golSofrido), 2300);
         pop(golsBEl);
       }
       somTorcida();
       atualizarHud();
     }
 
-    // ===== Relógio / etapas =====
+    // ===== Relógio =====
     function atualizarHud() {
       golsAEl.textContent = estado.golsA;
       golsBEl.textContent = estado.golsB;
@@ -797,95 +909,159 @@ const jsonLd = {
 
     // ===== Desenho =====
     function desenhaCampo() {
-      // gramado listrado
-      for (let i = 0; i < W / 64; i++) {
-        ctx.fillStyle = i % 2 ? '#2e7d3f' : '#2a7339';
-        ctx.fillRect(i * 64, 0, 64, H);
+      // gramado cobre a tela toda (faixas em coordenadas de mundo)
+      const faixa = 137.5;
+      const i0 = Math.floor((cam.x - CFG.camJanela / 2) / faixa) - 1;
+      const i1 = Math.ceil((cam.x + CFG.camJanela / 2) / faixa) + 1;
+      for (let i = i0; i <= i1; i++) {
+        ctx.fillStyle = ((i % 2) + 2) % 2 ? '#2e7d3f' : '#2a7339';
+        ctx.fillRect(px(i * faixa), 0, faixa * zoom + 1, TA);
       }
-      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      const linha = (x0, y0, x1, y1) => {
+        ctx.beginPath();
+        ctx.moveTo(px(x0), py(y0));
+        ctx.lineTo(px(x1), py(y1));
+        ctx.stroke();
+      };
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
       ctx.lineWidth = 3;
-      // linhas
-      ctx.strokeRect(M, M, W - 2 * M, H - 2 * M);
+      // contorno, meio, círculo central
+      ctx.strokeRect(px(M), py(M), (W - 2 * M) * zoom, (H - 2 * M) * zoom * SQ);
+      linha(W / 2, M, W / 2, H - M);
       ctx.beginPath();
-      ctx.moveTo(W / 2, M); ctx.lineTo(W / 2, H - M);
+      ctx.ellipse(px(W / 2), py(CY), 130 * zoom, 130 * zoom * SQ, 0, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(W / 2, CY, 58, 0, Math.PI * 2);
-      ctx.stroke();
-      // áreas
-      ctx.strokeRect(M, CY - 110, 118, 220);
-      ctx.strokeRect(W - M - 118, CY - 110, 118, 220);
-      // redes
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      ctx.fillRect(M - CFG.fundoGol, golY0, CFG.fundoGol, CFG.bocaGol);
-      ctx.fillRect(W - M, golY0, CFG.fundoGol, CFG.bocaGol);
-      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      // grandes áreas e pequenas áreas
+      for (const lado of [0, 1]) {
+        const x0 = lado === 0 ? M : W - M - 300;
+        ctx.strokeRect(px(x0), py(CY - 330), 300 * zoom, 660 * zoom * SQ);
+        const x1 = lado === 0 ? M : W - M - 120;
+        ctx.strokeRect(px(x1), py(CY - 170), 120 * zoom, 340 * zoom * SQ);
+        // marca do pênalti
+        ctx.beginPath();
+        ctx.arc(px(lado === 0 ? M + 220 : W - M - 220), py(CY), 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.fill();
+      }
+      // gols (rede + traves)
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.fillRect(px(M - CFG.fundoGol), py(golY0), CFG.fundoGol * zoom, CFG.bocaGol * zoom * SQ);
+      ctx.fillRect(px(W - M), py(golY0), CFG.fundoGol * zoom, CFG.bocaGol * zoom * SQ);
+      ctx.strokeStyle = '#fff';
       ctx.lineWidth = 4;
-      ctx.strokeRect(M - CFG.fundoGol, golY0, CFG.fundoGol, CFG.bocaGol);
-      ctx.strokeRect(W - M, golY0, CFG.fundoGol, CFG.bocaGol);
+      ctx.strokeRect(px(M - CFG.fundoGol), py(golY0), CFG.fundoGol * zoom, CFG.bocaGol * zoom * SQ);
+      ctx.strokeRect(px(W - M), py(golY0), CFG.fundoGol * zoom, CFG.bocaGol * zoom * SQ);
     }
 
     function desenhaJogador(j) {
-      const ehControlado = j === estado.controlado;
       const cor = j.time === 'A' ? CFG.timeJogador : CFG.timeCpu;
+      const e = escala(j.y);
+      const sx = px(j.x), sy = py(j.y);
+      if (sx < -40 || sx > TL + 40) return;
       // sombra
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
-      ctx.ellipse(j.x, j.y + 9, 10, 4, 0, 0, Math.PI * 2);
+      ctx.ellipse(sx, sy, 8 * e, 3 * e, 0, 0, Math.PI * 2);
       ctx.fill();
-      // corpo (goleiro usa a cor clara)
-      ctx.fillStyle = j.papel === 'goleiro' ? cor.corClara : cor.cor;
-      ctx.beginPath();
-      ctx.arc(j.x, j.y, CFG.raioJogador, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      // cabeça
-      ctx.fillStyle = '#f2c9a0';
-      ctx.beginPath();
-      ctx.arc(j.x, j.y - 7, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-      // marcador do controlado
-      if (ehControlado) {
+      // marcador do controlado (embaixo, estilo PES)
+      if (j === estado.controlado) {
         ctx.strokeStyle = '#ffe14d';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.arc(j.x, j.y, CFG.raioJogador + 5, 0, Math.PI * 2);
+        ctx.ellipse(sx, sy, 13 * e, 5.5 * e, 0, 0, Math.PI * 2);
         ctx.stroke();
+      }
+      // perninhas (2 quadros de corrida)
+      const passo = j.anda ? (Math.floor(estado.tempo / 6) % 2 ? 2.2 : -2.2) * e : 0;
+      ctx.fillStyle = cor.pele;
+      ctx.fillRect(sx - 4 * e, sy - 8 * e + passo, 3 * e, 8 * e - passo);
+      ctx.fillRect(sx + 1 * e, sy - 8 * e - passo, 3 * e, 8 * e + passo);
+      // calção
+      ctx.fillStyle = j.time === 'A' ? '#fff' : '#222';
+      ctx.fillRect(sx - 5 * e, sy - 13 * e, 10 * e, 6 * e);
+      // camisa (goleiro em cor alternativa)
+      ctx.fillStyle = j.papel === 'goleiro' ? cor.corClara : cor.cor;
+      ctx.fillRect(sx - 5.5 * e, sy - 21 * e, 11 * e, 9 * e);
+      // braços
+      ctx.fillRect(sx - 7.5 * e, sy - 20 * e, 2 * e, 6 * e);
+      ctx.fillRect(sx + 5.5 * e, sy - 20 * e, 2 * e, 6 * e);
+      // cabeça + cabelo
+      ctx.fillStyle = cor.pele;
+      ctx.beginPath();
+      ctx.arc(sx, sy - 25 * e, 4 * e, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = j.time === 'A' ? '#3a2a1a' : '#4a5560';
+      ctx.beginPath();
+      ctx.arc(sx, sy - 26 * e, 4 * e, Math.PI, 2 * Math.PI);
+      ctx.fill();
+      // setinha em cima do controlado
+      if (j === estado.controlado) {
         ctx.fillStyle = '#ffe14d';
         ctx.beginPath();
-        ctx.moveTo(j.x - 6, j.y - 26);
-        ctx.lineTo(j.x + 6, j.y - 26);
-        ctx.lineTo(j.x, j.y - 18);
+        ctx.moveTo(sx - 5, sy - 38 * e);
+        ctx.lineTo(sx + 5, sy - 38 * e);
+        ctx.lineTo(sx, sy - 32 * e);
         ctx.fill();
       }
     }
 
     function desenhaBola() {
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      const e = escala(bola.y);
+      const sx = px(bola.x), syChao = py(bola.y);
+      // sombra no chão
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
       ctx.beginPath();
-      ctx.ellipse(bola.x, bola.y + 6, 6, 2.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(sx, syChao, 5.5 * e, 2.2 * e, 0, 0, Math.PI * 2);
       ctx.fill();
+      // bola (sobe com a altura z)
+      const sy = syChao - bola.z * zoom * 0.9;
       ctx.fillStyle = '#fff';
       ctx.beginPath();
-      ctx.arc(bola.x, bola.y, CFG.raioBola, 0, Math.PI * 2);
+      ctx.arc(sx, sy - 3 * e, 5.5 * e, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = '#333';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.2;
       ctx.stroke();
-      // "gomos" girando
       ctx.fillStyle = '#333';
       ctx.beginPath();
-      ctx.arc(bola.x + Math.cos(bola.giro) * 3, bola.y + Math.sin(bola.giro) * 3, 2, 0, Math.PI * 2);
+      ctx.arc(sx + Math.cos(bola.giro) * 2.5 * e, sy - 3 * e + Math.sin(bola.giro) * 2.5 * e, 1.6 * e, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function desenhaRadar() {
+      const rw = 200, rh = 92;
+      const rx = TL / 2 - rw / 2, ry = TA - rh - 12;
+      ctx.fillStyle = 'rgba(6, 26, 12, 0.55)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(rx, ry, rw, rh);
+      ctx.strokeRect(rx, ry, rw, rh);
+      ctx.beginPath();
+      ctx.moveTo(rx + rw / 2, ry);
+      ctx.lineTo(rx + rw / 2, ry + rh);
+      ctx.stroke();
+      const mx = (wx) => rx + (wx / W) * rw;
+      const my = (wy) => ry + (wy / H) * rh;
+      for (const j of jogadores) {
+        ctx.fillStyle = j.time === 'A' ? '#6fa8ff' : '#ff8a75';
+        ctx.fillRect(mx(j.x) - 1.5, my(j.y) - 1.5, 3, 3);
+      }
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(mx(bola.x), my(bola.y), 2.4, 0, Math.PI * 2);
       ctx.fill();
     }
 
     function desenhar() {
       desenhaCampo();
       const todos = [...jogadores].sort((a, b) => a.y - b.y);
-      for (const j of todos) desenhaJogador(j);
-      desenhaBola();
+      let bolaDesenhada = false;
+      for (const j of todos) {
+        if (!bolaDesenhada && bola.y < j.y) { desenhaBola(); bolaDesenhada = true; }
+        desenhaJogador(j);
+      }
+      if (!bolaDesenhada) desenhaBola();
+      desenhaRadar();
     }
 
     // ===== Loop =====
@@ -898,6 +1074,7 @@ const jsonLd = {
       acum += dt;
       while (acum >= 1000 / 60) {
         acum -= 1000 / 60;
+        estado.tempo++;
         if (estado.festejo) {
           estado.festejo--;
           if (estado.festejo === 0) { armarKickoff(); somApito(); }
@@ -911,6 +1088,7 @@ const jsonLd = {
         separa();
         passoPosse();
         passoBola();
+        passoCamera(true);
         passoRelogio();
       }
       desenhar();
@@ -923,17 +1101,18 @@ const jsonLd = {
         estado.modo = btn.dataset.modo;
         $('[data-intro]').hidden = true;
         reiniciar();
-        anuncioEl.textContent = 'Começou o jogo! Use as setas pra correr e espaço pra chutar.';
+        anuncioEl.textContent = 'Começou o jogo! Setas correm, X passa, espaço chuta.';
       })
     );
     $('[data-restart]').addEventListener('click', () => { initAudio(); reiniciar(); });
 
     armarKickoff();
+    passoCamera(false);
     atualizarHud();
     desenhar();
     requestAnimationFrame(quadro);
 
     // Handle de depuração/afinação (usado também pelos testes automatizados).
-    window.__gl = { estado, bola, get jogadores() { return jogadores; } };
+    window.__gl = { estado, bola, cam, get jogadores() { return jogadores; } };
   })();
 </script>

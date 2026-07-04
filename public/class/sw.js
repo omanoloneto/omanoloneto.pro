@@ -8,7 +8,7 @@
 
    Ao publicar mudança relevante, suba a versão do cache abaixo. */
 
-const CACHE = 'class-v4';
+const CACHE = 'class-v5';
 
 // Bandeiras do Volta ao Mundo (public/class/games/volta-ao-mundo/flags/).
 const BANDEIRAS = ('af ao ar au bo br ca cd cl cn co cr cu de dz ec eg es et fi fr gb gr gt gy hn id ie in iq ir is ' +

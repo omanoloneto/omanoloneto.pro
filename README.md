@@ -26,7 +26,7 @@ hospedagem de arquivos:
 
 ### Funcionalidades
 
-- 🎮 **Jogos educativos** — Trem de Palavras (sílabas), Letras Espaciais (teclado), Volta ao Mundo (geografia no mapa), O Pulo do Gato (plataforma troll: persistência e bom humor) e Golaço! (futebol arcade: coordenação e lateralidade), com botão de tela cheia
+- 🎮 **Jogos educativos** — Trem de Palavras (sílabas), Letras Espaciais (teclado), Volta ao Mundo (geografia no mapa), O Pulo do Gato (plataforma troll: persistência e bom humor) e Golaço! (futebol 11×11 com câmera de TV e radar: coordenação e lateralidade), com botão de tela cheia
 - 🖥️ **Simulador do Windows 98** — história da computação pra crianças
 - 👩‍🏫 **Guia pra professores** — `/class/professores`: série indicada, como usar em aula
 - 📴 **PWA / offline** — a sala de aula funciona sem internet depois da primeira visita (service worker + manifest)
