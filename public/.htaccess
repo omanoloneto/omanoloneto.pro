@@ -1,0 +1,22 @@
+# Hostinger (LiteSpeed/Apache) — configurações do site estático.
+
+# Página 404 própria (gerada pelo Astro em /404.html)
+ErrorDocument 404 /404.html
+
+# Cache: fontes, imagens e ícones mudam raramente — pode guardar por 1 ano.
+# HTML fica curto pra atualizações aparecerem logo.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType image/png "access plus 1 month"
+  ExpiresByType image/jpeg "access plus 1 month"
+  ExpiresByType image/svg+xml "access plus 1 month"
+  ExpiresByType text/css "access plus 1 week"
+  ExpiresByType application/javascript "access plus 1 week"
+  ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# O service worker precisa revalidar sempre (senão a versão nova nunca chega).
+<Files "sw.js">
+  Header set Cache-Control "no-cache, must-revalidate"
+</Files>

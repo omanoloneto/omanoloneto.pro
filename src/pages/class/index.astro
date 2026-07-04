@@ -17,7 +17,7 @@ const categorias = [
     breve: false,
   },
   {
-    url: '/class/sims/windows-98/',
+    url: '/class/sims/',
     emoji: null, // usa a janelinha retrô desenhada em CSS
     nome: 'Simuladores',
     desc: 'Viaje no tempo: explore o Windows 98, o sistema de 1998.',
@@ -27,7 +27,16 @@ const categorias = [
 ];
 ---
 
-<Layout title={title} description={description}>
+<Layout
+  title={title}
+  description={description}
+  ogImage="/og/class.png"
+  ogImageAlt="Sala do Professor Manolo — jogos educativos gratuitos pra sala de aula"
+  fontes={false}
+  manifest="/class/manifest.webmanifest"
+  sw="/class/sw.js"
+  themeColor="#ffffff"
+>
   <main class="sala" id="conteudo">
     <header class="topo">
       <a class="topo__marca" href="/class/">
@@ -86,7 +95,10 @@ const categorias = [
     </section>
 
     <footer class="pe">
-      <p>👩‍🏫 Professor(a)? Tudo aqui é livre pra usar na sua escola.</p>
+      <p>
+        👩‍🏫 Professor(a)? Tudo aqui é livre pra usar na sua escola
+        — <a href="/class/professores/">veja o guia pra professores</a>.
+      </p>
       <a class="pe__site" href="/">← site do Manolo</a>
     </footer>
   </main>
@@ -253,6 +265,7 @@ const categorias = [
     color: #6b6b70;
     line-height: 1.6;
   }
+  .pe a { color: #7a5fd0; font-weight: 700; }
   .pe__site {
     display: inline-block;
     margin-top: 8px;

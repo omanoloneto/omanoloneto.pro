@@ -1,0 +1,258 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { site } from '../../../data/site';
+
+const title = 'Guia pra professores — Sala do Professor Manolo';
+const description =
+  'Como usar os jogos e simuladores da Sala do Professor Manolo na sua escola: pra que série serve cada um, como funcionam offline e por que tudo é gratuito e livre.';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  url: 'https://omanoloneto.pro/class/professores/',
+  description,
+  inLanguage: 'pt-BR',
+  audience: { '@type': 'EducationalAudience', educationalRole: 'teacher' },
+  author: { '@type': 'Person', name: site.nome, url: 'https://omanoloneto.pro' },
+};
+
+const recursos = [
+  {
+    url: '/class/games/trem-de-palavras/',
+    emoji: '🚂',
+    nome: 'Trem de Palavras',
+    serie: 'Educação Infantil e 1º–2º ano',
+    ensina: 'Alfabetização: consciência silábica e formação de palavras.',
+    como: 'A criança arrasta vagões-sílaba pro trilho até montar a palavra da carga. Bom pra estação de atividades ou projetor: a turma pode montar junto, sílaba por sílaba. Tem modo guiado (palavras pedidas) e modo livre.',
+  },
+  {
+    url: '/class/games/letras-espaciais/',
+    emoji: '🚀',
+    nome: 'Letras Espaciais',
+    serie: '1º–3º ano',
+    ensina: 'Reconhecimento das letras do alfabeto e localização das teclas no teclado.',
+    como: 'Cada inimigo traz uma letra; apertar a tecla certa faz a nave atirar. Ótimo pra primeira familiarização com o teclado do Chromebook. Tem modo com vidas (desafio) e modo tranquilo (sem perder), e 30 níveis progressivos.',
+  },
+  {
+    url: '/class/sims/windows-98/',
+    emoji: '🖥️',
+    nome: 'Simulador do Windows 98',
+    serie: 'Fundamental (qualquer ano)',
+    ensina: 'História da computação: como eram os computadores, o disquete e a internet discada.',
+    como: 'Um Windows 98 de mentirinha, seguro pra explorar: ligar o computador, abrir janelas, "navegar" na internet discada. Cada janela traz uma explicação e uma curiosidade — rende boa conversa sobre como a tecnologia mudou.',
+  },
+];
+
+const praticas = [
+  {
+    t: 'Funciona sem internet (depois da primeira visita)',
+    d: 'A sala de aula se guarda no navegador: se a internet da escola cair, os jogos continuam abrindo. No Chrome dá até pra "instalar" a sala como aplicativo (menu ⋮ → Transmitir, salvar e compartilhar → Instalar).',
+  },
+  {
+    t: 'Tela cheia',
+    d: 'Todo jogo tem um botão ⛶ pra ocupar a tela inteira — ajuda muito no projetor e evita cliques fora do jogo nos Chromebooks.',
+  },
+  {
+    t: 'Sem cadastro, sem anúncio, sem coleta de dados',
+    d: 'Nenhum jogo pede nome, e-mail ou qualquer dado das crianças. Não há anúncios nem rastreadores. O progresso (como o som ligado/desligado) fica só no aparelho.',
+  },
+  {
+    t: 'Livre pra usar e adaptar',
+    d: 'Tudo é gratuito e de código aberto (licença MIT). Pode usar na sua escola, linkar no mural da turma e até adaptar o código.',
+  },
+];
+---
+
+<Layout
+  title={title}
+  description={description}
+  ogImage="/og/class.png"
+  ogImageAlt="Sala do Professor Manolo — jogos educativos gratuitos pra sala de aula"
+  jsonLd={jsonLd}
+  fontes={false}
+  manifest="/class/manifest.webmanifest"
+  sw="/class/sw.js"
+  themeColor="#ffffff"
+>
+  <main class="sala" id="conteudo">
+    <header class="topo">
+      <a class="topo__marca" href="/class/">
+        <span class="topo__logo" aria-hidden="true">👩‍🏫</span>
+        <span class="topo__nome">Sala do <b>Professor Manolo</b></span>
+      </a>
+    </header>
+
+    <article class="miolo">
+      <h1 class="chamada">Guia pra professores</h1>
+      <p class="intro">
+        Eu sou professor e fiz estes jogos pras minhas próprias turmas — quando a aula
+        precisava de um jogo que não existia. Tudo aqui é <b>gratuito</b>,
+        em <b>português</b> e roda <b>direto no navegador</b>, sem instalar nada e sem
+        cadastro. Fique à vontade pra usar na sua escola.
+      </p>
+
+      <h2 class="secao">O que tem e pra que série serve</h2>
+      <div class="cards">
+        {
+          recursos.map((r) => (
+            <section class="card">
+              <header class="card__cabeca">
+                <span class="card__emoji" aria-hidden="true">{r.emoji}</span>
+                <div>
+                  <h3 class="card__nome">
+                    <a href={r.url}>{r.nome}</a>
+                  </h3>
+                  <p class="card__serie">{r.serie}</p>
+                </div>
+              </header>
+              <p class="card__ensina">
+                <b>Trabalha:</b> {r.ensina}
+              </p>
+              <p class="card__como">{r.como}</p>
+              <a class="card__jogar" href={r.url}>Abrir {r.nome} ▶</a>
+            </section>
+          ))
+        }
+      </div>
+
+      <h2 class="secao">Bom saber antes da aula</h2>
+      <dl class="praticas">
+        {
+          praticas.map((p) => (
+            <div class="pratica">
+              <dt>{p.t}</dt>
+              <dd>{p.d}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      <h2 class="secao">Fale comigo</h2>
+      <p class="contato">
+        Achou um erro, tem uma ideia de jogo ou quer contar como usou com a sua turma?
+        Escreva pra <a href={`mailto:${site.email}`}>{site.email}</a> — respostas de
+        professor pra professor(a). 🙂
+      </p>
+    </article>
+
+    <footer class="pe">
+      <a class="pe__site" href="/class/">← voltar pra sala de aula</a>
+    </footer>
+  </main>
+</Layout>
+
+<style is:global>
+  body.is-class { background: #fff; overflow-x: hidden; }
+  body.is-class::before { display: none !important; }
+</style>
+
+<script>
+  document.body.classList.add('is-class');
+</script>
+
+<style>
+  .sala {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+    color: #1c1c1e;
+    background: #fff;
+  }
+
+  /* ===== Topo ===== */
+  .topo {
+    display: flex;
+    align-items: center;
+    padding: 14px clamp(16px, 4vw, 40px);
+    border-bottom: 1px solid #ececec;
+  }
+  .topo__marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #1c1c1e;
+    text-decoration: none;
+  }
+  .topo__logo { font-size: 1.6rem; line-height: 1; }
+  .topo__nome { font-size: 1rem; }
+  .topo__nome b { font-weight: 800; }
+
+  /* ===== Conteúdo ===== */
+  .miolo {
+    flex: 1;
+    width: min(760px, 100%);
+    margin-inline: auto;
+    padding: clamp(28px, 6vh, 56px) clamp(16px, 4vw, 32px) 40px;
+    line-height: 1.65;
+  }
+  .chamada {
+    font-size: clamp(1.5rem, 4.5vw, 2.1rem);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin-bottom: 14px;
+  }
+  .intro { color: #3c3c43; font-size: 0.98rem; }
+  .intro b { color: #1c1c1e; }
+
+  .secao {
+    margin: clamp(30px, 5vh, 44px) 0 16px;
+    font-size: 1.2rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+  }
+
+  /* ===== Cards dos recursos ===== */
+  .cards { display: grid; gap: 16px; }
+  .card {
+    padding: 20px 22px;
+    border: 1.5px solid #e2e2e6;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  .card__cabeca { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+  .card__emoji { font-size: 2.2rem; line-height: 1; }
+  .card__nome { font-size: 1.1rem; font-weight: 800; }
+  .card__nome a { color: #1c1c1e; text-decoration: none; }
+  .card__nome a:hover { color: #7a5fd0; }
+  .card__serie {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #7a5fd0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .card__ensina, .card__como { font-size: 0.9rem; color: #3c3c43; margin-bottom: 8px; }
+  .card__jogar {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 0.84rem;
+    font-weight: 800;
+    color: #7a5fd0;
+    text-decoration: none;
+  }
+  .card__jogar:hover { text-decoration: underline; }
+
+  /* ===== Boas práticas ===== */
+  .praticas { display: grid; gap: 14px; }
+  .pratica dt { font-weight: 800; font-size: 0.95rem; margin-bottom: 3px; }
+  .pratica dd { font-size: 0.9rem; color: #3c3c43; }
+
+  .contato { font-size: 0.95rem; color: #3c3c43; }
+  .contato a { color: #7a5fd0; font-weight: 700; }
+
+  /* ===== Rodapé ===== */
+  .pe {
+    padding: 24px clamp(16px, 4vw, 40px);
+    border-top: 1px solid #ececec;
+    text-align: center;
+  }
+  .pe__site {
+    font-size: 0.8rem;
+    color: #9a9aa0;
+    text-decoration: none;
+  }
+  .pe__site:hover { color: #1c1c1e; }
+</style>

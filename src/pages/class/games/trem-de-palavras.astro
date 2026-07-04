@@ -7,9 +7,36 @@ const dadosJson = JSON.stringify({ palavras, palavrasExtras, niveis, distratores
 const title = 'Trem de Palavras — monte palavras com sílabas | Manolo Neto';
 const description =
   'Jogo educativo para crianças montarem palavras: arraste os vagões-sílaba para o trilho e faça o trem partir. Níveis de 2, 3 e 4 sílabas, em português.';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': ['VideoGame', 'LearningResource'],
+  name: 'Trem de Palavras',
+  url: 'https://omanoloneto.pro/class/games/trem-de-palavras/',
+  description,
+  inLanguage: 'pt-BR',
+  isAccessibleForFree: true,
+  learningResourceType: 'Game',
+  educationalLevel: 'Educação Infantil e Ensino Fundamental I',
+  teaches: 'Alfabetização: consciência silábica e formação de palavras',
+  audience: { '@type': 'EducationalAudience', educationalRole: 'student' },
+  gamePlatform: 'Navegador web',
+  author: { '@type': 'Person', name: 'Manolo Neto', url: 'https://omanoloneto.pro' },
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL' },
+};
 ---
 
-<Layout title={title} description={description}>
+<Layout
+  title={title}
+  description={description}
+  ogImage="/og/class.png"
+  ogImageAlt="Sala do Professor Manolo — jogos educativos gratuitos pra sala de aula"
+  jsonLd={jsonLd}
+  fontes={false}
+  manifest="/class/manifest.webmanifest"
+  sw="/class/sw.js"
+  themeColor="#ffffff"
+>
   <script type="application/json" data-dados set:html={dadosJson}></script>
 
   <main id="conteudo" class="tp" data-game role="application" aria-label="Jogo: monte palavras com os vagões de sílabas">
@@ -35,6 +62,9 @@ const description =
       <div class="hud__bloco hud__bloco--nome" data-nivel-nome aria-hidden="true"></div>
       <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
         <span data-mute-icon>🔊</span>
+      </button>
+      <button class="hud__mute" type="button" data-fullscreen aria-pressed="false" aria-label="Entrar em tela cheia">
+        <span data-fullscreen-icon>⛶</span>
       </button>
     </header>
 
@@ -517,6 +547,23 @@ const description =
       localStorage.setItem('trem-palavras:mudo', estado.mudo ? '1' : '0');
       aplicarMudo();
     });
+
+    // ===== Tela cheia =====
+    const fsBtn = $('[data-fullscreen]');
+    if (!document.fullscreenEnabled) {
+      fsBtn.hidden = true; // iPad/navegadores sem suporte
+    } else {
+      fsBtn.addEventListener('click', () => {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const cheio = !!document.fullscreenElement;
+        fsBtn.setAttribute('aria-pressed', String(cheio));
+        fsBtn.setAttribute('aria-label', cheio ? 'Sair da tela cheia' : 'Entrar em tela cheia');
+        $('[data-fullscreen-icon]').textContent = cheio ? '⊡' : '⛶';
+      });
+    }
 
     // ===== Utilidades =====
     function embaralhar(arr) {

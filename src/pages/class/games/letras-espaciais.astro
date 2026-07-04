@@ -7,9 +7,36 @@ const dadosJson = JSON.stringify({ niveis, config });
 const title = 'Letras Espaciais — aperte a letra e a nave atira! | Manolo Neto';
 const description =
   'Jogo educativo de digitação para crianças do 1º ano: os inimigos espaciais trazem letras do alfabeto — aperte a tecla certa e a nave atira sozinha! Modo com vidas ou modo tranquilo, em português.';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': ['VideoGame', 'LearningResource'],
+  name: 'Letras Espaciais',
+  url: 'https://omanoloneto.pro/class/games/letras-espaciais/',
+  description,
+  inLanguage: 'pt-BR',
+  isAccessibleForFree: true,
+  learningResourceType: 'Game',
+  educationalLevel: 'Ensino Fundamental I — 1º ano',
+  teaches: 'Reconhecimento das letras do alfabeto e localização das teclas no teclado',
+  audience: { '@type': 'EducationalAudience', educationalRole: 'student' },
+  gamePlatform: 'Navegador web',
+  author: { '@type': 'Person', name: 'Manolo Neto', url: 'https://omanoloneto.pro' },
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL' },
+};
 ---
 
-<Layout title={title} description={description}>
+<Layout
+  title={title}
+  description={description}
+  ogImage="/og/class.png"
+  ogImageAlt="Sala do Professor Manolo — jogos educativos gratuitos pra sala de aula"
+  jsonLd={jsonLd}
+  fontes={false}
+  manifest="/class/manifest.webmanifest"
+  sw="/class/sw.js"
+  themeColor="#ffffff"
+>
   <script type="application/json" data-dados set:html={dadosJson}></script>
 
   <main id="conteudo" class="le" data-game role="application" aria-label="Jogo: aperte a tecla da letra do inimigo para a nave atirar">
@@ -57,6 +84,9 @@ const description =
       <div class="hud__bloco hud__bloco--nome" data-nivel-nome aria-hidden="true"></div>
       <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
         <span data-mute-icon>🔊</span>
+      </button>
+      <button class="hud__mute" type="button" data-fullscreen aria-pressed="false" aria-label="Entrar em tela cheia">
+        <span data-fullscreen-icon>⛶</span>
       </button>
     </header>
 
@@ -660,6 +690,23 @@ const description =
       localStorage.setItem('letras-espaciais:mudo', estado.mudo ? '1' : '0');
       aplicarMudo();
     });
+
+    // ===== Tela cheia =====
+    const fsBtn = $('[data-fullscreen]');
+    if (!document.fullscreenEnabled) {
+      fsBtn.hidden = true; // iPad/navegadores sem suporte
+    } else {
+      fsBtn.addEventListener('click', () => {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const cheio = !!document.fullscreenElement;
+        fsBtn.setAttribute('aria-pressed', String(cheio));
+        fsBtn.setAttribute('aria-label', cheio ? 'Sair da tela cheia' : 'Entrar em tela cheia');
+        $('[data-fullscreen-icon]').textContent = cheio ? '⊡' : '⛶';
+      });
+    }
 
     // ===== Utilidades =====
     function anunciar(msg) { anuncioEl.textContent = ''; requestAnimationFrame(() => { anuncioEl.textContent = msg; }); }

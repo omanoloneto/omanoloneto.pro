@@ -6,9 +6,29 @@ import { site, socials } from '../data/site';
 // Home: cartão de visitas tipográfico. A hierarquia faz o trabalho:
 // nome → statement grande → uma linha de contexto → CTA → redes.
 // Textos e links vêm de src/data/site.ts.
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: site.nome,
+    url: 'https://omanoloneto.pro',
+    email: `mailto:${site.email}`,
+    jobTitle: 'Desenvolvedor de jogos e professor',
+    knowsAbout: ['Unity', 'Godot', 'Flutter', 'Desenvolvimento de jogos', 'Educação'],
+    sameAs: socials.map((s) => s.url),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: site.nome,
+    url: 'https://omanoloneto.pro',
+    inLanguage: 'pt-BR',
+  },
+];
 ---
 
-<Layout>
+<Layout jsonLd={jsonLd}>
   <main class="cartao" id="conteudo">
     <div class="cartao__miolo">
       <p class="eyebrow" data-reveal>{site.nome} · {site.localizacao}</p>

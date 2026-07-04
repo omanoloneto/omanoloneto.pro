@@ -1,30 +1,19 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 
-const title = 'Sala de Aula do Professor Manolo — jogos pra aprender brincando';
+const title = 'Simuladores — viaje no tempo da tecnologia | Sala do Professor Manolo';
 const description =
-  'Jogos educativos gratuitos, em português, direto no navegador: monte palavras com sílabas no Trem de Palavras e aprenda o teclado com as Letras Espaciais. Feitos por um professor pras próprias turmas.';
+  'Simuladores educativos gratuitos, em português, direto no navegador: explore o Windows 98 e descubra como eram os computadores de antigamente.';
 
-// Ícone: coloque um .jpg quadrado (ex.: 512×512) em public/class/icons/
-// com o mesmo nome do arquivo indicado abaixo. Sem imagem, o emoji aparece.
-const jogos = [
+// Ícone: imagem quadrada em public/class/... Sem imagem, o emoji aparece.
+const sims = [
   {
-    url: '/class/games/trem-de-palavras/',
-    icone: '/class/icons/trem-de-palavras.jpg',
-    emoji: '🚂',
-    nome: 'Trem de Palavras',
-    linha: 'Monte palavras com os vagões de sílabas e faça o trem partir!',
-    fundo: 'linear-gradient(135deg, #6cc24a, #2e8a28)',
-    busca: 'trem de palavras silabas ler escrever alfabetizacao',
-  },
-  {
-    url: '/class/games/letras-espaciais/',
-    icone: '/class/icons/letras-espaciais.jpg',
-    emoji: '🚀',
-    nome: 'Letras Espaciais',
-    linha: 'Aperte a letra do inimigo e a nave atira! Do A ao Z.',
-    fundo: 'linear-gradient(135deg, #7a5fd0, #3b2a8f)',
-    busca: 'letras espaciais nave digitacao teclado alfabeto atirar',
+    url: '/class/sims/windows-98/',
+    icone: '/class/sims/wallpaper-98.jpg',
+    emoji: '🖥️',
+    nome: 'Windows 98',
+    linha: 'Ligue o computador de 1998: janelas, disquete e internet discada!',
+    fundo: 'linear-gradient(135deg, #1084d0, #000080)',
   },
 ];
 ---
@@ -42,48 +31,25 @@ const jogos = [
   <main class="sala" id="conteudo">
     <header class="topo">
       <a class="topo__marca" href="/class/">
-        <span class="topo__logo" aria-hidden="true">🎮</span>
+        <span class="topo__logo" aria-hidden="true">🕹️</span>
         <span class="topo__nome">Sala do <b>Professor Manolo</b></span>
       </a>
-      <label class="busca">
-        <span class="busca__lupa" aria-hidden="true">🔍</span>
-        <input
-          class="busca__campo"
-          type="search"
-          placeholder="Buscar jogo…"
-          aria-label="Buscar jogo pelo nome"
-          data-busca
-          autocomplete="off"
-        />
-      </label>
     </header>
 
-    <section class="grade" aria-label="Escolha seu jogo" data-grade>
+    <section class="grade" aria-label="Escolha seu simulador">
       {
-        jogos.map((j) => (
-          <a
-            class="app"
-            href={j.url}
-            title={j.linha}
-            aria-label={j.nome + ' — ' + j.linha}
-            data-app
-            data-nome={(j.nome + ' ' + j.busca).toLowerCase()}
-          >
-            <span class="app__icone" style={`background:${j.fundo}`}>
-              <img
-                src={j.icone}
-                alt=""
-                loading="lazy"
-                onerror="this.style.display='none'"
-              />
-              <span class="app__emoji" aria-hidden="true">{j.emoji}</span>
+        sims.map((s) => (
+          <a class="app" href={s.url} title={s.linha} aria-label={s.nome + ' — ' + s.linha}>
+            <span class="app__icone" style={`background:${s.fundo}`}>
+              <img src={s.icone} alt="" loading="lazy" onerror="this.style.display='none'" />
+              <span class="app__emoji" aria-hidden="true">{s.emoji}</span>
             </span>
-            <span class="app__nome">{j.nome}</span>
+            <span class="app__nome">{s.nome}</span>
           </a>
         ))
       }
 
-      <div class="app app--breve" aria-hidden="true" data-breve>
+      <div class="app app--breve" aria-hidden="true">
         <span class="app__icone app__icone--breve">
           <span class="app__emoji">🎁</span>
         </span>
@@ -91,13 +57,9 @@ const jogos = [
       </div>
     </section>
 
-    <p class="vazio" data-vazio aria-live="polite" hidden>
-      Nenhum jogo encontrado 🔭 Tente outro nome!
-    </p>
-
     <footer class="pe">
       <p>
-        👩‍🏫 Professor(a)? Os jogos são livres pra usar na sua escola
+        👩‍🏫 Professor(a)? Tudo aqui é livre pra usar na sua escola
         — <a href="/class/professores/">veja o guia pra professores</a>.
       </p>
       <a class="pe__site" href="/class/">← voltar pra sala de aula</a>
@@ -112,25 +74,6 @@ const jogos = [
 
 <script>
   document.body.classList.add('is-class');
-
-  // Busca: filtra os quadradinhos pelo nome (sem acento, sem maiúscula)
-  const campo = document.querySelector('[data-busca]');
-  const apps = [...document.querySelectorAll('[data-app]')];
-  const breve = document.querySelector('[data-breve]');
-  const vazio = document.querySelector('[data-vazio]');
-  const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-  campo.addEventListener('input', () => {
-    const q = norm(campo.value.trim());
-    let visiveis = 0;
-    for (const app of apps) {
-      const bate = !q || norm(app.dataset.nome).includes(q);
-      app.hidden = !bate;
-      if (bate) visiveis++;
-    }
-    breve.hidden = !!q;
-    vazio.hidden = visiveis > 0;
-  });
 </script>
 
 <style>
@@ -143,18 +86,11 @@ const jogos = [
     background: #fff;
   }
 
-  /* ===== Topo: marca + busca ===== */
+  /* ===== Topo ===== */
   .topo {
-    position: sticky;
-    top: 0;
-    z-index: 10;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 14px;
     padding: 14px clamp(16px, 4vw, 40px);
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(8px);
     border-bottom: 1px solid #ececec;
   }
   .topo__marca {
@@ -174,34 +110,7 @@ const jogos = [
   }
   .topo__nome b { font-weight: 800; }
 
-  .busca {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 9px 14px;
-    border: 1.5px solid #e2e2e6;
-    border-radius: 999px;
-    background: #f6f6f8;
-    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
-  }
-  .busca:focus-within {
-    border-color: #7a5fd0;
-    background: #fff;
-    box-shadow: 0 0 0 3px rgba(122, 95, 208, 0.15);
-  }
-  .busca__lupa { font-size: 0.95rem; opacity: 0.7; }
-  .busca__campo {
-    border: 0;
-    background: transparent;
-    outline: none;
-    font-family: inherit;
-    font-size: 0.92rem;
-    color: #1c1c1e;
-    width: clamp(110px, 22vw, 230px);
-  }
-  .busca__campo::placeholder { color: #9a9aa0; }
-
-  /* ===== Grade de apps (estilo iPhone) ===== */
+  /* ===== Grade de apps (mesmo estilo dos jogos) ===== */
   .grade {
     width: min(880px, 100%);
     margin-inline: auto;
@@ -224,7 +133,6 @@ const jogos = [
     text-decoration: none;
     transition: transform 0.15s ease;
   }
-  .app[hidden] { display: none; }
   a.app:hover { transform: translateY(-3px); }
   a.app:active { transform: scale(0.96); }
   a.app:focus-visible { outline: none; }
@@ -265,10 +173,6 @@ const jogos = [
     font-weight: 700;
     text-align: center;
     line-height: 1.25;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
   }
 
   .app--breve .app__icone--breve {
@@ -278,13 +182,6 @@ const jogos = [
   }
   .app--breve .app__nome { color: #8e8e93; }
   .app--breve .app__emoji { filter: grayscale(0.4); opacity: 0.8; }
-
-  .vazio {
-    text-align: center;
-    color: #6b6b70;
-    font-size: 0.95rem;
-    padding: 12px 20px;
-  }
 
   /* ===== Rodapé ===== */
   .pe {

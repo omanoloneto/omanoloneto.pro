@@ -5,6 +5,21 @@ const title = 'Simulador do Windows 98 — viaje até 1998 | Sala do Professor M
 const description =
   'Um Windows 98 de mentirinha pra crianças explorarem: ligue o computador, abra as janelas, descubra o disquete e a internet discada. Grátis, em português, direto no navegador.';
 
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'LearningResource',
+  name: 'Simulador do Windows 98',
+  url: 'https://omanoloneto.pro/class/sims/windows-98/',
+  description,
+  inLanguage: 'pt-BR',
+  isAccessibleForFree: true,
+  learningResourceType: 'Interactive simulation',
+  educationalLevel: 'Ensino Fundamental',
+  teaches: 'História da computação: como eram os computadores e a internet em 1998',
+  audience: { '@type': 'EducationalAudience', educationalRole: 'student' },
+  author: { '@type': 'Person', name: 'Manolo Neto', url: 'https://omanoloneto.pro' },
+};
+
 // ============================================================
 //  Conteúdo das janelas — EDITE livremente. Cada janela tem um
 //  texto explicativo (tom pra criança) e uma curiosidade.
@@ -143,7 +158,17 @@ const itensMenu = [
 ];
 ---
 
-<Layout title={title} description={description}>
+<Layout
+  title={title}
+  description={description}
+  ogImage="/og/class.png"
+  ogImageAlt="Sala do Professor Manolo — jogos educativos gratuitos pra sala de aula"
+  jsonLd={jsonLd}
+  fontes={false}
+  manifest="/class/manifest.webmanifest"
+  sw="/class/sw.js"
+  themeColor="#ffffff"
+>
   <main id="conteudo" class="w98" role="application" aria-label="Simulador do Windows 98">
     <!-- Ícones desenhados (sem marcas registradas de verdade — tudo genérico) -->
     <svg hidden aria-hidden="true">
@@ -299,6 +324,9 @@ const itensMenu = [
         <div class="bandeja bisel-baixo">
           <button class="bandeja__som" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
             <svg aria-hidden="true"><use data-mute-use href="#i-som"></use></svg>
+          </button>
+          <button class="bandeja__som" type="button" data-fullscreen aria-pressed="false" aria-label="Entrar em tela cheia">
+            <span data-fullscreen-icon aria-hidden="true">⛶</span>
           </button>
           <span data-relogio>--:--</span>
         </div>
@@ -750,6 +778,23 @@ const itensMenu = [
       localStorage.setItem('win98:mudo', estado.mudo ? '1' : '0');
       aplicarMudo();
     });
+
+    // ===== Tela cheia (bandeja) =====
+    const fsBtn = $('[data-fullscreen]');
+    if (!document.fullscreenEnabled) {
+      fsBtn.hidden = true; // iPad/navegadores sem suporte
+    } else {
+      fsBtn.addEventListener('click', () => {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const cheio = !!document.fullscreenElement;
+        fsBtn.setAttribute('aria-pressed', String(cheio));
+        fsBtn.setAttribute('aria-label', cheio ? 'Sair da tela cheia' : 'Entrar em tela cheia');
+        $('[data-fullscreen-icon]').textContent = cheio ? '⊡' : '⛶';
+      });
+    }
 
     // ===== Telas =====
     function trocarTela(nome) {

@@ -5,9 +5,35 @@ import { site } from '../data/site';
 interface Props {
   title?: string;
   description?: string;
+  /** Caminho da imagem Open Graph (1200×630). */
+  ogImage?: string;
+  /** Descrição da imagem OG pra leitores de tela / cards. */
+  ogImageAlt?: string;
+  /** Dados estruturados schema.org (objeto ou lista de objetos). */
+  jsonLd?: object | object[];
+  /** Carrega as fontes self-hosted (Inter + JetBrains Mono). As páginas
+   *  /class usam fontes de sistema e passam false — zero download. */
+  fontes?: boolean;
+  /** Caminho de um webmanifest (PWA). Usado pela sala de aula. */
+  manifest?: string;
+  /** Caminho de um service worker pra registrar (PWA/offline). */
+  sw?: string;
+  /** Cor da barra do navegador (tema claro da sala usa branco). */
+  themeColor?: string;
 }
-const { title = site.titulo, description = site.descricaoSEO } = Astro.props;
-const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://omanoloneto.com').href;
+const {
+  title = site.titulo,
+  description = site.descricaoSEO,
+  ogImage = '/og/site.png',
+  ogImageAlt = site.tagline,
+  jsonLd,
+  fontes = true,
+  manifest,
+  sw,
+  themeColor = '#0a0e14',
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://omanoloneto.pro').href;
+const ogImageUrl = new URL(ogImage, Astro.site ?? 'https://omanoloneto.pro').href;
 ---
 <!doctype html>
 <html lang="pt-BR">
@@ -23,30 +49,62 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://omanoloneto
 
     <!-- Open Graph / redes sociais -->
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.nome} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:locale" content="pt_BR" />
-    <meta property="og:image" content={new URL('/icon-512.png', Astro.site ?? 'https://omanoloneto.pro').href} />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:image" content={new URL('/icon-512.png', Astro.site ?? 'https://omanoloneto.pro').href} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImageUrl} />
 
-    <meta name="theme-color" content="#0a0e14" />
+    <meta name="theme-color" content={themeColor} />
     <!-- Logo (óculos + barba) sobre fundo branco: legível em aba clara e escura -->
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    {manifest && <link rel="manifest" href={manifest} />}
 
-    <!-- Fontes -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Fontes self-hosted (subset latin) — só onde o design usa Inter/JB Mono -->
+    {
+      fontes && (
+        <>
+          <link
+            rel="preload"
+            href="/fonts/inter-latin.woff2"
+            as="font"
+            type="font/woff2"
+            crossorigin
+          />
+          <link rel="stylesheet" href="/fonts/fonts.css" />
+        </>
+      )
+    }
+
+    {
+      jsonLd && (
+        <script
+          type="application/ld+json"
+          set:html={JSON.stringify(jsonLd)}
+        />
+      )
+    }
   </head>
   <body>
     <a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
     <slot />
+
+    {
+      sw && (
+        <script is:inline define:vars={{ sw }}>
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => navigator.serviceWorker.register(sw));
+          }
+        </script>
+      )
+    }
 
     <script>
       // Revela elementos [data-reveal] ao entrar na viewport.
