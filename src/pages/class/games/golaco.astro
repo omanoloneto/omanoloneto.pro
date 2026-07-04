@@ -1,0 +1,939 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { config, narrador } from '../../../data/golaco';
+
+const dadosJson = JSON.stringify({ config, narrador });
+
+const title = 'Golaço! — futebol arcade estilo videogame antigo | Manolo Neto';
+const description =
+  'Futebol arcade pra jogar no navegador, no estilo dos videogames antigos: campo visto de cima, dois tempos, um botão de chute e troca automática de jogador. Felinos FC contra Robôs FC — em português e grátis.';
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': ['VideoGame', 'LearningResource'],
+  name: 'Golaço!',
+  url: 'https://omanoloneto.pro/class/games/golaco/',
+  description,
+  inLanguage: 'pt-BR',
+  isAccessibleForFree: true,
+  learningResourceType: 'Game',
+  educationalLevel: 'Ensino Fundamental',
+  teaches: 'Coordenação motora, lateralidade, noção espacial e tomada de decisão rápida',
+  audience: { '@type': 'EducationalAudience', educationalRole: 'student' },
+  gamePlatform: 'Navegador web',
+  author: { '@type': 'Person', name: 'Manolo Neto', url: 'https://omanoloneto.pro' },
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL' },
+};
+---
+
+<Layout
+  title={title}
+  description={description}
+  ogImage="/og/class.png"
+  ogImageAlt="Sala do Professor Manolo — jogos educativos gratuitos pra sala de aula"
+  jsonLd={jsonLd}
+  fontes={false}
+  manifest="/class/manifest.webmanifest"
+  sw="/class/sw.js"
+  themeColor="#ffffff"
+>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="gl" data-game role="application" aria-label="Jogo de futebol: mova o jogador com as setas e chute com espaço">
+    <!-- HUD -->
+    <header class="hud" role="status" aria-live="polite">
+      <div class="hud__bloco hud__bloco--placar">
+        <span class="placar__time placar__time--a">{config.timeJogador.emoji} {config.timeJogador.curto}</span>
+        <strong data-gols-a>0</strong>
+        <span class="placar__x">×</span>
+        <strong data-gols-b>0</strong>
+        <span class="placar__time placar__time--b">{config.timeCpu.curto} {config.timeCpu.emoji}</span>
+      </div>
+      <div class="hud__bloco">
+        <span class="hud__label">Tempo</span>
+        <strong data-relogio>0:00</strong>
+        <span class="hud__sub" data-etapa>1º</span>
+      </div>
+      <div class="hud__bloco hud__bloco--nome" aria-hidden="true">⚽ Golaço!</div>
+      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <span data-mute-icon>🔊</span>
+      </button>
+      <button class="hud__mute" type="button" data-fullscreen aria-pressed="false" aria-label="Entrar em tela cheia">
+        <span data-fullscreen-icon>⛶</span>
+      </button>
+    </header>
+
+    <!-- Palco -->
+    <div class="palco">
+      <canvas class="tela" data-tela width={config.largura} height={config.altura} aria-hidden="true"></canvas>
+      <p class="toast" data-toast hidden></p>
+
+      <!-- Controles de toque -->
+      <div class="controles" aria-hidden="true">
+        <div class="dpad">
+          <button class="ctl dpad__cima" type="button" data-ctl="cima">▲</button>
+          <button class="ctl dpad__esq" type="button" data-ctl="esq">◀</button>
+          <button class="ctl dpad__dir" type="button" data-ctl="dir">▶</button>
+          <button class="ctl dpad__baixo" type="button" data-ctl="baixo">▼</button>
+        </div>
+        <button class="ctl ctl--chute" type="button" data-ctl="chute">CHUTAR</button>
+      </div>
+    </div>
+
+    <!-- Modal: introdução + escolha de modo -->
+    <div class="modal" data-intro>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="placa__topo" id="intro-title">⚽ Golaço!</div>
+        <div class="placa__corpo">
+          <ol class="regras">
+            <li>É o <b>{config.timeJogador.nome} {config.timeJogador.emoji}</b> contra o <b>{config.timeCpu.nome} {config.timeCpu.emoji}</b> — dois tempos de {config.minutosPorTempo} minutos.</li>
+            <li><b>Setas</b> movem o jogador — você controla sempre o que está <b>mais perto da bola</b> (a setinha amarela mostra quem é).</li>
+            <li><b>Espaço</b> chuta na direção em que você anda. Perto do gol… GOLAÇO! 🥅</li>
+            <li>Pra roubar a bola, é só <b>encostar</b> nela. Boa sorte, craque!</li>
+          </ol>
+          <p class="regras__teclas">🎮 Setas ou <b>WASD</b> pra correr · <b>Espaço</b> pra chutar · No tablet, botões na tela</p>
+          <p class="escolha__titulo">Que jogo vai ser?</p>
+          <div class="escolha">
+            <button class="botao-modo botao-modo--amistoso" type="button" data-modo="amistoso">
+              <span class="botao-modo__titulo">⚽ Amistoso</span>
+              <small>Os Robôs jogam devagarzinho. Bom pra aprender os controles e treinar o golaço.</small>
+            </button>
+            <button class="botao-modo botao-modo--decisao" type="button" data-modo="decisao">
+              <span class="botao-modo__titulo">🏆 Decisão</span>
+              <small>Os Robôs vieram pra ganhar: são rápidos e chutam forte. Jogo de final de campeonato!</small>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: fim de jogo -->
+    <div class="modal" data-fim hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="fim-title">
+        <div class="placa__topo" id="fim-title" data-fim-title>Fim de jogo!</div>
+        <div class="placa__corpo center">
+          <p class="grande" data-fim-msg></p>
+          <p class="placar-final" data-fim-placar></p>
+          <button class="botao botao--go" type="button" data-restart>🔄 Revanche!</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="sr-only" data-anuncio aria-live="polite"></p>
+  </main>
+</Layout>
+
+<style is:global>
+  body.is-class { background: #fff; overflow-x: hidden; }
+  body.is-class::before { display: none !important; }
+</style>
+
+<style>
+  .gl {
+    height: 100svh;
+    display: flex;
+    flex-direction: column;
+    font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+    background: #1e5c2e;
+    color: #fff;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  /* ===== HUD ===== */
+  .hud {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 3vw, 28px);
+    padding: 10px clamp(12px, 3vw, 24px);
+    background: rgba(10, 40, 18, 0.92);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    z-index: 5;
+  }
+  .hud__bloco { display: flex; align-items: baseline; gap: 7px; }
+  .hud__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
+  .hud__bloco strong { font-size: 1.55rem; line-height: 1; transition: transform 0.18s ease; }
+  .hud__bloco strong.pop { transform: scale(1.4); color: #ffe8a3; }
+  .hud__sub { font-size: 0.75rem; opacity: 0.85; }
+  .hud__bloco--nome { flex: 1; font-size: 0.95rem; font-weight: 700; opacity: 0.95; justify-content: center; }
+  .hud__bloco--placar { align-items: center; gap: 9px; }
+  .placar__time { font-size: 0.82rem; font-weight: 800; letter-spacing: 0.03em; }
+  .placar__time--a { color: #9cc0f0; }
+  .placar__time--b { color: #f0a89c; }
+  .placar__x { opacity: 0.7; }
+  .hud__mute {
+    width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.16);
+    font-size: 1.15rem; display: grid; place-items: center; color: #fff;
+    flex-shrink: 0;
+  }
+  .hud__mute:hover { background: rgba(255, 255, 255, 0.3); }
+  .hud__mute[hidden] { display: none; }
+
+  /* ===== Palco ===== */
+  .palco {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    padding: clamp(4px, 1.5vh, 14px);
+  }
+  .tela {
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 20 / 11;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    background: #2e7d3f;
+  }
+
+  .toast {
+    position: absolute;
+    left: 50%;
+    top: clamp(14px, 8vh, 60px);
+    transform: translateX(-50%);
+    max-width: 90%;
+    padding: 10px 24px;
+    border-radius: 999px;
+    background: rgba(10, 40, 18, 0.94);
+    color: #ffe8a3;
+    font-weight: 800;
+    font-size: clamp(1rem, 3vw, 1.4rem);
+    text-align: center;
+    pointer-events: none;
+    animation: sobe 0.25s ease;
+    z-index: 6;
+  }
+  .toast[hidden] { display: none; }
+  @keyframes sobe {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  /* ===== Controles de toque ===== */
+  .controles {
+    position: absolute;
+    inset: auto 0 0 0;
+    display: none;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 18px 14px;
+    pointer-events: none;
+    z-index: 7;
+  }
+  @media (pointer: coarse) {
+    .controles { display: flex; }
+  }
+  .dpad {
+    display: grid;
+    grid-template-columns: 56px 56px 56px;
+    grid-template-rows: 56px 56px;
+    gap: 4px;
+  }
+  .dpad__cima { grid-column: 2; grid-row: 1; }
+  .dpad__esq { grid-column: 1; grid-row: 2; }
+  .dpad__dir { grid-column: 3; grid-row: 2; }
+  .dpad__baixo { grid-column: 2; grid-row: 2; }
+  .ctl {
+    pointer-events: auto;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    background: rgba(10, 40, 18, 0.6);
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  .ctl:active { background: rgba(10, 40, 18, 0.9); }
+  .ctl--chute { width: 110px; height: 74px; font-size: 0.95rem; letter-spacing: 0.04em; border-radius: 20px; }
+
+  /* ===== Modais (padrão da sala) ===== */
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(6, 26, 12, 0.6);
+    backdrop-filter: blur(3px);
+  }
+  .modal[hidden] { display: none; }
+  .placa {
+    width: min(94vw, 540px);
+    max-height: 92svh;
+    overflow: auto;
+    border-radius: 18px;
+    background: #fffdf5;
+    color: #333;
+    border: 3px solid #0a2812;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+  }
+  .placa__topo {
+    padding: 14px 20px;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(90deg, #2e7d3f, #0a2812);
+  }
+  .placa__corpo { padding: 18px 20px 20px; }
+  .placa__corpo.center { text-align: center; }
+  .regras { padding-left: 22px; display: grid; gap: 9px; font-size: 0.94rem; line-height: 1.5; }
+  .regras__teclas {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #eef7ef;
+    font-size: 0.82rem;
+    color: #55555c;
+  }
+  .escolha__titulo { margin: 14px 0 10px; font-weight: 800; font-size: 0.98rem; }
+  .escolha { display: grid; gap: 10px; }
+  .botao-modo {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 2px solid #cfe0d0;
+    background: #fff;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .botao-modo:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12); }
+  .botao-modo--amistoso:hover { border-color: #2e7d3f; }
+  .botao-modo--decisao:hover { border-color: #d99e1b; }
+  .botao-modo__titulo { font-weight: 800; font-size: 1rem; color: #0a2812; }
+  .botao-modo small { font-size: 0.8rem; color: #6b6b70; line-height: 1.4; }
+  .grande { font-size: 1.15rem; font-weight: 800; color: #0a2812; }
+  .placar-final { margin-top: 12px; font-size: 1.35rem; font-weight: 800; color: #2e7d3f; }
+  .botao {
+    margin-top: 16px;
+    padding: 12px 26px;
+    border-radius: 14px;
+    border: 0;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    color: #fff;
+    background: linear-gradient(180deg, #46a55b 0%, #2e7d3f 55%, #1c5229 100%);
+    box-shadow: 0 3px 0 #143d1e;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  .botao:hover { filter: brightness(1.08); }
+  .botao:active { transform: translateY(2px); box-shadow: none; }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (max-width: 560px) {
+    .hud { flex-wrap: wrap; gap: 8px 14px; padding: 8px 12px; }
+    .hud__bloco strong { font-size: 1.2rem; }
+    .hud__bloco--nome { display: none; }
+    .hud__mute { width: 36px; height: 36px; }
+  }
+</style>
+
+<script>
+  document.body.classList.add('is-class');
+
+  (() => {
+    const $ = (s) => document.querySelector(s);
+    const dados = JSON.parse($('[data-dados]').textContent);
+    const CFG = dados.config;
+    const NARRA = dados.narrador;
+
+    const canvas = $('[data-tela]');
+    const ctx = canvas.getContext('2d');
+    const W = CFG.largura, H = CFG.altura, M = CFG.margem;
+    const CY = H / 2;
+    const golY0 = CY - CFG.bocaGol / 2, golY1 = CY + CFG.bocaGol / 2;
+
+    const golsAEl = $('[data-gols-a]');
+    const golsBEl = $('[data-gols-b]');
+    const relogioEl = $('[data-relogio]');
+    const etapaEl = $('[data-etapa]');
+    const toastEl = $('[data-toast]');
+    const anuncioEl = $('[data-anuncio]');
+
+    const estado = {
+      modo: 'amistoso',
+      mudo: false,
+      rodando: false,
+      golsA: 0,
+      golsB: 0,
+      etapa: 1,          // 1º ou 2º tempo
+      segundos: 0,
+      frames: 0,
+      festejo: 0,        // frames de comemoração (jogo congela)
+      dono: null,        // quem está com a bola
+      controlado: null,  // jogador humano da vez
+    };
+    const dif = () => CFG.modos[estado.modo];
+
+    // ===== Áudio =====
+    let actx = null;
+    function initAudio() {
+      if (actx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    function tom(freq, inicio, dur, tipo, vol) {
+      if (!actx) return;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = tipo; o.frequency.value = freq;
+      o.connect(g); g.connect(actx.destination);
+      const t = actx.currentTime + inicio;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur + 0.03);
+    }
+    function somChute() { if (estado.mudo) return; tom(220, 0, 0.06, 'square', 0.1); }
+    function somApito() { if (estado.mudo) return; tom(2200, 0, 0.18, 'square', 0.06); tom(2200, 0.25, 0.3, 'square', 0.06); }
+    function somRoubo() { if (estado.mudo) return; tom(340, 0, 0.05, 'triangle', 0.1); }
+    function somTorcida() {
+      if (estado.mudo || !actx) return;
+      const dur = 1.4;
+      const buf = actx.createBuffer(1, actx.sampleRate * dur, actx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      const src = actx.createBufferSource();
+      src.buffer = buf;
+      const filtro = actx.createBiquadFilter();
+      filtro.type = 'bandpass'; filtro.frequency.value = 900; filtro.Q.value = 0.6;
+      const g = actx.createGain();
+      g.gain.value = 0.25;
+      src.connect(filtro); filtro.connect(g); g.connect(actx.destination);
+      src.start();
+      tom(880, 0, 0.5, 'triangle', 0.1);
+      tom(1100, 0.2, 0.5, 'triangle', 0.1);
+    }
+
+    // ===== Mudo / tela cheia (padrão da sala) =====
+    const muteBtn = $('[data-mute]');
+    const muteIcon = $('[data-mute-icon]');
+    function aplicarMudo() {
+      muteBtn.setAttribute('aria-pressed', String(estado.mudo));
+      muteIcon.textContent = estado.mudo ? '🔈' : '🔊';
+      muteBtn.setAttribute('aria-label', estado.mudo ? 'Ligar o som' : 'Desligar o som');
+    }
+    estado.mudo = localStorage.getItem('golaco:mudo') === '1';
+    aplicarMudo();
+    muteBtn.addEventListener('click', () => {
+      estado.mudo = !estado.mudo;
+      localStorage.setItem('golaco:mudo', estado.mudo ? '1' : '0');
+      aplicarMudo();
+    });
+
+    const fsBtn = $('[data-fullscreen]');
+    if (!document.fullscreenEnabled) {
+      fsBtn.hidden = true;
+    } else {
+      fsBtn.addEventListener('click', () => {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen();
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const cheio = !!document.fullscreenElement;
+        fsBtn.setAttribute('aria-pressed', String(cheio));
+        fsBtn.setAttribute('aria-label', cheio ? 'Sair da tela cheia' : 'Entrar em tela cheia');
+        $('[data-fullscreen-icon]').textContent = cheio ? '⊡' : '⛶';
+      });
+    }
+
+    // ===== Toast =====
+    let toastTimer = 0;
+    function toast(txt, ms) {
+      toastEl.textContent = txt;
+      toastEl.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toastEl.hidden = true; }, ms || 2000);
+      anuncioEl.textContent = txt;
+    }
+    const sorteia = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // ===== Jogadores =====
+    // Time A (humano) defende a ESQUERDA e ataca a DIREITA. Time B é o oposto.
+    // Formação: goleiro + zagueiro + dois alas.
+    function fazTime(time) {
+      const espelho = time === 'B' ? -1 : 1;
+      const gx = time === 'A' ? M + 18 : W - M - 18;
+      const base = (fx, fy) => ({ x: W / 2 + espelho * fx, y: CY + fy });
+      return [
+        { time, papel: 'goleiro', ...base(0, 0), x: gx, y: CY, baseX: gx, baseY: CY, cd: 0, segura: 0, dirX: espelho, dirY: 0 },
+        { time, papel: 'linha', ...pos(base(-250, 0)), cd: 0, dirX: espelho, dirY: 0 },
+        { time, papel: 'linha', ...pos(base(-80, -114)), cd: 0, dirX: espelho, dirY: 0 },
+        { time, papel: 'linha', ...pos(base(-80, 114)), cd: 0, dirX: espelho, dirY: 0 },
+      ];
+      function pos(p) { return { x: p.x, y: p.y, baseX: p.x, baseY: p.y }; }
+    }
+    let jogadores = [];
+    const bola = { x: W / 2, y: CY, vx: 0, vy: 0, giro: 0 };
+
+    function armarKickoff() {
+      jogadores = [...fazTime('A'), ...fazTime('B')];
+      bola.x = W / 2; bola.y = CY; bola.vx = 0; bola.vy = 0;
+      estado.dono = null;
+      estado.controlado = jogadores[1];
+    }
+
+    // ===== Entrada =====
+    const input = { esq: false, dir: false, cima: false, baixo: false, chute: false, chuteAntes: false };
+    const mapaTeclas = {
+      ArrowLeft: 'esq', a: 'esq', A: 'esq',
+      ArrowRight: 'dir', d: 'dir', D: 'dir',
+      ArrowUp: 'cima', w: 'cima', W: 'cima',
+      ArrowDown: 'baixo', s: 'baixo', S: 'baixo',
+      ' ': 'chute', x: 'chute', X: 'chute',
+    };
+    document.addEventListener('keydown', (e) => {
+      const acao = mapaTeclas[e.key];
+      if (!acao) return;
+      e.preventDefault();
+      input[acao] = true;
+    });
+    document.addEventListener('keyup', (e) => {
+      const acao = mapaTeclas[e.key];
+      if (acao) input[acao] = false;
+    });
+    document.querySelectorAll('[data-ctl]').forEach((btn) => {
+      const acao = btn.dataset.ctl;
+      const liga = (v) => (e) => { e.preventDefault(); input[acao] = v; };
+      btn.addEventListener('pointerdown', liga(true));
+      btn.addEventListener('pointerup', liga(false));
+      btn.addEventListener('pointercancel', liga(false));
+      btn.addEventListener('pointerleave', liga(false));
+    });
+
+    // ===== Utilidades =====
+    const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    function andaPara(j, tx, ty, vel) {
+      const dx = tx - j.x, dy = ty - j.y;
+      const d = Math.hypot(dx, dy);
+      if (d < 2) return;
+      j.x += (dx / d) * Math.min(vel, d);
+      j.y += (dy / d) * Math.min(vel, d);
+      j.dirX = dx / d; j.dirY = dy / d;
+    }
+    function dentroDoCampo(j) {
+      j.x = Math.max(M + 6, Math.min(W - M - 6, j.x));
+      j.y = Math.max(M + 6, Math.min(H - M - 6, j.y));
+    }
+    function pop(el) { el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+
+    // ===== Posse e chute =====
+    function chuta(j, dx, dy, forca) {
+      const d = Math.hypot(dx, dy) || 1;
+      bola.vx = (dx / d) * forca;
+      bola.vy = (dy / d) * forca;
+      estado.dono = null;
+      j.cd = 18;
+      somChute();
+    }
+
+    function passoPosse() {
+      const dono = estado.dono;
+      if (dono) {
+        // bola colada no pé, na direção do movimento
+        bola.x = dono.x + dono.dirX * 16;
+        bola.y = dono.y + dono.dirY * 16;
+        bola.vx = 0; bola.vy = 0;
+        // desarme: adversário perto da BOLA rouba
+        for (const j of jogadores) {
+          if (j.time === dono.time || j.cd > 0 || j.papel === 'goleiro') continue;
+          if (dist(j, bola) < CFG.distRoubo) {
+            dono.cd = 40;
+            estado.dono = j;
+            j.segura = 0;
+            somRoubo();
+            break;
+          }
+        }
+      } else {
+        // bola solta: quem chegar primeiro domina — mas bola RÁPIDA (chute)
+        // ninguém de linha consegue parar; só o goleiro pega (defesa!)
+        const velBola = Math.hypot(bola.vx, bola.vy);
+        if (velBola > 3.5) return;
+        let melhor = null, melhorD = CFG.distDominio;
+        for (const j of jogadores) {
+          if (j.cd > 0) continue;
+          const d = dist(j, bola);
+          if (d < melhorD) { melhorD = d; melhor = j; }
+        }
+        if (melhor) { estado.dono = melhor; melhor.segura = 0; }
+      }
+    }
+
+    // ===== Cérebros =====
+    function escolheControlado() {
+      // o humano controla o jogador de linha mais perto da bola (com histerese)
+      let melhor = null, melhorD = 1e9;
+      for (const j of jogadores) {
+        if (j.time !== 'A' || j.papel === 'goleiro') continue;
+        const d = dist(j, bola);
+        if (d < melhorD) { melhorD = d; melhor = j; }
+      }
+      const atual = estado.controlado;
+      if (!atual || atual.papel === 'goleiro') estado.controlado = melhor;
+      else if (melhor !== atual && melhorD < dist(atual, bola) * 0.8) estado.controlado = melhor;
+    }
+
+    function passoHumano() {
+      const j = estado.controlado;
+      if (!j) return;
+      let dx = (input.dir ? 1 : 0) - (input.esq ? 1 : 0);
+      let dy = (input.baixo ? 1 : 0) - (input.cima ? 1 : 0);
+      const vel = estado.dono === j ? CFG.velComBola : CFG.velJogador;
+      if (dx || dy) {
+        const d = Math.hypot(dx, dy);
+        j.x += (dx / d) * vel;
+        j.y += (dy / d) * vel;
+        j.dirX = dx / d; j.dirY = dy / d;
+      }
+      // chute (na borda do apertar)
+      if (input.chute && !input.chuteAntes && estado.dono === j) {
+        let cx = dx, cy = dy;
+        if (!cx && !cy) { cx = j.dirX; cy = j.dirY; }
+        // pertinho do gol e indo pra frente? ajuda a mirar no canto
+        // (de preferência no canto OPOSTO ao goleiro — o pulo do gato do futebol)
+        if (j.x > W - M - 320 && cx > 0) {
+          const goleiroB = jogadores.find((g) => g.time === 'B' && g.papel === 'goleiro');
+          // mira na trave mais longe do goleiro
+          const canto = goleiroB && goleiroB.y > CY ? golY0 + 14 : golY1 - 14;
+          cy = (canto - j.y) / 190;
+          cx = 1;
+        }
+        chuta(j, cx, cy, CFG.forcaChute);
+      }
+      input.chuteAntes = input.chute;
+
+      // companheiros mantêm a formação (deslocada junto com a bola)
+      for (const t of jogadores) {
+        if (t.time !== 'A' || t === j || t.papel === 'goleiro') continue;
+        const ax = t.baseX + (bola.x - W / 2) * 0.35;
+        const ay = t.baseY + (bola.y - CY) * 0.3;
+        andaPara(t, ax, ay, CFG.velJogador * 0.85);
+      }
+    }
+
+    function passoCpu() {
+      const D = dif();
+      const dono = estado.dono;
+      // quem persegue: o robô de linha mais perto da bola
+      let perseguidor = null, melhorD = 1e9;
+      for (const j of jogadores) {
+        if (j.time !== 'B' || j.papel === 'goleiro') continue;
+        const d = dist(j, bola);
+        if (d < melhorD) { melhorD = d; perseguidor = j; }
+      }
+      for (const j of jogadores) {
+        if (j.time !== 'B' || j.papel === 'goleiro') continue;
+        if (dono === j) {
+          // carrega pela própria ala (desloca o goleiro), mais devagar com a bola
+          andaPara(j, M + 30, j.y + (Math.random() * 24 - 12), D.velCpu * 0.88);
+          const pertoDoGol = j.x < M + 260;
+          const marcado = jogadores.some((h) => h.time === 'A' && dist(h, j) < 34);
+          if ((pertoDoGol || marcado) && Math.random() < D.reacaoCpu) {
+            // chuta na trave mais longe do goleiro humano
+            const goleiroA = jogadores.find((g) => g.time === 'A' && g.papel === 'goleiro');
+            const alvo = goleiroA && goleiroA.y > CY ? golY0 + 14 : golY1 - 14;
+            chuta(j, M - j.x, alvo - j.y, D.chuteCpu);
+          }
+        } else if (j === perseguidor && (!dono || dono.time === 'A')) {
+          andaPara(j, bola.x, bola.y, D.velCpu);
+        } else {
+          const ax = j.baseX + (bola.x - W / 2) * 0.35;
+          const ay = j.baseY + (bola.y - CY) * 0.3;
+          andaPara(j, ax, ay, D.velCpu * 0.85);
+        }
+      }
+    }
+
+    function passoGoleiros() {
+      for (const g of jogadores) {
+        if (g.papel !== 'goleiro') continue;
+        if (estado.dono === g) {
+          // segura um pouquinho e repõe pro meio-campo
+          g.segura++;
+          if (g.segura > 35) {
+            const alvoX = W / 2 + (g.time === 'A' ? 120 : -120);
+            chuta(g, alvoX - g.x, (Math.random() * 240 - 120), CFG.forcaChute);
+          }
+          continue;
+        }
+        const alvoY = Math.max(golY0 + 12, Math.min(golY1 - 12, bola.y));
+        andaPara(g, g.baseX, alvoY, dif().velGoleiro);
+        // defende: pega a bola se ela chegar perto
+        if (g.cd === 0 && dist(g, bola) < 18 && estado.dono?.papel !== 'goleiro') {
+          if (estado.dono) estado.dono.cd = 40;
+          estado.dono = g;
+          g.segura = 0;
+        }
+      }
+    }
+
+    // separação: ninguém fica amontoado
+    function separa() {
+      for (let i = 0; i < jogadores.length; i++)
+        for (let k = i + 1; k < jogadores.length; k++) {
+          const a = jogadores[i], b = jogadores[k];
+          const d = dist(a, b);
+          if (d > 0 && d < 24) {
+            const px = (a.x - b.x) / d, py = (a.y - b.y) / d;
+            a.x += px; a.y += py;
+            b.x -= px; b.y -= py;
+          }
+        }
+    }
+
+    // ===== Bola =====
+    function passoBola() {
+      if (estado.dono) return;
+      bola.x += bola.vx;
+      bola.y += bola.vy;
+      bola.vx *= CFG.atritoBola;
+      bola.vy *= CFG.atritoBola;
+      bola.giro += Math.hypot(bola.vx, bola.vy) * 0.06;
+      const r = CFG.raioBola;
+      // quica nas laterais de cima/baixo
+      if (bola.y < M + r) { bola.y = M + r; bola.vy *= -0.8; }
+      if (bola.y > H - M - r) { bola.y = H - M - r; bola.vy *= -0.8; }
+      const naBoca = bola.y > golY0 && bola.y < golY1;
+      // GOL! (bola inteira passou da linha, dentro da boca)
+      if (naBoca && bola.x < M - r) { gol('B'); return; }
+      if (naBoca && bola.x > W - M + r) { gol('A'); return; }
+      // fora da boca: quica na linha de fundo
+      if (!naBoca && bola.x < M + r) { bola.x = M + r; bola.vx *= -0.8; }
+      if (!naBoca && bola.x > W - M - r) { bola.x = W - M - r; bola.vx *= -0.8; }
+      // fundo da rede segura a bola
+      if (bola.x < M - CFG.fundoGol + r) { bola.x = M - CFG.fundoGol + r; bola.vx = 0; }
+      if (bola.x > W - M + CFG.fundoGol - r) { bola.x = W - M + CFG.fundoGol - r; bola.vx = 0; }
+    }
+
+    function gol(time) {
+      estado.festejo = 130;
+      if (time === 'A') {
+        estado.golsA++;
+        toast(sorteia(NARRA.gol), 2200);
+        pop(golsAEl);
+      } else {
+        estado.golsB++;
+        toast(sorteia(NARRA.golSofrido), 2200);
+        pop(golsBEl);
+      }
+      somTorcida();
+      atualizarHud();
+    }
+
+    // ===== Relógio / etapas =====
+    function atualizarHud() {
+      golsAEl.textContent = estado.golsA;
+      golsBEl.textContent = estado.golsB;
+      const s = estado.segundos;
+      relogioEl.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+      etapaEl.textContent = estado.etapa + 'º';
+    }
+
+    function passoRelogio() {
+      estado.frames++;
+      if (estado.frames < 60) return;
+      estado.frames = 0;
+      estado.segundos++;
+      atualizarHud();
+      const fimEtapa = CFG.minutosPorTempo * 60;
+      if (estado.etapa === 1 && estado.segundos >= fimEtapa) {
+        estado.etapa = 2;
+        estado.segundos = 0;
+        somApito();
+        toast(NARRA.intervalo, 2400);
+        armarKickoff();
+        atualizarHud();
+      } else if (estado.etapa === 2 && estado.segundos >= fimEtapa) {
+        fimDeJogo();
+      }
+    }
+
+    function fimDeJogo() {
+      estado.rodando = false;
+      somApito();
+      const a = estado.golsA, b = estado.golsB;
+      const msg = a > b ? NARRA.fimVitoria : a < b ? NARRA.fimDerrota : NARRA.fimEmpate;
+      $('[data-fim-title]').textContent = a > b ? '🏆 Fim de jogo!' : '⚽ Fim de jogo!';
+      $('[data-fim-msg]').textContent = msg;
+      $('[data-fim-placar]').textContent =
+        CFG.timeJogador.emoji + ' ' + CFG.timeJogador.curto + ' ' + a + ' × ' + b + ' ' + CFG.timeCpu.curto + ' ' + CFG.timeCpu.emoji;
+      $('[data-fim]').hidden = false;
+      anuncioEl.textContent = msg + ' Placar final: ' + a + ' a ' + b + '.';
+    }
+
+    function reiniciar() {
+      estado.golsA = 0; estado.golsB = 0;
+      estado.etapa = 1; estado.segundos = 0; estado.frames = 0;
+      $('[data-fim]').hidden = true;
+      armarKickoff();
+      atualizarHud();
+      estado.rodando = true;
+      somApito();
+    }
+
+    // ===== Desenho =====
+    function desenhaCampo() {
+      // gramado listrado
+      for (let i = 0; i < W / 64; i++) {
+        ctx.fillStyle = i % 2 ? '#2e7d3f' : '#2a7339';
+        ctx.fillRect(i * 64, 0, 64, H);
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 3;
+      // linhas
+      ctx.strokeRect(M, M, W - 2 * M, H - 2 * M);
+      ctx.beginPath();
+      ctx.moveTo(W / 2, M); ctx.lineTo(W / 2, H - M);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(W / 2, CY, 58, 0, Math.PI * 2);
+      ctx.stroke();
+      // áreas
+      ctx.strokeRect(M, CY - 110, 118, 220);
+      ctx.strokeRect(W - M - 118, CY - 110, 118, 220);
+      // redes
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(M - CFG.fundoGol, golY0, CFG.fundoGol, CFG.bocaGol);
+      ctx.fillRect(W - M, golY0, CFG.fundoGol, CFG.bocaGol);
+      ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(M - CFG.fundoGol, golY0, CFG.fundoGol, CFG.bocaGol);
+      ctx.strokeRect(W - M, golY0, CFG.fundoGol, CFG.bocaGol);
+    }
+
+    function desenhaJogador(j) {
+      const ehControlado = j === estado.controlado;
+      const cor = j.time === 'A' ? CFG.timeJogador : CFG.timeCpu;
+      // sombra
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(j.x, j.y + 9, 10, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // corpo (goleiro usa a cor clara)
+      ctx.fillStyle = j.papel === 'goleiro' ? cor.corClara : cor.cor;
+      ctx.beginPath();
+      ctx.arc(j.x, j.y, CFG.raioJogador, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // cabeça
+      ctx.fillStyle = '#f2c9a0';
+      ctx.beginPath();
+      ctx.arc(j.x, j.y - 7, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      // marcador do controlado
+      if (ehControlado) {
+        ctx.strokeStyle = '#ffe14d';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(j.x, j.y, CFG.raioJogador + 5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#ffe14d';
+        ctx.beginPath();
+        ctx.moveTo(j.x - 6, j.y - 26);
+        ctx.lineTo(j.x + 6, j.y - 26);
+        ctx.lineTo(j.x, j.y - 18);
+        ctx.fill();
+      }
+    }
+
+    function desenhaBola() {
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(bola.x, bola.y + 6, 6, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(bola.x, bola.y, CFG.raioBola, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      // "gomos" girando
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.arc(bola.x + Math.cos(bola.giro) * 3, bola.y + Math.sin(bola.giro) * 3, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function desenhar() {
+      desenhaCampo();
+      const todos = [...jogadores].sort((a, b) => a.y - b.y);
+      for (const j of todos) desenhaJogador(j);
+      desenhaBola();
+    }
+
+    // ===== Loop =====
+    let ultimo = 0, acum = 0;
+    function quadro(t) {
+      requestAnimationFrame(quadro);
+      const dt = Math.min(50, t - ultimo);
+      ultimo = t;
+      if (!estado.rodando) { desenhar(); return; }
+      acum += dt;
+      while (acum >= 1000 / 60) {
+        acum -= 1000 / 60;
+        if (estado.festejo) {
+          estado.festejo--;
+          if (estado.festejo === 0) { armarKickoff(); somApito(); }
+          continue;
+        }
+        escolheControlado();
+        passoHumano();
+        passoCpu();
+        passoGoleiros();
+        for (const j of jogadores) { if (j.cd > 0) j.cd--; dentroDoCampo(j); }
+        separa();
+        passoPosse();
+        passoBola();
+        passoRelogio();
+      }
+      desenhar();
+    }
+
+    // ===== Botões =====
+    document.querySelectorAll('[data-modo]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        initAudio();
+        estado.modo = btn.dataset.modo;
+        $('[data-intro]').hidden = true;
+        reiniciar();
+        anuncioEl.textContent = 'Começou o jogo! Use as setas pra correr e espaço pra chutar.';
+      })
+    );
+    $('[data-restart]').addEventListener('click', () => { initAudio(); reiniciar(); });
+
+    armarKickoff();
+    atualizarHud();
+    desenhar();
+    requestAnimationFrame(quadro);
+
+    // Handle de depuração/afinação (usado também pelos testes automatizados).
+    window.__gl = { estado, bola, get jogadores() { return jogadores; } };
+  })();
+</script>
