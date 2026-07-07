@@ -4,9 +4,9 @@ import Icon from '../../components/Icon.astro';
 
 const title = 'Controle de Aula — Extensão para Chromebook | Manolo Neto';
 const description =
-  'Baixe a extensão Controle de Aula: o professor comanda os Chromebooks da turma pelo celular, pela rede local, sem nuvem. Guia de instalação passo a passo.';
+  'Baixe a extensão Controle de Aula: o professor comanda os Chromebooks da turma pelo celular. Pareamento por QR, comandos com criptografia ponta-a-ponta. Guia de instalação passo a passo.';
 
-const VERSAO = '0.3.0';
+const VERSAO = '0.4.0';
 const ZIP = '/downloads/controle-de-aula-extensao.zip';
 
 const passos = [
@@ -14,7 +14,7 @@ const passos = [
   { t: 'Abra a página de extensões', d: 'No Chrome do Chromebook, digite chrome://extensions na barra de endereço.' },
   { t: 'Ative o Modo do desenvolvedor', d: 'É o botão no canto superior direito da página de extensões.' },
   { t: 'Carregar sem compactação', d: 'Clique no botão "Carregar sem compactação" e selecione a pasta controle-de-aula que você extraiu.' },
-  { t: 'Aceite a permissão de rede', d: 'A extensão pede acesso http://*/* — é como ela encontra o celular do professor na rede local da escola. Nada sai da rede.' },
+  { t: 'Pareie com o celular', d: 'Clique no ícone da extensão: aparece um QR. Abra o app Controle de Aula no celular do professor e escaneie o código. Pronto — o Chromebook fica vinculado.' },
 ];
 ---
 
@@ -33,9 +33,10 @@ const passos = [
         <p class="eyebrow">Projeto · Controle de Aula</p>
         <h1 class="titulo">Extensão para o Chromebook da turma</h1>
         <p class="section-lead">
-          O professor comanda os Chromebooks dos alunos <strong>pelo celular</strong>,
-          pela <strong>rede local da escola</strong> — sem nuvem, sem cadastro. A extensão
-          encontra o celular do professor sozinha e abre o site que ele mandar.
+          O professor comanda os Chromebooks dos alunos <strong>pelo celular</strong>.
+          O app e a extensão conversam por um canal seguro na nuvem (Firebase),
+          com <strong>criptografia ponta-a-ponta</strong> — os comandos passam cifrados e o
+          servidor não consegue lê-los. O pareamento é por <strong>QR</strong>, sem criar conta.
         </p>
 
         <div class="acoes">
@@ -47,8 +48,8 @@ const passos = [
           </a>
         </div>
         <p class="mini">
-          Requer <strong>Chrome 144+</strong> · Grátis, código aberto (MIT) ·
-          Criptografia ponta-a-ponta (X25519 + AES-256-GCM)
+          Requer <strong>Chrome 133+</strong> · Grátis, código aberto (MIT) ·
+          Criptografia ponta-a-ponta (X25519 + AES-256-GCM) · Pareamento por QR, sem conta
         </p>
 
         <div class="aviso">
@@ -84,22 +85,22 @@ const passos = [
       <div class="container duas">
         <div>
           <p class="eyebrow">Como funciona</p>
-          <h2 class="section-title">Sem pareamento manual</h2>
+          <h2 class="section-title">Pareamento por QR</h2>
           <ul class="lista">
-            <li>O <strong>celular do professor</strong> roda o app e vira um servidor na rede local (porta 47615).</li>
-            <li>A extensão <strong>varre a rede, acha o celular e se vincula</strong> ao primeiro professor encontrado — o ícone fica verde.</li>
-            <li>O vínculo é <strong>exclusivo</strong>: o Chromebook só obedece àquele celular.</li>
-            <li>Tudo viaja <strong>criptografado</strong> dentro da rede da escola. Nada vai pra internet.</li>
+            <li>A extensão entra num <strong>canal seguro no Firebase</strong> (conta anônima — sem login) e mostra um <strong>QR de uso único</strong>.</li>
+            <li>O <strong>professor escaneia</strong> o QR com o app no celular. O vínculo é <strong>exclusivo</strong>: cada Chromebook obedece só a quem escaneou.</li>
+            <li>Os comandos chegam pela nuvem <strong>cifrados ponta-a-ponta</strong> — o Firebase transporta, mas não consegue ler nada.</li>
+            <li>A extensão <strong>abre/fecha sites, bloqueia páginas</strong> da aula e informa quais abas estão abertas — <strong>nunca tira print</strong> da tela.</li>
           </ul>
         </div>
         <div>
           <p class="eyebrow">Problemas comuns</p>
-          <h2 class="section-title">Se não conectar</h2>
+          <h2 class="section-title">Se não parear</h2>
           <ul class="lista">
-            <li>Chromebook e celular precisam estar na <strong>mesma Wi-Fi</strong>, sem isolamento de cliente (AP isolation).</li>
-            <li>Não achou sozinho? Abra o popup da extensão e digite o <strong>IP mostrado no app</strong> do professor.</li>
-            <li>Trocar de professor: popup → <strong>“Desvincular professor”</strong>.</li>
-            <li>Teste rápido: abra <code>http://IP-DO-CELULAR:47615/</code> numa aba — deve responder um texto com <code>"app":"controle-de-aula"</code>.</li>
+            <li>Precisa de <strong>internet</strong>: a extensão e o app falam pelo Firebase. Sem conexão, não pareia.</li>
+            <li>QR expirou ou não lê? O código é de <strong>uso único e rotaciona</strong> — feche e reabra a extensão pra gerar outro.</li>
+            <li>Trocar de professor: popup da extensão → <strong>“Desvincular”</strong> e escaneie de novo.</li>
+            <li>No primeiro uso o Chrome pede acesso aos servidores do <strong>Firebase</strong> (Google) — é por onde os comandos trafegam. Aceite pra funcionar.</li>
           </ul>
         </div>
       </div>
