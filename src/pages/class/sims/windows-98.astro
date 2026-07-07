@@ -9,13 +9,22 @@ const description =
 //  Conteúdo das janelas — EDITE livremente. Cada janela tem um
 //  texto explicativo (tom pra criança) e uma curiosidade.
 // ============================================================
-type Janela = { id: string; titulo: string; icone: string; html: string };
+type Janela = { id: string; titulo: string; icone: string; html: string; classe?: string; cru?: boolean };
+
+// Arquivos da pasta Meus Documentos (cada um abre uma janela-visualizadora arq-*)
+const arquivos = [
+  { id: 'arq-carta', icone: 'doc', nome: 'Carta pra vovó.doc' },
+  { id: 'arq-trabalho', icone: 'doc', nome: 'Trabalho de Ciências.doc' },
+  { id: 'arq-diario', icone: 'txt', nome: 'diário secreto.txt' },
+  { id: 'arq-desenho', icone: 'imagem', nome: 'desenho da família.bmp' },
+  { id: 'arq-musica', icone: 'musica', nome: 'musiquinha.mid' },
+];
 
 const janelas: Janela[] = [
   {
     id: 'meu-computador',
     titulo: 'Meu Computador',
-    icone: 'i-computador',
+    icone: 'computador',
     html: `
       <p>Aqui você via tudo o que morava dentro do computador: o disco rígido <b>(C:)</b>,
       o CD-ROM <b>(D:)</b> e o disquete <b>(A:)</b>.</p>
@@ -27,18 +36,37 @@ const janelas: Janela[] = [
   {
     id: 'meus-documentos',
     titulo: 'Meus Documentos',
-    icone: 'i-pasta',
+    icone: 'pasta',
+    classe: 'janela--exp',
+    cru: true,
     html: `
-      <p>Esta era a pasta onde cada pessoa guardava seus textos, desenhos e trabalhos
-      da escola. Cada coisa guardada se chama <b>arquivo</b>, e as pastas servem pra
-      organizar tudo, como gavetas de um armário.</p>
-      <p class="dica">💡 <b>Curiosidade:</b> em 1998 quase ninguém tinha foto no computador —
-      as câmeras usavam filme, que precisava ser revelado na loja!</p>`,
+      <div class="exp">
+        <div class="exp__tools" aria-hidden="true">
+          <span class="ie__btn bisel-alto exp__btn--off">◀ Voltar</span>
+          <span class="ie__btn bisel-alto exp__btn--off">▲ Acima</span>
+        </div>
+        <div class="exp__end">
+          <span class="exp__rotulo">Endereço</span>
+          <span class="bisel-campo exp__caminho">C:\\Meus Documentos</span>
+        </div>
+        <div class="exp__grade bisel-campo" role="group" aria-label="Arquivos da pasta">
+          ${arquivos
+            .map(
+              (a) => `
+          <button type="button" class="arq" data-abre="${a.id}">
+            <span class="ico arq__ico" aria-hidden="true"><img src="/class/sims/icons/${a.icone}.png" alt="" onerror="this.remove()" /><svg><use href="#i-${a.icone}"></use></svg></span>
+            <span class="arq__nome">${a.nome}</span>
+          </button>`
+            )
+            .join('')}
+        </div>
+        <div class="exp__status bisel-baixo">${arquivos.length} objeto(s) — clique num arquivo pra abrir!</div>
+      </div>`,
   },
   {
     id: 'lixeira',
     titulo: 'Lixeira',
-    icone: 'i-lixeira',
+    icone: 'lixeira',
     html: `
       <p>Quando você apagava um arquivo, ele não sumia na hora: vinha parar aqui.
       Se você se arrependesse, dava pra abrir a Lixeira e pegar o arquivo de volta —
@@ -46,22 +74,12 @@ const janelas: Janela[] = [
       <p class="dica">💡 <b>Curiosidade:</b> pra apagar de verdade era preciso
       "esvaziar a Lixeira" — e o ícone mudava de cheio pra vazio.</p>`,
   },
-  {
-    id: 'internet-explorer',
-    titulo: 'Internet Explorer',
-    icone: 'i-ie',
-    html: `
-      <p>Este era o programa pra entrar na internet: o <b>navegador</b>.</p>
-      <p>Mas a internet era <b>discada</b>: o computador ligava pro provedor usando o
-      telefone de casa, fazendo um barulho esquisito — <i>piiiii… crrrrrrr…</i> —
-      e enquanto alguém navegava, o telefone da casa ficava ocupado!</p>
-      <p class="dica">💡 <b>Curiosidade:</b> uma música que hoje baixa em 1 segundo
-      demorava mais de MEIA HORA pra chegar.</p>`,
-  },
+  // (o Internet Explorer agora é uma janela especial com navegador de verdade —
+  //  veja a section janela--ie no markup e o array `sites` abaixo)
   {
     id: 'leiame',
     titulo: 'Leia-me.txt — Bloco de Notas',
-    icone: 'i-bloco',
+    icone: 'bloco',
     html: `
       <p>Olá, turma! Bem-vindos a <b>1998</b>! 👋</p>
       <p>Este é o Windows 98, o sistema que os computadores usavam quando o professor
@@ -73,7 +91,7 @@ const janelas: Janela[] = [
   {
     id: 'programas',
     titulo: 'Programas',
-    icone: 'i-programas',
+    icone: 'programas',
     html: `
       <p>Aqui ficavam os programas do computador. Os mais famosos: o <b>Paint</b>
       (pra desenhar), o <b>Bloco de Notas</b> (pra escrever) e os joguinhos
@@ -84,7 +102,7 @@ const janelas: Janela[] = [
   {
     id: 'documentos',
     titulo: 'Documentos',
-    icone: 'i-pasta',
+    icone: 'pasta',
     html: `
       <p>Este menu mostrava os últimos arquivos que você tinha usado, pra abrir de novo
       rapidinho, sem precisar procurar.</p>
@@ -94,7 +112,7 @@ const janelas: Janela[] = [
   {
     id: 'configuracoes',
     titulo: 'Configurações',
-    icone: 'i-config',
+    icone: 'config',
     html: `
       <p>Aqui dava pra deixar o computador com a sua cara: mudar as cores, o papel de
       parede e os sons. O mais divertido era o <b>protetor de tela</b>: se você parasse
@@ -105,7 +123,7 @@ const janelas: Janela[] = [
   {
     id: 'ajuda',
     titulo: 'Ajuda',
-    icone: 'i-ajuda',
+    icone: 'ajuda',
     html: `
       <p>Não dava pra perguntar pra internet — a Ajuda era um livrão dentro do próprio
       Windows, explicando cada botão. As pessoas também liam manuais de papel!</p>
@@ -115,31 +133,269 @@ const janelas: Janela[] = [
   {
     id: 'executar',
     titulo: 'Executar',
-    icone: 'i-executar',
+    icone: 'executar',
     html: `
       <p>Esta janelinha era pros espertos: você digitava o nome secreto de um programa
       e ele abria na hora. Escrever <b>winmine</b> abria o Campo Minado!</p>
       <p class="dica">💡 <b>Curiosidade:</b> muita gente preferia digitar comandos porque
       era mais rápido que caçar no menu — os programadores fazem isso até hoje.</p>`,
   },
+  // ===== Visualizadores dos arquivos de Meus Documentos =====
+  {
+    id: 'arq-carta',
+    titulo: 'Carta pra vovó.doc — WordPad',
+    icone: 'doc',
+    html: `
+      <div class="folha">
+        <p>Querida vovó,</p>
+        <p>Adivinha? Estou escrevendo esta carta no <b>computador novo</b> lá de casa!
+        O papai deixou eu digitar sozinha. O teclado faz clique-clique e é muito legal.</p>
+        <p>Desculpa se a senhora tentou ligar e deu ocupado: é que quando a gente entra
+        na internet, o telefone fica preso. A mamãe já brigou duas vezes. 🙈</p>
+        <p>Depois eu imprimo uma foto minha na impressora (ela é bem barulhenta) e mando
+        junto com a carta de papel, tá?</p>
+        <p>Um beijo enorme,<br /><b>da sua neta Aninha</b> ❤️</p>
+      </div>
+      <p class="dica">💡 <b>Curiosidade:</b> em 1998 quase ninguém tinha e-mail em casa —
+      carta de papel, com selo e tudo, ainda era o jeito mais comum de mandar notícia.</p>`,
+  },
+  {
+    id: 'arq-trabalho',
+    titulo: 'Trabalho de Ciências.doc — WordPad',
+    icone: 'doc',
+    html: `
+      <div class="folha folha--trabalho">
+        <p class="folha__titulo">OS PLANETAS DO SISTEMA SOLAR</p>
+        <p class="folha__sub">Trabalho de Ciências — 3ª série — 1998</p>
+        <p>O Sistema Solar tem <b>NOVE</b> planetas: Mercúrio, Vênus, Terra, Marte,
+        Júpiter, Saturno, Urano, Netuno e Plutão.</p>
+        <p>O maior é Júpiter, que é tão grande que caberiam mais de mil Terras dentro
+        dele. O mais quente é Vênus. E Plutão é o mais longe e o mais friozinho de todos.</p>
+        <p>Fonte: enciclopédia em CD-ROM do computador da escola.</p>
+      </div>
+      <p class="dica">💡 <b>Curiosidade:</b> a criança acertou! Em 1998 o Plutão AINDA era
+      planeta — ele só foi "rebaixado" pra planeta-anão em 2006. E sem internet, pesquisa
+      era na enciclopédia: livros enormes ou um CD-ROM cheio de figuras.</p>`,
+  },
+  {
+    id: 'arq-diario',
+    titulo: 'diário secreto.txt — Bloco de Notas',
+    icone: 'txt',
+    html: `
+      <div class="folha folha--txt">
+        <p>========================<br />DIÁRIO SECRETO!!!<br />NÃO LEIA!!! (você leu, né)<br />========================</p>
+        <p>terça-feira</p>
+        <p>hoje o papai deixou eu jogar campo minado. perdi 11 vezes. o computador é
+        muito esperto ou eu tenho muito azar.</p>
+        <p>segredo nº 1: escondi 3 figurinhas repetidas dentro do estojo azul pra trocar
+        no recreio.</p>
+        <p>segredo nº 2: a musiquinha que toca quando o windows liga é a coisa mais
+        bonita que eu já ouvi. não conta pra ninguém.</p>
+      </div>
+      <p class="dica">💡 <b>Curiosidade:</b> arquivo .txt é só texto puro, sem cor nem
+      desenho — por isso abria rapidinho até nos computadores mais fraquinhos.</p>`,
+  },
+  {
+    id: 'arq-desenho',
+    titulo: 'desenho da família.bmp — Paint',
+    icone: 'imagem',
+    classe: 'janela--paint',
+    html: `
+      <div class="paint">
+        <div class="paint__paleta" aria-hidden="true">
+          <i style="background:#000"></i><i style="background:#c00"></i><i style="background:#f90"></i><i style="background:#fd0"></i><i style="background:#090"></i><i style="background:#09f"></i><i style="background:#00c"></i><i style="background:#909"></i>
+        </div>
+        <div class="paint__tela">
+          <svg viewBox="0 0 300 190" aria-label="Desenho de criança: casa, sol, família e cachorro">
+            <rect x="0" y="0" width="300" height="190" fill="#fff"></rect>
+            <circle cx="262" cy="30" r="16" fill="#fd0" stroke="#f90" stroke-width="2"></circle>
+            <g stroke="#f90" stroke-width="2.5" stroke-linecap="round">
+              <path d="M262 6 V-2 M262 54 V62 M238 30 H230 M286 30 H294 M245 13 L239 7 M279 47 L285 53 M279 13 L285 7 M245 47 L239 53"></path>
+            </g>
+            <path d="M30 20 Q38 10 48 16 Q58 8 66 16 Q76 12 74 22 Q64 30 52 26 Q40 32 30 20 Z" fill="#cfe8ff" stroke="#9cc" stroke-width="2"></path>
+            <rect x="95" y="85" width="70" height="55" fill="#fbb" stroke="#c00" stroke-width="3"></rect>
+            <path d="M88 85 L130 52 L172 85 Z" fill="#c00" stroke="#900" stroke-width="3"></path>
+            <rect x="118" y="105" width="20" height="35" fill="#963" stroke="#630" stroke-width="2.5"></rect>
+            <rect x="102" y="93" width="14" height="12" fill="#cfe8ff" stroke="#00c" stroke-width="2"></rect>
+            <g stroke="#000" stroke-width="2.5" stroke-linecap="round" fill="none">
+              <circle cx="205" cy="95" r="10" fill="#ffe1c4"></circle>
+              <path d="M205 105 V132 M205 112 L192 122 M205 112 L218 122 M205 132 L196 152 M205 132 L214 152"></path>
+              <circle cx="235" cy="100" r="9" fill="#ffe1c4"></circle>
+              <path d="M235 109 V132 M235 114 L224 123 M235 114 L246 123 M235 132 L227 150 M235 132 L243 150"></path>
+              <circle cx="260" cy="108" r="7" fill="#ffe1c4"></circle>
+              <path d="M260 115 V132 M260 119 L252 126 M260 119 L268 126 M260 132 L254 146 M260 132 L266 146"></path>
+            </g>
+            <path d="M205 90 Q200 84 202 88 M235 96 Q230 90 232 94" stroke="#963" stroke-width="4" stroke-linecap="round" fill="none"></path>
+            <g stroke="#630" stroke-width="2.5" stroke-linecap="round" fill="#e8b06a">
+              <ellipse cx="45" cy="145" rx="16" ry="9"></ellipse>
+              <circle cx="63" cy="138" r="6"></circle>
+              <path d="M32 150 L28 158 M42 152 L40 160 M50 152 L52 160 M58 148 L62 156 M30 142 Q22 138 26 132" fill="none"></path>
+            </g>
+            <path d="M0 165 Q10 158 20 165 Q30 158 40 165 Q50 158 60 165 Q70 158 80 165 Q90 158 100 165 Q110 158 120 165 Q130 158 140 165 Q150 158 160 165 Q170 158 180 165 Q190 158 200 165 Q210 158 220 165 Q230 158 240 165 Q250 158 260 165 Q270 158 280 165 Q290 158 300 165" stroke="#090" stroke-width="3" fill="none"></path>
+            <text x="150" y="182" text-anchor="middle" font-family="Comic Sans MS, cursive" font-size="11" fill="#00c">mamãe  papai  eu  e o Rex</text>
+          </svg>
+        </div>
+      </div>
+      <p class="dica">💡 <b>Curiosidade:</b> desenhar no Paint com aquele mouse de bolinha
+      era um desafio — e .bmp era um formato tão pesado que UM desenho podia lotar um
+      disquete inteiro.</p>`,
+  },
+  {
+    id: 'arq-musica',
+    titulo: 'musiquinha.mid — Tocador de Mídia',
+    icone: 'musica',
+    html: `
+      <div class="tocador">
+        <div class="tocador__visor bisel-campo">
+          <span class="tocador__nota" aria-hidden="true">♪</span>
+          <span data-midi-status>Parado</span>
+        </div>
+        <div class="tocador__botoes">
+          <button type="button" class="bisel-alto" data-midi-tocar>▶ Tocar</button>
+          <button type="button" class="bisel-alto" data-midi-parar>⏹ Parar</button>
+        </div>
+      </div>
+      <p>Arquivo <b>.mid</b> (MIDI) não guardava o som gravado — guardava a <b>partitura</b>,
+      e o computador tocava as notas na hora, com aquele timbre de videogame.</p>
+      <p class="dica">💡 <b>Curiosidade:</b> uma música inteira em MIDI pesava menos que
+      um segundo de MP3 — por isso os sites de 1998 viviam com musiquinha de fundo
+      (que ninguém sabia como desligar).</p>`,
+  },
 ];
 
 // Ícones da área de trabalho (na ordem da coluna)
 const iconesDesktop = [
-  { id: 'meu-computador', icone: 'i-computador', rotulo: 'Meu Computador' },
-  { id: 'meus-documentos', icone: 'i-pasta', rotulo: 'Meus Documentos' },
-  { id: 'lixeira', icone: 'i-lixeira', rotulo: 'Lixeira' },
-  { id: 'internet-explorer', icone: 'i-ie', rotulo: 'Internet Explorer' },
-  { id: 'leiame', icone: 'i-bloco', rotulo: 'Leia-me.txt' },
+  { id: 'meu-computador', icone: 'computador', rotulo: 'Meu Computador' },
+  { id: 'meus-documentos', icone: 'pasta', rotulo: 'Meus Documentos' },
+  { id: 'lixeira', icone: 'lixeira', rotulo: 'Lixeira' },
+  { id: 'internet-explorer', icone: 'ie', rotulo: 'Internet Explorer' },
+  { id: 'leiame', icone: 'bloco', rotulo: 'Leia-me.txt' },
 ];
 
 // Itens do menu Iniciar (flat — Desligar é separado no markup)
 const itensMenu = [
-  { id: 'programas', icone: 'i-programas', rotulo: 'Programas' },
-  { id: 'documentos', icone: 'i-pasta', rotulo: 'Documentos' },
-  { id: 'configuracoes', icone: 'i-config', rotulo: 'Configurações' },
-  { id: 'ajuda', icone: 'i-ajuda', rotulo: 'Ajuda' },
-  { id: 'executar', icone: 'i-executar', rotulo: 'Executar…' },
+  { id: 'programas', icone: 'programas', rotulo: 'Programas' },
+  { id: 'documentos', icone: 'pasta', rotulo: 'Documentos' },
+  { id: 'configuracoes', icone: 'config', rotulo: 'Configurações' },
+  { id: 'ajuda', icone: 'ajuda', rotulo: 'Ajuda' },
+  { id: 'executar', icone: 'executar', rotulo: 'Executar…' },
+];
+
+// ============================================================
+//  Mini-web do Internet Explorer — sites de mentirinha (1998).
+//  '__erro__' é a página "não pode ser exibida". EDITE à vontade.
+// ============================================================
+const sites = [
+  {
+    url: 'www.portaldaturminha.com.br',
+    titulo: 'Portal da Turminha',
+    html: `
+  <div class="pg pg--home">
+    <div class="pg-marquee" aria-hidden="true"><span>★ ★ ★ BEM-VINDO AO PORTAL DA TURMINHA!!! ★ ★ ★ O MELHOR SITE DO BRASIL (segundo a minha mãe) ★ ★ ★ VOLTE SEMPRE E CONTE PROS AMIGOS!!! ★ ★ ★</span></div>
+    <h1>☆ Portal da Turminha ☆</h1>
+    <p class="pg-centro">A página <b>mais legal</b> da internet, feita por mim mesmo no computador da família.<br />Atualizada sempre que o telefone deixa!</p>
+    <p class="pg-centro">Você é o visitante número:<br /><span class="pg-odometro" data-visitas>004.318</span><br /><small>(uau!!! quase TUDO ISSO de gente!)</small></p>
+    <hr class="pg-hr" />
+    <h2>⭐ Meus sites favoritos ⭐</h2>
+    <ul>
+      <li>😂 <a href="#" data-vai="www.piadasdorecreio.com.br">Piadas do Recreio</a> — pra rir até a barriga doer!</li>
+      <li>🦖 <a href="#" data-vai="www.dinomania.com.br">DinoMania</a> — TUDO sobre dinossauros (até os do Brasil)!</li>
+      <li>💾 <a href="#" data-vai="www.baixatudo.com.br">Baixa Tudo!</a> — jogos grátis pra baixar. Um dia o download termina.</li>
+    </ul>
+    <div class="pg-obras">
+      <span class="pg-obras__faixa"></span>
+      <p>🚧 <b>EM CONSTRUÇÃO</b> 🚧<br />Em breve nesta página: minha coleção de figurinhas, fotos do meu cachorro Bidu<br />e uma página SECRETA. Aguardem!!!</p>
+      <span class="pg-obras__faixa"></span>
+    </div>
+    <p class="pg-centro">✍️ <a href="#" data-vai="www.livroderecados.com.br">Assine o meu livro de recados!</a><br /><small>(se o link não funcionar, tenta de novo semana que vem)</small></p>
+    <p class="pg-rodape">Este site fica melhor numa tela de 800×600.<br />Feito no Bloco de Notas, com muito carinho. © 1998</p>
+  </div>`,
+  },
+  {
+    url: 'www.piadasdorecreio.com.br',
+    titulo: 'Piadas do Recreio',
+    html: `
+  <div class="pg pg--piadas">
+    <h1>😂 Piadas do Recreio 😂</h1>
+    <p class="pg-centro">As melhores piadas da escola, testadas e aprovadas na hora do lanche!<br /><b>PIADAS NOVAS TODA SEMANA</b> (quando eu lembrar)</p>
+    <div class="pg-piada"><p><b>Por que o jacaré tirou o filho da escola?</b></p><p class="pg-resposta">Porque ele réptil de ano! 🐊</p></div>
+    <div class="pg-piada"><p><b>O que o pato disse pra pata?</b></p><p class="pg-resposta">Vem quá! 🦆</p></div>
+    <div class="pg-piada"><p><b>Qual é o animal mais antigo do mundo?</b></p><p class="pg-resposta">A zebra — porque ela ainda é em preto e branco! 🦓</p></div>
+    <div class="pg-piada"><p><b>O que o tomate foi fazer no banco?</b></p><p class="pg-resposta">Tirar o extrato! 🍅</p></div>
+    <div class="pg-piada"><p><b>Por que o computador foi parar no médico?</b></p><p class="pg-resposta">Porque pegou um vírus! 🤒💻</p></div>
+    <p class="pg-dica">📬 Quer mandar a sua piada pra cá? Me manda um e-mail! Mas tenha paciência: aqui em casa a internet só conecta quando NINGUÉM precisa usar o telefone…</p>
+    <p class="pg-nav">🏠 <a href="#" data-vai="www.portaldaturminha.com.br">Portal da Turminha</a> • 🦖 <a href="#" data-vai="www.dinomania.com.br">DinoMania</a> • 💾 <a href="#" data-vai="www.baixatudo.com.br">Baixa Tudo!</a></p>
+    <p class="pg-rodape">Piadas do Recreio © 1998 — proibido contar sem dar risada.</p>
+  </div>`,
+  },
+  {
+    url: 'www.dinomania.com.br',
+    titulo: 'DinoMania',
+    html: `
+  <div class="pg pg--dinos">
+    <h1>🦖 DinoMania 🦕</h1>
+    <p class="pg-centro">A página de dinossauros MAIS COMPLETA do Brasil inteiro!*<br /><small>*que eu conheço</small></p>
+    <h2>Você sabia? (tudo verdade!)</h2>
+    <ul>
+      <li>O <b>Brasil tinha dinossauros!</b> O <b>estauricossauro</b> viveu no Rio Grande do Sul há uns 230 milhões de anos — é um dos dinossauros mais antigos já encontrados no MUNDO inteiro.</li>
+      <li>O <b>tiranossauro rex</b> tinha dentes do tamanho de uma banana. 🍌</li>
+      <li>As aves são parentes dos dinossauros. Isso mesmo: a <b>galinha</b> é tipo uma prima (bem) distante do T-rex. 🐔</li>
+      <li>Ninguém sabe a cor de verdade dos dinossauros: os ossos viram fóssil, mas a pele quase nunca. Pode ser que o T-rex fosse cor-de-rosa. Ninguém pode provar que não.</li>
+    </ul>
+    <div class="pg-enquete">
+      <p><b>📊 ENQUETE DA SEMANA:</b> qual é o dinossauro mais legal?</p>
+      <label><input type="radio" name="dino" value="trex" /> Tiranossauro rex (o famoso)</label>
+      <label><input type="radio" name="dino" value="brasileiro" /> Estauricossauro (o brasileiro!)</label>
+      <label><input type="radio" name="dino" value="pescocudo" /> Braquiossauro (o pescoçudo)</label>
+      <label><input type="radio" name="dino" value="galinha" /> A galinha (tecnicamente conta)</label>
+      <p><button type="button" class="bisel-alto pg-baixar" data-votar>Votar!</button></p>
+    </div>
+    <p class="pg-nav">🏠 <a href="#" data-vai="www.portaldaturminha.com.br">Portal da Turminha</a> • 😂 <a href="#" data-vai="www.piadasdorecreio.com.br">Piadas do Recreio</a> • 💾 <a href="#" data-vai="www.baixatudo.com.br">Baixa Tudo!</a></p>
+    <p class="pg-rodape">DinoMania © 1998 — todos os rugidos reservados.</p>
+  </div>`,
+  },
+  {
+    url: 'www.baixatudo.com.br',
+    titulo: 'Baixa Tudo!',
+    html: `
+  <div class="pg pg--baixa">
+    <h1>💾 BAIXA TUDO! 💾</h1>
+    <p class="pg-centro">Jogos GRÁTIS pra baixar!<br /><b>Grátis, sim. Rápido… não.</b></p>
+    <table class="pg-tabela">
+      <thead>
+        <tr><th>Jogo</th><th>Tamanho</th><th>Tempo pra baixar*</th><th>&nbsp;</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>🐍 Cobrinha Espacial</td><td>800 KB</td><td>4 minutos</td><td><button type="button" class="bisel-alto pg-baixar" data-baixar="Cobrinha Espacial">Baixar</button></td></tr>
+        <tr><td>🏎️ Corrida Maluca 98</td><td>2,5 MB</td><td>12 minutos</td><td><button type="button" class="bisel-alto pg-baixar" data-baixar="Corrida Maluca 98">Baixar</button></td></tr>
+        <tr><td>🧙 A Masmorra do Mago</td><td>34 MB</td><td>quase 3 HORAS</td><td><button type="button" class="bisel-alto pg-baixar" data-baixar="A Masmorra do Mago">Baixar</button></td></tr>
+        <tr><td>⚽ Super Futebol Estrela</td><td>300 MB</td><td>17 HORAS 😱</td><td><button type="button" class="bisel-alto pg-baixar" data-baixar="Super Futebol Estrela">Baixar</button></td></tr>
+      </tbody>
+    </table>
+    <p><small>*Tempo com modem de 56k e NINGUÉM usando o telefone de casa. Se alguém atender, o download cai e começa TUDO DE NOVO.</small></p>
+    <p class="pg-dica">💡 <b>Verdade de 1998:</b> a internet discada usava a linha do telefone. Pra baixar um jogo grandão, o computador ficava a noite INTEIRA ligado — e a família inteira torcendo pra ninguém ligar lá pra casa.</p>
+    <p class="pg-nav">🏠 <a href="#" data-vai="www.portaldaturminha.com.br">Portal da Turminha</a> • 😂 <a href="#" data-vai="www.piadasdorecreio.com.br">Piadas do Recreio</a> • 🦖 <a href="#" data-vai="www.dinomania.com.br">DinoMania</a></p>
+    <p class="pg-rodape">Baixa Tudo! © 1998 — 100% grátis, 0% rápido.</p>
+  </div>`,
+  },
+  {
+    url: '__erro__',
+    titulo: 'A página não pode ser exibida',
+    html: `
+  <div class="pg pg--erro">
+    <h1>A página não pode ser exibida</h1>
+    <p>A página que você está procurando não está disponível no momento. O site pode estar com problemas… ou talvez esse endereço <b>nem exista</b>.</p>
+    <hr class="pg-hr" />
+    <p><b>Tente o seguinte:</b></p>
+    <ul>
+      <li>Confira se você digitou o endereço certinho, letra por letra.</li>
+      <li>Clique no botão <b>⟳ Atualizar</b> pra tentar de novo.</li>
+      <li>Clique em <b>🏠 Início</b> pra voltar pra página inicial.</li>
+    </ul>
+    <p class="pg-erro__tec">Não é possível localizar o servidor ou erro de DNS<br />Internet Explorer (de mentirinha)<br />Endereço digitado: <b data-url-erro></b></p>
+    <p class="pg-dica">💡 <b>Curiosidade:</b> em 1998 a internet era pequenininha — a maioria dos endereços que você inventasse não existia mesmo. Hoje existem mais de UM BILHÃO de sites!</p>
+  </div>`,
+  },
 ];
 ---
 
@@ -207,6 +463,27 @@ const itensMenu = [
         <rect x="8" y="10" width="13" height="11" fill="#fff" stroke="#404040"></rect>
         <rect x="8" y="10" width="13" height="3" fill="#1084d0"></rect>
       </symbol>
+      <symbol id="i-doc" viewBox="0 0 24 24">
+        <path d="M6 2 H15 L19 6 V22 H6 Z" fill="#fff" stroke="#555"></path>
+        <path d="M15 2 L15 6 H19" fill="none" stroke="#555"></path>
+        <path d="M9 10 H16 M9 13 H16 M9 16 H13" stroke="#7a9ac9" stroke-width="1.2"></path>
+        <text x="9" y="8.6" font-family="Georgia, serif" font-size="6" font-weight="bold" fill="#2b4fa0">W</text>
+      </symbol>
+      <symbol id="i-txt" viewBox="0 0 24 24">
+        <path d="M6 2 H15 L19 6 V22 H6 Z" fill="#fff" stroke="#555"></path>
+        <path d="M15 2 L15 6 H19" fill="none" stroke="#555"></path>
+        <path d="M9 9 H16 M9 12 H16 M9 15 H16 M9 18 H12" stroke="#999" stroke-width="1.2"></path>
+      </symbol>
+      <symbol id="i-imagem" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" fill="#fff" stroke="#555"></rect>
+        <circle cx="9" cy="10" r="2.2" fill="#fd0" stroke="#f90"></circle>
+        <path d="M4 18 L10 12 L14 16 L17 13 L20 16 V19 H4 Z" fill="#6db36d" stroke="#3a7a3a" stroke-width="0.8"></path>
+      </symbol>
+      <symbol id="i-musica" viewBox="0 0 24 24">
+        <path d="M9 18.5 V6 L19 4 V16.5" fill="none" stroke="#2b4fa0" stroke-width="2"></path>
+        <ellipse cx="6.8" cy="18.8" rx="2.6" ry="2" fill="#2b4fa0"></ellipse>
+        <ellipse cx="16.8" cy="16.8" rx="2.6" ry="2" fill="#2b4fa0"></ellipse>
+      </symbol>
       <symbol id="i-som" viewBox="0 0 24 24">
         <path d="M4 10 H8 L13 5 V19 L8 14 H4 Z" fill="#404040"></path>
         <path d="M16 9 Q19 12 16 15 M18 6 Q23 12 18 18" stroke="#404040" stroke-width="1.6" fill="none"></path>
@@ -234,7 +511,10 @@ const itensMenu = [
           {
             iconesDesktop.map((i) => (
               <button class="icone" type="button" data-abre={i.id}>
-                <svg class="icone__img" aria-hidden="true"><use href={'#' + i.icone}></use></svg>
+                <span class="ico icone__img" aria-hidden="true">
+                  <img src={'/class/sims/icons/' + i.icone + '.png'} alt="" onerror="this.remove()" />
+                  <svg><use href={'#i-' + i.icone}></use></svg>
+                </span>
                 <span class="icone__nome">{i.rotulo}</span>
               </button>
             ))
@@ -244,7 +524,7 @@ const itensMenu = [
         {
           janelas.map((j, n) => (
             <section
-              class="janela"
+              class={'janela' + (j.classe ? ' ' + j.classe : '')}
               data-janela={j.id}
               data-nx={n}
               role="dialog"
@@ -253,7 +533,10 @@ const itensMenu = [
               hidden
             >
               <header class="janela__barra" data-arrasta>
-                <svg class="janela__icone" aria-hidden="true"><use href={'#' + j.icone}></use></svg>
+                <span class="ico janela__icone" aria-hidden="true">
+                  <img src={'/class/sims/icons/' + j.icone + '.png'} alt="" onerror="this.remove()" />
+                  <svg><use href={'#i-' + j.icone}></use></svg>
+                </span>
                 <span class="janela__titulo" id={'jt-' + j.id}>{j.titulo}</span>
                 <span class="janela__acoes">
                   <button type="button" class="bisel-alto" data-min aria-label="Minimizar">▁</button>
@@ -261,10 +544,69 @@ const itensMenu = [
                   <button type="button" class="bisel-alto" data-fecha aria-label="Fechar">✕</button>
                 </span>
               </header>
-              <div class="janela__corpo bisel-campo" set:html={j.html} />
+              {j.cru ? (
+                <div class="janela__cru" set:html={j.html} />
+              ) : (
+                <div class="janela__corpo bisel-campo" set:html={j.html} />
+              )}
             </section>
           ))
         }
+
+        <!-- Internet Explorer: janela especial com navegador de mentirinha -->
+        <section
+          class="janela janela--ie"
+          data-janela="internet-explorer"
+          data-nx="1"
+          role="dialog"
+          aria-labelledby="jt-internet-explorer"
+          tabindex="-1"
+          hidden
+        >
+          <header class="janela__barra" data-arrasta>
+            <span class="ico janela__icone" aria-hidden="true">
+              <img src="/class/sims/icons/ie.png" alt="" onerror="this.remove()" />
+              <svg><use href="#i-ie"></use></svg>
+            </span>
+            <span class="janela__titulo" id="jt-internet-explorer" data-ie-titulo>Internet Explorer</span>
+            <span class="janela__acoes">
+              <button type="button" class="bisel-alto" data-min aria-label="Minimizar">▁</button>
+              <button type="button" class="bisel-alto" data-max aria-label="Maximizar">▢</button>
+              <button type="button" class="bisel-alto" data-fecha aria-label="Fechar">✕</button>
+            </span>
+          </header>
+          <div class="ie">
+            <div class="ie__tools" role="toolbar" aria-label="Botões de navegação">
+              <button type="button" class="ie__btn bisel-alto" data-ie-voltar disabled><span aria-hidden="true">◀</span> Voltar</button>
+              <button type="button" class="ie__btn bisel-alto" data-ie-avancar disabled>Avançar <span aria-hidden="true">▶</span></button>
+              <button type="button" class="ie__btn bisel-alto" data-ie-atualizar disabled><span aria-hidden="true">⟳</span> Atualizar</button>
+              <button type="button" class="ie__btn bisel-alto" data-ie-inicio><span aria-hidden="true">🏠</span> Início</button>
+            </div>
+            <div class="ie__endereco">
+              <label for="ie-url">Endereço</label>
+              <input
+                id="ie-url"
+                class="bisel-campo"
+                type="text"
+                data-ie-url
+                inputmode="url"
+                autocomplete="off"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false"
+                placeholder="www.algumsite.com.br"
+              />
+              <button type="button" class="ie__btn bisel-alto" data-ie-ir>Ir</button>
+            </div>
+            <div class="ie__pagina bisel-campo" data-ie-pagina tabindex="0" aria-label="Página da internet"></div>
+            <div class="ie__status bisel-baixo" role="status" data-ie-status>Pronto</div>
+          </div>
+        </section>
+
+        <!-- Mini-web de mentirinha: fontes das páginas (clonadas pelo JS) -->
+        <div hidden data-ie-sites>
+          {sites.map((s) => <div hidden data-site={s.url} data-titulo={s.titulo} set:html={s.html} />)}
+        </div>
       </div>
 
       <nav class="menu bisel-alto" data-menu hidden aria-label="Menu Iniciar">
@@ -274,7 +616,10 @@ const itensMenu = [
             itensMenu.map((m) => (
               <li>
                 <button type="button" data-abre={m.id}>
-                  <svg aria-hidden="true"><use href={'#' + m.icone}></use></svg>
+                  <span class="ico menu__ico" aria-hidden="true">
+                    <img src={'/class/sims/icons/' + m.icone + '.png'} alt="" onerror="this.remove()" />
+                    <svg><use href={'#i-' + m.icone}></use></svg>
+                  </span>
                   {m.rotulo}
                 </button>
               </li>
@@ -283,7 +628,10 @@ const itensMenu = [
           <li class="menu__sep" aria-hidden="true"></li>
           <li>
             <button type="button" data-desligar>
-              <svg aria-hidden="true"><use href="#i-computador"></use></svg>
+              <span class="ico menu__ico" aria-hidden="true">
+                <img src="/class/sims/icons/computador.png" alt="" onerror="this.remove()" />
+                <svg><use href="#i-computador"></use></svg>
+              </span>
               Desligar…
             </button>
           </li>
@@ -354,6 +702,12 @@ const itensMenu = [
       background: #fff;
     }
     .w98 button { font-family: inherit; font-size: inherit; cursor: pointer; }
+
+    /* Ícone com PNG opcional: se /class/sims/icons/<nome>.png existir, cobre o SVG;
+       se faltar, o onerror remove o img e o SVG desenhado aparece. */
+    .ico { position: relative; display: inline-block; flex-shrink: 0; }
+    .ico svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .ico img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 1; }
     .w98 button:active {
       border-color: #404040 #dfdfdf #dfdfdf #404040;
       box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;
@@ -534,6 +888,133 @@ const itensMenu = [
       font-size: 12px;
     }
 
+    /* ---- Corpo cru (explorer/IE cuidam do próprio layout) ---- */
+    .janela__cru { margin-top: 3px; }
+
+    /* ---- Explorer (Meus Documentos) ---- */
+    .janela--exp { width: min(500px, calc(100% - 16px)); }
+    .exp { display: flex; flex-direction: column; gap: 3px; }
+    .exp__tools { display: flex; gap: 3px; padding: 1px 2px; }
+    .exp__btn--off { color: #808080; text-shadow: 1px 1px 0 #fff; cursor: default; }
+    .exp__end { display: flex; align-items: center; gap: 6px; padding: 1px 2px; }
+    .exp__rotulo { font-size: 12px; flex-shrink: 0; }
+    .exp__caminho { flex: 1; min-width: 0; padding: 3px 6px; font: 12px 'Courier New', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .exp__grade {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+      gap: 4px;
+      padding: 10px 6px;
+      min-height: 150px;
+      align-content: start;
+    }
+    .arq {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 2px;
+      background: none;
+      border: 1px solid transparent;
+      box-shadow: none;
+    }
+    .w98 .arq:active { border-color: transparent; box-shadow: none; }
+    .arq:hover { background: #e6f0fa; }
+    .arq:focus-visible { outline: 1px dotted #000; background: #cce4f7; }
+    .arq__ico { width: 34px; height: 34px; }
+    .arq__nome { font-size: 11.5px; line-height: 1.25; text-align: center; word-break: break-word; }
+    .exp__status { min-height: 19px; padding: 2px 8px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ---- Visualizadores: folha de texto, Paint, tocador ---- */
+    .folha {
+      background: #fff;
+      border: 1px solid #999;
+      padding: 12px 14px;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 14px;
+      box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.12);
+      margin-bottom: 10px;
+    }
+    .folha p { margin-bottom: 10px; }
+    .folha p:last-child { margin-bottom: 0; }
+    .folha--txt { font-family: 'Courier New', monospace; font-size: 12.5px; }
+    .folha__titulo { text-align: center; font-weight: 700; font-size: 15px; }
+    .folha__sub { text-align: center; font-size: 12px; color: #555; }
+
+    .janela--paint { width: min(480px, calc(100% - 16px)); }
+    .paint { margin-bottom: 10px; }
+    .paint__paleta { display: flex; gap: 3px; padding: 4px; background: #c0c0c0; border: 1px solid #808080; }
+    .paint__paleta i { width: 16px; height: 16px; border: 1px solid; border-color: #404040 #dfdfdf #dfdfdf #404040; }
+    .paint__tela { border: 2px solid; border-color: #808080 #fff #fff #808080; background: #fff; }
+    .paint__tela svg { display: block; width: 100%; height: auto; }
+
+    .tocador { margin-bottom: 12px; }
+    .tocador__visor {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: #000;
+      color: #3f3;
+      font: 700 13px 'Courier New', monospace;
+      margin-bottom: 6px;
+    }
+    .tocador__nota { font-size: 18px; }
+    .tocador__botoes { display: flex; gap: 4px; }
+    .tocador__botoes button { padding: 5px 16px; font-size: 12px; }
+
+    /* ---- Internet Explorer: chrome ---- */
+    .janela--ie { width: min(680px, calc(100% - 16px)); }
+    .janela--ie .ie { display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
+    .janela--max .ie { flex: 1; min-height: 0; }
+    .ie__tools { display: flex; flex-wrap: wrap; gap: 3px; padding: 1px 2px; }
+    .ie__btn { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; font-size: 12px; }
+    .ie__btn:disabled { color: #808080; text-shadow: 1px 1px 0 #fff; cursor: default; }
+    .w98 .ie__btn:disabled:active { border-color: #dfdfdf #404040 #404040 #dfdfdf; box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #808080; }
+    .ie__endereco { display: flex; align-items: center; gap: 6px; padding: 1px 2px; }
+    .ie__endereco label { font-size: 12px; flex-shrink: 0; }
+    .ie__endereco input { flex: 1; min-width: 0; padding: 3px 6px; font: 12px 'Courier New', monospace; user-select: text; -webkit-user-select: text; cursor: text; }
+    .ie__pagina { height: min(52vh, 380px); overflow: auto; padding: 0; background: #fff; user-select: text; -webkit-user-select: text; cursor: auto; }
+    .janela--max .ie__pagina { flex: 1; height: auto; min-height: 0; }
+    .ie__status { min-height: 19px; padding: 2px 8px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ---- Páginas da mini-web (vibe 1998) ---- */
+    .pg { padding: 14px 16px 20px; line-height: 1.55; font-size: 13px; }
+    .pg h1 { font-family: 'Comic Sans MS', 'Chalkboard SE', cursive; text-align: center; font-size: 1.7rem; margin: 8px 0 4px; }
+    .pg h2 { font-size: 1.05rem; margin: 14px 0 6px; }
+    .pg ul { padding-left: 22px; margin: 8px 0; }
+    .pg li { margin-bottom: 6px; }
+    .pg a { color: #0000ee; text-decoration: underline; cursor: pointer; }
+    .pg-centro { text-align: center; }
+    .pg-hr { border: 0; border-top: 1px solid #999; border-bottom: 1px solid #fff; margin: 12px 0; }
+    .pg-rodape { text-align: center; font-size: 11px; color: #666; margin-top: 16px; }
+    .pg-nav { text-align: center; margin-top: 14px; font-size: 12px; }
+    .pg-dica { margin-top: 12px; padding: 8px 10px; background: #ffffd5; border: 1px solid #c9c37a; font-size: 12px; }
+    .pg-marquee { overflow: hidden; background: #000080; color: #ff0; font-weight: 700; padding: 3px 0; margin: -14px -16px 10px; }
+    .pg-marquee span { display: inline-block; white-space: nowrap; padding-left: 100%; animation: pg-marquee 14s linear infinite; }
+    @keyframes pg-marquee { to { transform: translateX(-100%); } }
+    .pg-odometro { display: inline-block; margin-top: 4px; padding: 2px 12px; background: #000; color: #3f3; font: 700 1.2rem 'Courier New', monospace; letter-spacing: 4px; border: 2px solid; border-color: #404040 #dfdfdf #dfdfdf #404040; }
+    .pg-obras { text-align: center; margin: 12px 0; }
+    .pg-obras__faixa { display: block; height: 10px; background: repeating-linear-gradient(45deg, #ffd200 0 12px, #111 12px 24px); margin: 6px 0; }
+    .pg--home { background: #fdf6ff radial-gradient(#e7d0f5 1.5px, transparent 1.6px); background-size: 20px 20px; }
+    .pg--home h1 { color: #d4008f; text-shadow: 2px 2px 0 #ffd200; }
+    .pg--piadas { background: #fffbe6 repeating-linear-gradient(0deg, transparent 0 26px, #ffe9a8 26px 27px); }
+    .pg--piadas h1 { color: #e05a00; }
+    .pg-piada { margin: 10px 0; padding: 8px 12px; background: #fff; border: 2px dashed #e0a000; }
+    .pg-piada .pg-resposta { margin-top: 2px; color: #007700; font-weight: 700; }
+    .pg--dinos { background: #eaf7ea; }
+    .pg--dinos h1 { color: #1b7a1b; text-shadow: 2px 2px 0 #bfe8bf; }
+    .pg-enquete { margin: 10px 0; padding: 10px 12px; background: #fff; border: 2px solid #1b7a1b; }
+    .pg-enquete label { display: block; margin: 4px 0; }
+    .pg--baixa { background: #eef3ff; }
+    .pg--baixa h1 { color: #2b4fa0; text-shadow: 2px 2px 0 #cfd8ea; }
+    .pg-tabela { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0; background: #fff; }
+    .pg-tabela th, .pg-tabela td { border: 1px solid #8ea3c9; padding: 5px 8px; text-align: left; }
+    .pg-tabela th { background: #2b4fa0; color: #fff; }
+    .pg-baixar { padding: 2px 10px; font-size: 12px; }
+    .pg--erro { font-family: Arial, Helvetica, sans-serif; }
+    .pg--erro h1 { font-family: inherit; text-align: left; font-size: 1.25rem; margin-bottom: 10px; }
+    .pg-erro__tec { margin-top: 14px; font-size: 12px; color: #666; }
+
     /* ---- Menu Iniciar ---- */
     .menu {
       position: absolute;
@@ -575,7 +1056,7 @@ const itensMenu = [
       text-align: left;
       font-size: 13px;
     }
-    .menu li button svg { width: 22px; height: 22px; flex-shrink: 0; }
+    .menu li button .menu__ico { width: 22px; height: 22px; }
     .menu li button:hover,
     .menu li button:focus-visible {
       background: #000080;
@@ -629,7 +1110,7 @@ const itensMenu = [
       padding: 2px 8px;
       font-size: 12px;
     }
-    .tarefa svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .tarefa .ico { width: 15px; height: 15px; }
     .tarefa span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .tarefa--ativa {
       border-color: #404040 #dfdfdf #dfdfdf #404040;
@@ -666,10 +1147,13 @@ const itensMenu = [
       .janela { width: calc(100vw - 8px); }
       .janela__corpo { max-height: 62vh; }
       .tarefa { flex-basis: 110px; }
+      .ie__pagina { height: min(58vh, 420px); }
+      .ie__btn { padding: 3px 6px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
       .boot__barra i { animation: none; width: 60%; left: 20%; }
+      .pg-marquee span { animation: none; padding-left: 0; }
     }
   </style>
 
@@ -762,6 +1246,14 @@ const itensMenu = [
       clearTimeout(estado.desligarTimer);
       fecharTodas();
       alternarMenu(false);
+      pararMelodia(true);
+      // religou = internet "desconectou": histórico zera e a discagem toca de novo
+      ieEstado.hist = [];
+      ieEstado.idx = -1;
+      ieEstado.token++;
+      ieEstado.discou = false;
+      ieBotoes();
+      ieStatusEl.textContent = 'Pronto';
       trocarTela('boot');
       estado.bootTimer = setTimeout(entrarNoDesktop, semMov ? 800 : 3000);
     }
@@ -812,6 +1304,8 @@ const itensMenu = [
       focarJanela(id);
       sec.focus({ preventScroll: true });
       anunciar('Janela aberta: ' + tituloDe(sec));
+      // IE: primeira abertura conecta na página inicial (com direito a discagem)
+      if (id === 'internet-explorer' && ieEstado.idx < 0) ieNavegar(IE_HOME, 'empurra');
     }
 
     function fecharJanela(id) {
@@ -823,6 +1317,14 @@ const itensMenu = [
       const btn = tarefasEl.querySelector('[data-tarefa="' + id + '"]');
       if (btn) btn.remove();
       delete estado.abertas[id];
+      // a janela visível de maior z vira a ativa (Esc continua funcionando em cadeia)
+      const restantes = Object.keys(estado.abertas)
+        .map(janelaEl)
+        .filter((s) => s && !s.hidden);
+      if (restantes.length) {
+        const topo = restantes.reduce((a, b) => ((+a.style.zIndex || 0) > (+b.style.zIndex || 0) ? a : b));
+        focarJanela(topo.dataset.janela);
+      }
       if (info.abridor) info.abridor.focus({ preventScroll: true });
       anunciar('Janela fechada.');
     }
@@ -884,7 +1386,9 @@ const itensMenu = [
     }
 
     function posicionarCascata(sec) {
-      const n = (parseInt(sec.dataset.nx, 10) || 0) % 6;
+      // cascata pela ordem de abertura: a barra de título da janela de baixo
+      // fica sempre à mostra (abertas já inclui esta janela)
+      const n = (Object.keys(estado.abertas).length - 1 + 7) % 7;
       const estreito = window.innerWidth < 640;
       let left = estreito ? 4 : 90 + n * 26;
       let top = estreito ? 8 + n * 18 : 40 + n * 26;
@@ -899,9 +1403,8 @@ const itensMenu = [
       btn.type = 'button';
       btn.className = 'tarefa bisel-alto';
       btn.dataset.tarefa = id;
-      const icone = sec.querySelector('.janela__barra use').getAttribute('href');
-      btn.innerHTML =
-        '<svg aria-hidden="true"><use href="' + icone + '"></use></svg><span>' + tituloDe(sec) + '</span>';
+      const ico = sec.querySelector('.janela__barra .ico').outerHTML;
+      btn.innerHTML = ico + '<span>' + tituloDe(sec) + '</span>';
       btn.addEventListener('click', () => {
         const info = estado.abertas[id];
         if (!info) return;
@@ -1012,6 +1515,223 @@ const itensMenu = [
       areaEl.scrollLeft = 0;
       areaEl.scrollTop = 0;
     });
+
+    // ===== Tocador de "MIDI" (musiquinha.mid) =====
+    // Melodia própria, alegre, timbre de computador antigo — sem música com direitos.
+    const MELODIA = [
+      [523, 0.2], [659, 0.2], [784, 0.2], [1047, 0.35],
+      [784, 0.2], [880, 0.2], [1047, 0.5],
+      [880, 0.2], [784, 0.2], [659, 0.2], [587, 0.35], [523, 0.65],
+    ];
+    let notasMidi = [];
+    const midiStatusEl = $('[data-midi-status]');
+    function pararMelodia(silencioso) {
+      notasMidi.forEach((o) => { try { o.stop(); } catch { /* já parou */ } });
+      notasMidi = [];
+      if (!silencioso && midiStatusEl) midiStatusEl.textContent = 'Parado';
+    }
+    function tocarMelodia() {
+      initAudio();
+      if (actx && actx.state === 'suspended') actx.resume();
+      if (estado.mudo) { midiStatusEl.textContent = 'Som desligado! Liga no alto-falante 🔊'; return; }
+      if (!actx || actx.state !== 'running') return;
+      pararMelodia(true);
+      let t = actx.currentTime + 0.05;
+      let total = 0;
+      for (const par of MELODIA) {
+        const o = actx.createOscillator();
+        const g = actx.createGain();
+        o.type = 'triangle';
+        o.frequency.value = par[0];
+        o.connect(g); g.connect(actx.destination);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.13, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + par[1]);
+        o.start(t); o.stop(t + par[1] + 0.03);
+        notasMidi.push(o);
+        t += par[1];
+        total += par[1];
+      }
+      midiStatusEl.textContent = 'Tocando… ♪ ♫';
+      setTimeout(() => {
+        if (notasMidi.length) { notasMidi = []; midiStatusEl.textContent = 'Parado'; }
+      }, total * 1000 + 250);
+    }
+    const midiTocarBtn = $('[data-midi-tocar]');
+    const midiPararBtn = $('[data-midi-parar]');
+    if (midiTocarBtn) midiTocarBtn.addEventListener('click', tocarMelodia);
+    if (midiPararBtn) midiPararBtn.addEventListener('click', () => pararMelodia(false));
+
+    // ===== Internet Explorer =====
+    const IE_HOME = 'www.portaldaturminha.com.br';
+    const ieEstado = { hist: [], idx: -1, token: 0, discou: false, visitas: 0 };
+    const iePaginaEl = $('[data-ie-pagina]');
+    const ieUrlEl = $('[data-ie-url]');
+    const ieStatusEl = $('[data-ie-status]');
+    const ieTituloEl = $('[data-ie-titulo]');
+    const ieVoltarBtn = $('[data-ie-voltar]');
+    const ieAvancarBtn = $('[data-ie-avancar]');
+    const ieAtualizarBtn = $('[data-ie-atualizar]');
+    const ieInicioBtn = $('[data-ie-inicio]');
+    const ieIrBtn = $('[data-ie-ir]');
+
+    function siteDe(url) {
+      return document.querySelector('[data-ie-sites] [data-site="' + String(url).replace(/["\\]/g, '') + '"]');
+    }
+    function normalizarUrl(txt) {
+      let u = (txt || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      if (!u) return null;
+      if (!siteDe(u) && siteDe('www.' + u)) u = 'www.' + u;
+      return u;
+    }
+    function ieUrlAtual() { return ieEstado.hist[ieEstado.idx] || null; }
+    function ieBotoes() {
+      ieVoltarBtn.disabled = ieEstado.idx <= 0;
+      ieAvancarBtn.disabled = ieEstado.idx >= ieEstado.hist.length - 1;
+      ieAtualizarBtn.disabled = ieEstado.idx < 0;
+    }
+    function ieRender(url) {
+      const fonte = siteDe(url) || siteDe('__erro__');
+      const clone = fonte.cloneNode(true);
+      clone.hidden = false;
+      const tinhaFoco = iePaginaEl.contains(document.activeElement);
+      iePaginaEl.replaceChildren.apply(iePaginaEl, [...clone.childNodes]);
+      iePaginaEl.scrollTop = 0;
+      const eErro = !siteDe(url);
+      if (eErro) {
+        const alvo = iePaginaEl.querySelector('[data-url-erro]');
+        // textContent, NUNCA innerHTML: o que a criança digitar vira texto inofensivo
+        if (alvo) alvo.textContent = 'http://' + url + '/';
+      }
+      const titulo = fonte.dataset.titulo;
+      ieTituloEl.textContent = titulo + ' — Internet Explorer';
+      const spanTarefa = tarefasEl.querySelector('[data-tarefa="internet-explorer"] span');
+      if (spanTarefa) spanTarefa.textContent = titulo + ' — Internet Explorer';
+      if (!eErro && url === IE_HOME) {
+        ieEstado.visitas++;
+        const v = iePaginaEl.querySelector('[data-visitas]');
+        if (v) v.textContent = String(4318 + ieEstado.visitas).padStart(6, '0').replace(/^(\d{3})/, '$1.');
+      }
+      if (tinhaFoco) iePaginaEl.focus({ preventScroll: true });
+      anunciar(eErro ? 'A página não pode ser exibida.' : 'Página carregada: ' + titulo);
+    }
+    function ieNavegar(url, modo) {
+      const meu = ++ieEstado.token; // navegação mais nova invalida as pendentes
+      somDiscada();
+      if (modo === 'empurra') {
+        // digitar/clicar no meio do histórico corta o "Avançar" (igual IE de verdade)
+        ieEstado.hist = ieEstado.hist.slice(0, ieEstado.idx + 1);
+        ieEstado.hist.push(url);
+        ieEstado.idx++;
+        if (ieEstado.hist.length > 50) { ieEstado.hist.shift(); ieEstado.idx--; }
+      }
+      ieBotoes();
+      ieUrlEl.value = 'http://' + url + '/';
+      ieStatusEl.textContent = 'Conectando a ' + url + '…';
+      setTimeout(() => {
+        if (meu !== ieEstado.token) return;
+        ieRender(url);
+        ieStatusEl.textContent = 'Concluído';
+      }, 400);
+    }
+    ieVoltarBtn.addEventListener('click', () => {
+      if (ieEstado.idx <= 0) return;
+      somClique();
+      ieEstado.idx--;
+      ieNavegar(ieUrlAtual(), 'historico');
+    });
+    ieAvancarBtn.addEventListener('click', () => {
+      if (ieEstado.idx >= ieEstado.hist.length - 1) return;
+      somClique();
+      ieEstado.idx++;
+      ieNavegar(ieUrlAtual(), 'historico');
+    });
+    ieAtualizarBtn.addEventListener('click', () => {
+      if (ieEstado.idx < 0) return;
+      somClique();
+      ieNavegar(ieUrlAtual(), 'atualiza');
+    });
+    ieInicioBtn.addEventListener('click', () => {
+      somClique();
+      ieNavegar(IE_HOME, ieUrlAtual() === IE_HOME ? 'atualiza' : 'empurra');
+    });
+    function ieIrDigitado() {
+      const u = normalizarUrl(ieUrlEl.value);
+      if (!u) { ieStatusEl.textContent = 'Digite um endereço. Exemplo: www.dinomania.com.br'; return; }
+      ieNavegar(u, u === ieUrlAtual() ? 'atualiza' : 'empurra');
+    }
+    ieIrBtn.addEventListener('click', () => { somClique(); ieIrDigitado(); });
+    ieUrlEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); ieIrDigitado(); }
+      if (e.key === 'Escape') {
+        // sem isso o Esc global fecharia a janela enquanto a criança edita a URL
+        e.stopPropagation();
+        const atual = ieUrlAtual();
+        if (atual) ieUrlEl.value = 'http://' + atual + '/';
+      }
+    });
+    ieUrlEl.addEventListener('focus', () => ieUrlEl.select());
+    // Cliques dentro da página (delegação — sobrevive ao replaceChildren)
+    iePaginaEl.addEventListener('click', (e) => {
+      const a = e.target.closest('[data-vai]');
+      if (a) {
+        e.preventDefault();
+        somClique();
+        const u = normalizarUrl(a.dataset.vai);
+        if (u) ieNavegar(u, 'empurra');
+        return;
+      }
+      const b = e.target.closest('[data-baixar]');
+      if (b) {
+        somClique();
+        ieStatusEl.textContent = 'Baixando ' + b.dataset.baixar + '… faltam 3 horas e 47 minutos ⏳';
+        const meu = ieEstado.token;
+        setTimeout(() => {
+          if (meu === ieEstado.token) ieStatusEl.textContent = '☎️ Alguém pegou o telefone! Download cancelado. Tente de novo… ou aceite. 😅';
+        }, 2500);
+        return;
+      }
+      if (e.target.closest('[data-votar]')) {
+        somClique();
+        ieStatusEl.textContent = 'Voto computado! Obrigado por votar (de mentirinha). 🗳️';
+      }
+    });
+    // Som de discagem: DTMF + "atendeu" + chiado — só na 1ª navegação que conseguir tocar
+    function somDiscada() {
+      if (estado.mudo || !actx || actx.state !== 'running' || ieEstado.discou) return;
+      ieEstado.discou = true;
+      const t0 = actx.currentTime;
+      const DTMF = [[941, 1336], [697, 1209], [770, 1477], [852, 1209]];
+      DTMF.forEach((par, i) => par.forEach((f) => {
+        const o = actx.createOscillator();
+        const g = actx.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        o.connect(g); g.connect(actx.destination);
+        const t = t0 + i * 0.14;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(0.05, t + 0.01);
+        g.gain.setValueAtTime(0.05, t + 0.08);
+        g.gain.linearRampToValueAtTime(0.0001, t + 0.09);
+        o.start(t); o.stop(t + 0.1);
+      }));
+      tom(2100, 0.6, 0.15, 'sine', 0.045);
+      const dur = 0.5;
+      const buf = actx.createBuffer(1, Math.ceil(actx.sampleRate * dur), actx.sampleRate);
+      const dados = buf.getChannelData(0);
+      for (let i = 0; i < dados.length; i++) dados[i] = Math.random() * 2 - 1;
+      const src = actx.createBufferSource();
+      src.buffer = buf;
+      const filtro = actx.createBiquadFilter();
+      filtro.type = 'bandpass'; filtro.frequency.value = 1800; filtro.Q.value = 0.7;
+      const g = actx.createGain();
+      src.connect(filtro); filtro.connect(g); g.connect(actx.destination);
+      const t = t0 + 0.78;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.035, t + 0.06);
+      g.gain.setValueAtTime(0.035, t + 0.32);
+      g.gain.linearRampToValueAtTime(0.0001, t + 0.42);
+      src.start(t); src.stop(t + 0.45);
+    }
 
     // ===== Boot =====
     document.body.classList.add('is-game');
