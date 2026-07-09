@@ -3,7 +3,7 @@ import Layout from '../../../layouts/Layout.astro';
 
 const title = 'Sala de Aula do Professor Manolo — jogos pra aprender brincando';
 const description =
-  'Jogos educativos gratuitos, em português, direto no navegador: hardware × software, montar palavras com sílabas, digitação espacial e mais. Feitos por um professor pras próprias turmas.';
+  'Jogos educativos gratuitos, em português, direto no navegador: montar palavras com sílabas, digitação espacial, continhas na reta numérica e mais. Feitos por um professor pras próprias turmas.';
 
 // Ícone: coloque um .jpg quadrado (ex.: 512×512) em public/class/icons/
 // com o mesmo nome do arquivo indicado abaixo. Sem imagem, o emoji aparece.
@@ -25,6 +25,15 @@ const jogos = [
     linha: 'Aperte a letra do inimigo e a nave atira! Do A ao Z.',
     fundo: 'linear-gradient(135deg, #7a5fd0, #3b2a8f)',
     busca: 'letras espaciais nave digitacao teclado alfabeto atirar',
+  },
+  {
+    url: '/class/games/sapo-saltador/',
+    icone: '/class/icons/sapo-saltador.jpg',
+    emoji: '🐸',
+    nome: 'Sapo Saltador',
+    linha: 'Pule na reta numérica e resolva continhas de mais e de menos!',
+    fundo: 'linear-gradient(135deg, #34b3a0, #1b7f8c)',
+    busca: 'sapo saltador matematica soma subtracao continhas numeros reta numerica contar',
   },
 ];
 ---

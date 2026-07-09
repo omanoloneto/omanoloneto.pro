@@ -1,0 +1,838 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { niveis, config } from '../../../data/sapo-saltador';
+
+const dadosJson = JSON.stringify({ niveis, config });
+
+const title = 'Sapo Saltador — pule na reta numérica e resolva continhas | Manolo Neto';
+const description =
+  'Jogo de matemática para o 1º ano: ajude o sapo a pular na reta numérica e resolva continhas de soma e subtração. Conte os pulos pra frente e pra trás, em português.';
+
+const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i) => config.retaMin + i);
+---
+
+<Layout title={title} description={description}>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="ss" data-game role="application" aria-label="Jogo: pule com o sapo na reta numérica e resolva as continhas">
+    <!-- Cenário -->
+    <div class="ceu" aria-hidden="true">
+      <span class="sol"></span>
+      <span class="nuvem nuvem--1"></span>
+      <span class="nuvem nuvem--2"></span>
+      <span class="mata"></span>
+    </div>
+
+    <!-- HUD -->
+    <header class="hud" role="status" aria-live="polite">
+      <div class="hud__bloco">
+        <span class="hud__label">🪰 Moscas</span>
+        <strong data-pontos>0</strong>
+      </div>
+      <div class="hud__bloco">
+        <span class="hud__label">Nível</span>
+        <strong data-nivel>1</strong>
+        <span class="hud__sub">de {niveis.length}</span>
+      </div>
+      <div class="hud__bloco">
+        <span class="hud__label">Continha</span>
+        <strong data-progresso>1</strong>
+        <span class="hud__sub" data-progresso-total>de 5</span>
+      </div>
+      <div class="hud__bloco hud__bloco--nome" data-nivel-nome aria-hidden="true"></div>
+      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <span data-mute-icon>🔊</span>
+      </button>
+    </header>
+
+    <!-- Placa da continha -->
+    <section class="continha" aria-label="Continha para resolver" aria-live="polite">
+      <span class="continha__num" data-num-a>7</span>
+      <span class="continha__op" data-op>+</span>
+      <span class="continha__num" data-num-b>3</span>
+      <span class="continha__igual">=</span>
+      <span class="continha__resposta" data-resposta>?</span>
+    </section>
+
+    <!-- Rio com a reta numérica -->
+    <section class="rio" data-rio aria-label="Reta numérica: pedras de 0 a 20">
+      <div class="trilho" data-trilho>
+        {
+          pedras.map((n) => (
+            <button
+              class={'pedra' + (n % 5 === 0 ? ' pedra--marco' : '')}
+              type="button"
+              data-pedra={n}
+              tabindex="-1"
+              aria-label={'Pular para a pedra ' + n}
+            >
+              <span class="pedra__num">{n}</span>
+            </button>
+          ))
+        }
+        <div class="sapo" data-sapo aria-hidden="true">
+          <span class="sapo__corpo">🐸</span>
+        </div>
+        <div class="fx fx--splash" data-splash aria-hidden="true" hidden>💦</div>
+        <div class="fx fx--mosca" data-mosca aria-hidden="true" hidden>🪰</div>
+      </div>
+    </section>
+
+    <!-- Controles -->
+    <section class="controles" aria-label="Controles do sapo">
+      <button class="salto salto--menos" type="button" data-menos aria-label="Pular uma pedra para trás">−1</button>
+      <span class="posicao" data-posicao>🐸 na pedra 0</span>
+      <button class="salto salto--mais" type="button" data-mais aria-label="Pular uma pedra para a frente">+1</button>
+      <button class="confirmar" type="button" data-confirmar>🪰 É aqui!</button>
+    </section>
+
+    <!-- Toast -->
+    <div class="toast" data-toast aria-live="polite" hidden></div>
+    <p class="sr-only" data-anuncio aria-live="assertive"></p>
+
+    <!-- Modal: instruções -->
+    <div class="modal" data-intro>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="placa__topo" id="intro-title">🐸 Sapo Saltador</div>
+        <div class="placa__corpo">
+          <ol class="regras">
+            <li>Olhe a <b>continha</b> lá no alto. 🧮</li>
+            <li>O sapo começa na pedra do <b>primeiro número</b>.</li>
+            <li>Aperte <b>+1</b> pra pular pra frente (mais) ou <b>−1</b> pra trás (menos) — <b>conte os pulos</b>!</li>
+            <li>Chegou na resposta? Aperte <b>É aqui!</b></li>
+            <li>Acertou = o sapo come uma mosca! 🪰 Errou = splash na água — tente de novo! 💦</li>
+          </ol>
+          <button class="botao botao--go" type="button" data-comecar>Vamos pular!</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: nível completo -->
+    <div class="modal" data-nivel-done hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="nivel-done-title">
+        <div class="placa__topo" id="nivel-done-title" data-nivel-done-title>Nível completo!</div>
+        <div class="placa__corpo center">
+          <p class="grande">🎉 Todas as continhas resolvidas!</p>
+          <p class="medalha" data-medalha hidden>⭐ Nível perfeito — nenhum erro!</p>
+          <p class="placar">Moscas até agora: <strong data-nivel-score>0</strong></p>
+          <p class="aviso" data-nivel-next-label></p>
+          <button class="botao botao--go" type="button" data-next-nivel>Próximo nível</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: vitória -->
+    <div class="modal" data-win hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="win-title">
+        <div class="placa__topo" id="win-title">Parabéns, Sapo Mestre! 🐸🎉</div>
+        <div class="placa__corpo center">
+          <p class="grande">Você resolveu todas as continhas!</p>
+          <p class="placar">Suas moscas: <strong data-final-score>0</strong></p>
+          <p class="aviso" data-final-msg></p>
+          <button class="botao botao--go" type="button" data-replay>Jogar de novo</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <style is:global>
+    body.is-game { background: #7ecfe8; overflow: hidden; }
+    body.is-game::before { display: none !important; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    .ss {
+      position: fixed;
+      inset: 0;
+      overflow: hidden;
+      font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      color: #23303c;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ===== Cenário ===== */
+    .ceu {
+      position: absolute; inset: 0; z-index: 0;
+      /* clipa a mata (right:-6%): sem isso ela cria overflow horizontal
+         no .ss e o browser pode scrollar o jogo pra fora da tela */
+      overflow: hidden;
+      background: linear-gradient(180deg, #8fd8ef 0%, #bfe8f7 45%, #d8f3e8 100%);
+    }
+    .sol {
+      position: absolute; top: 7%; right: 8%;
+      width: 74px; height: 74px; border-radius: 50%;
+      background: radial-gradient(circle, #ffe873 55%, #ffd23f 75%, rgba(255, 210, 63, 0) 100%);
+      box-shadow: 0 0 46px 14px rgba(255, 220, 90, 0.55);
+    }
+    .nuvem {
+      position: absolute;
+      background: radial-gradient(closest-side, rgba(255, 255, 255, 0.97), rgba(255, 255, 255, 0) 72%);
+      border-radius: 50%; filter: blur(1px);
+    }
+    .nuvem--1 { width: 220px; height: 82px; top: 8%; left: 10%; }
+    .nuvem--2 { width: 170px; height: 66px; top: 17%; left: 48%; opacity: 0.85; }
+    .mata {
+      position: absolute; left: -6%; right: -6%; bottom: 0; height: 40%;
+      border-radius: 55% 48% 0 0 / 100% 88% 0 0;
+      background: linear-gradient(180deg, #6fbf4c 0%, #4d9c34 55%, #3a7d27 100%);
+    }
+
+    /* ===== HUD ===== */
+    .hud {
+      position: relative; z-index: 30;
+      display: flex; align-items: center; gap: 18px;
+      padding: 8px 16px;
+      background: rgba(15, 70, 55, 0.58);
+      color: #fff;
+      backdrop-filter: blur(2px);
+    }
+    .hud__bloco { display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
+    .hud__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
+    .hud__bloco strong { font-size: 1.55rem; line-height: 1; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); transition: transform 0.18s ease; }
+    .hud__bloco strong.pop { transform: scale(1.4); color: #c8ffce; }
+    .hud__sub { font-size: 0.75rem; opacity: 0.85; }
+    .hud__bloco--nome { flex: 1; font-size: 0.95rem; font-weight: 700; opacity: 0.95; justify-content: center; }
+    .hud__mute {
+      width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.16);
+      font-size: 1.15rem; display: grid; place-items: center; color: #fff;
+    }
+    .hud__mute:hover { background: rgba(255, 255, 255, 0.3); }
+
+    /* ===== Placa da continha ===== */
+    .continha {
+      position: relative; z-index: 20;
+      align-self: center;
+      display: flex; align-items: center; gap: 14px;
+      margin-top: clamp(8px, 2vh, 20px);
+      padding: 10px 28px;
+      background: #fffdf4;
+      border: 4px solid #8a5d33;
+      border-radius: 18px;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+      font-size: clamp(1.9rem, 5vh, 2.6rem);
+      font-weight: 800;
+    }
+    .continha__num { color: #23303c; }
+    .continha__op { color: #d97b16; }
+    .continha__igual { color: #8a8a8a; }
+    .continha__resposta {
+      min-width: 1.4em; text-align: center;
+      color: #b0682a;
+      transition: transform 0.2s ease;
+    }
+    .continha--ok .continha__resposta { color: #2e8a28; transform: scale(1.25); }
+
+    /* ===== Rio + reta numérica ===== */
+    .rio {
+      position: relative; z-index: 10;
+      margin-top: auto;
+      height: min(330px, 42vh);
+      display: flex; align-items: flex-end;
+      margin-inline: 12px;
+      border-radius: 18px 18px 0 0;
+      background: linear-gradient(180deg, rgba(87, 183, 232, 0.55) 0%, #3f96c4 30%, #2f7fae 100%);
+      box-shadow: inset 0 6px 14px rgba(0, 0, 40, 0.15);
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      touch-action: pan-x;
+    }
+    .trilho {
+      --pedra: clamp(34px, 4vw, 56px);
+      position: relative;
+      width: 100%;
+      display: flex; align-items: flex-end; justify-content: space-between;
+      padding: 118px 10px 14px;
+    }
+    .pedra {
+      width: var(--pedra);
+      aspect-ratio: 1;
+      flex-shrink: 0;
+      display: grid; place-items: center;
+      font-family: inherit;
+      border: 3px solid #b09a5f;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #f4ecd2 0%, #e0d5ac 55%, #c4b384 100%);
+      box-shadow: 0 4px 8px rgba(0, 0, 30, 0.35);
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      padding: 0;
+    }
+    .pedra:hover { transform: translateY(-3px); }
+    .pedra:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .pedra__num {
+      font-size: calc(var(--pedra) * 0.4);
+      font-weight: 800;
+      color: #5a4a26;
+      line-height: 1;
+    }
+    .pedra--marco { border-color: #7a8a3a; background: radial-gradient(circle at 35% 30%, #e4f0c0 0%, #c9dd94 55%, #a3bd6a 100%); }
+    .pedra--marco .pedra__num { color: #3a5216; }
+    .pedra--atual { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.85), 0 4px 10px rgba(0, 0, 30, 0.4); }
+    .pedra--inicio { box-shadow: 0 0 0 4px rgba(46, 138, 40, 0.75), 0 4px 8px rgba(0, 0, 30, 0.35); }
+    .pedra--dica { animation: dica 0.9s ease-in-out infinite; }
+    @keyframes dica {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(255, 214, 64, 0.4), 0 4px 8px rgba(0, 0, 30, 0.35); }
+      50% { box-shadow: 0 0 0 9px rgba(255, 214, 64, 0.85), 0 4px 12px rgba(0, 0, 30, 0.4); }
+    }
+
+    /* Sapo: caixa de largura zero centrada na pedra via translateX */
+    .sapo {
+      position: absolute; left: 0; bottom: calc(14px + var(--pedra) * 0.72);
+      width: 0;
+      display: flex; justify-content: center;
+      transition: transform var(--dur, 320ms) ease-in-out, opacity 0.25s ease;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .sapo.sem-transicao { transition: none; }
+    .sapo--sumiu { opacity: 0; }
+    .sapo__corpo {
+      display: inline-block;
+      font-size: clamp(2rem, 5.2vh, 2.7rem);
+      line-height: 1;
+      filter: drop-shadow(0 4px 4px rgba(0, 0, 30, 0.35));
+    }
+    .sapo--pula .sapo__corpo { animation: pulo var(--dur, 320ms) ease-in-out; }
+    @keyframes pulo {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-46px); }
+    }
+    .sapo--cai .sapo__corpo { animation: cai 0.55s ease-in forwards; }
+    @keyframes cai {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(34px) rotate(24deg); opacity: 0; }
+    }
+
+    /* Efeitos (splash / mosca) — mesma âncora de largura zero */
+    .fx {
+      position: absolute; left: 0;
+      width: 0;
+      display: flex; justify-content: center;
+      pointer-events: none;
+      font-size: 1.9rem;
+      z-index: 6;
+    }
+    .fx[hidden] { display: none; }
+    .fx--splash { bottom: calc(14px + var(--pedra) * 0.35); }
+    .fx--splash.anima { animation: splash 0.7s ease-out forwards; }
+    @keyframes splash {
+      0% { transform: scale(0.4); opacity: 1; }
+      100% { transform: scale(1.7); opacity: 0; }
+    }
+    .fx--mosca { bottom: calc(14px + var(--pedra) * 1.1); }
+    .fx--mosca.anima { animation: voa 0.8s ease-out forwards; }
+    @keyframes voa {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-52px) scale(1.3); opacity: 0; }
+    }
+
+    /* ===== Controles ===== */
+    .controles {
+      position: relative; z-index: 15;
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      padding: 12px 16px 18px;
+      background: rgba(15, 70, 55, 0.62);
+    }
+    .salto {
+      width: 64px; height: 64px;
+      font-family: inherit; font-size: 1.7rem; font-weight: 800;
+      color: #1d5619;
+      background: linear-gradient(180deg, #ffffff, #dff0d8);
+      border: 3px solid #2e8a28; border-radius: 50%;
+      cursor: pointer;
+      touch-action: manipulation;
+      box-shadow: 0 4px 0 #1d5619, 0 8px 14px rgba(0, 0, 0, 0.25);
+      transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
+    }
+    .salto:hover { filter: brightness(1.05); }
+    .salto:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d5619, 0 4px 8px rgba(0, 0, 0, 0.25); }
+    .salto:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    .posicao {
+      min-width: 130px;
+      text-align: center;
+      font-size: 0.95rem; font-weight: 800; color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+    .confirmar {
+      margin-left: clamp(4px, 3vw, 28px);
+      padding: 14px 26px;
+      font-family: inherit; font-size: 1.2rem; font-weight: 800; color: #fff;
+      background: linear-gradient(180deg, #6cc24a 0%, #43a431 55%, #2e8a28 100%);
+      border: 3px solid #256b20; border-radius: 16px;
+      cursor: pointer;
+      touch-action: manipulation;
+      box-shadow: 0 5px 0 #1d5619, 0 9px 16px rgba(0, 0, 0, 0.3);
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.15s ease;
+    }
+    .confirmar:hover { filter: brightness(1.07); }
+    .confirmar:active { transform: translateY(4px); box-shadow: 0 1px 0 #1d5619, 0 5px 10px rgba(0, 0, 0, 0.3); }
+    .confirmar:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: absolute; left: 50%; top: 44%;
+      transform: translate(-50%, 0) translateY(8px);
+      z-index: 40;
+      max-width: min(88vw, 480px);
+      padding: 13px 20px;
+      border-radius: 14px;
+      font-size: 1.05rem; font-weight: 700; text-align: center; color: #fff;
+      box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .toast.ok { background: linear-gradient(180deg, #4cc35e, #2f9d40); }
+    .toast.err { background: linear-gradient(180deg, #ff6b6b, #e03b3b); }
+    .toast.info { background: linear-gradient(180deg, #4aa3e0, #2f7fc0); }
+
+    /* ===== Modais ===== */
+    .modal {
+      position: absolute; inset: 0; z-index: 60;
+      display: grid; place-items: center; padding: 20px;
+      background: rgba(10, 45, 35, 0.45);
+    }
+    .modal[hidden] { display: none; }
+    .placa {
+      width: min(94vw, 460px);
+      background: #fff9ea;
+      border: 4px solid #8a5d33;
+      border-radius: 18px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      animation: placa-pop 0.25s ease;
+    }
+    @keyframes placa-pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .placa__topo {
+      padding: 12px 18px;
+      background: linear-gradient(180deg, #3da431, #2e8a28);
+      color: #fff; font-size: 1.15rem; font-weight: 800;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      border-bottom: 4px solid #8a5d33;
+    }
+    .placa__corpo { padding: 18px 22px 22px; color: #3a2c1e; }
+    .placa__corpo.center { text-align: center; }
+    .regras { margin: 0 0 18px 20px; display: grid; gap: 10px; font-size: 0.98rem; line-height: 1.45; }
+    .grande { font-size: 1.2rem; font-weight: 800; margin-bottom: 10px; }
+    .medalha { font-size: 1.05rem; font-weight: 800; color: #b8860b; margin-bottom: 8px; }
+    .placar { font-size: 1.05rem; margin-bottom: 6px; }
+    .placar strong { font-size: 1.6rem; color: #2e8a28; }
+    .aviso { color: #6b5b48; font-size: 0.95rem; margin-bottom: 16px; min-height: 1.2em; }
+    .botao {
+      font-family: inherit; cursor: pointer; font-weight: 800;
+      padding: 11px 26px; border-radius: 12px; font-size: 1.05rem;
+      border: 3px solid #256b20; color: #fff;
+      background: linear-gradient(180deg, #6cc24a 0%, #43a431 55%, #2e8a28 100%);
+      box-shadow: 0 4px 0 #1d5619;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .botao:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d5619; }
+    .botao:focus-visible { outline: 3px solid #2e8a28; outline-offset: 2px; }
+
+    /* ===== Responsivo ===== */
+    /* Telas estreitas: a reta não cabe — vira faixa scrollável centrada no sapo */
+    @media (max-width: 940px) {
+      .trilho {
+        --pedra: 46px;
+        width: max-content;
+        min-width: 100%;
+        justify-content: flex-start;
+        gap: 8px;
+      }
+    }
+    @media (max-height: 760px) {
+      .continha { font-size: 1.7rem; padding: 7px 20px; gap: 10px; }
+      .trilho { padding-top: 92px; }
+      .sapo--pula .sapo__corpo { animation-name: pulo-baixo; }
+      .salto { width: 54px; height: 54px; font-size: 1.4rem; }
+      .confirmar { padding: 11px 20px; font-size: 1.05rem; }
+      .controles { padding: 9px 12px 13px; }
+    }
+    @keyframes pulo-baixo {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-30px); }
+    }
+    @media (max-width: 700px) {
+      .hud { gap: 10px; padding: 8px 10px; }
+      .hud__label { font-size: 0.58rem; }
+      .hud__bloco strong { font-size: 1.25rem; }
+      .hud__mute { width: 36px; height: 36px; flex-shrink: 0; margin-left: auto; }
+      .hud__bloco--nome { display: none; }
+      .posicao { min-width: 0; font-size: 0.85rem; white-space: nowrap; }
+      .confirmar { white-space: nowrap; padding: 12px 16px; font-size: 1.05rem; margin-left: 4px; }
+      .controles { gap: 10px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .sapo, .toast, .pedra, .continha__resposta, .hud__bloco strong { transition: none !important; }
+      .sapo--pula .sapo__corpo, .sapo--cai .sapo__corpo, .fx.anima, .pedra--dica, .placa { animation: none !important; }
+    }
+  </style>
+
+  <script>
+    // ===== Dados =====
+    const dados = JSON.parse(document.querySelector('[data-dados]').textContent);
+    const NIVEIS = dados.niveis;
+    const CFG = dados.config;
+    const semMov = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const $ = (s) => document.querySelector(s);
+    const rioEl = $('[data-rio]');
+    const trilhoEl = $('[data-trilho]');
+    const sapoEl = $('[data-sapo]');
+    const splashEl = $('[data-splash]');
+    const moscaEl = $('[data-mosca]');
+    const menosBtn = $('[data-menos]');
+    const maisBtn = $('[data-mais]');
+    const confirmarBtn = $('[data-confirmar]');
+    const posicaoEl = $('[data-posicao]');
+    const toastEl = $('[data-toast]');
+    const anuncioEl = $('[data-anuncio]');
+    const introModal = $('[data-intro]');
+    const nivelDoneModal = $('[data-nivel-done]');
+    const winModal = $('[data-win]');
+    const pedraEls = [...document.querySelectorAll('[data-pedra]')];
+
+    const estado = {
+      fase: 'inicio',   // inicio | jogando | caindo | celebrando | entreniveis | vitoria
+      nivelIdx: 0,
+      continhas: [],    // sorteadas do pool do nível
+      continhaIdx: 0,
+      pedraAtual: 0,
+      errosNaContinha: 0,
+      pontos: 0,        // moscas; acumulam entre níveis, zeram no replay
+      semErroNoNivel: true,
+      mudo: false,
+      animando: false,  // trava confirmar/toque-em-pedra durante salto longo e quedas
+    };
+
+    // ===== Áudio (Web Audio, sem arquivos) =====
+    let actx = null;
+    function initAudio() {
+      if (actx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    function tom(freq, inicio, dur, tipo, vol) {
+      if (!actx) return;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = tipo; o.frequency.value = freq;
+      o.connect(g); g.connect(actx.destination);
+      const t = actx.currentTime + inicio;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur + 0.03);
+    }
+    // "boing" subindo = pulo pra frente; invertido = pra trás
+    function somPulo() { if (estado.mudo) return; tom(392, 0, 0.06, 'sine', 0.12); tom(587, 0.05, 0.09, 'sine', 0.12); }
+    function somPuloTras() { if (estado.mudo) return; tom(587, 0, 0.06, 'sine', 0.12); tom(392, 0.05, 0.09, 'sine', 0.12); }
+    function somSaltoLongo() { if (estado.mudo) return; tom(330, 0, 0.12, 'sine', 0.12); tom(660, 0.1, 0.18, 'sine', 0.12); }
+    function somSplash() { if (estado.mudo) return; tom(220, 0, 0.2, 'sine', 0.1); tom(150, 0.07, 0.3, 'sine', 0.09); tom(110, 0.15, 0.25, 'sine', 0.07); }
+    function somAcerto() { if (estado.mudo) return; tom(700, 0, 0.08, 'triangle', 0.14); tom(950, 0.06, 0.1, 'triangle', 0.13); tom(1245, 0.13, 0.16, 'triangle', 0.12); }
+    function somLimite() { if (estado.mudo) return; tom(160, 0, 0.1, 'square', 0.08); }
+    function somNivel() { if (estado.mudo) return; [523, 659, 784, 1046].forEach((f, i) => tom(f, i * 0.12, 0.22, 'triangle', 0.2)); }
+
+    // ===== Mudo =====
+    const muteBtn = $('[data-mute]');
+    const muteIcon = $('[data-mute-icon]');
+    function aplicarMudo() {
+      muteBtn.setAttribute('aria-pressed', String(estado.mudo));
+      muteIcon.textContent = estado.mudo ? '🔈' : '🔊';
+      muteBtn.setAttribute('aria-label', estado.mudo ? 'Ligar o som' : 'Desligar o som');
+    }
+    (function initMudo() {
+      const salvo = localStorage.getItem('sapo-saltador:mudo');
+      estado.mudo = salvo === null ? !CFG.somLigadoInicial : salvo === '1';
+      aplicarMudo();
+    })();
+    muteBtn.addEventListener('click', () => {
+      estado.mudo = !estado.mudo;
+      localStorage.setItem('sapo-saltador:mudo', estado.mudo ? '1' : '0');
+      aplicarMudo();
+    });
+
+    // ===== Utilidades =====
+    function embaralhar(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+    function anunciar(msg) { anuncioEl.textContent = ''; requestAnimationFrame(() => { anuncioEl.textContent = msg; }); }
+
+    let toastTimer = null;
+    function mostrarToast(html, tipo, ms) {
+      toastEl.innerHTML = html;
+      toastEl.className = 'toast ' + tipo;
+      toastEl.hidden = false;
+      requestAnimationFrame(() => toastEl.classList.add('show'));
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toastEl.classList.remove('show');
+        setTimeout(() => { toastEl.hidden = true; }, 250);
+      }, ms || 2200);
+    }
+
+    function atualizarPlacar() {
+      const el = $('[data-pontos]');
+      el.textContent = String(estado.pontos);
+      el.classList.add('pop');
+      setTimeout(() => el.classList.remove('pop'), 200);
+    }
+
+    function nomeOp(op) { return op === '+' ? 'mais' : 'menos'; }
+
+    // ===== Posicionamento do sapo =====
+    function xDaPedra(n) {
+      const p = pedraEls[n];
+      // offsetLeft é imune ao scroll do rio (offset parent = trilho)
+      return p.offsetLeft + p.offsetWidth / 2;
+    }
+
+    function centralizarNoSapo(suave) {
+      if (rioEl.scrollWidth <= rioEl.clientWidth + 2) return;
+      const alvo = trilhoEl.offsetLeft + xDaPedra(estado.pedraAtual) - rioEl.clientWidth / 2;
+      rioEl.scrollTo({ left: alvo, behavior: suave && !semMov ? 'smooth' : 'auto' });
+    }
+
+    function reiniciarAnimacao(el, classe) {
+      el.classList.remove(classe);
+      void el.offsetWidth;
+      el.classList.add(classe);
+    }
+
+    function marcarPedras() {
+      const c = estado.continhas[estado.continhaIdx];
+      for (const p of pedraEls) {
+        const n = Number(p.dataset.pedra);
+        p.classList.toggle('pedra--atual', n === estado.pedraAtual);
+        p.classList.toggle('pedra--inicio', !!c && n === c.a && n !== estado.pedraAtual);
+      }
+    }
+
+    // Move o sapo até a pedra n. modo: 'teleporte' | 'pulo' | 'salto'
+    function posicionarSapo(n, modo) {
+      estado.pedraAtual = n;
+      const x = xDaPedra(n);
+      if (modo === 'teleporte' || semMov) {
+        sapoEl.classList.add('sem-transicao');
+        sapoEl.style.transform = 'translateX(' + x + 'px)';
+        void sapoEl.offsetWidth;
+        sapoEl.classList.remove('sem-transicao');
+      } else {
+        const dur = modo === 'salto' ? CFG.duracaoSaltoMs : CFG.duracaoPuloMs;
+        sapoEl.style.setProperty('--dur', dur + 'ms');
+        sapoEl.style.transform = 'translateX(' + x + 'px)';
+        reiniciarAnimacao(sapoEl, 'sapo--pula');
+      }
+      marcarPedras();
+      posicaoEl.textContent = '🐸 na pedra ' + n;
+      centralizarNoSapo(modo !== 'teleporte');
+    }
+
+    function limparDica() {
+      for (const p of pedraEls) p.classList.remove('pedra--dica');
+    }
+
+    // ===== Continha atual =====
+    function apresentarContinha() {
+      const c = estado.continhas[estado.continhaIdx];
+      estado.errosNaContinha = 0;
+      limparDica();
+      $('[data-num-a]').textContent = String(c.a);
+      $('[data-op]').textContent = c.op === '+' ? '+' : '−';
+      $('[data-num-b]').textContent = String(c.b);
+      $('[data-resposta]').textContent = '?';
+      $('.continha').classList.remove('continha--ok');
+      $('[data-progresso]').textContent = String(estado.continhaIdx + 1);
+      posicionarSapo(c.a, 'teleporte');
+      anunciar(
+        'Quanto é ' + c.a + ' ' + nomeOp(c.op) + ' ' + c.b + '? O sapo está na pedra ' + c.a +
+        '. Use mais um e menos um pra pular, e aperte É aqui quando chegar.'
+      );
+    }
+
+    // ===== Pulos =====
+    function pularCasa(delta) {
+      if (estado.fase !== 'jogando') return;
+      const alvo = estado.pedraAtual + delta;
+      if (alvo < CFG.retaMin || alvo > CFG.retaMax) {
+        somLimite();
+        return;
+      }
+      if (delta > 0) somPulo(); else somPuloTras();
+      posicionarSapo(alvo, 'pulo');
+      anunciar('Pedra ' + alvo);
+    }
+
+    menosBtn.addEventListener('click', () => pularCasa(-1));
+    maisBtn.addEventListener('click', () => pularCasa(1));
+
+    for (const p of pedraEls) {
+      p.addEventListener('click', () => {
+        if (estado.fase !== 'jogando' || estado.animando) return;
+        const n = Number(p.dataset.pedra);
+        if (n === estado.pedraAtual) return;
+        somSaltoLongo();
+        estado.animando = true;
+        posicionarSapo(n, 'salto');
+        anunciar('Pedra ' + n);
+        setTimeout(() => { estado.animando = false; }, semMov ? 0 : CFG.duracaoSaltoMs);
+      });
+    }
+
+    // ===== Responder =====
+    function confirmar() {
+      if (estado.fase !== 'jogando' || estado.animando) return;
+      const c = estado.continhas[estado.continhaIdx];
+
+      if (estado.pedraAtual === c.resultado) {
+        // Acertou!
+        estado.fase = 'celebrando';
+        limparDica();
+        const ganhos = CFG.pontosPorAcerto + (estado.errosNaContinha === 0 ? CFG.bonusPrimeira : 0);
+        estado.pontos += ganhos;
+        atualizarPlacar();
+        somAcerto();
+        $('[data-resposta]').textContent = String(c.resultado);
+        $('.continha').classList.add('continha--ok');
+        moscaEl.style.transform = 'translateX(' + xDaPedra(estado.pedraAtual) + 'px)';
+        moscaEl.hidden = false;
+        reiniciarAnimacao(moscaEl, 'anima');
+        mostrarToast('✓ ' + c.a + ' ' + nomeOp(c.op) + ' ' + c.b + ' = <b>' + c.resultado + '</b>! +' + ganhos + ' 🪰', 'ok', 1600);
+        anunciar('Muito bem! ' + c.a + ' ' + nomeOp(c.op) + ' ' + c.b + ' é igual a ' + c.resultado + '. Mais ' + ganhos + ' moscas.');
+        setTimeout(() => {
+          moscaEl.hidden = true;
+          estado.continhaIdx++;
+          if (estado.continhaIdx < estado.continhas.length) {
+            estado.fase = 'jogando';
+            apresentarContinha();
+          } else {
+            concluirNivel();
+          }
+        }, semMov ? 350 : 1000);
+      } else {
+        // Errou: splash, sem punição — volta pra pedra inicial e tenta de novo
+        estado.fase = 'caindo';
+        estado.errosNaContinha++;
+        estado.semErroNoNivel = false;
+        somSplash();
+        splashEl.style.transform = 'translateX(' + xDaPedra(estado.pedraAtual) + 'px)';
+        splashEl.hidden = false;
+        reiniciarAnimacao(splashEl, 'anima');
+        if (!semMov) reiniciarAnimacao(sapoEl, 'sapo--cai');
+        mostrarToast('💦 Quase! Conte os pulos de novo, com calma.', 'err', 1800);
+        anunciar('Splash! Essa não é a pedra certa. O sapo voltou pra pedra ' + c.a + '. Tente de novo.');
+        setTimeout(() => {
+          splashEl.hidden = true;
+          sapoEl.classList.remove('sapo--cai');
+          sapoEl.classList.add('sapo--sumiu');
+          posicionarSapo(c.a, 'teleporte');
+          void sapoEl.offsetWidth;
+          sapoEl.classList.remove('sapo--sumiu');
+          if (estado.errosNaContinha >= CFG.errosParaDica) {
+            pedraEls[c.resultado].classList.add('pedra--dica');
+          }
+          estado.fase = 'jogando';
+        }, semMov ? 250 : 900);
+      }
+    }
+    confirmarBtn.addEventListener('click', confirmar);
+
+    // ===== Teclado: setas = ±1, Enter/Espaço = confirmar =====
+    window.addEventListener('keydown', (e) => {
+      if (estado.fase !== 'jogando') return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); pularCasa(1); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); pularCasa(-1); }
+      else if (e.key === 'Enter' || e.key === ' ') {
+        // botão focado já dispara o próprio click nativo
+        if (document.activeElement && document.activeElement.tagName === 'BUTTON') return;
+        e.preventDefault();
+        confirmar();
+      }
+    });
+
+    // ===== Nível / vitória =====
+    function montarNivel(idx) {
+      estado.nivelIdx = idx;
+      estado.semErroNoNivel = true;
+      const nivel = NIVEIS[idx];
+      estado.continhas = embaralhar(nivel.pool).slice(0, nivel.quantidade);
+      estado.continhaIdx = 0;
+      $('[data-nivel]').textContent = String(idx + 1);
+      $('[data-nivel-nome]').textContent = nivel.nome;
+      $('[data-progresso-total]').textContent = 'de ' + estado.continhas.length;
+      $('[data-pontos]').textContent = String(estado.pontos);
+      apresentarContinha();
+    }
+
+    function concluirNivel() {
+      if (estado.nivelIdx < NIVEIS.length - 1) {
+        estado.fase = 'entreniveis';
+        somNivel();
+        $('[data-nivel-done-title]').textContent = 'Nível ' + (estado.nivelIdx + 1) + ' completo!';
+        $('[data-medalha]').hidden = !estado.semErroNoNivel;
+        $('[data-nivel-score]').textContent = String(estado.pontos);
+        const prox = NIVEIS[estado.nivelIdx + 1];
+        $('[data-nivel-next-label]').textContent = 'Próximo: ' + prox.nome + ' — ' + prox.descricao;
+        nivelDoneModal.hidden = false;
+        setTimeout(() => $('[data-next-nivel]').focus(), 60);
+      } else {
+        venceu();
+      }
+    }
+
+    function venceu() {
+      estado.fase = 'vitoria';
+      somNivel();
+      $('[data-final-score]').textContent = String(estado.pontos);
+      $('[data-final-msg]').textContent =
+        'Somando pra frente e subtraindo pra trás, você virou o mestre da reta numérica! 🌟';
+      winModal.hidden = false;
+      setTimeout(() => $('[data-replay]').focus(), 60);
+    }
+
+    // ===== Fluxo =====
+    $('[data-comecar]').addEventListener('click', () => {
+      initAudio();
+      if (actx && actx.state === 'suspended') actx.resume();
+      introModal.hidden = true;
+      estado.fase = 'jogando';
+      // reposiciona: o layout pode ter mudado desde o boot (fontes, rotação)
+      posicionarSapo(estado.pedraAtual, 'teleporte');
+    });
+    $('[data-next-nivel]').addEventListener('click', () => {
+      nivelDoneModal.hidden = true;
+      estado.fase = 'jogando';
+      montarNivel(estado.nivelIdx + 1);
+    });
+    $('[data-replay]').addEventListener('click', () => {
+      winModal.hidden = true;
+      estado.pontos = 0;
+      estado.fase = 'jogando';
+      montarNivel(0);
+    });
+
+    window.addEventListener('resize', () => posicionarSapo(estado.pedraAtual, 'teleporte'));
+
+    // ===== Boot =====
+    document.body.classList.add('is-game');
+    introModal.hidden = false;
+    montarNivel(0);
+    setTimeout(() => $('[data-comecar]').focus(), 60);
+  </script>
+</Layout>
