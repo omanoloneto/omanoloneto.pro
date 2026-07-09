@@ -40,6 +40,14 @@ Script `.mjs` no scratchpad, `import { chromium } from 'playwright'`.
 
 Qualquer filho que vaze da viewport (cenário com `right:-6%`, inimigo perto da borda, HUD largo demais no mobile) cria overflow horizontal no container fixed do jogo; o browser pode scrollar o jogo pra fora da tela. Fixes em camadas: raiz do jogo usa `overflow: clip` (não `hidden` — clip impede scroll programático/por foco), cenário (`.ceu`/`.espaco`) e `.campo` com `overflow: hidden`. Checar com `el.scrollWidth === el.clientWidth` após começar o jogo, em desktop E mobile 360px.
 
+## Gotcha: sprites em âncoras de largura zero
+
+O reset global do site (`img, svg { max-width: 100% }` em `src/styles/global.css`) colapsa
+imagens pra 0px dentro do padrão "âncora de largura zero" dos jogos (`.sapo`, `.mov` etc.) —
+o pai tem 0px, então max-width 100% = 0. Sprites nesses containers precisam de
+`max-width: none`. Sintoma: img carrega (200, naturalWidth ok) mas rect 0×0. Ao verificar
+visual novo, CONFIRA que o elemento aparece no screenshot — anel/sombra sem sprite = colapso.
+
 ## Acelerar testes de jogos com rAF/níveis longos
 
 `page.route(URL, ...)` interceptando o HTML e reescrevendo o blob `data-dados` com regex: `"abates":\d+` → `"abates":1` (1 abate por nível), `"velocidade":[0-9.]+` → `0.55` (inimigo chega na linha em ~1.5s), `"intervaloSpawn":\d+` → `900`. Permite atravessar 10 níveis ou perder 3 vidas em segundos.
