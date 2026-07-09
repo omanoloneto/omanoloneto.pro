@@ -1,142 +1,193 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { niveis, config } from '../../../data/sapo-saltador';
+import { fases, config } from '../../../data/sapo-saltador';
 
-const dadosJson = JSON.stringify({ niveis, config });
+const dadosJson = JSON.stringify({ fases, config });
 
-const title = 'Sapo Saltador — pule na reta numérica e resolva continhas | Manolo Neto';
+const title = 'Sapo Saltador — Lago das Esmeraldas | Manolo Neto';
 const description =
-  'Jogo de matemática para o 1º ano: ajude o sapo a pular na reta numérica e resolva continhas de soma e subtração. Conte os pulos pra frente e pra trás, em português.';
+  'Jogo de matemática para o 1º ano: resolva continhas de soma e subtração na reta numérica e ajude o sapo a atravessar o Lago das Esmeraldas — moedas, flores raras, plantas carnívoras e ranking arcade!';
 
 const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i) => config.retaMin + i);
+const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 ---
 
 <Layout title={title} description={description}>
   <script type="application/json" data-dados set:html={dadosJson}></script>
 
-  <main id="conteudo" class="ss" data-game role="application" aria-label="Jogo: pule com o sapo na reta numérica e resolva as continhas">
-    <!-- Cenário -->
-    <div class="ceu" aria-hidden="true">
-      <span class="sol"></span>
-      <span class="nuvem nuvem--1"></span>
-      <span class="nuvem nuvem--2"></span>
-      <span class="mata"></span>
-    </div>
-
+  <main id="conteudo" class="ss" data-game role="application" aria-label="Jogo: resolva continhas na reta numérica e atravesse o lago de vitória-régia em vitória-régia">
     <!-- HUD -->
     <header class="hud" role="status" aria-live="polite">
       <div class="hud__bloco">
-        <span class="hud__label">🪰 Moscas</span>
+        <span class="hud__label">Pontos</span>
         <strong data-pontos>0</strong>
       </div>
       <div class="hud__bloco">
-        <span class="hud__label">Nível</span>
-        <strong data-nivel>1</strong>
-        <span class="hud__sub">de {niveis.length}</span>
+        <span class="hud__label">🟡</span>
+        <strong data-moedas>0</strong>
       </div>
       <div class="hud__bloco">
-        <span class="hud__label">Continha</span>
-        <strong data-progresso>1</strong>
-        <span class="hud__sub" data-progresso-total>de 5</span>
+        <span class="hud__label">🌸</span>
+        <strong data-flores>0</strong>
+        <span class="hud__sub">de 3</span>
       </div>
-      <div class="hud__bloco hud__bloco--nome" data-nivel-nome aria-hidden="true"></div>
+      <div class="hud__bloco">
+        <span class="hud__label">Fase</span>
+        <strong data-fase>1</strong>
+        <span class="hud__sub">de {fases.length}</span>
+      </div>
+      <div class="hud__bloco hud__bloco--vidas" data-vidas-wrap hidden>
+        <span class="vidas" data-vidas aria-label="Vidas"></span>
+      </div>
+      <div class="hud__bloco hud__bloco--nome" data-fase-nome aria-hidden="true"></div>
       <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
         <span data-mute-icon>🔊</span>
       </button>
     </header>
 
-    <!-- Placa da continha -->
-    <section class="continha" aria-label="Continha para resolver" aria-live="polite">
-      <span class="continha__num" data-num-a>7</span>
-      <span class="continha__op" data-op>+</span>
-      <span class="continha__num" data-num-b>3</span>
-      <span class="continha__igual">=</span>
-      <span class="continha__resposta" data-resposta>?</span>
-    </section>
-
-    <!-- Rio com a reta numérica -->
-    <section class="rio" data-rio aria-label="Reta numérica: pedras de 0 a 20">
-      <div class="trilho" data-trilho>
-        {
-          pedras.map((n) => (
-            <button
-              class={'pedra' + (n % 5 === 0 ? ' pedra--marco' : '')}
-              type="button"
-              data-pedra={n}
-              tabindex="-1"
-              aria-label={'Pular para a pedra ' + n}
-            >
-              <span class="pedra__num">{n}</span>
-            </button>
-          ))
-        }
-        <div class="sapo" data-sapo aria-hidden="true">
-          <span class="sapo__corpo">🐸</span>
-        </div>
-        <div class="fx fx--splash" data-splash aria-hidden="true" hidden>💦</div>
-        <div class="fx fx--mosca" data-mosca aria-hidden="true" hidden>🪰</div>
+    <!-- Mapa do lago -->
+    <section class="mapa" data-mapa aria-label="Mapa do lago: vitórias-régias até a lótus">
+      <div class="lago" data-lago>
+        <div data-trilhas aria-hidden="true"></div>
+        <div data-pads></div>
+        <div class="sapo-mapa" data-sapo-mapa aria-hidden="true"><span class="sapo-mapa__corpo">🐸</span></div>
+        <div data-decor aria-hidden="true"></div>
       </div>
     </section>
 
-    <!-- Controles -->
-    <section class="controles" aria-label="Controles do sapo">
-      <button class="salto salto--menos" type="button" data-menos aria-label="Pular uma pedra para trás">−1</button>
-      <span class="posicao" data-posicao>🐸 na pedra 0</span>
-      <button class="salto salto--mais" type="button" data-mais aria-label="Pular uma pedra para a frente">+1</button>
-      <button class="confirmar" type="button" data-confirmar>🪰 É aqui!</button>
+    <!-- Faixa da continha (micro-loop na reta numérica) -->
+    <section class="faixa" data-faixa>
+      <div class="faixa__aviso" data-faixa-aviso hidden>👆 Escolha uma vitória-régia lá em cima!</div>
+      <div class="continha" aria-label="Continha para resolver" aria-live="polite">
+        <span class="continha__desafio" data-desafio hidden>💀</span>
+        <span class="continha__num" data-num-a>?</span>
+        <span class="continha__op" data-op>+</span>
+        <span class="continha__num" data-num-b>?</span>
+        <span class="continha__igual">=</span>
+        <span class="continha__resposta" data-resposta>?</span>
+      </div>
+      <div class="rio" data-rio aria-label="Reta numérica: pedras de 0 a 20">
+        <div class="trilho" data-trilho>
+          {
+            pedras.map((n) => (
+              <button
+                class={'pedra' + (n % 5 === 0 ? ' pedra--marco' : '')}
+                type="button"
+                data-pedra={n}
+                tabindex="-1"
+                aria-label={'Pular para a pedra ' + n}
+              >
+                <span class="pedra__num">{n}</span>
+              </button>
+            ))
+          }
+          <div class="sapo" data-sapo aria-hidden="true"><span class="sapo__corpo">🐸</span></div>
+          <div class="fx fx--splash" data-splash aria-hidden="true" hidden>💦</div>
+        </div>
+      </div>
+      <div class="controles" aria-label="Controles do sapo">
+        <button class="salto" type="button" data-menos aria-label="Pular uma pedra para trás">−1</button>
+        <span class="posicao" data-posicao>🐸 na pedra 0</span>
+        <button class="salto" type="button" data-mais aria-label="Pular uma pedra para a frente">+1</button>
+        <button class="confirmar" type="button" data-confirmar>É aqui!</button>
+      </div>
     </section>
 
-    <!-- Toast -->
+    <!-- Toast + leitor de tela -->
     <div class="toast" data-toast aria-live="polite" hidden></div>
     <p class="sr-only" data-anuncio aria-live="assertive"></p>
 
-    <!-- Modal: instruções -->
+    <!-- Modal: instruções + modos -->
     <div class="modal" data-intro>
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
-        <div class="placa__topo" id="intro-title">🐸 Sapo Saltador</div>
+        <div class="placa__topo" id="intro-title">🐸 Sapo Saltador — Lago das Esmeraldas</div>
         <div class="placa__corpo">
           <ol class="regras">
-            <li>Olhe a <b>continha</b> lá no alto. 🧮</li>
-            <li>O sapo começa na pedra do <b>primeiro número</b>.</li>
-            <li>Aperte <b>+1</b> pra pular pra frente (mais) ou <b>−1</b> pra trás (menos) — <b>conte os pulos</b>!</li>
-            <li>Chegou na resposta? Aperte <b>É aqui!</b></li>
-            <li>Acertou = o sapo come uma mosca! 🪰 Errou = splash na água — tente de novo! 💦</li>
+            <li>Resolva a <b>continha</b> pulando na reta: <b>+1</b> pra frente, <b>−1</b> pra trás. Chegou? <b>É aqui!</b></li>
+            <li>Cada acerto = um <b>salto no lago</b> rumo à 🪷 lótus. Nas bifurcações, <b>escolha o caminho</b>!</li>
+            <li>Colete 🟡 <b>moedas</b> e 🌸 <b>flores raras</b> (3 flores = ⭐⭐⭐).</li>
+            <li>⚡ <b>Impulso</b>: acerte de primeira e dê um salto duplo!</li>
+            <li>💀 <b>Planta carnívora</b>: acerte DE PRIMEIRA e ela paga 10 moedas… erre e ela morde!</li>
+            <li>No fim, grave seu <b>nome no ranking</b>! 🏆</li>
           </ol>
-          <button class="botao botao--go" type="button" data-comecar>Vamos pular!</button>
+          <p class="escolha__titulo">Como você quer jogar?</p>
+          <div class="escolha">
+            <button class="botao-modo botao-modo--vidas" type="button" data-modo="vidas">
+              <span class="botao-modo__titulo">❤️❤️❤️ Com vidas</span>
+              <small>A planta carnívora tira um coração. Complete fases pra recuperar. Errar continha normal NUNCA tira vida!</small>
+            </button>
+            <button class="botao-modo botao-modo--tranquilo" type="button" data-modo="tranquilo">
+              <span class="botao-modo__titulo">🛸 Tranquilo</span>
+              <small>Sem corações: a planta só empurra o sapo uma casa pra trás. Ninguém perde!</small>
+            </button>
+          </div>
+          <button class="recordes-btn" type="button" data-ver-recordes>🏆 Recordes</button>
         </div>
       </div>
     </div>
 
-    <!-- Modal: nível completo -->
-    <div class="modal" data-nivel-done hidden>
-      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="nivel-done-title">
-        <div class="placa__topo" id="nivel-done-title" data-nivel-done-title>Nível completo!</div>
+    <!-- Modal: fase completa -->
+    <div class="modal" data-fase-done hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="fase-done-title">
+        <div class="placa__topo" id="fase-done-title" data-fase-done-title>Fase completa!</div>
         <div class="placa__corpo center">
-          <p class="grande">🎉 Todas as continhas resolvidas!</p>
-          <p class="medalha" data-medalha hidden>⭐ Nível perfeito — nenhum erro!</p>
-          <p class="placar">Moscas até agora: <strong data-nivel-score>0</strong></p>
-          <p class="aviso" data-nivel-next-label></p>
-          <button class="botao botao--go" type="button" data-next-nivel>Próximo nível</button>
+          <p class="grande">🪷 O sapo chegou na lótus!</p>
+          <p class="estrelas" data-estrelas aria-label="Estrelas da fase"></p>
+          <p class="placar">Pontos: <strong data-fase-score>0</strong></p>
+          <p class="aviso" data-fase-next-label></p>
+          <button class="botao botao--go" type="button" data-next-fase>Próxima fase</button>
         </div>
       </div>
     </div>
 
-    <!-- Modal: vitória -->
-    <div class="modal" data-win hidden>
-      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="win-title">
-        <div class="placa__topo" id="win-title">Parabéns, Sapo Mestre! 🐸🎉</div>
+    <!-- Modal: fim da run (vitória OU fim gentil) -->
+    <div class="modal" data-fim-run hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="fim-run-title">
+        <div class="placa__topo" id="fim-run-title" data-fim-run-title>Fim da aventura!</div>
         <div class="placa__corpo center">
-          <p class="grande">Você resolveu todas as continhas!</p>
-          <p class="placar">Suas moscas: <strong data-final-score>0</strong></p>
-          <p class="aviso" data-final-msg></p>
-          <button class="botao botao--go" type="button" data-replay>Jogar de novo</button>
+          <p class="grande" data-fim-run-msg></p>
+          <p class="placar">Pontuação final: <strong data-fim-run-score>0</strong></p>
+          <p class="aviso" data-fim-run-detalhe></p>
+          <button class="botao botao--go" type="button" data-gravar-nome>🏆 Gravar meu nome</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: nome (arcade) -->
+    <div class="modal" data-nome hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="nome-title">
+        <div class="placa__topo" id="nome-title">Digite seu nome, campeão!</div>
+        <div class="placa__corpo center">
+          <p class="nome-slots" data-nome-slots aria-live="polite">_ _ _</p>
+          <div class="grade-letras" data-grade role="group" aria-label="Letras para o nome">
+            {letras.map((l) => (
+              <button class="letra" type="button" data-letra={l}>{l}</button>
+            ))}
+            <button class="letra letra--apagar" type="button" data-nome-apagar aria-label="Apagar letra">⌫</button>
+            <button class="letra letra--ok" type="button" data-nome-ok aria-label="Confirmar nome">✓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: recordes -->
+    <div class="modal" data-recordes hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="recordes-title">
+        <div class="placa__topo" id="recordes-title">🏆 Recordes do Lago</div>
+        <div class="placa__corpo center">
+          <ol class="tabela" data-tabela></ol>
+          <p class="aviso" data-recordes-vazio hidden>Ninguém gravou o nome ainda. Seja o primeiro! 🐸</p>
+          <div class="recordes-acoes">
+            <button class="botao botao--go" type="button" data-replay>Jogar de novo</button>
+            <button class="botao botao--sec" type="button" data-voltar-intro hidden>Voltar</button>
+          </div>
         </div>
       </div>
     </div>
   </main>
 
   <style is:global>
-    body.is-game { background: #7ecfe8; overflow: hidden; }
+    body.is-game { background: #12707f; overflow: hidden; }
     body.is-game::before { display: none !important; }
 
     .sr-only {
@@ -153,104 +204,202 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
       font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
       user-select: none;
       -webkit-user-select: none;
-      color: #23303c;
+      color: #eafaf2;
       display: flex;
       flex-direction: column;
-    }
-
-    /* ===== Cenário ===== */
-    .ceu {
-      position: absolute; inset: 0; z-index: 0;
-      /* clipa a mata (right:-6%): sem isso ela cria overflow horizontal
-         no .ss e o browser pode scrollar o jogo pra fora da tela */
-      overflow: hidden;
-      background: linear-gradient(180deg, #8fd8ef 0%, #bfe8f7 45%, #d8f3e8 100%);
-    }
-    .sol {
-      position: absolute; top: 7%; right: 8%;
-      width: 74px; height: 74px; border-radius: 50%;
-      background: radial-gradient(circle, #ffe873 55%, #ffd23f 75%, rgba(255, 210, 63, 0) 100%);
-      box-shadow: 0 0 46px 14px rgba(255, 220, 90, 0.55);
-    }
-    .nuvem {
-      position: absolute;
-      background: radial-gradient(closest-side, rgba(255, 255, 255, 0.97), rgba(255, 255, 255, 0) 72%);
-      border-radius: 50%; filter: blur(1px);
-    }
-    .nuvem--1 { width: 220px; height: 82px; top: 8%; left: 10%; }
-    .nuvem--2 { width: 170px; height: 66px; top: 17%; left: 48%; opacity: 0.85; }
-    .mata {
-      position: absolute; left: -6%; right: -6%; bottom: 0; height: 40%;
-      border-radius: 55% 48% 0 0 / 100% 88% 0 0;
-      background: linear-gradient(180deg, #6fbf4c 0%, #4d9c34 55%, #3a7d27 100%);
+      background: linear-gradient(180deg, #0e5e6e 0%, #12707f 45%, #178a8f 100%);
     }
 
     /* ===== HUD ===== */
     .hud {
       position: relative; z-index: 30;
-      display: flex; align-items: center; gap: 18px;
-      padding: 8px 16px;
-      background: rgba(15, 70, 55, 0.58);
+      display: flex; align-items: center; gap: 16px;
+      padding: 8px 14px;
+      background: rgba(6, 50, 55, 0.7);
       color: #fff;
       backdrop-filter: blur(2px);
     }
-    .hud__bloco { display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
-    .hud__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
-    .hud__bloco strong { font-size: 1.55rem; line-height: 1; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); transition: transform 0.18s ease; }
-    .hud__bloco strong.pop { transform: scale(1.4); color: #c8ffce; }
-    .hud__sub { font-size: 0.75rem; opacity: 0.85; }
-    .hud__bloco--nome { flex: 1; font-size: 0.95rem; font-weight: 700; opacity: 0.95; justify-content: center; }
+    .hud__bloco { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+    .hud__bloco[hidden] { display: none; }
+    .hud__label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.9; }
+    .hud__bloco strong { font-size: 1.45rem; line-height: 1; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); transition: transform 0.18s ease; }
+    .hud__bloco strong.pop { transform: scale(1.4); color: #ffe8a3; }
+    .hud__sub { font-size: 0.72rem; opacity: 0.85; }
+    .hud__bloco--nome { flex: 1; font-size: 0.9rem; font-weight: 700; opacity: 0.95; justify-content: center; }
+    .hud__bloco--vidas { align-items: center; }
+    .vidas { font-size: 1.15rem; letter-spacing: 2px; }
     .hud__mute {
-      width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
+      width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
       border: 1px solid rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.16);
-      font-size: 1.15rem; display: grid; place-items: center; color: #fff;
+      font-size: 1.1rem; display: grid; place-items: center; color: #fff;
     }
     .hud__mute:hover { background: rgba(255, 255, 255, 0.3); }
 
-    /* ===== Placa da continha ===== */
-    .continha {
-      position: relative; z-index: 20;
-      align-self: center;
-      display: flex; align-items: center; gap: 14px;
-      margin-top: clamp(8px, 2vh, 20px);
-      padding: 10px 28px;
-      background: #fffdf4;
-      border: 4px solid #8a5d33;
-      border-radius: 18px;
-      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
-      font-size: clamp(1.9rem, 5vh, 2.6rem);
-      font-weight: 800;
+    /* ===== Mapa do lago ===== */
+    .mapa {
+      position: relative; z-index: 10;
+      flex: 1;
+      overflow: clip;
+      background:
+        radial-gradient(120% 60% at 50% 0%, rgba(255, 255, 255, 0.08), transparent 60%),
+        linear-gradient(180deg, #1d8f96 0%, #17828e 50%, #14747f 100%);
     }
-    .continha__num { color: #23303c; }
+    /* margens com folhagem */
+    .mapa::before, .mapa::after {
+      content: '';
+      position: absolute; top: 0; bottom: 0; width: 34px; z-index: 3;
+      pointer-events: none;
+      background: linear-gradient(90deg, rgba(20, 90, 50, 0.85), rgba(20, 90, 50, 0));
+    }
+    .mapa::before { left: 0; }
+    .mapa::after { right: 0; transform: scaleX(-1); }
+    .lago {
+      position: absolute; left: 0; right: 0; top: 0;
+      transition: transform 0.6s ease-in-out;
+      will-change: transform;
+    }
+    .lago.sem-transicao { transition: none; }
+
+    /* trilhas pontilhadas */
+    .trilha {
+      position: absolute;
+      border-top: 4px dotted rgba(255, 255, 255, 0.55);
+      transform-origin: 0 0;
+      pointer-events: none;
+    }
+
+    /* vitórias-régias */
+    .pad {
+      position: absolute;
+      width: 74px; height: 74px;
+      transform: translate(-50%, -50%);
+      display: grid; place-items: center;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      cursor: default;
+      font-family: inherit;
+      background:
+        radial-gradient(circle at 35% 30%, #8fd06a 0%, #5faf3f 55%, #3f8a2c 100%);
+      box-shadow: inset 0 -4px 8px rgba(0, 0, 40, 0.25), 0 6px 12px rgba(0, 0, 30, 0.35);
+      touch-action: manipulation;
+    }
+    .pad__icone { font-size: 1.7rem; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); pointer-events: none; }
+    .pad--perigo { background: radial-gradient(circle at 35% 30%, #4c7a3a 0%, #2f5c26 55%, #1e421a 100%); }
+    .pad--usado .pad__icone { opacity: 0.35; filter: grayscale(1); }
+    .pad--lotus {
+      width: 96px; height: 96px;
+      background: radial-gradient(circle at 35% 30%, #b8e48e 0%, #7fc257 55%, #4f9a38 100%);
+      box-shadow: 0 0 0 5px rgba(255, 230, 120, 0.7), 0 0 30px 8px rgba(255, 220, 90, 0.45), 0 6px 14px rgba(0, 0, 30, 0.4);
+      animation: lotus-glow 2.2s ease-in-out infinite alternate;
+    }
+    .pad--lotus .pad__icone { font-size: 2.6rem; }
+    @keyframes lotus-glow {
+      from { box-shadow: 0 0 0 5px rgba(255, 230, 120, 0.55), 0 0 22px 5px rgba(255, 220, 90, 0.35), 0 6px 14px rgba(0, 0, 30, 0.4); }
+      to { box-shadow: 0 0 0 6px rgba(255, 230, 120, 0.85), 0 0 38px 12px rgba(255, 220, 90, 0.55), 0 6px 14px rgba(0, 0, 30, 0.4); }
+    }
+    .pad--escolha {
+      cursor: pointer;
+      animation: pad-pulsa 0.9s ease-in-out infinite;
+    }
+    .pad--escolha:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
+    @keyframes pad-pulsa {
+      0%, 100% { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.65), 0 6px 12px rgba(0, 0, 30, 0.35); }
+      50% { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.25), 0 6px 12px rgba(0, 0, 30, 0.35); }
+    }
+    .pad--sapo-aqui { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.85), 0 6px 12px rgba(0, 0, 30, 0.4); }
+
+    /* sapo do mapa */
+    .sapo-mapa {
+      position: absolute; left: 0; top: 0;
+      width: 0; height: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.65s ease-in-out;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .sapo-mapa.sem-transicao { transition: none; }
+    .sapo-mapa__corpo {
+      display: inline-block;
+      font-size: 2.3rem; line-height: 1;
+      filter: drop-shadow(0 4px 5px rgba(0, 0, 30, 0.4));
+    }
+    .sapo-mapa--pula .sapo-mapa__corpo { animation: mapa-pulo 0.65s ease-in-out; }
+    @keyframes mapa-pulo {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-34px) scale(1.18); }
+    }
+    .decor { position: absolute; font-size: 1.2rem; opacity: 0.8; pointer-events: none; }
+
+    /* efeito flutuante (+5 🟡 etc.) */
+    .ganho {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      font-size: 1.15rem; font-weight: 800; color: #fff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      white-space: nowrap;
+      pointer-events: none;
+      animation: ganho-sobe 1.1s ease-out forwards;
+      z-index: 6;
+    }
+    @keyframes ganho-sobe {
+      0% { opacity: 0; margin-top: 8px; }
+      15% { opacity: 1; margin-top: 0; }
+      100% { opacity: 0; margin-top: -44px; }
+    }
+
+    /* ===== Faixa da continha ===== */
+    .faixa {
+      position: relative; z-index: 15;
+      background: rgba(6, 50, 55, 0.78);
+      padding: 6px 10px calc(8px + env(safe-area-inset-bottom));
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .faixa--inativa .continha, .faixa--inativa .rio, .faixa--inativa .controles { opacity: 0.3; filter: grayscale(0.6); }
+    .faixa__aviso {
+      position: absolute; inset: 0; z-index: 5;
+      display: grid; place-items: center;
+      font-size: 1.15rem; font-weight: 800; color: #fff;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+    }
+    .faixa__aviso[hidden] { display: none; }
+
+    .continha {
+      align-self: center;
+      display: flex; align-items: center; gap: 10px;
+      padding: 3px 18px;
+      background: #fffdf4;
+      border: 3px solid #8a5d33;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+      font-size: clamp(1.25rem, 3.2vh, 1.6rem);
+      font-weight: 800;
+      color: #23303c;
+    }
+    .continha__desafio[hidden] { display: none; }
+    .continha--perigo { border-color: #7a2ca0; box-shadow: 0 0 0 3px rgba(160, 70, 220, 0.5), 0 4px 10px rgba(0, 0, 0, 0.25); }
     .continha__op { color: #d97b16; }
     .continha__igual { color: #8a8a8a; }
-    .continha__resposta {
-      min-width: 1.4em; text-align: center;
-      color: #b0682a;
-      transition: transform 0.2s ease;
-    }
-    .continha--ok .continha__resposta { color: #2e8a28; transform: scale(1.25); }
+    .continha__resposta { min-width: 1.3em; text-align: center; color: #b0682a; transition: transform 0.2s ease; }
+    .continha--ok .continha__resposta { color: #2e8a28; transform: scale(1.2); }
 
-    /* ===== Rio + reta numérica ===== */
+    /* ===== Reta numérica compacta ===== */
     .rio {
-      position: relative; z-index: 10;
-      margin-top: auto;
-      height: min(330px, 42vh);
-      display: flex; align-items: flex-end;
-      margin-inline: 12px;
-      border-radius: 18px 18px 0 0;
-      background: linear-gradient(180deg, rgba(87, 183, 232, 0.55) 0%, #3f96c4 30%, #2f7fae 100%);
-      box-shadow: inset 0 6px 14px rgba(0, 0, 40, 0.15);
+      position: relative;
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(87, 183, 232, 0.4) 0%, #3f96c4 40%, #2f7fae 100%);
+      box-shadow: inset 0 4px 10px rgba(0, 0, 40, 0.15);
       overflow-x: auto;
       overscroll-behavior-x: contain;
       touch-action: pan-x;
     }
     .trilho {
-      --pedra: clamp(34px, 4vw, 56px);
+      --pedra: clamp(26px, 3.4vw, 42px);
       position: relative;
       width: 100%;
       display: flex; align-items: flex-end; justify-content: space-between;
-      padding: 118px 10px 14px;
+      padding: 62px 8px 8px;
     }
     .pedra {
       width: var(--pedra);
@@ -258,36 +407,30 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
       flex-shrink: 0;
       display: grid; place-items: center;
       font-family: inherit;
-      border: 3px solid #b09a5f;
+      border: 2px solid #b09a5f;
       border-radius: 50%;
       background: radial-gradient(circle at 35% 30%, #f4ecd2 0%, #e0d5ac 55%, #c4b384 100%);
-      box-shadow: 0 4px 8px rgba(0, 0, 30, 0.35);
+      box-shadow: 0 3px 6px rgba(0, 0, 30, 0.35);
       cursor: pointer;
       touch-action: manipulation;
       transition: transform 0.15s ease, box-shadow 0.15s ease;
       padding: 0;
     }
-    .pedra:hover { transform: translateY(-3px); }
+    .pedra:hover { transform: translateY(-2px); }
     .pedra:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
-    .pedra__num {
-      font-size: calc(var(--pedra) * 0.4);
-      font-weight: 800;
-      color: #5a4a26;
-      line-height: 1;
-    }
+    .pedra__num { font-size: calc(var(--pedra) * 0.42); font-weight: 800; color: #5a4a26; line-height: 1; }
     .pedra--marco { border-color: #7a8a3a; background: radial-gradient(circle at 35% 30%, #e4f0c0 0%, #c9dd94 55%, #a3bd6a 100%); }
     .pedra--marco .pedra__num { color: #3a5216; }
-    .pedra--atual { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.85), 0 4px 10px rgba(0, 0, 30, 0.4); }
-    .pedra--inicio { box-shadow: 0 0 0 4px rgba(46, 138, 40, 0.75), 0 4px 8px rgba(0, 0, 30, 0.35); }
+    .pedra--atual { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 3px 8px rgba(0, 0, 30, 0.4); }
+    .pedra--inicio { box-shadow: 0 0 0 3px rgba(46, 138, 40, 0.8), 0 3px 6px rgba(0, 0, 30, 0.35); }
     .pedra--dica { animation: dica 0.9s ease-in-out infinite; }
     @keyframes dica {
-      0%, 100% { box-shadow: 0 0 0 3px rgba(255, 214, 64, 0.4), 0 4px 8px rgba(0, 0, 30, 0.35); }
-      50% { box-shadow: 0 0 0 9px rgba(255, 214, 64, 0.85), 0 4px 12px rgba(0, 0, 30, 0.4); }
+      0%, 100% { box-shadow: 0 0 0 2px rgba(255, 214, 64, 0.4), 0 3px 6px rgba(0, 0, 30, 0.35); }
+      50% { box-shadow: 0 0 0 7px rgba(255, 214, 64, 0.85), 0 3px 10px rgba(0, 0, 30, 0.4); }
     }
 
-    /* Sapo: caixa de largura zero centrada na pedra via translateX */
     .sapo {
-      position: absolute; left: 0; bottom: calc(14px + var(--pedra) * 0.72);
+      position: absolute; left: 0; bottom: calc(8px + var(--pedra) * 0.7);
       width: 0;
       display: flex; justify-content: center;
       transition: transform var(--dur, 320ms) ease-in-out, opacity 0.25s ease;
@@ -298,96 +441,87 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
     .sapo--sumiu { opacity: 0; }
     .sapo__corpo {
       display: inline-block;
-      font-size: clamp(2rem, 5.2vh, 2.7rem);
+      font-size: 1.55rem;
       line-height: 1;
-      filter: drop-shadow(0 4px 4px rgba(0, 0, 30, 0.35));
+      filter: drop-shadow(0 3px 3px rgba(0, 0, 30, 0.35));
     }
     .sapo--pula .sapo__corpo { animation: pulo var(--dur, 320ms) ease-in-out; }
     @keyframes pulo {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-46px); }
+      50% { transform: translateY(-24px); }
     }
     .sapo--cai .sapo__corpo { animation: cai 0.55s ease-in forwards; }
     @keyframes cai {
       0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(34px) rotate(24deg); opacity: 0; }
+      100% { transform: translateY(26px) rotate(24deg); opacity: 0; }
     }
-
-    /* Efeitos (splash / mosca) — mesma âncora de largura zero */
     .fx {
       position: absolute; left: 0;
       width: 0;
       display: flex; justify-content: center;
       pointer-events: none;
-      font-size: 1.9rem;
+      font-size: 1.5rem;
       z-index: 6;
     }
     .fx[hidden] { display: none; }
-    .fx--splash { bottom: calc(14px + var(--pedra) * 0.35); }
+    .fx--splash { bottom: calc(8px + var(--pedra) * 0.3); }
     .fx--splash.anima { animation: splash 0.7s ease-out forwards; }
     @keyframes splash {
       0% { transform: scale(0.4); opacity: 1; }
       100% { transform: scale(1.7); opacity: 0; }
     }
-    .fx--mosca { bottom: calc(14px + var(--pedra) * 1.1); }
-    .fx--mosca.anima { animation: voa 0.8s ease-out forwards; }
-    @keyframes voa {
-      0% { transform: translateY(0) scale(1); opacity: 1; }
-      100% { transform: translateY(-52px) scale(1.3); opacity: 0; }
-    }
 
     /* ===== Controles ===== */
     .controles {
-      position: relative; z-index: 15;
-      display: flex; align-items: center; justify-content: center; gap: 16px;
-      padding: 12px 16px 18px;
-      background: rgba(15, 70, 55, 0.62);
+      display: flex; align-items: center; justify-content: center; gap: 12px;
     }
     .salto {
-      width: 64px; height: 64px;
-      font-family: inherit; font-size: 1.7rem; font-weight: 800;
+      width: 52px; height: 52px;
+      font-family: inherit; font-size: 1.35rem; font-weight: 800;
       color: #1d5619;
       background: linear-gradient(180deg, #ffffff, #dff0d8);
       border: 3px solid #2e8a28; border-radius: 50%;
       cursor: pointer;
       touch-action: manipulation;
-      box-shadow: 0 4px 0 #1d5619, 0 8px 14px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 3px 0 #1d5619, 0 6px 10px rgba(0, 0, 0, 0.25);
       transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
     }
     .salto:hover { filter: brightness(1.05); }
-    .salto:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d5619, 0 4px 8px rgba(0, 0, 0, 0.25); }
+    .salto:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d5619, 0 3px 6px rgba(0, 0, 0, 0.25); }
     .salto:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
     .posicao {
-      min-width: 130px;
+      min-width: 110px;
       text-align: center;
-      font-size: 0.95rem; font-weight: 800; color: #fff;
+      font-size: 0.88rem; font-weight: 800; color: #fff;
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+      white-space: nowrap;
     }
     .confirmar {
-      margin-left: clamp(4px, 3vw, 28px);
-      padding: 14px 26px;
-      font-family: inherit; font-size: 1.2rem; font-weight: 800; color: #fff;
+      margin-left: clamp(2px, 2vw, 20px);
+      padding: 11px 22px;
+      font-family: inherit; font-size: 1.05rem; font-weight: 800; color: #fff;
       background: linear-gradient(180deg, #6cc24a 0%, #43a431 55%, #2e8a28 100%);
-      border: 3px solid #256b20; border-radius: 16px;
+      border: 3px solid #256b20; border-radius: 14px;
       cursor: pointer;
       touch-action: manipulation;
-      box-shadow: 0 5px 0 #1d5619, 0 9px 16px rgba(0, 0, 0, 0.3);
+      white-space: nowrap;
+      box-shadow: 0 4px 0 #1d5619, 0 7px 12px rgba(0, 0, 0, 0.3);
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
       transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.15s ease;
     }
     .confirmar:hover { filter: brightness(1.07); }
-    .confirmar:active { transform: translateY(4px); box-shadow: 0 1px 0 #1d5619, 0 5px 10px rgba(0, 0, 0, 0.3); }
+    .confirmar:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d5619, 0 4px 8px rgba(0, 0, 0, 0.3); }
     .confirmar:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 
     /* ===== Toast ===== */
     .toast {
-      position: absolute; left: 50%; top: 44%;
+      position: absolute; left: 50%; top: 40%;
       transform: translate(-50%, 0) translateY(8px);
       z-index: 40;
       max-width: min(88vw, 480px);
-      padding: 13px 20px;
+      padding: 12px 18px;
       border-radius: 14px;
-      font-size: 1.05rem; font-weight: 700; text-align: center; color: #fff;
+      font-size: 1rem; font-weight: 700; text-align: center; color: #fff;
       box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
       opacity: 0;
       transition: opacity 0.25s ease, transform 0.25s ease;
@@ -396,43 +530,44 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
     .toast.ok { background: linear-gradient(180deg, #4cc35e, #2f9d40); }
     .toast.err { background: linear-gradient(180deg, #ff6b6b, #e03b3b); }
-    .toast.info { background: linear-gradient(180deg, #4aa3e0, #2f7fc0); }
+    .toast.info { background: linear-gradient(180deg, #2fa3a0, #1b7f8c); }
+    .toast.perigo { background: linear-gradient(180deg, #9b59d0, #6a2d9c); }
 
     /* ===== Modais ===== */
     .modal {
       position: absolute; inset: 0; z-index: 60;
-      display: grid; place-items: center; padding: 20px;
-      background: rgba(10, 45, 35, 0.45);
+      display: grid; place-items: center; padding: 16px;
+      background: rgba(4, 32, 36, 0.6);
     }
     .modal[hidden] { display: none; }
     .placa {
-      width: min(94vw, 460px);
+      width: min(94vw, 480px);
+      max-height: 94svh; overflow: auto;
       background: #fff9ea;
       border: 4px solid #8a5d33;
       border-radius: 18px;
-      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
-      overflow: hidden;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
       animation: placa-pop 0.25s ease;
     }
     @keyframes placa-pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .placa__topo {
-      padding: 12px 18px;
+      padding: 11px 16px;
       background: linear-gradient(180deg, #3da431, #2e8a28);
-      color: #fff; font-size: 1.15rem; font-weight: 800;
+      color: #fff; font-size: 1.05rem; font-weight: 800;
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
       border-bottom: 4px solid #8a5d33;
     }
-    .placa__corpo { padding: 18px 22px 22px; color: #3a2c1e; }
+    .placa__corpo { padding: 16px 20px 20px; color: #3a2c1e; }
     .placa__corpo.center { text-align: center; }
-    .regras { margin: 0 0 18px 20px; display: grid; gap: 10px; font-size: 0.98rem; line-height: 1.45; }
-    .grande { font-size: 1.2rem; font-weight: 800; margin-bottom: 10px; }
-    .medalha { font-size: 1.05rem; font-weight: 800; color: #b8860b; margin-bottom: 8px; }
+    .regras { margin: 0 0 14px 20px; display: grid; gap: 8px; font-size: 0.93rem; line-height: 1.45; }
+    .grande { font-size: 1.15rem; font-weight: 800; margin-bottom: 8px; }
+    .estrelas { font-size: 1.9rem; letter-spacing: 4px; margin-bottom: 8px; min-height: 1.2em; }
     .placar { font-size: 1.05rem; margin-bottom: 6px; }
-    .placar strong { font-size: 1.6rem; color: #2e8a28; }
-    .aviso { color: #6b5b48; font-size: 0.95rem; margin-bottom: 16px; min-height: 1.2em; }
+    .placar strong { font-size: 1.55rem; color: #2e8a28; }
+    .aviso { color: #6b5b48; font-size: 0.92rem; margin-bottom: 14px; min-height: 1.2em; }
     .botao {
       font-family: inherit; cursor: pointer; font-weight: 800;
-      padding: 11px 26px; border-radius: 12px; font-size: 1.05rem;
+      padding: 11px 24px; border-radius: 12px; font-size: 1.02rem;
       border: 3px solid #256b20; color: #fff;
       background: linear-gradient(180deg, #6cc24a 0%, #43a431 55%, #2e8a28 100%);
       box-shadow: 0 4px 0 #1d5619;
@@ -440,85 +575,183 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
     }
     .botao:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d5619; }
     .botao:focus-visible { outline: 3px solid #2e8a28; outline-offset: 2px; }
+    .botao--sec {
+      border-color: #8a5d33; background: linear-gradient(180deg, #d9b98a, #b98d55);
+      box-shadow: 0 4px 0 #7a4d28;
+    }
+    .botao--sec:active { box-shadow: 0 1px 0 #7a4d28; }
+
+    .escolha__titulo { font-weight: 800; font-size: 1rem; margin-bottom: 8px; }
+    .escolha { display: grid; gap: 8px; margin-bottom: 12px; }
+    .botao-modo {
+      font-family: inherit; cursor: pointer; text-align: left;
+      display: flex; flex-direction: column; gap: 3px;
+      padding: 10px 14px; border-radius: 14px;
+      border: 3px solid transparent;
+      transition: transform 0.12s ease, filter 0.15s ease;
+    }
+    .botao-modo:hover { transform: translateY(-2px); filter: brightness(1.04); }
+    .botao-modo:focus-visible { outline: 3px solid #2e8a28; outline-offset: 2px; }
+    .botao-modo__titulo { font-size: 1.02rem; font-weight: 800; color: #2c2318; }
+    .botao-modo small { font-size: 0.82rem; line-height: 1.4; color: #4c3e2c; }
+    .botao-modo--vidas { background: linear-gradient(135deg, #ffe4ee, #ffd0e0); border-color: #e05a8a; }
+    .botao-modo--tranquilo { background: linear-gradient(135deg, #dff7f5, #c8eff0); border-color: #2fa3a0; }
+    .recordes-btn {
+      display: block; margin: 0 auto;
+      font-family: inherit; cursor: pointer; font-weight: 800;
+      padding: 8px 18px; border-radius: 10px; font-size: 0.92rem;
+      border: 2px solid #b8860b; color: #7a5a08;
+      background: linear-gradient(180deg, #ffe9a8, #f5cf62);
+    }
+    .recordes-btn:focus-visible { outline: 3px solid #b8860b; outline-offset: 2px; }
+
+    /* nome arcade */
+    .nome-slots {
+      font-size: 2rem; font-weight: 800; letter-spacing: 8px;
+      color: #2e8a28; margin-bottom: 12px; min-height: 1.3em;
+    }
+    .grade-letras {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+      margin-bottom: 6px;
+    }
+    .letra {
+      height: 44px;
+      font-family: inherit; font-size: 1.1rem; font-weight: 800;
+      color: #23303c; background: #fff;
+      border: 2px solid rgba(0, 0, 0, 0.3); border-radius: 8px;
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .letra:active { transform: translateY(2px); box-shadow: none; }
+    .letra:focus-visible { outline: 3px solid #2e8a28; outline-offset: 1px; }
+    .letra--apagar { background: #ffe4d0; }
+    .letra--ok { background: #dff0d8; color: #1d5619; }
+
+    /* tabela de recordes */
+    .tabela {
+      margin: 0 0 12px; padding: 0;
+      list-style: none;
+      display: grid; gap: 4px;
+      font-size: 0.95rem;
+      text-align: left;
+    }
+    .tabela li {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 10px;
+      background: rgba(46, 138, 40, 0.08);
+      border-radius: 8px;
+    }
+    .tabela li.novo { background: #ffe9a8; box-shadow: 0 0 0 2px #b8860b; }
+    .tabela .pos { font-weight: 800; width: 26px; color: #8a5d33; }
+    .tabela .nome { font-weight: 800; flex: 1; letter-spacing: 1px; }
+    .tabela .pts { font-weight: 800; color: #2e8a28; }
+    .tabela .det { font-size: 0.78rem; color: #6b5b48; }
+    .recordes-acoes { display: flex; gap: 10px; justify-content: center; }
 
     /* ===== Responsivo ===== */
-    /* Telas estreitas: a reta não cabe — vira faixa scrollável centrada no sapo */
     @media (max-width: 940px) {
       .trilho {
-        --pedra: 46px;
+        --pedra: 40px;
         width: max-content;
         min-width: 100%;
         justify-content: flex-start;
-        gap: 8px;
+        gap: 7px;
       }
     }
     @media (max-height: 760px) {
-      .continha { font-size: 1.7rem; padding: 7px 20px; gap: 10px; }
-      .trilho { padding-top: 92px; }
+      .trilho { padding-top: 48px; }
       .sapo--pula .sapo__corpo { animation-name: pulo-baixo; }
-      .salto { width: 54px; height: 54px; font-size: 1.4rem; }
-      .confirmar { padding: 11px 20px; font-size: 1.05rem; }
-      .controles { padding: 9px 12px 13px; }
+      .salto { width: 46px; height: 46px; font-size: 1.15rem; }
+      .confirmar { padding: 9px 16px; font-size: 0.95rem; }
+      .continha { font-size: 1.2rem; }
+      .letra { height: 38px; font-size: 1rem; }
     }
     @keyframes pulo-baixo {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-30px); }
+      50% { transform: translateY(-18px); }
     }
     @media (max-width: 700px) {
-      .hud { gap: 10px; padding: 8px 10px; }
-      .hud__label { font-size: 0.58rem; }
-      .hud__bloco strong { font-size: 1.25rem; }
-      .hud__mute { width: 36px; height: 36px; flex-shrink: 0; margin-left: auto; }
+      .hud { gap: 9px; padding: 7px 8px; }
+      .hud__label { font-size: 0.56rem; }
+      .hud__bloco strong { font-size: 1.1rem; }
+      .hud__sub { font-size: 0.6rem; }
+      .hud__mute { width: 34px; height: 34px; flex-shrink: 0; margin-left: auto; }
       .hud__bloco--nome { display: none; }
-      .posicao { min-width: 0; font-size: 0.85rem; white-space: nowrap; }
-      .confirmar { white-space: nowrap; padding: 12px 16px; font-size: 1.05rem; margin-left: 4px; }
-      .controles { gap: 10px; }
+      .posicao { min-width: 0; font-size: 0.8rem; }
+      .pad { width: 62px; height: 62px; }
+      .pad--lotus { width: 82px; height: 82px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .sapo, .toast, .pedra, .continha__resposta, .hud__bloco strong { transition: none !important; }
-      .sapo--pula .sapo__corpo, .sapo--cai .sapo__corpo, .fx.anima, .pedra--dica, .placa { animation: none !important; }
+      .sapo, .sapo-mapa, .lago, .toast, .pedra, .continha__resposta, .hud__bloco strong { transition: none !important; }
+      .sapo--pula .sapo__corpo, .sapo--cai .sapo__corpo, .sapo-mapa--pula .sapo-mapa__corpo,
+      .fx.anima, .pedra--dica, .pad--escolha, .pad--lotus, .placa, .ganho { animation: none !important; }
     }
   </style>
 
   <script>
     // ===== Dados =====
     const dados = JSON.parse(document.querySelector('[data-dados]').textContent);
-    const NIVEIS = dados.niveis;
+    const FASES = dados.fases;
     const CFG = dados.config;
     const semMov = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const $ = (s) => document.querySelector(s);
+    const mapaEl = $('[data-mapa]');
+    const lagoEl = $('[data-lago]');
+    const trilhasEl = $('[data-trilhas]');
+    const padsEl = $('[data-pads]');
+    const decorEl = $('[data-decor]');
+    const sapoMapaEl = $('[data-sapo-mapa]');
+    const faixaEl = $('[data-faixa]');
+    const faixaAvisoEl = $('[data-faixa-aviso]');
     const rioEl = $('[data-rio]');
     const trilhoEl = $('[data-trilho]');
     const sapoEl = $('[data-sapo]');
     const splashEl = $('[data-splash]');
-    const moscaEl = $('[data-mosca]');
-    const menosBtn = $('[data-menos]');
-    const maisBtn = $('[data-mais]');
-    const confirmarBtn = $('[data-confirmar]');
-    const posicaoEl = $('[data-posicao]');
     const toastEl = $('[data-toast]');
     const anuncioEl = $('[data-anuncio]');
     const introModal = $('[data-intro]');
-    const nivelDoneModal = $('[data-nivel-done]');
-    const winModal = $('[data-win]');
+    const faseDoneModal = $('[data-fase-done]');
+    const fimRunModal = $('[data-fim-run]');
+    const nomeModal = $('[data-nome]');
+    const recordesModal = $('[data-recordes]');
+    const vidasWrapEl = $('[data-vidas-wrap]');
     const pedraEls = [...document.querySelectorAll('[data-pedra]')];
 
+    const RANKING_KEY = 'sapo-saltador:ranking';
+    const ROW_H = 112;
+
     const estado = {
-      fase: 'inicio',   // inicio | jogando | caindo | celebrando | entreniveis | vitoria
-      nivelIdx: 0,
-      continhas: [],    // sorteadas do pool do nível
-      continhaIdx: 0,
-      pedraAtual: 0,
+      fase: 'inicio', // inicio|escolhendo|resolvendo|saltando|entrefases|fimRun|nome|recordes
+      modo: null,     // 'vidas' | 'tranquilo'
+      faseIdx: 0,
+      pontos: 0,
+      moedas: 0,
+      coracoes: 0,
+      floresFase: 0,
+      continhasResolvidas: 0,
+      baralho: [],
+      baralhoIdx: 0,
+      continha: null,
       errosNaContinha: 0,
-      pontos: 0,        // moscas; acumulam entre níveis, zeram no replay
-      semErroNoNivel: true,
+      pedraAtual: 0,
+      // mapa
+      linhas: [],        // [{pads:[{tipo,x,y,el,usado}]}] — última linha = lótus
+      sapoLinha: 0,
+      sapoPadIdx: 0,
+      alvo: null,        // {linha, padIdx}
+      saltoLivrePendente: false,
+      impulsoArmado: false,
+      duploGanho: false,
+      desafioPlanta: false,
+      nome: '',
       mudo: false,
-      animando: false,  // trava confirmar/toque-em-pedra durante salto longo e quedas
+      animando: false,
     };
 
-    // ===== Áudio (Web Audio, sem arquivos) =====
+    // ===== Áudio =====
     let actx = null;
     function initAudio() {
       if (actx) return;
@@ -537,14 +770,18 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
       g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
       o.start(t); o.stop(t + dur + 0.03);
     }
-    // "boing" subindo = pulo pra frente; invertido = pra trás
     function somPulo() { if (estado.mudo) return; tom(392, 0, 0.06, 'sine', 0.12); tom(587, 0.05, 0.09, 'sine', 0.12); }
     function somPuloTras() { if (estado.mudo) return; tom(587, 0, 0.06, 'sine', 0.12); tom(392, 0.05, 0.09, 'sine', 0.12); }
     function somSaltoLongo() { if (estado.mudo) return; tom(330, 0, 0.12, 'sine', 0.12); tom(660, 0.1, 0.18, 'sine', 0.12); }
     function somSplash() { if (estado.mudo) return; tom(220, 0, 0.2, 'sine', 0.1); tom(150, 0.07, 0.3, 'sine', 0.09); tom(110, 0.15, 0.25, 'sine', 0.07); }
     function somAcerto() { if (estado.mudo) return; tom(700, 0, 0.08, 'triangle', 0.14); tom(950, 0.06, 0.1, 'triangle', 0.13); tom(1245, 0.13, 0.16, 'triangle', 0.12); }
     function somLimite() { if (estado.mudo) return; tom(160, 0, 0.1, 'square', 0.08); }
+    function somMoeda() { if (estado.mudo) return; tom(988, 0, 0.07, 'triangle', 0.14); tom(1319, 0.07, 0.14, 'triangle', 0.14); }
+    function somFlor() { if (estado.mudo) return; tom(880, 0, 0.14, 'sine', 0.13); tom(1109, 0.1, 0.2, 'sine', 0.12); tom(1319, 0.2, 0.26, 'sine', 0.1); }
+    function somImpulso() { if (estado.mudo) return; tom(440, 0, 0.08, 'sawtooth', 0.07); tom(660, 0.06, 0.08, 'sawtooth', 0.07); tom(880, 0.12, 0.12, 'sawtooth', 0.07); }
+    function somPlanta() { if (estado.mudo) return; tom(140, 0, 0.16, 'square', 0.13); tom(90, 0.1, 0.22, 'square', 0.11); }
     function somNivel() { if (estado.mudo) return; [523, 659, 784, 1046].forEach((f, i) => tom(f, i * 0.12, 0.22, 'triangle', 0.2)); }
+    function somFimGentil() { if (estado.mudo) return; tom(392, 0, 0.5, 'triangle', 0.14); tom(494, 0.14, 0.5, 'triangle', 0.14); tom(587, 0.28, 0.6, 'triangle', 0.14); }
 
     // ===== Mudo =====
     const muteBtn = $('[data-mute]');
@@ -575,6 +812,7 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
       return a;
     }
     function anunciar(msg) { anuncioEl.textContent = ''; requestAnimationFrame(() => { anuncioEl.textContent = msg; }); }
+    function nomeOp(op) { return op === '+' ? 'mais' : 'menos'; }
 
     let toastTimer = null;
     function mostrarToast(html, tipo, ms) {
@@ -589,26 +827,15 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
       }, ms || 2200);
     }
 
-    function atualizarPlacar() {
-      const el = $('[data-pontos]');
-      el.textContent = String(estado.pontos);
+    function popHud(sel, valor) {
+      const el = $(sel);
+      el.textContent = String(valor);
       el.classList.add('pop');
       setTimeout(() => el.classList.remove('pop'), 200);
     }
-
-    function nomeOp(op) { return op === '+' ? 'mais' : 'menos'; }
-
-    // ===== Posicionamento do sapo =====
-    function xDaPedra(n) {
-      const p = pedraEls[n];
-      // offsetLeft é imune ao scroll do rio (offset parent = trilho)
-      return p.offsetLeft + p.offsetWidth / 2;
-    }
-
-    function centralizarNoSapo(suave) {
-      if (rioEl.scrollWidth <= rioEl.clientWidth + 2) return;
-      const alvo = trilhoEl.offsetLeft + xDaPedra(estado.pedraAtual) - rioEl.clientWidth / 2;
-      rioEl.scrollTo({ left: alvo, behavior: suave && !semMov ? 'smooth' : 'auto' });
+    function atualizarVidas() {
+      $('[data-vidas]').textContent = '❤️'.repeat(estado.coracoes) + '🖤'.repeat(Math.max(0, CFG.coracoesMaximos - estado.coracoes));
+      vidasWrapEl.setAttribute('aria-label', 'Vidas: ' + estado.coracoes + ' de ' + CFG.coracoesMaximos);
     }
 
     function reiniciarAnimacao(el, classe) {
@@ -617,17 +844,322 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
       el.classList.add(classe);
     }
 
+    // Texto flutuante no mapa ("+5 🟡")
+    function ganhoNoMapa(texto, x, y) {
+      const el = document.createElement('span');
+      el.className = 'ganho';
+      el.textContent = texto;
+      el.style.left = x + 'px';
+      el.style.top = (y - 40) + 'px';
+      lagoEl.appendChild(el);
+      setTimeout(() => el.remove(), 1200);
+    }
+
+    // ============================================================
+    //  MAPA DO LAGO
+    // ============================================================
+    const ICONES = { moeda: '🟡', flor: '🌸', impulso: '⚡', perigo: '💀', comum: '', lotus: '🪷' };
+    const DECOR = ['🐟', '🌼', '🪻', '🦟', '🐌'];
+
+    function gerarMapa(fase) {
+      const linhas = [];
+      // fileiras 0..saltos: 0 = partida, saltos = lótus
+      // bifurcações: sorteadas entre 1..saltos-1, nunca adjacentes
+      const candidatas = [];
+      for (let i = 1; i < fase.saltos; i++) candidatas.push(i);
+      const bifs = new Set();
+      for (const i of embaralhar(candidatas)) {
+        if (bifs.size >= fase.bifurcacoes) break;
+        if (bifs.has(i - 1) || bifs.has(i + 1)) continue;
+        bifs.add(i);
+      }
+      for (let i = 0; i <= fase.saltos; i++) {
+        const tipoLinha = i === 0 ? 'partida' : i === fase.saltos ? 'lotus' : bifs.has(i) ? 'bif' : 'solo';
+        const qtd = tipoLinha === 'bif' ? 2 : 1;
+        linhas.push({ tipo: tipoLinha, pads: Array.from({ length: qtd }, () => ({ tipo: 'comum', usado: false, el: null, x: 0, y: 0 })) });
+      }
+      // efeitos: perigo só em bifurcação; flor prefere bifurcação (escolha!)
+      const slotsBif = [];
+      const slotsSolo = [];
+      for (let i = 1; i < fase.saltos; i++) {
+        for (let p = 0; p < linhas[i].pads.length; p++) {
+          (linhas[i].tipo === 'bif' ? slotsBif : slotsSolo).push({ i, p });
+        }
+      }
+      const bifLivres = embaralhar(slotsBif);
+      const soloLivres = embaralhar(slotsSolo);
+      const pegar = (preferencia) => {
+        if (preferencia === 'bif') return bifLivres.pop() || soloLivres.pop();
+        return soloLivres.pop() || bifLivres.pop();
+      };
+      const aplicar = (slot, tipo) => { if (slot) linhas[slot.i].pads[slot.p].tipo = tipo; };
+      // perigo: um pad de bifurcação (o irmão fica livre = rota segura)
+      for (let n = 0; n < fase.perigos; n++) {
+        const slot = bifLivres.pop();
+        if (!slot) break;
+        linhas[slot.i].pads[slot.p].tipo = 'perigo';
+        // remove o irmão da lista de bif livres? não — irmão pode ter flor (dilema bom)
+      }
+      for (let n = 0; n < fase.flores; n++) {
+        const slot = pegar('bif');
+        aplicar(slot, 'flor');
+        // a irmã da bifurcação não pode receber OUTRA flor (uma sempre
+        // se perderia e as 3 estrelas ficariam impossíveis) — move ela
+        // pra fila comum, onde vira moeda/impulso sem conflito
+        if (slot) {
+          const irma = bifLivres.findIndex((s) => s.i === slot.i);
+          if (irma !== -1) soloLivres.unshift(...bifLivres.splice(irma, 1));
+        }
+      }
+      for (let n = 0; n < fase.impulsos; n++) aplicar(pegar('solo'), 'impulso');
+      for (let n = 0; n < fase.moedas; n++) aplicar(pegar('solo'), 'moeda');
+      return linhas;
+    }
+
+    function alturaLago(fase) { return (fase.saltos + 1) * ROW_H + 120; }
+
+    function renderMapa() {
+      const fase = FASES[estado.faseIdx];
+      trilhasEl.innerHTML = '';
+      padsEl.innerHTML = '';
+      decorEl.innerHTML = '';
+      const w = mapaEl.clientWidth || 1;
+      const h = alturaLago(fase);
+      lagoEl.style.height = h + 'px';
+      // posições
+      estado.linhas.forEach((linha, i) => {
+        const y = h - 70 - i * ROW_H;
+        linha.pads.forEach((pad, p) => {
+          pad.x = linha.pads.length === 1 ? w * 0.5 : w * (p === 0 ? 0.3 : 0.7);
+          pad.y = y;
+        });
+      });
+      // trilhas (cada pad → pads alcançáveis da fileira seguinte)
+      for (let i = 0; i < estado.linhas.length - 1; i++) {
+        for (const de of estado.linhas[i].pads) {
+          for (const ate of estado.linhas[i + 1].pads) {
+            const dx = ate.x - de.x;
+            const dy = ate.y - de.y;
+            const len = Math.hypot(dx, dy);
+            const ang = Math.atan2(dy, dx);
+            const t = document.createElement('div');
+            t.className = 'trilha';
+            t.style.left = de.x + 'px';
+            t.style.top = de.y + 'px';
+            t.style.width = len + 'px';
+            t.style.transform = 'rotate(' + ang + 'rad)';
+            trilhasEl.appendChild(t);
+          }
+        }
+      }
+      // pads
+      estado.linhas.forEach((linha, i) => {
+        linha.pads.forEach((pad, p) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.tabIndex = -1;
+          btn.className = 'pad' + (linha.tipo === 'lotus' ? ' pad--lotus' : '') + (pad.tipo === 'perigo' ? ' pad--perigo' : '') + (pad.usado ? ' pad--usado' : '');
+          btn.dataset.linha = String(i);
+          btn.dataset.pad = String(p);
+          btn.style.left = pad.x + 'px';
+          btn.style.top = pad.y + 'px';
+          const icone = linha.tipo === 'lotus' ? ICONES.lotus : ICONES[pad.tipo];
+          btn.innerHTML = '<span class="pad__icone">' + icone + '</span>';
+          btn.setAttribute('aria-label', linha.tipo === 'lotus' ? 'Lótus — chegada' : 'Vitória-régia' + (pad.tipo !== 'comum' ? ' com ' + pad.tipo : ''));
+          btn.addEventListener('click', () => escolherPad(i, p));
+          padsEl.appendChild(btn);
+          pad.el = btn;
+        });
+      });
+      // decoração
+      for (let n = 0; n < 8; n++) {
+        const d = document.createElement('span');
+        d.className = 'decor';
+        d.textContent = DECOR[n % DECOR.length];
+        d.style.left = (w * (0.12 + Math.random() * 0.76)) + 'px';
+        d.style.top = (Math.random() * (h - 60) + 30) + 'px';
+        decorEl.appendChild(d);
+      }
+      posicionarSapoMapa(false);
+    }
+
+    function padDoSapo() { return estado.linhas[estado.sapoLinha].pads[estado.sapoPadIdx]; }
+
+    function posicionarSapoMapa(animado) {
+      const pad = padDoSapo();
+      if (!animado || semMov) {
+        sapoMapaEl.classList.add('sem-transicao');
+        sapoMapaEl.style.transform = 'translate3d(' + pad.x + 'px, ' + (pad.y - 6) + 'px, 0)';
+        void sapoMapaEl.offsetWidth;
+        sapoMapaEl.classList.remove('sem-transicao');
+      } else {
+        sapoMapaEl.style.transform = 'translate3d(' + pad.x + 'px, ' + (pad.y - 6) + 'px, 0)';
+        reiniciarAnimacao(sapoMapaEl, 'sapo-mapa--pula');
+      }
+      for (const linha of estado.linhas) for (const p of linha.pads) p.el && p.el.classList.remove('pad--sapo-aqui');
+      pad.el && pad.el.classList.add('pad--sapo-aqui');
+      centralizarMapa(animado);
+    }
+
+    function centralizarMapa(suave) {
+      const fase = FASES[estado.faseIdx];
+      const h = alturaLago(fase);
+      const vh = mapaEl.clientHeight || 1;
+      const pad = padDoSapo();
+      let top = pad.y - vh * 0.62;
+      top = Math.max(0, Math.min(top, h - vh));
+      if (h <= vh) top = h - vh; // lago menor que a tela: encosta no fundo
+      if (!suave || semMov) lagoEl.classList.add('sem-transicao');
+      lagoEl.style.transform = 'translateY(' + -top + 'px)';
+      if (!suave || semMov) { void lagoEl.offsetWidth; lagoEl.classList.remove('sem-transicao'); }
+    }
+
+    // ============================================================
+    //  PASSO A PASSO (macro-loop)
+    // ============================================================
+    function prepararPasso() {
+      const prox = estado.sapoLinha + 1;
+      if (prox >= estado.linhas.length) return; // segurança
+      const linha = estado.linhas[prox];
+      if (linha.pads.length === 2) {
+        estado.fase = 'escolhendo';
+        faixaEl.classList.add('faixa--inativa');
+        faixaAvisoEl.hidden = false;
+        linha.pads.forEach((pad) => {
+          pad.el.classList.add('pad--escolha');
+          pad.el.tabIndex = 0;
+        });
+        setTimeout(() => linha.pads[0].el.focus({ preventScroll: true }), 80);
+        anunciar('Bifurcação! Escolha uma vitória-régia: esquerda ' + rotuloPad(linha.pads[0]) + ', ou direita ' + rotuloPad(linha.pads[1]) + '. Use as setas ou toque.');
+      } else {
+        estado.alvo = { linha: prox, padIdx: 0 };
+        if (estado.saltoLivrePendente) { estado.saltoLivrePendente = false; executarSalto(); }
+        else iniciarContinha();
+      }
+    }
+
+    function rotuloPad(pad) {
+      return { moeda: 'com moeda', flor: 'com flor rara', impulso: 'com impulso', perigo: 'com planta carnívora, cuidado', comum: 'comum' }[pad.tipo];
+    }
+
+    function escolherPad(linha, padIdx) {
+      if (estado.fase !== 'escolhendo' || linha !== estado.sapoLinha + 1) return;
+      const l = estado.linhas[linha];
+      l.pads.forEach((pad) => {
+        pad.el.classList.remove('pad--escolha');
+        pad.el.tabIndex = -1;
+      });
+      faixaAvisoEl.hidden = true;
+      estado.alvo = { linha, padIdx };
+      somSaltoLongo();
+      if (estado.saltoLivrePendente) { estado.saltoLivrePendente = false; executarSalto(); }
+      else iniciarContinha();
+    }
+
+    function executarSalto() {
+      estado.fase = 'saltando';
+      faixaEl.classList.add('faixa--inativa');
+      estado.sapoLinha = estado.alvo.linha;
+      estado.sapoPadIdx = estado.alvo.padIdx;
+      posicionarSapoMapa(true);
+      setTimeout(aoAterrissar, semMov ? 80 : 700);
+    }
+
+    function aoAterrissar() {
+      const linha = estado.linhas[estado.sapoLinha];
+      const pad = padDoSapo();
+      if (linha.tipo === 'lotus') { faseCompleta(); return; }
+      // efeito do pad
+      if (!pad.usado && pad.tipo !== 'comum') {
+        pad.usado = true;
+        if (pad.tipo === 'moeda') {
+          estado.moedas += CFG.moedasPorPad;
+          popHud('[data-moedas]', estado.moedas);
+          somMoeda();
+          ganhoNoMapa('+' + CFG.moedasPorPad + ' 🟡', pad.x, pad.y);
+          anunciar('Você pegou ' + CFG.moedasPorPad + ' moedas!');
+          pad.el.classList.add('pad--usado');
+        } else if (pad.tipo === 'flor') {
+          estado.floresFase++;
+          popHud('[data-flores]', estado.floresFase);
+          somFlor();
+          ganhoNoMapa('+1 🌸', pad.x, pad.y);
+          anunciar('Flor rara coletada! ' + estado.floresFase + ' de 3.');
+          pad.el.classList.add('pad--usado');
+        } else if (pad.tipo === 'impulso') {
+          estado.impulsoArmado = true;
+          somImpulso();
+          ganhoNoMapa('⚡', pad.x, pad.y);
+          mostrarToast('⚡ Impulso! Acerte a próxima DE PRIMEIRA e dê um salto duplo!', 'info', 2600);
+          anunciar('Impulso! Acerte a próxima continha de primeira pra dar um salto duplo.');
+          pad.el.classList.add('pad--usado');
+        } else if (pad.tipo === 'perigo') {
+          estado.desafioPlanta = true;
+          somPlanta();
+          mostrarToast('💀 Planta faminta! Acerte DE PRIMEIRA e ela paga ' + CFG.moedasPlanta + ' moedas… erre e ela morde!', 'perigo', 3000);
+          anunciar('Cuidado! Planta carnívora. Acerte a próxima continha de primeira, ou ela morde.');
+        }
+      }
+      // salto duplo?
+      if (estado.duploGanho && estado.sapoLinha < estado.linhas.length - 1) {
+        estado.duploGanho = false;
+        estado.saltoLivrePendente = true;
+        mostrarToast('⚡ Salto duplo!', 'ok', 1400);
+        setTimeout(prepararPasso, semMov ? 100 : 700);
+        return;
+      }
+      estado.duploGanho = false;
+      setTimeout(prepararPasso, semMov ? 100 : 500);
+    }
+
+    // ============================================================
+    //  MICRO-LOOP: continha na reta numérica
+    // ============================================================
+    function proximaContinha() {
+      if (estado.baralhoIdx >= estado.baralho.length) {
+        estado.baralho = embaralhar(FASES[estado.faseIdx].pool);
+        estado.baralhoIdx = 0;
+      }
+      return estado.baralho[estado.baralhoIdx++];
+    }
+
+    function iniciarContinha() {
+      estado.fase = 'resolvendo';
+      faixaEl.classList.remove('faixa--inativa');
+      faixaAvisoEl.hidden = true;
+      const c = proximaContinha();
+      estado.continha = c;
+      estado.errosNaContinha = 0;
+      limparDica();
+      $('[data-num-a]').textContent = String(c.a);
+      $('[data-op]').textContent = c.op === '+' ? '+' : '−';
+      $('[data-num-b]').textContent = String(c.b);
+      $('[data-resposta]').textContent = '?';
+      $('.continha').classList.remove('continha--ok');
+      $('.continha').classList.toggle('continha--perigo', estado.desafioPlanta);
+      $('[data-desafio]').hidden = !estado.desafioPlanta;
+      posicionarSapoReta(c.a, 'teleporte');
+      anunciar((estado.desafioPlanta ? 'Desafio da planta! ' : '') + 'Quanto é ' + c.a + ' ' + nomeOp(c.op) + ' ' + c.b + '? O sapo está na pedra ' + c.a + '.');
+    }
+
+    function xDaPedra(n) {
+      const p = pedraEls[n];
+      return p.offsetLeft + p.offsetWidth / 2;
+    }
+    function centralizarNaReta(suave) {
+      if (rioEl.scrollWidth <= rioEl.clientWidth + 2) return;
+      const alvo = trilhoEl.offsetLeft + xDaPedra(estado.pedraAtual) - rioEl.clientWidth / 2;
+      rioEl.scrollTo({ left: alvo, behavior: suave && !semMov ? 'smooth' : 'auto' });
+    }
     function marcarPedras() {
-      const c = estado.continhas[estado.continhaIdx];
+      const c = estado.continha;
       for (const p of pedraEls) {
         const n = Number(p.dataset.pedra);
         p.classList.toggle('pedra--atual', n === estado.pedraAtual);
         p.classList.toggle('pedra--inicio', !!c && n === c.a && n !== estado.pedraAtual);
       }
     }
-
-    // Move o sapo até a pedra n. modo: 'teleporte' | 'pulo' | 'salto'
-    function posicionarSapo(n, modo) {
+    function posicionarSapoReta(n, modo) {
       estado.pedraAtual = n;
       const x = xDaPedra(n);
       if (modo === 'teleporte' || semMov) {
@@ -642,199 +1174,382 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
         reiniciarAnimacao(sapoEl, 'sapo--pula');
       }
       marcarPedras();
-      posicaoEl.textContent = '🐸 na pedra ' + n;
-      centralizarNoSapo(modo !== 'teleporte');
+      $('[data-posicao]').textContent = '🐸 na pedra ' + n;
+      centralizarNaReta(modo !== 'teleporte');
     }
+    function limparDica() { for (const p of pedraEls) p.classList.remove('pedra--dica'); }
 
-    function limparDica() {
-      for (const p of pedraEls) p.classList.remove('pedra--dica');
-    }
-
-    // ===== Continha atual =====
-    function apresentarContinha() {
-      const c = estado.continhas[estado.continhaIdx];
-      estado.errosNaContinha = 0;
-      limparDica();
-      $('[data-num-a]').textContent = String(c.a);
-      $('[data-op]').textContent = c.op === '+' ? '+' : '−';
-      $('[data-num-b]').textContent = String(c.b);
-      $('[data-resposta]').textContent = '?';
-      $('.continha').classList.remove('continha--ok');
-      $('[data-progresso]').textContent = String(estado.continhaIdx + 1);
-      posicionarSapo(c.a, 'teleporte');
-      anunciar(
-        'Quanto é ' + c.a + ' ' + nomeOp(c.op) + ' ' + c.b + '? O sapo está na pedra ' + c.a +
-        '. Use mais um e menos um pra pular, e aperte É aqui quando chegar.'
-      );
-    }
-
-    // ===== Pulos =====
     function pularCasa(delta) {
-      if (estado.fase !== 'jogando') return;
+      if (estado.fase !== 'resolvendo') return;
       const alvo = estado.pedraAtual + delta;
-      if (alvo < CFG.retaMin || alvo > CFG.retaMax) {
-        somLimite();
-        return;
-      }
+      if (alvo < CFG.retaMin || alvo > CFG.retaMax) { somLimite(); return; }
       if (delta > 0) somPulo(); else somPuloTras();
-      posicionarSapo(alvo, 'pulo');
+      posicionarSapoReta(alvo, 'pulo');
       anunciar('Pedra ' + alvo);
     }
-
-    menosBtn.addEventListener('click', () => pularCasa(-1));
-    maisBtn.addEventListener('click', () => pularCasa(1));
-
+    $('[data-menos]').addEventListener('click', () => pularCasa(-1));
+    $('[data-mais]').addEventListener('click', () => pularCasa(1));
     for (const p of pedraEls) {
       p.addEventListener('click', () => {
-        if (estado.fase !== 'jogando' || estado.animando) return;
+        if (estado.fase !== 'resolvendo' || estado.animando) return;
         const n = Number(p.dataset.pedra);
         if (n === estado.pedraAtual) return;
         somSaltoLongo();
         estado.animando = true;
-        posicionarSapo(n, 'salto');
+        posicionarSapoReta(n, 'salto');
         anunciar('Pedra ' + n);
         setTimeout(() => { estado.animando = false; }, semMov ? 0 : CFG.duracaoSaltoMs);
       });
     }
 
-    // ===== Responder =====
     function confirmar() {
-      if (estado.fase !== 'jogando' || estado.animando) return;
-      const c = estado.continhas[estado.continhaIdx];
-
+      if (estado.fase !== 'resolvendo' || estado.animando) return;
+      const c = estado.continha;
       if (estado.pedraAtual === c.resultado) {
-        // Acertou!
-        estado.fase = 'celebrando';
+        // ---- Acertou ----
+        const primeira = estado.errosNaContinha === 0;
         limparDica();
-        const ganhos = CFG.pontosPorAcerto + (estado.errosNaContinha === 0 ? CFG.bonusPrimeira : 0);
-        estado.pontos += ganhos;
-        atualizarPlacar();
+        estado.continhasResolvidas++;
+        estado.pontos += CFG.pontosPorContinha + (primeira ? CFG.bonusPrimeira : 0);
+        popHud('[data-pontos]', estado.pontos);
         somAcerto();
         $('[data-resposta]').textContent = String(c.resultado);
         $('.continha').classList.add('continha--ok');
-        moscaEl.style.transform = 'translateX(' + xDaPedra(estado.pedraAtual) + 'px)';
-        moscaEl.hidden = false;
-        reiniciarAnimacao(moscaEl, 'anima');
-        mostrarToast('✓ ' + c.a + ' ' + nomeOp(c.op) + ' ' + c.b + ' = <b>' + c.resultado + '</b>! +' + ganhos + ' 🪰', 'ok', 1600);
-        anunciar('Muito bem! ' + c.a + ' ' + nomeOp(c.op) + ' ' + c.b + ' é igual a ' + c.resultado + '. Mais ' + ganhos + ' moscas.');
-        setTimeout(() => {
-          moscaEl.hidden = true;
-          estado.continhaIdx++;
-          if (estado.continhaIdx < estado.continhas.length) {
-            estado.fase = 'jogando';
-            apresentarContinha();
-          } else {
-            concluirNivel();
-          }
-        }, semMov ? 350 : 1000);
+        anunciar('Muito bem! ' + c.a + ' ' + nomeOp(c.op) + ' ' + c.b + ' é igual a ' + c.resultado + '.');
+        // desafio da planta: chegar aqui com o desafio vivo = acertou de primeira
+        if (estado.desafioPlanta) {
+          estado.desafioPlanta = false;
+          estado.moedas += CFG.moedasPlanta;
+          popHud('[data-moedas]', estado.moedas);
+          somMoeda();
+          mostrarToast('🌿 A planta cuspiu +' + CFG.moedasPlanta + ' moedas! Que coragem!', 'ok', 2200);
+          padVirouComum(padDoSapo());
+        }
+        estado.duploGanho = estado.impulsoArmado && primeira;
+        estado.impulsoArmado = false;
+        setTimeout(executarSalto, semMov ? 200 : 750);
       } else {
-        // Errou: splash, sem punição — volta pra pedra inicial e tenta de novo
-        estado.fase = 'caindo';
+        // ---- Errou ----
         estado.errosNaContinha++;
-        estado.semErroNoNivel = false;
         somSplash();
         splashEl.style.transform = 'translateX(' + xDaPedra(estado.pedraAtual) + 'px)';
         splashEl.hidden = false;
         reiniciarAnimacao(splashEl, 'anima');
         if (!semMov) reiniciarAnimacao(sapoEl, 'sapo--cai');
+        if (estado.desafioPlanta) { morder(); return; }
+        // erro produtivo normal: volta pra pedra inicial, sem punição
+        estado.fase = 'caindo';
         mostrarToast('💦 Quase! Conte os pulos de novo, com calma.', 'err', 1800);
         anunciar('Splash! Essa não é a pedra certa. O sapo voltou pra pedra ' + c.a + '. Tente de novo.');
         setTimeout(() => {
           splashEl.hidden = true;
           sapoEl.classList.remove('sapo--cai');
           sapoEl.classList.add('sapo--sumiu');
-          posicionarSapo(c.a, 'teleporte');
+          posicionarSapoReta(c.a, 'teleporte');
           void sapoEl.offsetWidth;
           sapoEl.classList.remove('sapo--sumiu');
-          if (estado.errosNaContinha >= CFG.errosParaDica) {
-            pedraEls[c.resultado].classList.add('pedra--dica');
-          }
-          estado.fase = 'jogando';
+          if (estado.errosNaContinha >= CFG.errosParaDica) pedraEls[c.resultado].classList.add('pedra--dica');
+          estado.fase = 'resolvendo';
         }, semMov ? 250 : 900);
       }
     }
-    confirmarBtn.addEventListener('click', confirmar);
+    $('[data-confirmar]').addEventListener('click', confirmar);
 
-    // ===== Teclado: setas = ±1, Enter/Espaço = confirmar =====
-    window.addEventListener('keydown', (e) => {
-      if (estado.fase !== 'jogando') return;
-      if (e.key === 'ArrowRight') { e.preventDefault(); pularCasa(1); }
-      else if (e.key === 'ArrowLeft') { e.preventDefault(); pularCasa(-1); }
-      else if (e.key === 'Enter' || e.key === ' ') {
-        // botão focado já dispara o próprio click nativo
-        if (document.activeElement && document.activeElement.tagName === 'BUTTON') return;
-        e.preventDefault();
-        confirmar();
-      }
-    });
-
-    // ===== Nível / vitória =====
-    function montarNivel(idx) {
-      estado.nivelIdx = idx;
-      estado.semErroNoNivel = true;
-      const nivel = NIVEIS[idx];
-      estado.continhas = embaralhar(nivel.pool).slice(0, nivel.quantidade);
-      estado.continhaIdx = 0;
-      $('[data-nivel]').textContent = String(idx + 1);
-      $('[data-nivel-nome]').textContent = nivel.nome;
-      $('[data-progresso-total]').textContent = 'de ' + estado.continhas.length;
-      $('[data-pontos]').textContent = String(estado.pontos);
-      apresentarContinha();
+    function padVirouComum(pad) {
+      pad.tipo = 'comum';
+      pad.el.classList.remove('pad--perigo');
+      pad.el.classList.add('pad--usado');
+      pad.el.querySelector('.pad__icone').textContent = '🌿';
     }
 
-    function concluirNivel() {
-      if (estado.nivelIdx < NIVEIS.length - 1) {
-        estado.fase = 'entreniveis';
-        somNivel();
-        $('[data-nivel-done-title]').textContent = 'Nível ' + (estado.nivelIdx + 1) + ' completo!';
-        $('[data-medalha]').hidden = !estado.semErroNoNivel;
-        $('[data-nivel-score]').textContent = String(estado.pontos);
-        const prox = NIVEIS[estado.nivelIdx + 1];
-        $('[data-nivel-next-label]').textContent = 'Próximo: ' + prox.nome + ' — ' + prox.descricao;
-        nivelDoneModal.hidden = false;
-        setTimeout(() => $('[data-next-nivel]').focus(), 60);
+    // A planta mordeu (primeiro erro durante o desafio)
+    function morder() {
+      estado.fase = 'caindo'; // trava entradas durante a animação
+      estado.desafioPlanta = false;
+      $('[data-desafio]').hidden = true;
+      $('.continha').classList.remove('continha--perigo');
+      somPlanta();
+      const c = estado.continha;
+      if (estado.modo === 'vidas') {
+        estado.coracoes--;
+        atualizarVidas();
+        mostrarToast('😖 Au! A planta mordeu — você perdeu um coração!', 'perigo', 2400);
+        anunciar('A planta mordeu! Você perdeu um coração. Vidas: ' + estado.coracoes + '.');
+        padVirouComum(padDoSapo());
+        if (estado.coracoes <= 0) { setTimeout(() => fimRun(false), 900); return; }
+        // continua a mesma continha, agora sem desafio
+        setTimeout(() => {
+          splashEl.hidden = true;
+          sapoEl.classList.remove('sapo--cai');
+          posicionarSapoReta(c.a, 'teleporte');
+          estado.fase = 'resolvendo';
+        }, semMov ? 250 : 900);
       } else {
-        venceu();
+        // tranquilo: a planta empurra o sapo uma fileira pra trás — pode re-escolher a rota
+        mostrarToast('😖 Au! A planta empurrou o sapo pra trás. Escolha o caminho de novo!', 'perigo', 2400);
+        anunciar('A planta empurrou o sapo uma casa pra trás. Escolha o caminho de novo.');
+        estado.fase = 'saltando';
+        setTimeout(() => {
+          splashEl.hidden = true;
+          sapoEl.classList.remove('sapo--cai');
+          estado.sapoLinha = Math.max(0, estado.sapoLinha - 1);
+          estado.sapoPadIdx = 0;
+          const l = estado.linhas[estado.sapoLinha];
+          if (estado.sapoPadIdx >= l.pads.length) estado.sapoPadIdx = 0;
+          posicionarSapoMapa(true);
+          setTimeout(prepararPasso, semMov ? 100 : 750);
+        }, semMov ? 250 : 900);
       }
     }
 
-    function venceu() {
-      estado.fase = 'vitoria';
-      somNivel();
-      $('[data-final-score]').textContent = String(estado.pontos);
-      $('[data-final-msg]').textContent =
-        'Somando pra frente e subtraindo pra trás, você virou o mestre da reta numérica! 🌟';
-      winModal.hidden = false;
-      setTimeout(() => $('[data-replay]').focus(), 60);
+    // ============================================================
+    //  FASES / FIM DE RUN
+    // ============================================================
+    function montarFase(idx) {
+      estado.faseIdx = idx;
+      estado.floresFase = 0;
+      estado.impulsoArmado = false;
+      estado.duploGanho = false;
+      estado.desafioPlanta = false;
+      estado.saltoLivrePendente = false;
+      const fase = FASES[idx];
+      estado.baralho = embaralhar(fase.pool);
+      estado.baralhoIdx = 0;
+      estado.linhas = gerarMapa(fase);
+      estado.sapoLinha = 0;
+      estado.sapoPadIdx = 0;
+      $('[data-fase]').textContent = String(idx + 1);
+      $('[data-fase-nome]').textContent = fase.nome;
+      $('[data-flores]').textContent = '0';
+      $('[data-pontos]').textContent = String(estado.pontos);
+      $('[data-moedas]').textContent = String(estado.moedas);
+      renderMapa();
+      anunciar('Fase ' + (idx + 1) + ': ' + fase.nome + '. ' + fase.descricao);
+      prepararPasso();
     }
 
-    // ===== Fluxo =====
-    $('[data-comecar]').addEventListener('click', () => {
-      initAudio();
-      if (actx && actx.state === 'suspended') actx.resume();
-      introModal.hidden = true;
-      estado.fase = 'jogando';
-      // reposiciona: o layout pode ter mudado desde o boot (fontes, rotação)
-      posicionarSapo(estado.pedraAtual, 'teleporte');
+    function faseCompleta() {
+      estado.fase = 'entrefases';
+      const ganhoFase = CFG.pontosPorFase + estado.floresFase * CFG.pontosPorFlor;
+      estado.pontos += ganhoFase;
+      popHud('[data-pontos]', estado.pontos);
+      somNivel();
+      if (estado.modo === 'vidas' && estado.coracoes < CFG.coracoesMaximos) {
+        estado.coracoes++;
+        atualizarVidas();
+      }
+      if (estado.faseIdx >= FASES.length - 1) { fimRun(true); return; }
+      $('[data-fase-done-title]').textContent = 'Fase ' + (estado.faseIdx + 1) + ' completa!';
+      $('[data-estrelas]').textContent = '⭐'.repeat(Math.max(1, estado.floresFase)) + '☆'.repeat(Math.max(0, 3 - Math.max(1, estado.floresFase)));
+      $('[data-fase-score]').textContent = String(estado.pontos);
+      const prox = FASES[estado.faseIdx + 1];
+      $('[data-fase-next-label]').textContent = 'Próxima: ' + prox.nome + ' — ' + prox.descricao;
+      faseDoneModal.hidden = false;
+      setTimeout(() => $('[data-next-fase]').focus(), 60);
+      anunciar('Fase completa! Você fez ' + ganhoFase + ' pontos com flores e travessia.');
+    }
+    $('[data-next-fase]').addEventListener('click', () => {
+      faseDoneModal.hidden = true;
+      montarFase(estado.faseIdx + 1);
     });
-    $('[data-next-nivel]').addEventListener('click', () => {
-      nivelDoneModal.hidden = true;
-      estado.fase = 'jogando';
-      montarNivel(estado.nivelIdx + 1);
+
+    function fimRun(venceu) {
+      estado.fase = 'fimRun';
+      // moedas viram pontos; corações restantes valem bônus na vitória
+      const bonusMoedas = estado.moedas * CFG.pontosPorMoeda;
+      const bonusCoracoes = venceu && estado.modo === 'vidas' ? estado.coracoes * CFG.pontosPorCoracao : 0;
+      estado.pontos += bonusMoedas + bonusCoracoes;
+      popHud('[data-pontos]', estado.pontos);
+      if (venceu) somNivel(); else somFimGentil();
+      $('[data-fim-run-title]').textContent = venceu ? 'Parabéns, Sapo Mestre! 🐸👑' : 'Que travessia incrível! 🌟';
+      $('[data-fim-run-msg]').textContent = venceu
+        ? 'Você atravessou o Lago das Esmeraldas inteiro!'
+        : 'As plantas venceram desta vez — você chegou na fase ' + (estado.faseIdx + 1) + '!';
+      $('[data-fim-run-score]').textContent = String(estado.pontos);
+      $('[data-fim-run-detalhe]').textContent =
+        estado.continhasResolvidas + ' continhas · ' + estado.moedas + ' moedas (+' + bonusMoedas + ')' +
+        (bonusCoracoes ? ' · corações +' + bonusCoracoes : '');
+      fimRunModal.hidden = false;
+      setTimeout(() => $('[data-gravar-nome]').focus(), 60);
+      anunciar((venceu ? 'Você venceu o jogo! ' : 'Fim da aventura! ') + 'Pontuação final: ' + estado.pontos + '. Grave seu nome no ranking.');
+    }
+
+    // ============================================================
+    //  RANKING ARCADE
+    // ============================================================
+    function lerRanking() {
+      try { return JSON.parse(localStorage.getItem(RANKING_KEY) || '[]'); }
+      catch (_) { return []; }
+    }
+    function salvarRanking(lista) {
+      try { localStorage.setItem(RANKING_KEY, JSON.stringify(lista)); } catch (_) {}
+    }
+
+    function atualizarSlots() {
+      const slots = [];
+      for (let i = 0; i < CFG.nomeMax; i++) slots.push(estado.nome[i] || '_');
+      $('[data-nome-slots]').textContent = slots.join(' ');
+    }
+
+    $('[data-gravar-nome]').addEventListener('click', () => {
+      fimRunModal.hidden = true;
+      estado.fase = 'nome';
+      estado.nome = '';
+      atualizarSlots();
+      nomeModal.hidden = false;
+      setTimeout(() => $('[data-letra="A"]').focus(), 60);
+      anunciar('Digite seu nome usando as letras da tela. De ' + CFG.nomeMin + ' a ' + CFG.nomeMax + ' letras. Depois aperte o botão de confirmar.');
+    });
+
+    function digitarLetra(l) {
+      if (estado.fase !== 'nome') return;
+      if (estado.nome.length >= CFG.nomeMax) return;
+      estado.nome += l;
+      somPulo();
+      atualizarSlots();
+    }
+    function apagarLetra() {
+      if (estado.fase !== 'nome' || !estado.nome) return;
+      estado.nome = estado.nome.slice(0, -1);
+      somPuloTras();
+      atualizarSlots();
+    }
+    function confirmarNome() {
+      if (estado.fase !== 'nome') return;
+      if (estado.nome.length < CFG.nomeMin) {
+        mostrarToast('Escreva pelo menos ' + CFG.nomeMin + ' letras!', 'info', 1800);
+        return;
+      }
+      const lista = lerRanking();
+      const entrada = {
+        nome: estado.nome,
+        pontos: estado.pontos,
+        fase: estado.faseIdx + 1,
+        modo: estado.modo,
+        data: new Date().toISOString().slice(0, 10),
+      };
+      lista.push(entrada);
+      lista.sort((a, b) => b.pontos - a.pontos);
+      const corte = lista.slice(0, CFG.rankingMax);
+      salvarRanking(corte);
+      nomeModal.hidden = true;
+      somNivel();
+      mostrarRecordes(corte.indexOf(entrada));
+    }
+    document.querySelectorAll('[data-letra]').forEach((btn) => {
+      btn.addEventListener('click', () => digitarLetra(btn.dataset.letra));
+    });
+    $('[data-nome-apagar]').addEventListener('click', apagarLetra);
+    $('[data-nome-ok]').addEventListener('click', confirmarNome);
+
+    function mostrarRecordes(destaque) {
+      estado.fase = 'recordes';
+      const lista = lerRanking();
+      const tabela = $('[data-tabela]');
+      tabela.innerHTML = '';
+      $('[data-recordes-vazio]').hidden = lista.length > 0;
+      lista.forEach((r, i) => {
+        const li = document.createElement('li');
+        if (i === destaque) li.className = 'novo';
+        li.innerHTML =
+          '<span class="pos">' + (i + 1) + 'º</span>' +
+          '<span class="nome">' + r.nome + '</span>' +
+          '<span class="det">fase ' + r.fase + ' · ' + (r.modo === 'vidas' ? '❤️' : '🛸') + '</span>' +
+          '<span class="pts">' + r.pontos + '</span>';
+        tabela.appendChild(li);
+      });
+      // veio da intro (consulta) → botão voltar; veio de run → jogar de novo
+      const consulta = destaque === undefined;
+      $('[data-voltar-intro]').hidden = !consulta;
+      $('[data-replay]').hidden = consulta;
+      recordesModal.hidden = false;
+      setTimeout(() => (consulta ? $('[data-voltar-intro]') : $('[data-replay]')).focus(), 60);
+    }
+    $('[data-ver-recordes]').addEventListener('click', () => {
+      introModal.hidden = true;
+      mostrarRecordes(undefined);
+    });
+    $('[data-voltar-intro]').addEventListener('click', () => {
+      recordesModal.hidden = true;
+      estado.fase = 'inicio';
+      introModal.hidden = false;
+      setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
     });
     $('[data-replay]').addEventListener('click', () => {
-      winModal.hidden = true;
-      estado.pontos = 0;
-      estado.fase = 'jogando';
-      montarNivel(0);
+      recordesModal.hidden = true;
+      reiniciar();
     });
 
-    window.addEventListener('resize', () => posicionarSapo(estado.pedraAtual, 'teleporte'));
+    function reiniciar() {
+      estado.fase = 'inicio';
+      estado.pontos = 0;
+      estado.moedas = 0;
+      estado.continhasResolvidas = 0;
+      estado.floresFase = 0;
+      $('[data-pontos]').textContent = '0';
+      $('[data-moedas]').textContent = '0';
+      $('[data-flores]').textContent = '0';
+      vidasWrapEl.hidden = true;
+      introModal.hidden = false;
+      setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+    }
+
+    // ============================================================
+    //  FLUXO / ENTRADA
+    // ============================================================
+    document.querySelectorAll('[data-modo]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        initAudio();
+        if (actx && actx.state === 'suspended') actx.resume();
+        estado.modo = btn.dataset.modo;
+        estado.coracoes = estado.modo === 'vidas' ? CFG.coracoesIniciais : 0;
+        vidasWrapEl.hidden = estado.modo !== 'vidas';
+        if (estado.modo === 'vidas') atualizarVidas();
+        introModal.hidden = true;
+        montarFase(0);
+      });
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (estado.fase === 'resolvendo') {
+        if (e.key === 'ArrowRight') { e.preventDefault(); pularCasa(1); }
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); pularCasa(-1); }
+        else if (e.key === 'Enter' || e.key === ' ') {
+          if (document.activeElement && document.activeElement.tagName === 'BUTTON') return;
+          e.preventDefault();
+          confirmar();
+        }
+      } else if (estado.fase === 'escolhendo') {
+        const linha = estado.linhas[estado.sapoLinha + 1];
+        if (!linha || linha.pads.length !== 2) return;
+        if (e.key === 'ArrowLeft') { e.preventDefault(); escolherPad(estado.sapoLinha + 1, 0); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); escolherPad(estado.sapoLinha + 1, 1); }
+      } else if (estado.fase === 'nome') {
+        const l = e.key.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        if (/^[A-Z]$/.test(l)) { e.preventDefault(); digitarLetra(l); }
+        else if (e.key === 'Backspace') { e.preventDefault(); apagarLetra(); }
+        else if (e.key === 'Enter') {
+          if (document.activeElement && document.activeElement.tagName === 'BUTTON' && document.activeElement.dataset.letra) return;
+          e.preventDefault();
+          confirmarNome();
+        }
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (!estado.linhas.length) return;
+      renderMapa();
+      if (estado.fase === 'escolhendo') {
+        const linha = estado.linhas[estado.sapoLinha + 1];
+        linha && linha.pads.forEach((pad) => { pad.el.classList.add('pad--escolha'); pad.el.tabIndex = 0; });
+      }
+      if (estado.continha) posicionarSapoReta(estado.pedraAtual, 'teleporte');
+    });
 
     // ===== Boot =====
     document.body.classList.add('is-game');
     introModal.hidden = false;
-    montarNivel(0);
-    setTimeout(() => $('[data-comecar]').focus(), 60);
+    setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
   </script>
 </Layout>
