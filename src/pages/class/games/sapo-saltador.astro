@@ -329,7 +329,9 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       display: inline-block;
       filter: drop-shadow(0 4px 5px rgba(0, 0, 30, 0.4));
     }
-    .sapo-mapa__corpo img { display: block; width: 58px; height: auto; }
+    /* max-width: none — o reset global (img { max-width: 100% }) colapsa
+       a imagem pra 0 dentro da âncora de largura zero */
+    .sapo-mapa__corpo img { display: block; width: 58px; max-width: none; height: auto; }
     .sapo-mapa--pula .sapo-mapa__corpo { animation: mapa-pulo 0.65s ease-in-out; }
     @keyframes mapa-pulo {
       0%, 100% { transform: translateY(0) scale(1); }
@@ -353,7 +355,7 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       15% { opacity: 1; margin-top: 0; }
       100% { opacity: 0; margin-top: -44px; }
     }
-    .ganho img { width: 20px; height: auto; vertical-align: -4px; }
+    .ganho img { display: inline-block; width: 20px; max-width: none; height: auto; vertical-align: -4px; }
 
     /* ===== Faixa da continha ===== */
     .faixa {
@@ -450,7 +452,7 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       display: inline-block;
       filter: drop-shadow(0 3px 3px rgba(0, 0, 30, 0.35));
     }
-    .sapo__corpo img { display: block; width: 34px; height: auto; }
+    .sapo__corpo img { display: block; width: 34px; max-width: none; height: auto; }
     .sapo--pula .sapo__corpo { animation: pulo var(--dur, 320ms) ease-in-out; }
     @keyframes pulo {
       0%, 100% { transform: translateY(0); }
