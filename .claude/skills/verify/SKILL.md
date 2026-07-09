@@ -38,4 +38,8 @@ Script `.mjs` no scratchpad, `import { chromium } from 'playwright'`.
 
 ## Gotcha conhecido
 
-Cenários com elementos `right:-6%` (mata/montes) criam overflow horizontal no container fixed do jogo; o browser pode scrollar o jogo pra fora da tela. O container do cenário (`.ceu`) precisa de `overflow: hidden`. Checar com `el.scrollLeft/scrollWidth` após clicar em Começar.
+Qualquer filho que vaze da viewport (cenário com `right:-6%`, inimigo perto da borda, HUD largo demais no mobile) cria overflow horizontal no container fixed do jogo; o browser pode scrollar o jogo pra fora da tela. Fixes em camadas: raiz do jogo usa `overflow: clip` (não `hidden` — clip impede scroll programático/por foco), cenário (`.ceu`/`.espaco`) e `.campo` com `overflow: hidden`. Checar com `el.scrollWidth === el.clientWidth` após começar o jogo, em desktop E mobile 360px.
+
+## Acelerar testes de jogos com rAF/níveis longos
+
+`page.route(URL, ...)` interceptando o HTML e reescrevendo o blob `data-dados` com regex: `"abates":\d+` → `"abates":1` (1 abate por nível), `"velocidade":[0-9.]+` → `0.55` (inimigo chega na linha em ~1.5s), `"intervaloSpawn":\d+` → `900`. Permite atravessar 10 níveis ou perder 3 vidas em segundos.

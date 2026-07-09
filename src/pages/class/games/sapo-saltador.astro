@@ -147,7 +147,9 @@ const pedras = Array.from({ length: config.retaMax - config.retaMin + 1 }, (_, i
     .ss {
       position: fixed;
       inset: 0;
-      overflow: hidden;
+      /* clip (não hidden): impede o browser de scrollar o jogo pra fora
+         da tela se algum filho vazar da viewport */
+      overflow: clip;
       font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
       user-select: none;
       -webkit-user-select: none;
