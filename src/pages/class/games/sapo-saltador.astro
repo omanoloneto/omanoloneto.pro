@@ -23,11 +23,11 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
         <strong data-pontos>0</strong>
       </div>
       <div class="hud__bloco">
-        <span class="hud__label">🟡</span>
+        <img class="hud__icone" src="/class/img/sapo-saltador/moeda.png" alt="Moedas" />
         <strong data-moedas>0</strong>
       </div>
       <div class="hud__bloco">
-        <span class="hud__label">🌸</span>
+        <img class="hud__icone" src="/class/img/sapo-saltador/flor.png" alt="Flores raras" />
         <strong data-flores>0</strong>
         <span class="hud__sub">de 3</span>
       </div>
@@ -50,7 +50,9 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       <div class="lago" data-lago>
         <div data-trilhas aria-hidden="true"></div>
         <div data-pads></div>
-        <div class="sapo-mapa" data-sapo-mapa aria-hidden="true"><span class="sapo-mapa__corpo">🐸</span></div>
+        <div class="sapo-mapa" data-sapo-mapa aria-hidden="true">
+          <span class="sapo-mapa__corpo"><img src="/class/img/sapo-saltador/sapo.png" alt="" /></span>
+        </div>
         <div data-decor aria-hidden="true"></div>
       </div>
     </section>
@@ -81,7 +83,9 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
               </button>
             ))
           }
-          <div class="sapo" data-sapo aria-hidden="true"><span class="sapo__corpo">🐸</span></div>
+          <div class="sapo" data-sapo aria-hidden="true">
+            <span class="sapo__corpo"><img src="/class/img/sapo-saltador/sapo.png" alt="" /></span>
+          </div>
           <div class="fx fx--splash" data-splash aria-hidden="true" hidden>💦</div>
         </div>
       </div>
@@ -225,6 +229,7 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     .hud__bloco strong { font-size: 1.45rem; line-height: 1; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); transition: transform 0.18s ease; }
     .hud__bloco strong.pop { transform: scale(1.4); color: #ffe8a3; }
     .hud__sub { font-size: 0.72rem; opacity: 0.85; }
+    .hud__icone { width: 20px; height: 20px; object-fit: contain; align-self: center; }
     .hud__bloco--nome { flex: 1; font-size: 0.9rem; font-weight: 700; opacity: 0.95; justify-content: center; }
     .hud__bloco--vidas { align-items: center; }
     .vidas { font-size: 1.15rem; letter-spacing: 2px; }
@@ -268,10 +273,10 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       pointer-events: none;
     }
 
-    /* vitórias-régias */
+    /* vitórias-régias (sprites) */
     .pad {
       position: absolute;
-      width: 74px; height: 74px;
+      width: 78px; height: 78px;
       transform: translate(-50%, -50%);
       display: grid; place-items: center;
       padding: 0;
@@ -279,27 +284,28 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       border-radius: 50%;
       cursor: default;
       font-family: inherit;
-      background:
-        radial-gradient(circle at 35% 30%, #8fd06a 0%, #5faf3f 55%, #3f8a2c 100%);
-      box-shadow: inset 0 -4px 8px rgba(0, 0, 40, 0.25), 0 6px 12px rgba(0, 0, 30, 0.35);
+      background: url('/class/img/sapo-saltador/pad.png') center / contain no-repeat;
       touch-action: manipulation;
     }
     .pad__icone { font-size: 1.7rem; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35)); pointer-events: none; }
-    .pad--perigo { background: radial-gradient(circle at 35% 30%, #4c7a3a 0%, #2f5c26 55%, #1e421a 100%); }
+    .pad__icone img { display: block; width: 32px; height: auto; }
+    .pad__icone--flor img { width: 36px; }
+    .pad__icone--lotus img { width: 76px; }
+    /* pad da planta: escurece o sprite por dentro do círculo */
+    .pad--perigo { box-shadow: inset 0 0 0 999px rgba(12, 34, 16, 0.42); }
     .pad--usado .pad__icone { opacity: 0.35; filter: grayscale(1); }
     .pad--lotus {
-      width: 96px; height: 96px;
-      background: radial-gradient(circle at 35% 30%, #b8e48e 0%, #7fc257 55%, #4f9a38 100%);
-      box-shadow: 0 0 0 5px rgba(255, 230, 120, 0.7), 0 0 30px 8px rgba(255, 220, 90, 0.45), 0 6px 14px rgba(0, 0, 30, 0.4);
+      width: 104px; height: 104px;
+      box-shadow: 0 0 0 5px rgba(255, 230, 120, 0.7), 0 0 30px 8px rgba(255, 220, 90, 0.45);
       animation: lotus-glow 2.2s ease-in-out infinite alternate;
     }
-    .pad--lotus .pad__icone { font-size: 2.6rem; }
     @keyframes lotus-glow {
-      from { box-shadow: 0 0 0 5px rgba(255, 230, 120, 0.55), 0 0 22px 5px rgba(255, 220, 90, 0.35), 0 6px 14px rgba(0, 0, 30, 0.4); }
-      to { box-shadow: 0 0 0 6px rgba(255, 230, 120, 0.85), 0 0 38px 12px rgba(255, 220, 90, 0.55), 0 6px 14px rgba(0, 0, 30, 0.4); }
+      from { box-shadow: 0 0 0 5px rgba(255, 230, 120, 0.55), 0 0 22px 5px rgba(255, 220, 90, 0.35); }
+      to { box-shadow: 0 0 0 6px rgba(255, 230, 120, 0.85), 0 0 38px 12px rgba(255, 220, 90, 0.55); }
     }
     .pad--escolha {
       cursor: pointer;
+      background-image: url('/class/img/sapo-saltador/pad-claro.png');
       animation: pad-pulsa 0.9s ease-in-out infinite;
     }
     .pad--escolha:focus-visible { outline: 4px solid #fff; outline-offset: 3px; }
@@ -321,9 +327,9 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     .sapo-mapa.sem-transicao { transition: none; }
     .sapo-mapa__corpo {
       display: inline-block;
-      font-size: 2.3rem; line-height: 1;
       filter: drop-shadow(0 4px 5px rgba(0, 0, 30, 0.4));
     }
+    .sapo-mapa__corpo img { display: block; width: 58px; height: auto; }
     .sapo-mapa--pula .sapo-mapa__corpo { animation: mapa-pulo 0.65s ease-in-out; }
     @keyframes mapa-pulo {
       0%, 100% { transform: translateY(0) scale(1); }
@@ -347,6 +353,7 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       15% { opacity: 1; margin-top: 0; }
       100% { opacity: 0; margin-top: -44px; }
     }
+    .ganho img { width: 20px; height: auto; vertical-align: -4px; }
 
     /* ===== Faixa da continha ===== */
     .faixa {
@@ -441,10 +448,9 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     .sapo--sumiu { opacity: 0; }
     .sapo__corpo {
       display: inline-block;
-      font-size: 1.55rem;
-      line-height: 1;
       filter: drop-shadow(0 3px 3px rgba(0, 0, 30, 0.35));
     }
+    .sapo__corpo img { display: block; width: 34px; height: auto; }
     .sapo--pula .sapo__corpo { animation: pulo var(--dur, 320ms) ease-in-out; }
     @keyframes pulo {
       0%, 100% { transform: translateY(0); }
@@ -844,11 +850,11 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
       el.classList.add(classe);
     }
 
-    // Texto flutuante no mapa ("+5 🟡")
-    function ganhoNoMapa(texto, x, y) {
+    // Texto flutuante no mapa ("+5 [moeda]") — html interno, nunca entrada do usuário
+    function ganhoNoMapa(html, x, y) {
       const el = document.createElement('span');
       el.className = 'ganho';
-      el.textContent = texto;
+      el.innerHTML = html;
       el.style.left = x + 'px';
       el.style.top = (y - 40) + 'px';
       lagoEl.appendChild(el);
@@ -858,7 +864,15 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     // ============================================================
     //  MAPA DO LAGO
     // ============================================================
-    const ICONES = { moeda: '🟡', flor: '🌸', impulso: '⚡', perigo: '💀', comum: '', lotus: '🪷' };
+    const IMG = '/class/img/sapo-saltador/';
+    const ICONES = {
+      moeda: '<img src="' + IMG + 'moeda.png" alt="">',
+      flor: '<img src="' + IMG + 'flor.png" alt="">',
+      impulso: '⚡',
+      perigo: '💀',
+      comum: '',
+      lotus: '<img src="' + IMG + 'lotus.png" alt="">',
+    };
     const DECOR = ['🐟', '🌼', '🪻', '🦟', '🐌'];
 
     function gerarMapa(fase) {
@@ -963,8 +977,8 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
           btn.dataset.pad = String(p);
           btn.style.left = pad.x + 'px';
           btn.style.top = pad.y + 'px';
-          const icone = linha.tipo === 'lotus' ? ICONES.lotus : ICONES[pad.tipo];
-          btn.innerHTML = '<span class="pad__icone">' + icone + '</span>';
+          const tipoIcone = linha.tipo === 'lotus' ? 'lotus' : pad.tipo;
+          btn.innerHTML = '<span class="pad__icone pad__icone--' + tipoIcone + '">' + ICONES[tipoIcone] + '</span>';
           btn.setAttribute('aria-label', linha.tipo === 'lotus' ? 'Lótus — chegada' : 'Vitória-régia' + (pad.tipo !== 'comum' ? ' com ' + pad.tipo : ''));
           btn.addEventListener('click', () => escolherPad(i, p));
           padsEl.appendChild(btn);
@@ -1076,14 +1090,14 @@ const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
           estado.moedas += CFG.moedasPorPad;
           popHud('[data-moedas]', estado.moedas);
           somMoeda();
-          ganhoNoMapa('+' + CFG.moedasPorPad + ' 🟡', pad.x, pad.y);
+          ganhoNoMapa('+' + CFG.moedasPorPad + ' ' + ICONES.moeda, pad.x, pad.y);
           anunciar('Você pegou ' + CFG.moedasPorPad + ' moedas!');
           pad.el.classList.add('pad--usado');
         } else if (pad.tipo === 'flor') {
           estado.floresFase++;
           popHud('[data-flores]', estado.floresFase);
           somFlor();
-          ganhoNoMapa('+1 🌸', pad.x, pad.y);
+          ganhoNoMapa('+1 ' + ICONES.flor, pad.x, pad.y);
           anunciar('Flor rara coletada! ' + estado.floresFase + ' de 3.');
           pad.el.classList.add('pad--usado');
         } else if (pad.tipo === 'impulso') {
