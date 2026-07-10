@@ -51,3 +51,11 @@ visual novo, CONFIRA que o elemento aparece no screenshot — anel/sombra sem sp
 ## Acelerar testes de jogos com rAF/níveis longos
 
 `page.route(URL, ...)` interceptando o HTML e reescrevendo o blob `data-dados` com regex: `"abates":\d+` → `"abates":1` (1 abate por nível), `"velocidade":[0-9.]+` → `0.55` (inimigo chega na linha em ~1.5s), `"intervaloSpawn":\d+` → `900`. Permite atravessar 10 níveis ou perder 3 vidas em segundos.
+
+## Gotcha: `[hidden]` vs display de autor
+
+Regra de autor com `display` (ex.: `.botao { display: inline-block }`) SEMPRE vence o
+`display: none` do atributo `hidden` (UA stylesheet perde pra autor, especificidade não
+importa). Sintoma: `el.hidden === true` no JS mas o elemento aparece na tela. Fix:
+`.classe[hidden] { display: none; }` junto da regra. Nos testes, não confie só na
+propriedade `.hidden` — cheque `el.offsetParent === null` ou o screenshot.
