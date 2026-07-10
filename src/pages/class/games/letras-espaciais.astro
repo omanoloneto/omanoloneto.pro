@@ -3,6 +3,7 @@ import Layout from '../../../layouts/Layout.astro';
 import { niveis, config } from '../../../data/letras-espaciais';
 
 const dadosJson = JSON.stringify({ niveis, config });
+const letrasNome = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 const title = 'Letras Espaciais — aperte a letra e a nave atira! | Manolo Neto';
 const description =
@@ -54,7 +55,12 @@ const description =
         <span class="hud__label">Vidas</span>
         <span class="vidas" data-vidas></span>
       </div>
+      <div class="hud__bloco hud__bloco--calor" data-calor-wrap>
+        <span class="hud__label">Arma</span>
+        <div class="calor" data-calor><div class="calor__fill" data-calor-fill></div></div>
+      </div>
       <div class="hud__bloco hud__bloco--nome" data-nivel-nome aria-hidden="true"></div>
+      <button class="hud__mute" type="button" data-pause aria-label="Pausar o jogo">⏸</button>
       <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
         <span data-mute-icon>🔊</span>
       </button>
@@ -82,6 +88,11 @@ const description =
           <path d="M56.5 74 Q60 77 63.5 74" stroke="#23303c" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
           <rect x="42" y="108" width="36" height="10" rx="4" fill="#8a93b8"></rect>
         </svg>
+      </div>
+      <div class="trava-aviso" data-trava-aviso aria-hidden="true" hidden>🔥 ARMA SUPERAQUECIDA!</div>
+      <div class="banner-nivel" data-banner-nivel aria-hidden="true" hidden>
+        <strong data-banner-titulo></strong>
+        <span data-banner-sub></span>
       </div>
     </section>
 
@@ -159,19 +170,7 @@ const description =
               <small>Sem pressa: os inimigos param e esperam você. Ninguém perde!</small>
             </button>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal: nível completo -->
-    <div class="modal" data-nivel-done hidden>
-      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="nivel-done-title">
-        <div class="placa__topo" id="nivel-done-title" data-nivel-done-title>Nível completo!</div>
-        <div class="placa__corpo center">
-          <p class="grande">🎉 Missão cumprida, astronauta!</p>
-          <p class="placar">Pontos até agora: <strong data-nivel-score>0</strong></p>
-          <p class="aviso" data-nivel-next-label></p>
-          <button class="botao botao--go" type="button" data-next-nivel>Próximo nível</button>
+          <button class="recordes-btn" type="button" data-ver-recordes>🏆 Recordes</button>
         </div>
       </div>
     </div>
@@ -184,7 +183,10 @@ const description =
           <p class="grande">Você conhece o alfabeto inteiro!</p>
           <p class="placar">Sua pontuação: <strong data-final-score>0</strong></p>
           <p class="aviso" data-final-msg></p>
-          <button class="botao botao--go" type="button" data-replay>Jogar de novo</button>
+          <div class="fim-acoes">
+            <button class="botao botao--go" type="button" data-gravar-nome hidden>🏆 Gravar meu nome</button>
+            <button class="botao botao--sec" type="button" data-replay>Jogar de novo</button>
+          </div>
         </div>
       </div>
     </div>
@@ -197,14 +199,82 @@ const description =
           <p class="grande" data-fim-msg></p>
           <p class="placar">Seus pontos: <strong data-fim-score>0</strong></p>
           <p class="aviso">Toda tentativa deixa você mais rápido no teclado. Bora de novo?</p>
-          <button class="botao botao--go" type="button" data-replay-fim>Jogar de novo</button>
+          <div class="fim-acoes">
+            <button class="botao botao--go" type="button" data-gravar-nome hidden>🏆 Gravar meu nome</button>
+            <button class="botao botao--sec" type="button" data-replay-fim>Jogar de novo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: pausa -->
+    <div class="modal" data-pausa hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="pausa-title">
+        <div class="placa__topo" id="pausa-title">⏸ Pausa</div>
+        <div class="placa__corpo center">
+          <div class="pausa-acoes">
+            <button class="botao botao--go" type="button" data-continuar>▶ Continuar</button>
+            <button class="botao botao--sec" type="button" data-recomecar>🔄 Recomeçar</button>
+            <a class="botao botao--sec" href="/class/games/">🚪 Sair do jogo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: nome (arcade) -->
+    <div class="modal" data-nome hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="nome-title">
+        <div class="placa__topo" id="nome-title">Digite seu nome, astronauta!</div>
+        <div class="placa__corpo center">
+          <p class="nome-slots" data-nome-slots aria-live="polite">_ _ _</p>
+          <div class="grade-letras" role="group" aria-label="Letras para o nome">
+            {letrasNome.map((l) => (
+              <button class="letra" type="button" data-tecla-nome={l}>{l}</button>
+            ))}
+            <button class="letra letra--apagar" type="button" data-nome-apagar aria-label="Apagar letra">⌫</button>
+            <button class="letra letra--ok" type="button" data-nome-ok aria-label="Confirmar nome">✓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: recordes -->
+    <div class="modal" data-recordes hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="recordes-title">
+        <div class="placa__topo" id="recordes-title">🏆 Recordes da Galáxia</div>
+        <div class="placa__corpo center">
+          <ol class="tabela" data-tabela></ol>
+          <p class="aviso" data-recordes-vazio hidden>Ninguém gravou o nome ainda. Seja o primeiro! 🚀</p>
+          <div class="recordes-acoes">
+            <button class="botao botao--go" type="button" data-recordes-replay>Jogar de novo</button>
+            <button class="botao botao--sec" type="button" data-voltar-intro hidden>Voltar</button>
+          </div>
         </div>
       </div>
     </div>
   </main>
 
   <style is:global>
-    body.is-game { background: #1a1052; overflow: hidden; }
+    @font-face {
+      font-family: 'Oxanium';
+      src: url('/class/fonts/oxanium/Oxanium-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Oxanium';
+      src: url('/class/fonts/oxanium/Oxanium-SemiBold.ttf') format('truetype');
+      font-weight: 600;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Oxanium';
+      src: url('/class/fonts/oxanium/Oxanium-ExtraBold.ttf') format('truetype');
+      font-weight: 800;
+      font-display: swap;
+    }
+
+    body.is-game { background: #0a0621; overflow: hidden; }
     body.is-game::before { display: none !important; }
 
     .sr-only {
@@ -218,18 +288,29 @@ const description =
       /* clip (não hidden): impede o browser de scrollar o jogo pra fora
          da tela se algum filho vazar da viewport */
       overflow: clip;
-      font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+      font-family: 'Oxanium', Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
       user-select: none;
       -webkit-user-select: none;
-      color: #fff;
+      color: var(--texto);
       display: flex;
       flex-direction: column;
+      /* paleta neon */
+      --ciano: #22e0ff;
+      --magenta: #ff3df1;
+      --roxo: #8b5cf6;
+      --texto: #eaf6ff;
+      --quente: #ff5c39;
     }
 
     /* ===== Cenário ===== */
     .espaco {
       position: absolute; inset: 0; z-index: 0;
-      background: linear-gradient(180deg, #140b45 0%, #241768 55%, #3b2a8f 100%);
+      /* espaço profundo + nebulosa em radial-gradients (sem asset) */
+      background:
+        radial-gradient(120% 90% at 12% 88%, rgba(255, 61, 241, 0.13), transparent 55%),
+        radial-gradient(110% 80% at 88% 8%, rgba(34, 224, 255, 0.11), transparent 50%),
+        radial-gradient(150% 110% at 50% 45%, rgba(139, 92, 246, 0.12), transparent 60%),
+        linear-gradient(180deg, #06031a 0%, #0a0621 55%, #120a38 100%);
     }
     .estrelas { position: absolute; inset: 0; background-repeat: repeat; }
     .estrelas--1 {
@@ -237,7 +318,7 @@ const description =
         radial-gradient(2px 2px at 22px 34px, #fff, transparent),
         radial-gradient(1.6px 1.6px at 120px 80px, #cfe6ff, transparent),
         radial-gradient(2px 2px at 200px 140px, #fff, transparent),
-        radial-gradient(1.4px 1.4px at 68px 170px, #ffd9ec, transparent),
+        radial-gradient(1.4px 1.4px at 68px 170px, #b7f4ff, transparent),
         radial-gradient(1.8px 1.8px at 170px 30px, #fff, transparent);
       background-size: 240px 210px;
       opacity: 0.9;
@@ -245,7 +326,7 @@ const description =
     .estrelas--2 {
       background-image:
         radial-gradient(2.6px 2.6px at 40px 60px, #fff, transparent),
-        radial-gradient(2px 2px at 150px 120px, #ffe8a3, transparent),
+        radial-gradient(2px 2px at 150px 120px, #9be8ff, transparent),
         radial-gradient(2.4px 2.4px at 250px 40px, #fff, transparent),
         radial-gradient(1.8px 1.8px at 90px 200px, #bfe9ff, transparent);
       background-size: 320px 260px;
@@ -254,11 +335,11 @@ const description =
     @keyframes piscar { from { opacity: 0.5; } to { opacity: 1; } }
     .planeta {
       position: absolute; left: -46px; bottom: 8%;
-      width: 170px; height: 170px; opacity: 0.9;
+      width: 170px; height: 170px; opacity: 0.72;
     }
     .lua {
       position: absolute; top: 9%; right: 6%;
-      width: 64px; height: 64px; opacity: 0.9;
+      width: 64px; height: 64px; opacity: 0.72;
     }
 
     /* ===== HUD ===== */
@@ -266,15 +347,18 @@ const description =
       position: relative; z-index: 30;
       display: flex; align-items: center; gap: 18px;
       padding: 8px 16px;
-      background: rgba(16, 10, 50, 0.6);
-      color: #fff;
-      backdrop-filter: blur(2px);
+      background: rgba(16, 12, 48, 0.55);
+      border-bottom: 1px solid rgba(34, 224, 255, 0.35);
+      box-shadow: 0 2px 18px rgba(34, 224, 255, 0.12);
+      color: var(--texto);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
     .hud__bloco { display: flex; align-items: baseline; gap: 7px; }
     .hud__bloco[hidden] { display: none; }
     .hud__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
-    .hud__bloco strong { font-size: 1.55rem; line-height: 1; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); transition: transform 0.18s ease; }
-    .hud__bloco strong.pop { transform: scale(1.4); color: #ffe8a3; }
+    .hud__bloco strong { font-size: 1.55rem; line-height: 1; text-shadow: 0 0 8px rgba(34, 224, 255, 0.55); transition: transform 0.18s ease; }
+    .hud__bloco strong.pop { transform: scale(1.4); color: var(--magenta); text-shadow: 0 0 10px rgba(255, 61, 241, 0.7); }
     .hud__sub { font-size: 0.75rem; opacity: 0.85; }
     .hud__bloco--nome { flex: 1; font-size: 0.95rem; font-weight: 700; opacity: 0.95; justify-content: center; }
     .hud__bloco--vidas { align-items: center; }
@@ -289,10 +373,32 @@ const description =
     }
     .hud__mute {
       width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
-      border: 1px solid rgba(255, 255, 255, 0.55); background: rgba(255, 255, 255, 0.16);
-      font-size: 1.15rem; display: grid; place-items: center; color: #fff;
+      border: 1px solid rgba(34, 224, 255, 0.45); background: rgba(16, 12, 48, 0.55);
+      box-shadow: 0 0 10px rgba(34, 224, 255, 0.18);
+      font-size: 1.15rem; display: grid; place-items: center; color: var(--texto);
     }
-    .hud__mute:hover { background: rgba(255, 255, 255, 0.3); }
+    .hud__mute:hover { background: rgba(34, 224, 255, 0.18); }
+
+    /* Barra de calor da arma (anti-apertar-tudo) */
+    .hud__bloco--calor { align-items: center; }
+    .calor {
+      width: 90px; height: 10px; border-radius: 999px;
+      background: rgba(6, 4, 24, 0.8);
+      border: 1px solid rgba(34, 224, 255, 0.4);
+      overflow: hidden;
+    }
+    .calor__fill {
+      height: 100%; width: 100%;
+      transform-origin: left center;
+      transform: scaleX(0);
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--ciano), #ffd23f 60%, var(--quente));
+      transition: transform 0.15s linear;
+    }
+    .calor--quente .calor__fill { box-shadow: 0 0 8px rgba(255, 92, 57, 0.8); }
+    .calor--trava { border-color: var(--quente); box-shadow: 0 0 10px rgba(255, 92, 57, 0.6); }
+    .calor--trava .calor__fill { background: var(--quente); animation: calor-pisca 0.4s step-end infinite alternate; }
+    @keyframes calor-pisca { from { opacity: 1; } to { opacity: 0.55; } }
 
     /* ===== Campo ===== */
     /* overflow hidden: inimigo perto da borda não pode criar scroll
@@ -322,7 +428,7 @@ const description =
     .inimigo__svg {
       width: 100%; height: 100%;
       color: var(--cor, #ff6ba9);
-      filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+      filter: drop-shadow(0 0 9px var(--cor, #ff6ba9)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
     }
     .inimigo__letras {
       position: absolute; bottom: -14px;
@@ -330,11 +436,12 @@ const description =
     }
     .inimigo__letra {
       padding: 1px 11px;
-      background: #fff;
-      border: 3px solid rgba(0, 0, 0, 0.25);
+      background: rgba(8, 6, 28, 0.92);
+      border: 2px solid rgba(34, 224, 255, 0.75);
       border-radius: 10px;
-      font-size: 1.5rem; font-weight: 800; color: #23303c;
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+      font-size: 1.5rem; font-weight: 800; color: #fff;
+      text-shadow: 0 0 6px rgba(34, 224, 255, 0.9);
+      box-shadow: 0 0 10px rgba(34, 224, 255, 0.35), 0 3px 8px rgba(0, 0, 0, 0.45);
     }
     /* Naves de 2 e 3 letras: maiores, cada letra aguenta um tiro */
     .inimigo--dupla { width: 90px; height: 90px; }
@@ -346,8 +453,8 @@ const description =
     }
     .inimigo--hit .inimigo__svg { animation: hit-pisca 0.3s ease; }
     @keyframes hit-pisca {
-      0%, 100% { filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4)); }
-      40% { filter: drop-shadow(0 0 12px #fff) brightness(1.9); }
+      0%, 100% { filter: drop-shadow(0 0 9px var(--cor, #ff6ba9)) drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4)); }
+      40% { filter: drop-shadow(0 0 14px #fff) brightness(1.9); }
     }
     .mov--parado .inimigo { animation: flutua 2s ease-in-out infinite; }
     @keyframes flutua {
@@ -367,13 +474,23 @@ const description =
     }
 
     /* ===== Tiro / explosão / coração ===== */
+    /* Laser: cápsula vertical — o .mov recebe rotate() no JS pra apontar pro alvo */
     .tiro {
-      display: block; width: 16px; height: 16px;
+      position: relative;
+      display: block; width: 7px; height: 28px;
       transform: translate(-50%, -50%);
-      border-radius: 50%;
-      background: radial-gradient(circle, #fff 25%, #ffd23f 60%, rgba(255, 210, 63, 0) 100%);
-      box-shadow: 0 0 14px 5px rgba(255, 220, 90, 0.65);
-      animation: tiro-pulsa 0.2s ease-in-out infinite alternate;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #fff 0%, var(--ciano) 45%, rgba(34, 224, 255, 0) 100%);
+      box-shadow: 0 0 12px 3px rgba(34, 224, 255, 0.75);
+    }
+    .tiro::after {
+      content: '';
+      position: absolute; left: 50%; top: 60%;
+      width: 3px; height: 30px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(34, 224, 255, 0.5), transparent);
+      filter: blur(2px);
     }
     @keyframes tiro-pulsa {
       from { scale: 0.85; }
@@ -391,7 +508,8 @@ const description =
       content: '';
       position: absolute; inset: 8px;
       border-radius: 50%;
-      border: 4px solid #ffd23f;
+      border: 4px solid var(--ciano);
+      box-shadow: 0 0 12px rgba(34, 224, 255, 0.7);
       animation: anel 0.6s ease-out forwards;
     }
     .explosao::after { content: '💥'; }
@@ -417,7 +535,7 @@ const description =
       width: 104px;
       transform: translateX(-50%);
     }
-    .nave svg { width: 100%; height: auto; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45)); }
+    .nave svg { width: 100%; height: auto; filter: drop-shadow(0 0 12px rgba(34, 224, 255, 0.4)) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45)); }
     .nave__chama {
       transform-origin: 60px 118px;
       animation: chama 0.28s ease-in-out infinite alternate;
@@ -425,6 +543,57 @@ const description =
     @keyframes chama {
       from { transform: scaleY(0.75); }
       to { transform: scaleY(1.1); }
+    }
+    .nave--trava svg { animation: nave-trava-pisca 0.4s step-end infinite alternate; }
+    @keyframes nave-trava-pisca {
+      from { filter: drop-shadow(0 0 12px rgba(255, 92, 57, 0.9)) saturate(0.55); }
+      to { filter: drop-shadow(0 0 18px rgba(255, 92, 57, 0.5)) saturate(0.9); }
+    }
+    /* Aviso de arma travada (acima da nave) */
+    .trava-aviso {
+      position: absolute; left: 50%; bottom: 132px; z-index: 25;
+      transform: translateX(-50%);
+      padding: 6px 14px; border-radius: 10px;
+      font-weight: 800; font-size: 1rem; letter-spacing: 0.04em; white-space: nowrap;
+      color: #fff; background: rgba(60, 8, 8, 0.75);
+      border: 2px solid var(--quente);
+      box-shadow: 0 0 14px rgba(255, 92, 57, 0.7);
+      text-shadow: 0 0 8px rgba(255, 92, 57, 0.9);
+      pointer-events: none;
+      animation: trava-pulsa 0.5s ease-in-out infinite alternate;
+    }
+    .trava-aviso[hidden] { display: none; }
+    @keyframes trava-pulsa {
+      from { opacity: 0.85; }
+      to { opacity: 1; transform: translateX(-50%) scale(1.04); }
+    }
+    /* Banner de nível (troca silenciosa, não bloqueia o jogo) */
+    .banner-nivel {
+      position: absolute; left: 50%; top: 26%; z-index: 45;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+      display: grid; gap: 6px;
+    }
+    .banner-nivel[hidden] { display: none; }
+    .banner-nivel strong {
+      font-size: clamp(2rem, 7vw, 3.2rem); font-weight: 800; letter-spacing: 0.08em;
+      color: #fff;
+      text-shadow: 0 0 12px var(--ciano), 0 0 30px rgba(34, 224, 255, 0.6);
+    }
+    .banner-nivel span {
+      font-size: clamp(0.95rem, 3vw, 1.15rem); font-weight: 600;
+      color: var(--texto);
+      text-shadow: 0 0 10px rgba(255, 61, 241, 0.7);
+    }
+    .banner-nivel.show { animation: banner-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1); }
+    .banner-nivel.hide { animation: banner-out 0.4s ease forwards; }
+    @keyframes banner-in {
+      from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+      to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+    @keyframes banner-out {
+      to { opacity: 0; transform: translate(-50%, -50%) scale(1.08); }
     }
     .nave--treme { animation: nave-treme 0.35s ease; }
     @keyframes nave-treme {
@@ -441,16 +610,18 @@ const description =
       display: none;
       flex-wrap: wrap; justify-content: center; gap: 6px;
       padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
-      background: rgba(16, 10, 50, 0.72);
+      background: rgba(16, 12, 48, 0.72);
+      border-top: 1px solid rgba(34, 224, 255, 0.3);
     }
     .teclado--on { display: flex; }
     @media (pointer: coarse) { .teclado { display: flex; } }
     .tecla {
       min-width: 48px; height: 48px;
       font-family: inherit; font-size: 1.3rem; font-weight: 800;
-      color: #23303c; background: #fff;
-      border: 2px solid rgba(0, 0, 0, 0.3); border-radius: 10px;
-      box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+      color: var(--texto); background: rgba(16, 12, 48, 0.85);
+      border: 2px solid rgba(34, 224, 255, 0.55); border-radius: 10px;
+      box-shadow: 0 0 8px rgba(34, 224, 255, 0.2), 0 3px 0 rgba(0, 0, 0, 0.5);
+      text-shadow: 0 0 6px rgba(34, 224, 255, 0.7);
       cursor: pointer;
       touch-action: manipulation;
       -webkit-user-select: none; user-select: none;
@@ -472,8 +643,16 @@ const description =
       pointer-events: none;
     }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
-    .toast.ok { background: linear-gradient(180deg, #4cc35e, #2f9d40); }
-    .toast.info { background: linear-gradient(180deg, #7a5fd0, #5a3a9c); }
+    .toast.ok {
+      background: linear-gradient(180deg, rgba(35, 160, 96, 0.95), rgba(24, 122, 72, 0.95));
+      border: 1px solid rgba(110, 231, 160, 0.6);
+      box-shadow: 0 0 14px rgba(110, 231, 160, 0.35), 0 10px 26px rgba(0, 0, 0, 0.35);
+    }
+    .toast.info {
+      background: linear-gradient(180deg, rgba(139, 92, 246, 0.95), rgba(90, 58, 156, 0.95));
+      border: 1px solid rgba(255, 61, 241, 0.5);
+      box-shadow: 0 0 14px rgba(255, 61, 241, 0.3), 0 10px 26px rgba(0, 0, 0, 0.35);
+    }
 
     /* ===== Modais ===== */
     .modal {
@@ -485,37 +664,51 @@ const description =
     .placa {
       width: min(94vw, 480px);
       max-height: 92svh; overflow: auto;
-      background: #f4f0ff;
-      border: 4px solid #5a4a9c;
+      background: rgba(14, 10, 42, 0.92);
+      border: 2px solid rgba(34, 224, 255, 0.5);
       border-radius: 18px;
-      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+      box-shadow: 0 0 24px rgba(34, 224, 255, 0.25), 0 18px 50px rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       animation: placa-pop 0.25s ease;
     }
     @keyframes placa-pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .placa__topo {
       padding: 12px 18px;
-      background: linear-gradient(180deg, #7a5fd0, #5a3a9c);
+      background: linear-gradient(90deg, rgba(139, 92, 246, 0.55), rgba(255, 61, 241, 0.35));
       color: #fff; font-size: 1.15rem; font-weight: 800;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-      border-bottom: 4px solid #5a4a9c;
+      text-shadow: 0 0 10px rgba(255, 61, 241, 0.8);
+      border-bottom: 1px solid rgba(34, 224, 255, 0.4);
     }
-    .placa__corpo { padding: 18px 22px 22px; color: #2c2344; }
+    .placa__corpo { padding: 18px 22px 22px; color: var(--texto); }
     .placa__corpo.center { text-align: center; }
     .regras { margin: 0 0 16px 20px; display: grid; gap: 10px; font-size: 0.98rem; line-height: 1.45; }
     .grande { font-size: 1.2rem; font-weight: 800; margin-bottom: 10px; }
     .placar { font-size: 1.05rem; margin-bottom: 6px; }
-    .placar strong { font-size: 1.6rem; color: #5a3a9c; }
-    .aviso { color: #5c5478; font-size: 0.95rem; margin-bottom: 16px; min-height: 1.2em; }
+    .placar strong { font-size: 1.6rem; color: var(--ciano); text-shadow: 0 0 10px rgba(34, 224, 255, 0.6); }
+    .aviso { color: rgba(191, 233, 255, 0.75); font-size: 0.95rem; margin-bottom: 16px; min-height: 1.2em; }
+    /* o display abaixo venceria o [hidden] do UA stylesheet — reforça aqui */
+    .botao[hidden] { display: none; }
     .botao {
+      display: inline-block; text-align: center; text-decoration: none;
       font-family: inherit; cursor: pointer; font-weight: 800;
       padding: 11px 26px; border-radius: 12px; font-size: 1.05rem;
-      border: 3px solid #256b20; color: #fff;
-      background: linear-gradient(180deg, #6cc24a 0%, #43a431 55%, #2e8a28 100%);
-      box-shadow: 0 4px 0 #1d5619;
+      border: 2px solid rgba(34, 224, 255, 0.7); color: #061224;
+      background: linear-gradient(180deg, #7ef0ff 0%, #22e0ff 55%, #0ea8d8 100%);
+      box-shadow: 0 0 14px rgba(34, 224, 255, 0.45), 0 4px 0 #086a8a;
       transition: transform 0.12s ease, box-shadow 0.12s ease;
     }
-    .botao:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d5619; }
-    .botao:focus-visible { outline: 3px solid #5a3a9c; outline-offset: 2px; }
+    .botao:active { transform: translateY(3px); box-shadow: 0 0 10px rgba(34, 224, 255, 0.35), 0 1px 0 #086a8a; }
+    .botao:focus-visible { outline: 3px solid var(--magenta); outline-offset: 2px; }
+    .botao--sec {
+      color: var(--texto);
+      background: rgba(16, 12, 48, 0.7);
+      border-color: rgba(139, 92, 246, 0.7);
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.3), 0 4px 0 rgba(50, 30, 100, 0.9);
+    }
+    .botao--sec:active { box-shadow: 0 0 8px rgba(139, 92, 246, 0.25), 0 1px 0 rgba(50, 30, 100, 0.9); }
+    .fim-acoes { display: grid; gap: 10px; justify-items: center; }
+    .pausa-acoes { display: grid; gap: 10px; }
 
     /* Escolha de modo */
     .escolha__titulo { font-weight: 800; font-size: 1.05rem; margin-bottom: 10px; }
@@ -527,12 +720,77 @@ const description =
       border: 3px solid transparent;
       transition: transform 0.12s ease, filter 0.15s ease;
     }
-    .botao-modo:hover { transform: translateY(-2px); filter: brightness(1.04); }
-    .botao-modo:focus-visible { outline: 3px solid #5a3a9c; outline-offset: 2px; }
-    .botao-modo__titulo { font-size: 1.1rem; font-weight: 800; color: #2c2344; }
-    .botao-modo small { font-size: 0.85rem; line-height: 1.4; color: #4c4266; }
-    .botao-modo--vidas { background: linear-gradient(135deg, #ffe4ee, #ffd0e0); border-color: #e05a8a; }
-    .botao-modo--tranquilo { background: linear-gradient(135deg, #dff7f5, #c8eff0); border-color: #2fa3a0; }
+    .botao-modo:hover { transform: translateY(-2px); filter: brightness(1.15); }
+    .botao-modo:focus-visible { outline: 3px solid var(--ciano); outline-offset: 2px; }
+    .botao-modo__titulo { font-size: 1.1rem; font-weight: 800; color: var(--texto); }
+    .botao-modo small { font-size: 0.85rem; line-height: 1.4; color: rgba(191, 233, 255, 0.8); }
+    .botao-modo--vidas {
+      background: linear-gradient(135deg, rgba(255, 61, 241, 0.16), rgba(255, 91, 127, 0.12));
+      border-color: rgba(255, 61, 241, 0.6);
+      box-shadow: 0 0 10px rgba(255, 61, 241, 0.2);
+    }
+    .botao-modo--tranquilo {
+      background: linear-gradient(135deg, rgba(34, 224, 255, 0.14), rgba(110, 231, 160, 0.1));
+      border-color: rgba(34, 224, 255, 0.55);
+      box-shadow: 0 0 10px rgba(34, 224, 255, 0.18);
+    }
+    .recordes-btn {
+      display: block; margin: 14px auto 0;
+      font-family: inherit; cursor: pointer; font-weight: 800;
+      padding: 8px 18px; border-radius: 10px; font-size: 0.92rem;
+      color: #ffe9a8; background: rgba(16, 12, 48, 0.7);
+      border: 2px solid rgba(255, 210, 63, 0.6);
+      box-shadow: 0 0 10px rgba(255, 210, 63, 0.22);
+    }
+    .recordes-btn:focus-visible { outline: 3px solid #ffd23f; outline-offset: 2px; }
+
+    /* Nome arcade + tabela de recordes */
+    .nome-slots {
+      font-size: 2rem; font-weight: 800; letter-spacing: 8px;
+      color: var(--ciano); text-shadow: 0 0 10px rgba(34, 224, 255, 0.7);
+      margin-bottom: 12px; min-height: 1.3em;
+    }
+    .grade-letras {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+      margin-bottom: 6px;
+    }
+    .letra {
+      height: 44px;
+      font-family: inherit; font-size: 1.1rem; font-weight: 800;
+      color: var(--texto); background: rgba(16, 12, 48, 0.85);
+      border: 2px solid rgba(34, 224, 255, 0.5); border-radius: 8px;
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .letra:active { transform: translateY(2px); box-shadow: none; }
+    .letra:focus-visible { outline: 3px solid var(--magenta); outline-offset: 1px; }
+    .letra--apagar { border-color: rgba(255, 92, 57, 0.6); color: #ffb59f; }
+    .letra--ok { border-color: rgba(110, 231, 160, 0.7); color: #6ee7a0; }
+    .tabela {
+      margin: 0 0 12px; padding: 0;
+      list-style: none;
+      display: grid; gap: 4px;
+      font-size: 0.95rem;
+      text-align: left;
+    }
+    .tabela li {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 10px;
+      background: rgba(34, 224, 255, 0.07);
+      border: 1px solid rgba(34, 224, 255, 0.18);
+      border-radius: 8px;
+    }
+    .tabela li.novo {
+      background: rgba(255, 210, 63, 0.14);
+      border-color: #ffd23f;
+      box-shadow: 0 0 10px rgba(255, 210, 63, 0.4);
+    }
+    .tabela .pos { font-weight: 800; width: 30px; color: var(--magenta); }
+    .tabela .nome { font-weight: 800; flex: 1; letter-spacing: 2px; }
+    .tabela .det { font-size: 0.78rem; color: rgba(191, 233, 255, 0.7); }
+    .tabela .pts { font-weight: 800; color: var(--ciano); }
+    .recordes-acoes { display: flex; gap: 10px; justify-content: center; }
 
     /* ===== Responsivo ===== */
     @media (max-height: 760px) {
@@ -548,8 +806,12 @@ const description =
       .planeta { width: 120px; height: 120px; }
     }
     @media (max-width: 700px) {
-      .hud { gap: 12px; }
+      /* wrap: com calor + pausa o HUD não cabe numa linha de 360px */
+      .hud { flex-wrap: wrap; gap: 8px 12px; padding: 6px 10px; }
       .hud__bloco--nome { display: none; }
+      .calor { width: 56px; }
+      .hud__mute { width: 36px; height: 36px; font-size: 1rem; }
+      .vida { width: 20px; height: 20px; }
       .inimigo { width: 62px; height: 62px; }
       .inimigo--dupla { width: 74px; height: 74px; }
       .inimigo--tripla { width: 84px; height: 84px; }
@@ -567,6 +829,10 @@ const description =
       .toast, .vida, .hud__bloco strong { transition: none !important; }
       .explosao { animation-duration: 0.35s; }
       .explosao::before { animation: none; opacity: 0; }
+      .banner-nivel.show, .banner-nivel.hide { animation: none !important; }
+      .trava-aviso, .calor--trava .calor__fill { animation: none !important; }
+      .calor__fill { transition: none !important; }
+      .nave--trava svg { animation: none !important; filter: drop-shadow(0 0 12px rgba(255, 92, 57, 0.8)) saturate(0.6); }
     }
   </style>
 
@@ -585,12 +851,20 @@ const description =
     const toastEl = $('[data-toast]');
     const anuncioEl = $('[data-anuncio]');
     const introModal = $('[data-intro]');
-    const nivelDoneModal = $('[data-nivel-done]');
     const winModal = $('[data-win]');
     const fimModal = $('[data-fim]');
+    const pausaModal = $('[data-pausa]');
+    const nomeModal = $('[data-nome]');
+    const recordesModal = $('[data-recordes]');
     const vidasWrapEl = $('[data-vidas-wrap]');
     const vidasEl = $('[data-vidas]');
     const linhaEsperaEl = $('[data-linha-espera]');
+    const bannerEl = $('[data-banner-nivel]');
+    const calorEl = $('[data-calor]');
+    const calorFillEl = $('[data-calor-fill]');
+    const travaAvisoEl = $('[data-trava-aviso]');
+
+    const RANKING_KEY = 'letras-espaciais:ranking';
 
     const CORES = ['#ff6ba9', '#4dd9e8', '#ffd23f', '#9b7bff', '#6ee7a0', '#ff9a5c'];
     const VARIANTES = 4;
@@ -598,11 +872,14 @@ const description =
     let idSeq = 0;
 
     const estado = {
-      fase: 'inicio',   // 'inicio' | 'jogando' | 'entreniveis' | 'vitoria' | 'fim'
+      fase: 'inicio',   // 'inicio' | 'jogando' | 'pausado' | 'vitoria' | 'fim' | 'nome' | 'recordes'
       modo: null,       // 'vidas' | 'tranquilo'
       nivelIdx: 0,
       pontos: 0,
       vidas: 0,
+      calor: 0,          // 0..1 — barra de superaquecimento da arma
+      travaRestante: 0,  // ms de arma travada (0 = destravada)
+      nome: '',          // nome sendo digitado pro ranking
       abatesNoNivel: 0,
       abatesTotal: 0,
       inimigos: [],       // {id, letras:[{ch, mirada, viva}], x, y, fator, parado, el}
@@ -645,6 +922,9 @@ const description =
     function somNivel() { if (estado.mudo) return; [523, 659, 784, 1046].forEach((f, i) => tom(f, i * 0.12, 0.22, 'triangle', 0.2)); }
     // Fim gentil: acorde quente subindo — nunca som de "derrota".
     function somFimGentil() { if (estado.mudo) return; tom(392, 0, 0.5, 'triangle', 0.14); tom(494, 0.14, 0.5, 'triangle', 0.14); tom(587, 0.28, 0.6, 'triangle', 0.14); }
+    // Arma superaqueceu: tons graves descendo (sem susto)
+    function somSuperaquecida() { if (estado.mudo) return; tom(300, 0, 0.25, 'square', 0.1); tom(220, 0.18, 0.3, 'square', 0.09); tom(150, 0.4, 0.4, 'square', 0.08); }
+    function somDestrava() { if (estado.mudo) return; tom(520, 0, 0.1, 'triangle', 0.12); tom(780, 0.09, 0.12, 'triangle', 0.12); }
 
     // ===== Mudo =====
     const muteBtn = $('[data-mute]');
@@ -719,6 +999,47 @@ const description =
       naveEl.classList.remove('nave--treme');
       void naveEl.offsetWidth; // reinicia a animação
       naveEl.classList.add('nave--treme');
+    }
+
+    // ===== Superaquecimento (anti-apertar-tudo) =====
+    // Tecla errada esquenta a arma; barra cheia = arma trava e a barra
+    // drena até zerar (a criança vê exatamente quanto falta esperar).
+    function atualizarCalor() {
+      const nivel = estado.travaRestante > 0 ? estado.travaRestante / CFG.travaMs : estado.calor;
+      calorFillEl.style.transform = 'scaleX(' + Math.min(1, Math.max(0, nivel)) + ')';
+      calorEl.classList.toggle('calor--quente', estado.travaRestante === 0 && estado.calor >= 0.6);
+    }
+    function registrarErro() {
+      somErroSuave();
+      tremerNave();
+      estado.calor = Math.min(1, estado.calor + CFG.calorPorErro);
+      if (estado.calor >= 1) travarArma();
+      atualizarCalor();
+    }
+    function travarArma() {
+      estado.travaRestante = CFG.travaMs;
+      calorEl.classList.add('calor--trava');
+      naveEl.classList.add('nave--trava');
+      travaAvisoEl.hidden = false;
+      somSuperaquecida();
+      anunciar('A arma superaqueceu de tanto errar! Espere a barra esvaziar.');
+    }
+    function destravarArma() {
+      estado.travaRestante = 0;
+      estado.calor = 0;
+      calorEl.classList.remove('calor--trava');
+      naveEl.classList.remove('nave--trava');
+      travaAvisoEl.hidden = true;
+      somDestrava();
+      atualizarCalor();
+    }
+    function resetarCalor() {
+      estado.calor = 0;
+      estado.travaRestante = 0;
+      calorEl.classList.remove('calor--trava', 'calor--quente');
+      naveEl.classList.remove('nave--trava');
+      travaAvisoEl.hidden = true;
+      atualizarCalor();
     }
 
     // ===== Inimigos =====
@@ -809,16 +1130,23 @@ const description =
     // ===== Tiro e impacto =====
     function processarLetra(letra) {
       if (estado.fase !== 'jogando') return;
+      // Arma superaquecida: nem a letra certa atira (e teclar não estende a trava)
+      if (estado.travaRestante > 0) {
+        somErroSuave();
+        tremerNave();
+        return;
+      }
       let alvoIdx = -1;
       const inimigo = estado.inimigos.find((i) => {
         alvoIdx = i.letras.findIndex((l) => l.viva && !l.mirada && l.ch === letra);
         return alvoIdx !== -1;
       });
       if (inimigo) {
+        estado.calor = Math.max(0, estado.calor - CFG.resfriarPorAcerto);
+        atualizarCalor();
         atirar(inimigo, alvoIdx);
       } else {
-        somErroSuave();
-        tremerNave();
+        registrarErro();
       }
     }
 
@@ -952,11 +1280,18 @@ const description =
     }
 
     function montarNivel(idx) {
+      inimigosEl.innerHTML = '';
+      tirosEl.innerHTML = '';
+      prepararNivel(idx);
+    }
+
+    // Versão sem zerar o innerHTML: usada na troca silenciosa de nível,
+    // deixando os inimigos do nível anterior terminarem a animação de saída
+    // (eles se auto-removem via setTimeout do limparCampo).
+    function prepararNivel(idx) {
       estado.nivelIdx = idx;
       estado.abatesNoNivel = 0;
       estado.proximoSpawn = 900; // respiro antes do primeiro inimigo
-      inimigosEl.innerHTML = '';
-      tirosEl.innerHTML = '';
       estado.inimigos = [];
       estado.tiros = [];
       estado.coracoesVoando = [];
@@ -968,42 +1303,44 @@ const description =
       anunciar('Nível ' + (idx + 1) + ': ' + nivel.nome + '. Letras: ' + nivel.letras.join(', ') + '.');
     }
 
+    // ===== Banner de nível (troca silenciosa, sem modal) =====
+    let bannerTimer = null;
+    function mostrarBannerNivel(titulo, sub) {
+      $('[data-banner-titulo]').textContent = titulo;
+      $('[data-banner-sub]').textContent = sub;
+      bannerEl.hidden = false;
+      bannerEl.classList.remove('show', 'hide');
+      void bannerEl.offsetWidth;
+      bannerEl.classList.add('show');
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(() => {
+        bannerEl.classList.add('hide');
+        setTimeout(() => {
+          bannerEl.hidden = true;
+          bannerEl.classList.remove('show', 'hide');
+        }, 400);
+      }, CFG.bannerNivelMs);
+    }
+
     function concluirNivel() {
       limparCampo();
       if (estado.nivelIdx < NIVEIS.length - 1) {
-        estado.fase = 'entreniveis';
+        // Troca silenciosa: banner rápido e o jogo segue sem parar
         somNivel();
         const atual = NIVEIS[estado.nivelIdx];
         const prox = NIVEIS[estado.nivelIdx + 1];
         const atuais = new Set(atual.letras);
         const novas = prox.letras.filter((l) => !atuais.has(l));
-        $('[data-nivel-done-title]').textContent = 'Nível ' + (estado.nivelIdx + 1) + ' completo!';
-        $('[data-nivel-score]').textContent = String(estado.pontos);
-        let aviso = novas.length
-          ? 'Letras novas chegando: ' + novas.join(', ') + '!'
-          : 'Prepare-se: ' + prox.nome + '!';
-        if (prox.chanceDupla > 0 && atual.chanceDupla === 0) {
-          aviso += ' Cuidado: naves com 2 letras — acerte as duas!';
-        }
-        if (prox.chanceTripla > 0 && atual.chanceTripla === 0) {
-          aviso += ' Cuidado: naves com 3 letras!';
-        }
-        if (prox.vogaisRapidas && !atual.vogaisRapidas) {
-          aviso += ' Atenção: as vogais estão mais rápidas!';
-        }
-        if (prox.velocidade > atual.velocidade * 1.15) {
-          aviso += ' Os inimigos estão bem mais rápidos!';
-        }
-        if (prox.chanceDupla + prox.chanceTripla >= 1 && atual.chanceDupla + atual.chanceTripla < 1) {
-          aviso += ' Agora toda nave tem 2 ou 3 letras!';
-        }
-        if (prox.spawnsPorVez > atual.spawnsPorVez) {
-          aviso += ' Os inimigos agora chegam de dois em dois!';
-        }
-        $('[data-nivel-next-label]').textContent = aviso;
-        nivelDoneModal.hidden = false;
-        setTimeout(() => $('[data-next-nivel]').focus(), 60);
-        anunciar('Nível completo!' + (novas.length ? ' Letras novas: ' + novas.join(', ') + '.' : ''));
+        let sub = novas.length ? 'Letras novas: ' + novas.join(', ') : prox.nome;
+        if (prox.chanceDupla > 0 && atual.chanceDupla === 0) sub = 'Naves com 2 letras!';
+        else if (prox.chanceTripla > 0 && atual.chanceTripla === 0) sub = 'Naves com 3 letras!';
+        else if (prox.spawnsPorVez > atual.spawnsPorVez) sub = 'Inimigos de dois em dois!';
+        prepararNivel(estado.nivelIdx + 1);
+        mostrarBannerNivel('NÍVEL ' + (estado.nivelIdx + 1), sub);
+        // Respiro sem spawn pra ninguém nascer em cima do banner
+        estado.proximoSpawn = CFG.respiroEntreNiveisMs;
+        anunciar('Nível completo! Nível ' + (estado.nivelIdx + 1) + ': ' + NIVEIS[estado.nivelIdx].nome + '.' +
+          (novas.length ? ' Letras novas: ' + novas.join(', ') + '.' : ''));
       } else {
         venceu();
       }
@@ -1011,26 +1348,33 @@ const description =
 
     function venceu() {
       estado.fase = 'vitoria';
+      resetarCalor();
       somNivel();
       $('[data-final-score]').textContent = String(estado.pontos);
       $('[data-final-msg]').textContent =
         'Você derrubou ' + estado.abatesTotal + ' inimigos nas ' + NIVEIS.length + ' missões — do A ao Z! 🌟';
+      // Ranking só no modo com vidas (tranquilo não tem morte — pontuação sem limite)
+      const gravar = winModal.querySelector('[data-gravar-nome]');
+      gravar.hidden = estado.modo !== 'vidas';
       winModal.hidden = false;
-      setTimeout(() => $('[data-replay]').focus(), 60);
+      setTimeout(() => (gravar.hidden ? $('[data-replay]') : gravar).focus(), 60);
       anunciar('Parabéns! Você venceu o jogo com ' + estado.pontos + ' pontos.');
     }
 
     function fimDeJogo() {
       estado.fase = 'fim';
       limparCampo();
+      resetarCalor();
       somFimGentil();
       $('[data-fim-msg]').textContent =
         'Você derrubou ' + estado.abatesTotal + (estado.abatesTotal === 1 ? ' inimigo' : ' inimigos') +
         ' e chegou ao nível ' + (estado.nivelIdx + 1) + '!';
       $('[data-fim-score]').textContent = String(estado.pontos);
+      const gravar = fimModal.querySelector('[data-gravar-nome]');
+      gravar.hidden = estado.modo !== 'vidas';
       fimModal.hidden = false;
-      setTimeout(() => $('[data-replay-fim]').focus(), 60);
-      anunciar('Fim do voo! Você fez ' + estado.pontos + ' pontos. Aperte o botão pra jogar de novo.');
+      setTimeout(() => (gravar.hidden ? $('[data-replay-fim]') : gravar).focus(), 60);
+      anunciar('Fim do voo! Você fez ' + estado.pontos + ' pontos. Grave seu nome no ranking ou jogue de novo.');
     }
 
     // ===== Loop =====
@@ -1044,6 +1388,17 @@ const description =
       const nivel = NIVEIS[estado.nivelIdx];
       const cw = estado.campo.w;
       const ch = estado.campo.h;
+
+      // Arma: com trava, a barra drena até 0 e destrava;
+      // sem trava, o calor esfria sozinho com o tempo
+      if (estado.travaRestante > 0) {
+        estado.travaRestante -= dt;
+        if (estado.travaRestante <= 0) destravarArma();
+        else atualizarCalor();
+      } else if (estado.calor > 0) {
+        estado.calor = Math.max(0, estado.calor - CFG.calorDecaimentoPorSegundo * (dt / 1000));
+        atualizarCalor();
+      }
 
       spawn(dt, nivel);
 
@@ -1067,20 +1422,28 @@ const description =
         const alvo = estado.inimigos.find((i) => i.id === t.alvoId);
         if (!alvo) {
           t.el.remove();
-          estado.tiros.splice(estado.tiros.indexOf(t), 1);
+          const ix = estado.tiros.indexOf(t);
+          if (ix !== -1) estado.tiros.splice(ix, 1);
           continue;
         }
         t.t += dt / CFG.duracaoTiroMs;
         if (t.t >= 1) {
           t.el.remove();
-          estado.tiros.splice(estado.tiros.indexOf(t), 1);
+          const ix = estado.tiros.indexOf(t);
+          if (ix !== -1) estado.tiros.splice(ix, 1);
+          const nivelAntes = estado.nivelIdx;
           acertarLetra(t.alvoId, t.letraIdx);
           if (estado.fase !== 'jogando') return;
+          // Troca silenciosa de nível no meio do frame: o slice() deste for
+          // ainda tem os tiros velhos (já removidos do estado) — aborta o frame
+          if (estado.nivelIdx !== nivelAntes) return;
           continue;
         }
         const x = t.x0 + (alvo.x - t.x0) * t.t;
         const y = t.y0 + (alvo.y - t.y0) * t.t;
-        t.el.style.transform = 'translate3d(' + x * cw + 'px, ' + y * ch + 'px, 0)';
+        // Aponta a cápsula do laser pro alvo (o filho .tiro é vertical)
+        const ang = Math.atan2(alvo.y * ch - y * ch, alvo.x * cw - x * cw) + Math.PI / 2;
+        t.el.style.transform = 'translate3d(' + x * cw + 'px, ' + y * ch + 'px, 0) rotate(' + ang + 'rad)';
       }
 
       // Corações voando até o HUD
@@ -1117,6 +1480,7 @@ const description =
       atualizarPlacar();
       introModal.hidden = true;
       estado.fase = 'jogando';
+      resetarCalor();
       medirCampo();
       montarNivel(0);
       if (!estado.rafId) estado.rafId = requestAnimationFrame(loop);
@@ -1125,11 +1489,15 @@ const description =
     function reiniciar() {
       estado.fase = 'inicio';
       limparCampo();
-      nivelDoneModal.hidden = true;
       winModal.hidden = true;
       fimModal.hidden = true;
+      pausaModal.hidden = true;
+      nomeModal.hidden = true;
+      recordesModal.hidden = true;
       vidasWrapEl.hidden = true;
       linhaEsperaEl.hidden = true;
+      resetarCalor();
+      bannerEl.hidden = true;
       estado.pontos = 0;
       estado.abatesTotal = 0;
       atualizarPlacar();
@@ -1140,18 +1508,156 @@ const description =
     document.querySelectorAll('[data-modo]').forEach((btn) => {
       btn.addEventListener('click', () => comecarJogo(btn.dataset.modo));
     });
-    $('[data-next-nivel]').addEventListener('click', () => {
-      nivelDoneModal.hidden = true;
-      estado.fase = 'jogando';
-      medirCampo();
-      montarNivel(estado.nivelIdx + 1);
-    });
     $('[data-replay]').addEventListener('click', reiniciar);
     $('[data-replay-fim]').addEventListener('click', reiniciar);
+
+    // ===== Pausa =====
+    function pausar() {
+      if (estado.fase !== 'jogando') return;
+      estado.fase = 'pausado';
+      pausaModal.hidden = false;
+      setTimeout(() => $('[data-continuar]').focus(), 60);
+      anunciar('Jogo pausado.');
+    }
+    function continuarJogo() {
+      if (estado.fase !== 'pausado') return;
+      pausaModal.hidden = true;
+      medirCampo(); // a janela pode ter mudado de tamanho durante a pausa
+      estado.fase = 'jogando';
+      anunciar('Jogo continuando!');
+    }
+    $('[data-pause]').addEventListener('click', pausar);
+    $('[data-continuar]').addEventListener('click', continuarJogo);
+    $('[data-recomecar]').addEventListener('click', () => {
+      pausaModal.hidden = true;
+      reiniciar();
+    });
+
+    // ===== Ranking arcade (localStorage, só modo com vidas) =====
+    function lerRanking() {
+      try { return JSON.parse(localStorage.getItem(RANKING_KEY) || '[]'); }
+      catch (_) { return []; }
+    }
+    function salvarRanking(lista) {
+      try { localStorage.setItem(RANKING_KEY, JSON.stringify(lista)); } catch (_) {}
+    }
+
+    function atualizarSlots() {
+      const slots = [];
+      for (let i = 0; i < CFG.nomeMax; i++) slots.push(estado.nome[i] || '_');
+      $('[data-nome-slots]').textContent = slots.join(' ');
+    }
+
+    function abrirNome() {
+      winModal.hidden = true;
+      fimModal.hidden = true;
+      estado.fase = 'nome';
+      estado.nome = '';
+      atualizarSlots();
+      nomeModal.hidden = false;
+      setTimeout(() => $('[data-tecla-nome="A"]').focus(), 60);
+      anunciar('Digite seu nome usando as letras da tela. De ' + CFG.nomeMin + ' a ' + CFG.nomeMax + ' letras. Depois aperte o botão de confirmar.');
+    }
+    document.querySelectorAll('[data-gravar-nome]').forEach((btn) => btn.addEventListener('click', abrirNome));
+
+    function digitarLetra(l) {
+      if (estado.fase !== 'nome') return;
+      if (estado.nome.length >= CFG.nomeMax) return;
+      estado.nome += l;
+      somAcerto();
+      atualizarSlots();
+    }
+    function apagarLetra() {
+      if (estado.fase !== 'nome' || !estado.nome) return;
+      estado.nome = estado.nome.slice(0, -1);
+      somErroSuave();
+      atualizarSlots();
+    }
+    function confirmarNome() {
+      if (estado.fase !== 'nome') return;
+      if (estado.nome.length < CFG.nomeMin) {
+        mostrarToast('Escreva pelo menos ' + CFG.nomeMin + ' letras!', 'info', 1800);
+        return;
+      }
+      const lista = lerRanking();
+      const entrada = {
+        nome: estado.nome.toUpperCase(),
+        pontos: estado.pontos,
+        nivel: estado.nivelIdx + 1,
+        data: new Date().toISOString().slice(0, 10),
+      };
+      lista.push(entrada);
+      lista.sort((a, b) => b.pontos - a.pontos);
+      const corte = lista.slice(0, CFG.rankingMax);
+      salvarRanking(corte);
+      nomeModal.hidden = true;
+      somNivel();
+      mostrarRecordes(corte.indexOf(entrada));
+    }
+    document.querySelectorAll('[data-tecla-nome]').forEach((btn) => {
+      btn.addEventListener('click', () => digitarLetra(btn.dataset.teclaNome));
+    });
+    $('[data-nome-apagar]').addEventListener('click', apagarLetra);
+    $('[data-nome-ok]').addEventListener('click', confirmarNome);
+
+    function mostrarRecordes(destaque) {
+      estado.fase = 'recordes';
+      const lista = lerRanking();
+      const tabela = $('[data-tabela]');
+      tabela.innerHTML = '';
+      $('[data-recordes-vazio]').hidden = lista.length > 0;
+      lista.forEach((r, i) => {
+        const li = document.createElement('li');
+        if (i === destaque) li.className = 'novo';
+        li.innerHTML =
+          '<span class="pos">' + (i + 1) + 'º</span>' +
+          '<span class="nome">' + r.nome + '</span>' +
+          '<span class="det">nível ' + r.nivel + '</span>' +
+          '<span class="pts">' + r.pontos + '</span>';
+        tabela.appendChild(li);
+      });
+      // Veio da intro (consulta) → botão voltar; veio de uma partida → jogar de novo
+      const consulta = destaque === undefined;
+      $('[data-voltar-intro]').hidden = !consulta;
+      $('[data-recordes-replay]').hidden = consulta;
+      recordesModal.hidden = false;
+      setTimeout(() => (consulta ? $('[data-voltar-intro]') : $('[data-recordes-replay]')).focus(), 60);
+    }
+    $('[data-ver-recordes]').addEventListener('click', () => {
+      introModal.hidden = true;
+      mostrarRecordes(undefined);
+    });
+    $('[data-voltar-intro]').addEventListener('click', () => {
+      recordesModal.hidden = true;
+      estado.fase = 'inicio';
+      introModal.hidden = false;
+      setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+    });
+    $('[data-recordes-replay]').addEventListener('click', () => {
+      recordesModal.hidden = true;
+      reiniciar();
+    });
 
     // ===== Entrada: teclado físico =====
     window.addEventListener('keydown', (e) => {
       if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.key === 'Escape') {
+        if (estado.fase === 'jogando') { e.preventDefault(); pausar(); }
+        else if (estado.fase === 'pausado') { e.preventDefault(); continuarJogo(); }
+        return;
+      }
+      if (estado.fase === 'nome') {
+        const l = e.key.length === 1 ? e.key.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
+        if (/^[A-Z]$/.test(l)) { e.preventDefault(); digitarLetra(l); }
+        else if (e.key === 'Backspace') { e.preventDefault(); apagarLetra(); }
+        else if (e.key === 'Enter') {
+          // Enter com foco numa letra da grade: deixa o clique nativo digitar
+          if (document.activeElement && document.activeElement.tagName === 'BUTTON' && document.activeElement.dataset.teclaNome) return;
+          e.preventDefault();
+          confirmarNome();
+        }
+        return;
+      }
       if (estado.fase !== 'jogando') return;
       if (e.key.length !== 1) return;
       // Maiúscula + remove acento (Ç vira C — vizinha do L no teclado ABNT)
@@ -1163,9 +1669,10 @@ const description =
     // Dispositivo touch sem teclado físico: mostra a barra de letras
     window.addEventListener('touchstart', () => tecladoEl.classList.add('teclado--on'), { once: true, passive: true });
 
-    // ===== Pausa / medidas =====
+    // ===== Pausa automática (troca de aba) / medidas =====
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
+        pausar(); // ao voltar pra aba, o aluno encontra o overlay de pausa
         cancelAnimationFrame(estado.rafId);
         estado.rafId = 0;
         estado.ultimoTempo = 0;

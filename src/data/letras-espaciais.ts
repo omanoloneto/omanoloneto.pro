@@ -54,6 +54,21 @@ export const config = {
   // fração da tela, 0 = topo, 1 = fundo
   linhaEspera: 0.8,
   somLigadoInicial: true,
+  // ----- superaquecimento da arma (anti-apertar-tudo) -----
+  // tecla errada esquenta a arma; barra cheia = arma trava um tempinho.
+  // Calibrado pra punir só quem aperta tudo: erro isolado esfria sozinho
+  // antes do próximo.
+  calorPorErro: 0.28,             // 4 erros rápidos enchem a barra (mesmo com o decaimento)
+  resfriarPorAcerto: 0.15,        // acertar esfria a arma
+  calorDecaimentoPorSegundo: 0.1, // barra cheia esvazia sozinha em ~10s
+  travaMs: 3000,                  // arma travada: barra drena de 100% a 0 neste tempo
+  // ----- troca de nível (sem modal) -----
+  respiroEntreNiveisMs: 2200,     // sem spawn enquanto o banner de nível está na tela
+  bannerNivelMs: 2200,            // duração do banner "NÍVEL X" na tela
+  // ----- ranking (localStorage, só modo com vidas) -----
+  rankingMax: 10,
+  nomeMin: 2,
+  nomeMax: 6,
 } as const;
 
 // ============================================================
