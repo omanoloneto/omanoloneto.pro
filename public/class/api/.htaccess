@@ -1,0 +1,4 @@
+# Os JSONs de ranking só saem pela API (ranking.php) — nunca direto
+<FilesMatch "^ranking-.*\.json$">
+  Require all denied
+</FilesMatch>

@@ -245,6 +245,7 @@ const description =
         <div class="placa__corpo center">
           <ol class="tabela" data-tabela></ol>
           <p class="aviso" data-recordes-vazio hidden>Ninguém gravou o nome ainda. Seja o primeiro! 🚀</p>
+          <p class="aviso aviso--fonte" data-recordes-fonte></p>
           <div class="recordes-acoes">
             <button class="botao botao--go" type="button" data-recordes-replay>Jogar de novo</button>
             <button class="botao botao--sec" type="button" data-voltar-intro hidden>Voltar</button>
@@ -790,6 +791,7 @@ const description =
     .tabela .nome { font-weight: 800; flex: 1; letter-spacing: 2px; }
     .tabela .det { font-size: 0.78rem; color: rgba(191, 233, 255, 0.7); }
     .tabela .pts { font-weight: 800; color: var(--ciano); }
+    .aviso--fonte { font-size: 0.82rem; margin-bottom: 12px; min-height: 1em; }
     .recordes-acoes { display: flex; gap: 10px; justify-content: center; }
 
     /* ===== Responsivo ===== */
@@ -1533,13 +1535,38 @@ const description =
       reiniciar();
     });
 
-    // ===== Ranking arcade (localStorage, só modo com vidas) =====
+    // ===== Ranking arcade (online via PHP + cache/fallback localStorage) =====
+    const API_RANKING = '/class/api/ranking.php';
+    const JOGO_ID = 'letras-espaciais';
+
     function lerRanking() {
       try { return JSON.parse(localStorage.getItem(RANKING_KEY) || '[]'); }
       catch (_) { return []; }
     }
     function salvarRanking(lista) {
       try { localStorage.setItem(RANKING_KEY, JSON.stringify(lista)); } catch (_) {}
+    }
+
+    // Devolve a lista do servidor ou null (falhou/timeout → cai pro local)
+    function fetchRanking(opts) {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 4000);
+      const url = opts ? API_RANKING : API_RANKING + '?jogo=' + JOGO_ID;
+      return fetch(url, Object.assign({ signal: ctl.signal }, opts || {}))
+        .then((r) => (r.ok ? r.json() : null))
+        .then((lista) => (Array.isArray(lista) ? lista : null))
+        .catch(() => null)
+        .finally(() => clearTimeout(timer));
+    }
+    function enviarRankingOnline(entrada) {
+      return fetchRanking({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jogo: JOGO_ID, nome: entrada.nome, pontos: entrada.pontos, nivel: entrada.nivel }),
+      });
+    }
+    function indiceDe(lista, entrada) {
+      return lista.findIndex((r) => r.nome === entrada.nome && r.pontos === entrada.pontos && r.data === entrada.data);
     }
 
     function atualizarSlots() {
@@ -1579,20 +1606,20 @@ const description =
         mostrarToast('Escreva pelo menos ' + CFG.nomeMin + ' letras!', 'info', 1800);
         return;
       }
-      const lista = lerRanking();
       const entrada = {
         nome: estado.nome.toUpperCase(),
         pontos: estado.pontos,
         nivel: estado.nivelIdx + 1,
         data: new Date().toISOString().slice(0, 10),
       };
-      lista.push(entrada);
-      lista.sort((a, b) => b.pontos - a.pontos);
-      const corte = lista.slice(0, CFG.rankingMax);
-      salvarRanking(corte);
+      // grava local sempre — funciona offline e serve de cache
+      const local = lerRanking();
+      local.push(entrada);
+      local.sort((a, b) => b.pontos - a.pontos);
+      salvarRanking(local.slice(0, CFG.rankingMax));
       nomeModal.hidden = true;
       somNivel();
-      mostrarRecordes(corte.indexOf(entrada));
+      abrirRecordes(false, entrada);
     }
     document.querySelectorAll('[data-tecla-nome]').forEach((btn) => {
       btn.addEventListener('click', () => digitarLetra(btn.dataset.teclaNome));
@@ -1600,9 +1627,7 @@ const description =
     $('[data-nome-apagar]').addEventListener('click', apagarLetra);
     $('[data-nome-ok]').addEventListener('click', confirmarNome);
 
-    function mostrarRecordes(destaque) {
-      estado.fase = 'recordes';
-      const lista = lerRanking();
+    function renderRecordes(lista, destaque, consulta, fonte) {
       const tabela = $('[data-tabela]');
       tabela.innerHTML = '';
       $('[data-recordes-vazio]').hidden = lista.length > 0;
@@ -1616,16 +1641,38 @@ const description =
           '<span class="pts">' + r.pontos + '</span>';
         tabela.appendChild(li);
       });
+      const fonteEl = $('[data-recordes-fonte]');
+      if (fonte === 'online') fonteEl.textContent = '🌐 Ranking online — vale pra turma toda!';
+      else if (fonte === 'offline') fonteEl.textContent = '📴 Sem internet agora: mostrando o ranking deste aparelho.';
+      else fonteEl.textContent = 'Buscando o ranking online…';
       // Veio da intro (consulta) → botão voltar; veio de uma partida → jogar de novo
-      const consulta = destaque === undefined;
       $('[data-voltar-intro]').hidden = !consulta;
       $('[data-recordes-replay]').hidden = consulta;
+    }
+
+    // Abre os recordes: mostra o local na hora e troca pelo online quando chegar.
+    // entrada != null → acabou de salvar (envia pro servidor e destaca a linha).
+    function abrirRecordes(consulta, entrada) {
+      estado.fase = 'recordes';
+      const local = lerRanking();
+      const idxLocal = entrada ? indiceDe(local, entrada) : -1;
+      renderRecordes(local, idxLocal, consulta, 'buscando');
       recordesModal.hidden = false;
       setTimeout(() => (consulta ? $('[data-voltar-intro]') : $('[data-recordes-replay]')).focus(), 60);
+      const pedido = entrada ? enviarRankingOnline(entrada) : fetchRanking(null);
+      pedido.then((listaOnline) => {
+        if (estado.fase !== 'recordes') return; // já saiu da tela
+        if (listaOnline) {
+          salvarRanking(listaOnline); // cache local vira o ranking da turma
+          renderRecordes(listaOnline, entrada ? indiceDe(listaOnline, entrada) : -1, consulta, 'online');
+        } else {
+          renderRecordes(local, idxLocal, consulta, 'offline');
+        }
+      });
     }
     $('[data-ver-recordes]').addEventListener('click', () => {
       introModal.hidden = true;
-      mostrarRecordes(undefined);
+      abrirRecordes(true, null);
     });
     $('[data-voltar-intro]').addEventListener('click', () => {
       recordesModal.hidden = true;
