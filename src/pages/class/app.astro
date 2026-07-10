@@ -4,16 +4,15 @@ import Icon from '../../components/Icon.astro';
 
 const title = 'Controle de Aula — Extensão para Chromebook | Manolo Neto';
 const description =
-  'Baixe a extensão Controle de Aula: o professor comanda os Chromebooks da turma pelo celular. Pareamento por QR, comandos com criptografia ponta-a-ponta. Guia de instalação passo a passo.';
+  'Instale a extensão Controle de Aula direto da Chrome Web Store: o professor comanda os Chromebooks da turma pelo celular. Pareamento por QR, comandos com criptografia ponta-a-ponta.';
 
 const VERSAO = '0.4.0';
+const WEBSTORE = 'https://chromewebstore.google.com/detail/controle-de-aula-%E2%80%94-chrome/lhgjobopefkabgcifkkgmcnlmokjpjin';
 const ZIP = '/downloads/controle-de-aula-extensao.zip';
 
 const passos = [
-  { t: 'Baixe e descompacte o ZIP', d: 'Clique no botão acima e extraia o arquivo. Vai aparecer uma pasta chamada controle-de-aula.' },
-  { t: 'Abra a página de extensões', d: 'No Chrome do Chromebook, digite chrome://extensions na barra de endereço.' },
-  { t: 'Ative o Modo do desenvolvedor', d: 'É o botão no canto superior direito da página de extensões.' },
-  { t: 'Carregar sem compactação', d: 'Clique no botão "Carregar sem compactação" e selecione a pasta controle-de-aula que você extraiu.' },
+  { t: 'Abra a página na Chrome Web Store', d: 'No Chrome do Chromebook, clique no botão acima (ou pesquise por "Controle de Aula" na loja).' },
+  { t: 'Clique em "Usar no Chrome"', d: 'Confirme em "Adicionar extensão". O Chrome instala e atualiza sozinho daqui pra frente.' },
   { t: 'Pareie com o celular', d: 'Clique no ícone da extensão: aparece um QR. Abra o app Controle de Aula no celular do professor e escaneie o código. Pronto — o Chromebook fica vinculado.' },
 ];
 ---
@@ -22,7 +21,7 @@ const passos = [
   <header class="topo">
     <div class="container topo__bar">
       <a href="/" class="topo__voltar">← omanoloneto.pro</a>
-      <span class="chip">v{VERSAO} · em desenvolvimento</span>
+      <span class="chip">v{VERSAO} · na Chrome Web Store</span>
     </div>
   </header>
 
@@ -40,8 +39,8 @@ const passos = [
         </p>
 
         <div class="acoes">
-          <a class="btn btn--big" href={ZIP} download>
-            ⬇️&nbsp; Baixar extensão (.zip)
+          <a class="btn btn--big" href={WEBSTORE} target="_blank" rel="noopener">
+            🧩&nbsp; Instalar da Chrome Web Store
           </a>
           <a class="btn btn--ghost" href="https://github.com/omanoloneto/chromebook-controller-extension" target="_blank" rel="noopener">
             <Icon name="github" size={18} /> Código-fonte
@@ -53,10 +52,10 @@ const passos = [
         </p>
 
         <div class="aviso">
-          <strong>Por que não tem “instalar com 1 clique”?</strong> O Chrome só permite
-          instalação direta a partir da Chrome Web Store — instalação por sites foi desativada
-          pelo Google. Enquanto a extensão não está na Web Store, instala-se
-          pelo <em>Modo do desenvolvedor</em> (leva ~1 minuto, passo a passo abaixo).
+          <strong>Web Store bloqueada no Chromebook da escola?</strong> Dá pra instalar
+          manualmente: <a href={ZIP} download>baixe o .zip</a>, extraia,
+          abra <em>chrome://extensions</em>, ative o <em>Modo do desenvolvedor</em> e
+          use <em>“Carregar sem compactação”</em> apontando pra pasta extraída.
         </div>
       </div>
     </section>
