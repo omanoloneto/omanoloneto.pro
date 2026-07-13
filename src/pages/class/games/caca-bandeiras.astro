@@ -1608,6 +1608,7 @@ const description =
           guardarSessao();
           entrarModoSala();
           estado.fase = 'salaLobby';
+          $('[data-lobby-codigo]').textContent = r.codigo; // sem esperar o 1º poll
           salaLobbyModal.hidden = false;
           iniciarPoll();
         },
@@ -1641,6 +1642,7 @@ const description =
               guardarSessao();
               entrarModoSala();
               estado.fase = 'salaLobby';
+              $('[data-lobby-codigo]').textContent = codigo;
               salaLobbyModal.hidden = false;
               iniciarPoll();
             },
