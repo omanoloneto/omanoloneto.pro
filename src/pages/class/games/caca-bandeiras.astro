@@ -460,6 +460,11 @@ const description =
     }
     .mapa path.pais--pisca { animation: pais-pisca 0.55s step-end infinite alternate; }
     @keyframes pais-pisca { from { fill-opacity: 1; } to { fill-opacity: 0.45; } }
+    /* país já perguntado: pintado com a própria bandeira (pattern SVG) */
+    .mapa path.pais--bandeirado {
+      stroke: rgba(255, 210, 63, 0.75);
+      stroke-width: 1.2px;
+    }
 
     /* ===== Cartucho ===== */
     .cartucho {
@@ -851,6 +856,7 @@ const description =
       streak: 0,
       acertosNoNivel: 0,
       fila: [],              // países do nível (o alvo errado volta pro fim)
+      excluidos: new Set(),  // pré-marcados: nunca perguntados na partida
       alvo: null,            // pais da vez
       bandeiraInicio: 0,     // performance.now() de quando a bandeira apareceu
       pausaAcum: 0,
@@ -1008,6 +1014,58 @@ const description =
       return [x0, y0, w, h];
     }
 
+    // ===== Pintura com bandeira: país já perguntado ganha a própria bandeira =====
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const bandeirados = new Set();
+    function pintarComBandeira(iso) {
+      if (bandeirados.has(iso)) return;
+      const path = pathDe(iso);
+      if (!path) return;
+      bandeirados.add(iso);
+      let defs = svgMapa.querySelector('defs');
+      if (!defs) {
+        defs = document.createElementNS(SVG_NS, 'defs');
+        svgMapa.insertBefore(defs, svgMapa.firstChild);
+      }
+      if (!svgMapa.querySelector('#fp-' + iso)) {
+        const pat = document.createElementNS(SVG_NS, 'pattern');
+        pat.setAttribute('id', 'fp-' + iso);
+        pat.setAttribute('patternUnits', 'objectBoundingBox');
+        pat.setAttribute('patternContentUnits', 'objectBoundingBox');
+        pat.setAttribute('width', '1');
+        pat.setAttribute('height', '1');
+        const img = document.createElementNS(SVG_NS, 'image');
+        img.setAttribute('href', flagUrl(iso));
+        img.setAttribute('width', '1');
+        img.setAttribute('height', '1');
+        img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+        pat.appendChild(img);
+        defs.appendChild(pat);
+      }
+      path.style.fill = 'url(#fp-' + iso + ')';
+      path.classList.add('pais--bandeirado');
+    }
+    function limparBandeirados() {
+      bandeirados.forEach((iso) => {
+        const path = pathDe(iso);
+        if (path) {
+          path.style.fill = '';
+          path.classList.remove('pais--bandeirado');
+        }
+      });
+      bandeirados.clear();
+    }
+    // 3+ países decorativos pra partida já começar com o mapa "vivo"
+    function preMarcar(excluirIsos) {
+      const livres = PAISES.filter((p) => !excluirIsos.has(p.iso));
+      const escolhidos = [];
+      for (let n = 0; n < 3 && livres.length; n++) {
+        escolhidos.push(livres.splice(Math.floor(Math.random() * livres.length), 1)[0].iso);
+      }
+      escolhidos.forEach(pintarComBandeira);
+      return escolhidos;
+    }
+
     let selecionado = null;
     function podeSelecionar() {
       return estado.fase === 'jogando' || (estado.fase === 'salaRodada' && !sala.respondi);
@@ -1082,7 +1140,8 @@ const description =
 
     // ===== TREINO =====
     function sortearFila(nivel) {
-      const pool = PAISES.filter((p) => p.dificuldade <= nivel.dificuldadeMax);
+      // pré-marcados ficam fora do sorteio: a bandeira deles já está no mapa
+      const pool = PAISES.filter((p) => p.dificuldade <= nivel.dificuldadeMax && !estado.excluidos.has(p.iso));
       const novatos = pool.filter((p) => p.dificuldade === nivel.dificuldadeMax);
       const resto = pool.filter((p) => p.dificuldade < nivel.dificuldadeMax);
       const fila = [];
@@ -1150,6 +1209,7 @@ const description =
         estado.streak++;
         estado.acertosNoNivel++;
         statusEl.textContent = 'Acertos no nível: ' + estado.acertosNoNivel + ' de ' + NIVEIS[estado.nivelIdx].quantas;
+        pintarComBandeira(alvo.iso); // fica de lembrança no mapa (a classe verde cobre durante o reveal)
         certoEl.classList.add('pais--acerto');
         somAcertoJogo();
         confete();
@@ -1201,6 +1261,8 @@ const description =
       estado.modo = modo;
       estado.pontos = 0;
       estado.streak = 0;
+      limparBandeirados();
+      estado.excluidos = new Set(preMarcar(new Set()));
       estado.vidas = modo === 'vidas' ? CFG.vidasIniciais : 0;
       vidasWrapEl.hidden = modo !== 'vidas';
       if (modo === 'vidas') atualizarVidas(false);
@@ -1246,6 +1308,7 @@ const description =
       estado.fase = 'inicio';
       estado.modo = null;
       limparPintura();
+      limparBandeirados();
       [pausaModal, winModal, fimModal, entradaModal, recordesModal,
         salaMenuModal, salaCriarModal, salaLobbyModal, salaFimModal].forEach((m) => { m.hidden = true; });
       alvoEl.hidden = true;
@@ -1529,6 +1592,7 @@ const description =
     function entrarModoSala() {
       estado.modo = 'sala';
       estado.pontos = 0;
+      limparBandeirados();
       atualizarPlacar();
       introModal.hidden = true;
       $('[data-hud-nivel]').hidden = true;
@@ -1737,6 +1801,7 @@ const description =
         zoomEl.hidden = sala.telao;
         tempoWrapEl.hidden = false;
         setBandeira(r.bandeira);
+        (r.marcados || []).forEach(pintarComBandeira); // decorativos + já perguntados (reconexão)
         $('[data-rodada]').textContent = String(r.rodada + 1);
         $('[data-rodada-total]').textContent = 'de ' + r.total;
         const pais = POR_ISO.get(r.bandeira);
@@ -1772,6 +1837,7 @@ const description =
       limparPintura();
       const certoPais = POR_ISO.get(r.certo);
       const certoEl = pathDe(r.certo);
+      pintarComBandeira(r.certo); // fica de lembrança quando o verde do reveal sair
       if (certoEl) certoEl.classList.add('pais--acerto', 'pais--pisca');
       const minhaEl = r.minha && !r.minha.acertou ? pathDe(r.minha.iso) : null;
       if (minhaEl) minhaEl.classList.add('pais--erro');
@@ -1784,7 +1850,7 @@ const description =
         minhaTxt.textContent = '⏰ Tempo esgotado! ' + (certoPais ? fraseEra(certoPais) : '');
         somErroJogo();
       } else if (r.minha.acertou) {
-        minhaTxt.textContent = '🎉 Acertou! +' + r.minha.pontos + ' pontos';
+        minhaTxt.textContent = '🎉 Acertou! ' + (certoPais ? fraseEra(certoPais) + ' ' : '') + '+' + r.minha.pontos + ' pontos';
         somAcertoJogo();
         confete();
       } else {

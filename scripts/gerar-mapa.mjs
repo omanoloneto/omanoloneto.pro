@@ -15,7 +15,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import * as topojson from 'topojson-client';
-import { geoNaturalEarth1, geoPath } from 'd3-geo';
+import { geoPath } from 'd3-geo';
+import { geoMiller } from 'd3-geo-projection';
 import countries from 'i18n-iso-countries';
 import ptLocale from 'i18n-iso-countries/langs/pt.json' with { type: 'json' };
 
@@ -37,7 +38,8 @@ if (curados.size < 70) throw new Error('regex leu só ' + curados.size + ' país
 const feats = topojson.feature(topo, topo.objects.countries).features
   .filter((f) => f.id !== '010'); // sem Antártida
 
-const proj = geoNaturalEarth1().fitWidth(1000, { type: 'Sphere' });
+// Miller: projeção de atlas escolar — retângulo reto, sem curvar a Ásia
+const proj = geoMiller().fitWidth(1000, { type: 'Sphere' });
 const caminho = geoPath(proj).digits(1);
 
 // bbox do maior polígono (evita Guiana Francesa esticar a França,

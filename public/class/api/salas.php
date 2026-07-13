@@ -73,11 +73,13 @@ function comLock(string $codigo, callable $fn) {
   finally { flock($lock, LOCK_UN); fclose($lock); }
 }
 
-// A fase é derivada do relógio — o coração do multiplayer sem cron
+// A fase é derivada do relógio — o coração do multiplayer sem cron.
+// avancoMs: tempo "pulado" quando todos respondem antes do timer
+// (a fase continua função pura de inicioMs + avancoMs + agora).
 function faseDaSala(array $sala, int $agora): array {
   if ($sala['inicioMs'] === null) return ['fase' => 'lobby'];
   $c = $sala['cfg'];
-  $t = $agora - $sala['inicioMs'];
+  $t = $agora - $sala['inicioMs'] + ($sala['avancoMs'] ?? 0);
   if ($t < CONTAGEM_MS) return ['fase' => 'contagem', 'restanteMs' => CONTAGEM_MS - $t];
   $t -= CONTAGEM_MS;
   $ciclo = $c['rodadaMs'] + REVELACAO_MS;
@@ -172,6 +174,8 @@ if ($metodo === 'GET') {
         'fase' => 'rodada', 'rodada' => $rod, 'total' => $cfg['rodadas'],
         'restanteMs' => $f['restanteMs'], 'rodadaMs' => $cfg['rodadaMs'],
         'bandeira' => $sala['bandeiras'][$rod], // só a atual — as próximas nunca saem
+        // decorativos + rodadas passadas: o mapa pintado sobrevive a reconexão
+        'marcados' => array_merge($sala['marcados'] ?? [], array_slice($sala['bandeiras'], 0, $rod)),
         'respondi' => isset($sala['respostas'][$rod][$token]),
         'responderam' => count($sala['respostas'][$rod] ?? []),
       ]);
@@ -235,8 +239,11 @@ if ($acao === 'criar') {
     'codigo' => $codigo,
     'criadoMs' => agoraMs(),
     'inicioMs' => null,
+    'avancoMs' => 0,
     'cfg' => ['rodadas' => $rodadas, 'rodadaMs' => $rodadaMs, 'dificuldade' => $dificuldade],
     'bandeiras' => array_slice($pool, 0, $rodadas),
+    // 3 países decorativos já pintados com a bandeira no início (nunca perguntados)
+    'marcados' => array_slice($pool, $rodadas, 3),
     'host' => $token,
     'jogadores' => [$token => ['nome' => $nome, 'telao' => $telao, 'entrouMs' => agoraMs()]],
     'respostas' => array_fill(0, $rodadas, []),
@@ -301,6 +308,13 @@ if ($acao === 'responder') {
       'iso' => $iso,
       'dtMs' => $sala['cfg']['rodadaMs'] - $f['restanteMs'],
     ];
+    // todos os jogadores (sem contar o telão) já responderam?
+    // pula o resto da rodada — o relógio salta direto pra revelação
+    $elegiveis = 0;
+    foreach ($sala['jogadores'] as $j) { if (!$j['telao']) $elegiveis++; }
+    if (count($sala['respostas'][$rodada]) >= $elegiveis) {
+      $sala['avancoMs'] = ($sala['avancoMs'] ?? 0) + $f['restanteMs'];
+    }
     escreverSala($sala);
   });
   echo json_encode(['ok' => true]);
