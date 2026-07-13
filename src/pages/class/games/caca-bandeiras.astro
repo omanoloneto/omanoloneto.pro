@@ -114,13 +114,17 @@ const description =
           </ol>
           <p class="escolha__titulo">Como você quer jogar?</p>
           <div class="escolha">
-            <button class="botao-modo botao-modo--vidas" type="button" data-modo="vidas">
-              <span class="botao-modo__titulo">❤️❤️❤️ Com vidas</span>
+            <button class="botao-modo botao-modo--tranquilo" type="button" data-modo="facil">
+              <span class="botao-modo__titulo">😌 Fácil</span>
+              <small>Sem pressa e sem perder vida — o mapa ajuda focando no continente certo.</small>
+            </button>
+            <button class="botao-modo botao-modo--vidas" type="button" data-modo="normal">
+              <span class="botao-modo__titulo">🎯 Normal</span>
               <small>Errou, perde um coração. 6 acertos seguidos recuperam! Vale ranking.</small>
             </button>
-            <button class="botao-modo botao-modo--tranquilo" type="button" data-modo="tranquilo">
-              <span class="botao-modo__titulo">🛸 Tranquilo</span>
-              <small>Sem pressa e sem perder: errou, aprende e segue viajando.</small>
+            <button class="botao-modo botao-modo--dificil" type="button" data-modo="dificil">
+              <span class="botao-modo__titulo">🔥 Difícil</span>
+              <small>O mundo inteiro na tela, sem ajuda de zoom. Pra quem já manja! Vale ranking.</small>
             </button>
             <button class="botao-modo botao-modo--turma" type="button" data-abrir-sala>
               <span class="botao-modo__titulo">🏫 Jogar com a turma</span>
@@ -667,6 +671,10 @@ const description =
       background: linear-gradient(135deg, rgba(34, 224, 255, 0.14), rgba(110, 231, 160, 0.1));
       border-color: rgba(34, 224, 255, 0.55);
     }
+    .botao-modo--dificil {
+      background: linear-gradient(135deg, rgba(255, 92, 57, 0.16), rgba(255, 61, 129, 0.1));
+      border-color: rgba(255, 122, 57, 0.65);
+    }
     .botao-modo--turma {
       background: linear-gradient(135deg, rgba(46, 224, 138, 0.15), rgba(255, 210, 63, 0.1));
       border-color: rgba(46, 224, 138, 0.6);
@@ -849,14 +857,13 @@ const description =
       // | 'entrada' | 'recordes'
       // | 'salaMenu' | 'salaCriar' | 'salaLobby' | 'salaContagem' | 'salaRodada' | 'salaRevelacao' | 'salaFim'
       fase: 'inicio',
-      modo: null,            // 'vidas' | 'tranquilo' | 'sala'
+      modo: null,            // 'facil' | 'normal' | 'dificil' | 'sala'
       nivelIdx: 0,
       pontos: 0,
       vidas: 0,
       streak: 0,
       acertosNoNivel: 0,
       fila: [],              // países do nível (o alvo errado volta pro fim)
-      excluidos: new Set(),  // pré-marcados: nunca perguntados na partida
       alvo: null,            // pais da vez
       bandeiraInicio: 0,     // performance.now() de quando a bandeira apareceu
       pausaAcum: 0,
@@ -1055,15 +1062,14 @@ const description =
       });
       bandeirados.clear();
     }
-    // 3+ países decorativos pra partida já começar com o mapa "vivo"
-    function preMarcar(excluirIsos) {
-      const livres = PAISES.filter((p) => !excluirIsos.has(p.iso));
-      const escolhidos = [];
+    // 3 países decorativos pra partida já começar com o mapa "vivo".
+    // Só dificuldade 3+: os níveis 1-2 sorteiam de apenas 12 países (D1)
+    // e não podem perder nenhum pro enfeite.
+    function preMarcar() {
+      const livres = PAISES.filter((p) => p.dificuldade >= 3);
       for (let n = 0; n < 3 && livres.length; n++) {
-        escolhidos.push(livres.splice(Math.floor(Math.random() * livres.length), 1)[0].iso);
+        pintarComBandeira(livres.splice(Math.floor(Math.random() * livres.length), 1)[0].iso);
       }
-      escolhidos.forEach(pintarComBandeira);
-      return escolhidos;
     }
 
     let selecionado = null;
@@ -1140,8 +1146,14 @@ const description =
 
     // ===== TREINO =====
     function sortearFila(nivel) {
-      // pré-marcados ficam fora do sorteio: a bandeira deles já está no mapa
-      const pool = PAISES.filter((p) => p.dificuldade <= nivel.dificuldadeMax && !estado.excluidos.has(p.iso));
+      // países estampados (pré-marcados + já acertados) ficam fora do sorteio:
+      // a bandeira deles já está visível no mapa — perguntar seria dar a resposta
+      const pool = PAISES.filter((p) => p.dificuldade <= nivel.dificuldadeMax && !bandeirados.has(p.iso));
+      // salvaguarda: se o pool secar (não deve, com preMarcar em D3+),
+      // repete estampados da faixa em vez de travar
+      if (pool.length < nivel.quantas) {
+        pool.push(...PAISES.filter((p) => p.dificuldade <= nivel.dificuldadeMax && bandeirados.has(p.iso)));
+      }
       const novatos = pool.filter((p) => p.dificuldade === nivel.dificuldadeMax);
       const resto = pool.filter((p) => p.dificuldade < nivel.dificuldadeMax);
       const fila = [];
@@ -1184,7 +1196,8 @@ const description =
       setBandeira(estado.alvo.iso);
       statusEl.textContent = 'Acertos no nível: ' + estado.acertosNoNivel + ' de ' + NIVEIS[estado.nivelIdx].quantas;
       const nivel = NIVEIS[estado.nivelIdx];
-      irParaNome(nivel.zoomAjuda ? estado.alvo.continente : 'mundo');
+      // Difícil: nunca foca no continente — sempre abre no mundo inteiro
+      irParaNome(nivel.zoomAjuda && estado.modo !== 'dificil' ? estado.alvo.continente : 'mundo');
       // pré-carrega a próxima bandeira
       if (estado.fila[0]) { const img = new Image(); img.src = flagUrl(estado.fila[0].iso); }
       anunciar('Nova bandeira! Encontre o país no mapa.');
@@ -1215,7 +1228,7 @@ const description =
         confete();
         mostrarCartuchoInfo('🎉 ' + fraseEra(alvo) + ' +' + ganho + ' pontos');
         anunciar('Acertou! ' + fraseEra(alvo) + ' Mais ' + ganho + ' pontos.');
-        if (estado.modo === 'vidas' && estado.streak % CFG.acertosPraRecuperarVida === 0 && estado.vidas < CFG.vidasMaximas) {
+        if (estado.modo !== 'facil' && estado.streak % CFG.acertosPraRecuperarVida === 0 && estado.vidas < CFG.vidasMaximas) {
           estado.vidas++;
           atualizarVidas(true);
           mostrarToast('💖 ' + CFG.acertosPraRecuperarVida + ' seguidos — coração recuperado!', 'ok', 1800);
@@ -1230,7 +1243,7 @@ const description =
         const frase = 'Você clicou ' + fraseEm(iso, clicadoEl.dataset.nome) + '. ' + fraseEra(alvo);
         mostrarCartuchoInfo('💫 ' + frase);
         anunciar(frase);
-        if (estado.modo === 'vidas') {
+        if (estado.modo !== 'facil') {
           estado.vidas--;
           atualizarVidas(false);
         }
@@ -1240,7 +1253,7 @@ const description =
 
     function posRevelacao(acertou) {
       if (estado.modo === 'sala') return;
-      if (estado.modo === 'vidas' && estado.vidas <= 0) { fimDeJogo(); return; }
+      if (estado.modo !== 'facil' && estado.vidas <= 0) { fimDeJogo(); return; }
       if (acertou && estado.acertosNoNivel >= NIVEIS[estado.nivelIdx].quantas) {
         estado.pontos += CFG.bonusNivel;
         atualizarPlacar();
@@ -1262,10 +1275,12 @@ const description =
       estado.pontos = 0;
       estado.streak = 0;
       limparBandeirados();
-      estado.excluidos = new Set(preMarcar(new Set()));
-      estado.vidas = modo === 'vidas' ? CFG.vidasIniciais : 0;
-      vidasWrapEl.hidden = modo !== 'vidas';
-      if (modo === 'vidas') atualizarVidas(false);
+      preMarcar();
+      // Fácil = sem vidas; Normal e Difícil jogam com corações (e valem ranking)
+      const temVidas = modo !== 'facil';
+      estado.vidas = temVidas ? CFG.vidasIniciais : 0;
+      vidasWrapEl.hidden = !temVidas;
+      if (temVidas) atualizarVidas(false);
       atualizarPlacar();
       $('[data-hud-nivel]').hidden = false;
       $('[data-hud-rodada]').hidden = true;
@@ -1286,7 +1301,7 @@ const description =
       $('[data-final-score]').textContent = String(estado.pontos);
       $('[data-final-msg]').textContent = 'Você encontrou países nos 6 continentes! 🗺️';
       const gravar = winModal.querySelector('[data-gravar-nome]');
-      gravar.hidden = estado.modo !== 'vidas';
+      gravar.hidden = estado.modo === 'facil';
       winModal.hidden = false;
       setTimeout(() => (gravar.hidden ? $('[data-replay]') : gravar).focus(), 60);
       anunciar('Parabéns! Você venceu com ' + estado.pontos + ' pontos.');
@@ -1298,7 +1313,7 @@ const description =
       $('[data-fim-msg]').textContent = 'Você chegou ao nível ' + (estado.nivelIdx + 1) + ' — ' + NIVEIS[estado.nivelIdx].nome + '!';
       $('[data-fim-score]').textContent = String(estado.pontos);
       const gravar = fimModal.querySelector('[data-gravar-nome]');
-      gravar.hidden = estado.modo !== 'vidas';
+      gravar.hidden = estado.modo === 'facil';
       fimModal.hidden = false;
       setTimeout(() => (gravar.hidden ? $('[data-replay-fim]') : gravar).focus(), 60);
       anunciar('Fim da viagem! Você fez ' + estado.pontos + ' pontos.');
@@ -1328,7 +1343,7 @@ const description =
       atualizarPlacar();
       irParaNome('mundo');
       introModal.hidden = false;
-      setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+      setTimeout(() => $('[data-modo="normal"]').focus(), 60);
     }
     $('[data-replay]').addEventListener('click', reiniciar);
     $('[data-replay-fim]').addEventListener('click', reiniciar);
@@ -1424,7 +1439,7 @@ const description =
       return fetchRanking({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jogo: JOGO_ID, nome: entrada.nome, pontos: entrada.pontos, nivel: entrada.nivel }),
+        body: JSON.stringify({ jogo: JOGO_ID, nome: entrada.nome, pontos: entrada.pontos, nivel: entrada.nivel, dificil: entrada.dificil === true }),
       });
     }
     function indiceDe(lista, entrada) {
@@ -1440,7 +1455,7 @@ const description =
         li.innerHTML =
           '<span class="pos">' + (i + 1) + 'º</span>' +
           '<span class="nome">' + r.nome + '</span>' +
-          '<span class="det">nível ' + r.nivel + '</span>' +
+          '<span class="det">nível ' + r.nivel + (r.dificil ? ' 🔥' : '') + '</span>' +
           '<span class="pts">' + r.pontos + '</span>';
         tabela.appendChild(li);
       });
@@ -1479,6 +1494,7 @@ const description =
               nome: nome.toUpperCase(),
               pontos: estado.pontos,
               nivel: estado.nivelIdx + 1,
+              dificil: estado.modo === 'dificil',
               data: new Date().toISOString().slice(0, 10),
             };
             const local = lerRanking();
@@ -1488,7 +1504,7 @@ const description =
             somNivel();
             abrirRecordes(false, entrada);
           },
-          aoVoltar: () => { (estado.modo === 'vidas' && estado.vidas <= 0 ? fimModal : winModal).hidden = false; estado.fase = estado.vidas <= 0 ? 'fim' : 'vitoria'; },
+          aoVoltar: () => { (estado.vidas <= 0 ? fimModal : winModal).hidden = false; estado.fase = estado.vidas <= 0 ? 'fim' : 'vitoria'; },
         });
       });
     });
@@ -1500,7 +1516,7 @@ const description =
       recordesModal.hidden = true;
       estado.fase = 'inicio';
       introModal.hidden = false;
-      setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+      setTimeout(() => $('[data-modo="normal"]').focus(), 60);
     });
     $('[data-recordes-replay]').addEventListener('click', () => {
       recordesModal.hidden = true;
@@ -1963,6 +1979,6 @@ const description =
     // ===== Boot =====
     document.body.classList.add('is-game');
     irParaNome('mundo');
-    setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+    setTimeout(() => $('[data-modo="normal"]').focus(), 60);
   </script>
 </Layout>

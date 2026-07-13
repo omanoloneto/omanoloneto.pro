@@ -64,6 +64,9 @@ if (!is_int($pontos) || $pontos < 0 || $pontos > $maxPontos) falha(400, 'pontos 
 $nivel = $corpo['nivel'] ?? null;
 if (!is_int($nivel) || $nivel < 1 || $nivel > $maxNivel) falha(400, 'nível inválido');
 
+// opcional: marca de modo difícil (🔥 no Caça-Bandeiras)
+$dificil = ($corpo['dificil'] ?? false) === true;
+
 $f = arquivo($jogo);
 $fp = fopen($f, 'c+');
 if ($fp === false || !flock($fp, LOCK_EX)) falha(500, 'não consegui gravar');
@@ -71,7 +74,9 @@ if ($fp === false || !flock($fp, LOCK_EX)) falha(500, 'não consegui gravar');
 $lista = json_decode(stream_get_contents($fp) ?: '[]', true);
 if (!is_array($lista)) $lista = [];
 
-$lista[] = ['nome' => $nome, 'pontos' => $pontos, 'nivel' => $nivel, 'data' => gmdate('Y-m-d')];
+$entrada = ['nome' => $nome, 'pontos' => $pontos, 'nivel' => $nivel, 'data' => gmdate('Y-m-d')];
+if ($dificil) $entrada['dificil'] = true;
+$lista[] = $entrada;
 usort($lista, fn($a, $b) => $b['pontos'] <=> $a['pontos']);
 $lista = array_slice($lista, 0, MAX_ENTRADAS);
 
