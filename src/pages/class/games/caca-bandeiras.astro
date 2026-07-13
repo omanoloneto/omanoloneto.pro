@@ -1,0 +1,1900 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { paises, config, niveis } from '../../../data/caca-bandeiras';
+import mapaMeta from '../../../data/mapa-mundi-meta.json';
+import mapaSvg from '../../../data/mapa-mundi.svg?raw';
+
+const dadosJson = JSON.stringify({ paises, config, niveis, viewBoxes: mapaMeta.viewBoxes });
+const letrasNome = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+const title = 'Caça-Bandeiras — ache o país da bandeira no mapa! | Manolo Neto';
+const description =
+  'Jogo educativo de geografia para crianças: a bandeira aparece e você encontra o país no mapa-múndi. Treinamento com níveis progressivos e modo turma com código de sala para jogar todo mundo junto. Em português.';
+---
+
+<Layout title={title} description={description}>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="cb" data-game role="application" aria-label="Jogo: encontre no mapa o país da bandeira">
+    <!-- HUD -->
+    <header class="hud" role="status" aria-live="polite">
+      <div class="hud__bloco">
+        <span class="hud__label">Pontos</span>
+        <strong data-pontos>0</strong>
+      </div>
+      <div class="hud__bloco" data-hud-nivel hidden>
+        <span class="hud__label">Nível</span>
+        <strong data-nivel>1</strong>
+        <span class="hud__sub">de {niveis.length}</span>
+      </div>
+      <div class="hud__bloco" data-hud-rodada hidden>
+        <span class="hud__label">Rodada</span>
+        <strong data-rodada>1</strong>
+        <span class="hud__sub" data-rodada-total>de 10</span>
+      </div>
+      <div class="hud__bloco hud__bloco--vidas" data-vidas-wrap hidden>
+        <span class="hud__label">Vidas</span>
+        <span class="vidas" data-vidas></span>
+      </div>
+      <div class="hud__bloco hud__bloco--nome" data-hud-nome aria-hidden="true"></div>
+      <button class="hud__mute" type="button" data-pause aria-label="Pausar o jogo" hidden>⏸</button>
+      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <span data-mute-icon>🔊</span>
+      </button>
+    </header>
+
+    <!-- Cartão da bandeira -->
+    <section class="alvo" data-alvo hidden aria-label="Bandeira da vez">
+      <img class="alvo__bandeira" data-bandeira src="" alt="Bandeira misteriosa — que país é esse?" />
+      <div class="alvo__info">
+        <p class="alvo__pergunta">Que país é esse?</p>
+        <div class="tempo" data-tempo-wrap hidden><div class="tempo__fill" data-tempo-fill></div></div>
+        <p class="alvo__status" data-alvo-status></p>
+      </div>
+    </section>
+
+    <!-- Chips de zoom -->
+    <nav class="zoom" data-zoom aria-label="Zoom do mapa" hidden>
+      <button class="chip" type="button" data-vb="mundo">🌐 Mundo</button>
+      <button class="chip" type="button" data-vb="americaNorte">🦅 Am. Norte</button>
+      <button class="chip" type="button" data-vb="americaSul">🦜 Am. Sul</button>
+      <button class="chip" type="button" data-vb="europa">🏰 Europa</button>
+      <button class="chip" type="button" data-vb="africa">🦁 África</button>
+      <button class="chip" type="button" data-vb="asia">🐼 Ásia</button>
+      <button class="chip" type="button" data-vb="oceania">🐨 Oceania</button>
+    </nav>
+
+    <!-- Mapa -->
+    <div class="mapa-area">
+      <div class="mapa-wrap" data-mapa set:html={mapaSvg}></div>
+
+      <!-- Cartucho: seleção/confirmação e frases de revelação -->
+      <div class="cartucho" data-cartucho hidden>
+        <span class="cartucho__txt" data-cartucho-txt></span>
+        <button class="botao botao--mini" type="button" data-confirmar hidden>✓ É esse!</button>
+      </div>
+
+      <!-- Selo "resposta enviada" (sala) -->
+      <div class="selo" data-selo hidden>Resposta enviada! 🔒</div>
+
+      <!-- Painel de revelação (sala) -->
+      <div class="painel-rev" data-painel-rev hidden>
+        <p class="painel-rev__minha" data-rev-minha></p>
+        <p class="painel-rev__stats" data-rev-stats></p>
+        <ol class="painel-rev__top" data-rev-top></ol>
+      </div>
+
+      <!-- Banner de nível (treino) -->
+      <div class="banner-nivel" data-banner-nivel aria-hidden="true" hidden>
+        <strong data-banner-titulo></strong>
+        <span data-banner-sub></span>
+      </div>
+
+      <!-- Contagem regressiva (sala) -->
+      <div class="contagem" data-contagem hidden><span data-contagem-num>3</span></div>
+
+      <!-- Aviso de conexão (sala) -->
+      <div class="conexao" data-conexao hidden>📡 Reconectando…</div>
+    </div>
+
+    <!-- Toast + anúncios pra leitor de tela -->
+    <div class="toast" data-toast aria-live="polite" hidden></div>
+    <p class="sr-only" data-anuncio aria-live="assertive"></p>
+
+    <!-- Modal: intro -->
+    <div class="modal" data-intro>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="placa__topo" id="intro-title">🌍 Caça-Bandeiras</div>
+        <div class="placa__corpo">
+          <ol class="regras">
+            <li>Uma <b>bandeira</b> aparece lá em cima. 🏁</li>
+            <li><b>Toque no país</b> dela no mapa-múndi.</li>
+            <li>Toque <b>de novo</b> (ou no ✓) pra confirmar!</li>
+            <li>Use os botões de <b>continente</b> pra dar zoom. 🔍</li>
+          </ol>
+          <p class="escolha__titulo">Como você quer jogar?</p>
+          <div class="escolha">
+            <button class="botao-modo botao-modo--vidas" type="button" data-modo="vidas">
+              <span class="botao-modo__titulo">❤️❤️❤️ Com vidas</span>
+              <small>Errou, perde um coração. 6 acertos seguidos recuperam! Vale ranking.</small>
+            </button>
+            <button class="botao-modo botao-modo--tranquilo" type="button" data-modo="tranquilo">
+              <span class="botao-modo__titulo">🛸 Tranquilo</span>
+              <small>Sem pressa e sem perder: errou, aprende e segue viajando.</small>
+            </button>
+            <button class="botao-modo botao-modo--turma" type="button" data-abrir-sala>
+              <span class="botao-modo__titulo">🏫 Jogar com a turma</span>
+              <small>Crie uma sala ou entre com o código — todo mundo joga junto!</small>
+            </button>
+          </div>
+          <button class="recordes-btn" type="button" data-ver-recordes>🏆 Recordes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: pausa (treino) -->
+    <div class="modal" data-pausa hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="pausa-title">
+        <div class="placa__topo" id="pausa-title">⏸ Pausa</div>
+        <div class="placa__corpo center">
+          <div class="pausa-acoes">
+            <button class="botao botao--go" type="button" data-continuar>▶ Continuar</button>
+            <button class="botao botao--sec" type="button" data-recomecar>🔄 Recomeçar</button>
+            <a class="botao botao--sec" href="/class/games/">🚪 Sair do jogo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: vitória (treino) -->
+    <div class="modal" data-win hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="win-title">
+        <div class="placa__topo" id="win-title">Parabéns, explorador! 🌍🎉</div>
+        <div class="placa__corpo center">
+          <p class="grande">Você caçou bandeiras no mundo inteiro!</p>
+          <p class="placar">Sua pontuação: <strong data-final-score>0</strong></p>
+          <p class="aviso" data-final-msg></p>
+          <div class="fim-acoes">
+            <button class="botao botao--go" type="button" data-gravar-nome hidden>🏆 Gravar meu nome</button>
+            <button class="botao botao--sec" type="button" data-replay>Jogar de novo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: fim gentil (treino, modo vidas) -->
+    <div class="modal" data-fim hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="fim-title">
+        <div class="placa__topo" id="fim-title">Que viagem incrível! 🌟</div>
+        <div class="placa__corpo center">
+          <p class="grande" data-fim-msg></p>
+          <p class="placar">Seus pontos: <strong data-fim-score>0</strong></p>
+          <p class="aviso">Cada tentativa ensina um país novo. Bora explorar de novo?</p>
+          <div class="fim-acoes">
+            <button class="botao botao--go" type="button" data-gravar-nome hidden>🏆 Gravar meu nome</button>
+            <button class="botao botao--sec" type="button" data-replay-fim>Jogar de novo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: entrada arcade (nome do ranking, nome da sala, código da sala) -->
+    <div class="modal" data-entrada hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="entrada-title">
+        <div class="placa__topo" id="entrada-title" data-entrada-titulo>Digite</div>
+        <div class="placa__corpo center">
+          <p class="nome-slots" data-entrada-slots aria-live="polite">_ _ _</p>
+          <div class="grade-letras" role="group" aria-label="Letras">
+            {letrasNome.map((l) => (
+              <button class="letra" type="button" data-tecla-nome={l}>{l}</button>
+            ))}
+            <button class="letra letra--apagar" type="button" data-nome-apagar aria-label="Apagar letra">⌫</button>
+            <button class="letra letra--ok" type="button" data-nome-ok aria-label="Confirmar">✓</button>
+          </div>
+          <button class="botao botao--sec botao--mini" type="button" data-entrada-voltar>← Voltar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: recordes -->
+    <div class="modal" data-recordes hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="recordes-title">
+        <div class="placa__topo" id="recordes-title">🏆 Recordes dos Exploradores</div>
+        <div class="placa__corpo center">
+          <ol class="tabela" data-tabela></ol>
+          <p class="aviso" data-recordes-vazio hidden>Ninguém gravou o nome ainda. Seja o primeiro! 🌍</p>
+          <p class="aviso aviso--fonte" data-recordes-fonte></p>
+          <div class="recordes-acoes">
+            <button class="botao botao--go" type="button" data-recordes-replay>Jogar de novo</button>
+            <button class="botao botao--sec" type="button" data-voltar-intro hidden>Voltar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: menu da sala -->
+    <div class="modal" data-sala-menu hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="sala-menu-title">
+        <div class="placa__topo" id="sala-menu-title">🏫 Jogar com a turma</div>
+        <div class="placa__corpo center">
+          <div class="pausa-acoes">
+            <button class="botao botao--go" type="button" data-sala-criar-btn>✨ Criar uma sala</button>
+            <button class="botao botao--go" type="button" data-sala-entrar-btn>🔑 Entrar com código</button>
+            <button class="botao botao--sec" type="button" data-sala-menu-voltar>← Voltar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: criar sala (opções) -->
+    <div class="modal" data-sala-criar hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="sala-criar-title">
+        <div class="placa__topo" id="sala-criar-title">✨ Criar sala</div>
+        <div class="placa__corpo">
+          <p class="opcao__titulo">Dificuldade das bandeiras</p>
+          <div class="opcoes" data-op-dificuldade>
+            <button class="chip chip--op chip--on" type="button" data-op="facil">😀 Fácil</button>
+            <button class="chip chip--op" type="button" data-op="medio">🙂 Médio</button>
+            <button class="chip chip--op" type="button" data-op="dificil">🤓 Difícil</button>
+          </div>
+          <p class="opcao__titulo">Quantas rodadas</p>
+          <div class="opcoes" data-op-rodadas>
+            <button class="chip chip--op" type="button" data-op="5">5</button>
+            <button class="chip chip--op chip--on" type="button" data-op="10">10</button>
+          </div>
+          <p class="opcao__titulo">Tempo por rodada</p>
+          <div class="opcoes" data-op-tempo>
+            <button class="chip chip--op" type="button" data-op="15000">15s</button>
+            <button class="chip chip--op chip--on" type="button" data-op="20000">20s</button>
+            <button class="chip chip--op" type="button" data-op="30000">30s</button>
+          </div>
+          <label class="telao-check"><input type="checkbox" data-op-telao /> 👁 Só projetar (eu não jogo — modo telão)</label>
+          <div class="pausa-acoes" style="margin-top:16px">
+            <button class="botao botao--go" type="button" data-sala-criar-ok>Continuar →</button>
+            <button class="botao botao--sec" type="button" data-sala-criar-voltar>← Voltar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: lobby -->
+    <div class="modal" data-sala-lobby hidden>
+      <div class="placa placa--lobby" role="dialog" aria-modal="true" aria-labelledby="lobby-title">
+        <div class="placa__topo" id="lobby-title">🚪 Sala aberta!</div>
+        <div class="placa__corpo center">
+          <p class="lobby__chame" data-lobby-chame>Chame a turma com o código:</p>
+          <p class="lobby__codigo" data-lobby-codigo>····</p>
+          <p class="lobby__info" data-lobby-info></p>
+          <div class="lobby__nomes" data-lobby-nomes></div>
+          <div class="pausa-acoes" style="margin-top:14px">
+            <button class="botao botao--go" type="button" data-sala-comecar hidden disabled>▶ COMEÇAR</button>
+            <button class="botao botao--sec" type="button" data-sala-sair>🚪 Sair da sala</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: pódio (fim da sala) -->
+    <div class="modal" data-sala-fim hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="sala-fim-title">
+        <div class="placa__topo" id="sala-fim-title">🏁 Fim de jogo!</div>
+        <div class="placa__corpo center">
+          <div class="podio" data-podio></div>
+          <ol class="tabela" data-podio-lista></ol>
+          <div class="recordes-acoes">
+            <button class="botao botao--go" type="button" data-sala-denovo>🏫 Jogar com a turma de novo</button>
+            <button class="botao botao--sec" type="button" data-sala-fim-menu>Menu</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <style is:global>
+    @font-face {
+      font-family: 'Oxanium';
+      src: url('/class/fonts/oxanium/Oxanium-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Oxanium';
+      src: url('/class/fonts/oxanium/Oxanium-SemiBold.ttf') format('truetype');
+      font-weight: 600;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Oxanium';
+      src: url('/class/fonts/oxanium/Oxanium-ExtraBold.ttf') format('truetype');
+      font-weight: 800;
+      font-display: swap;
+    }
+
+    body.is-game { background: #081426; overflow: hidden; }
+    body.is-game::before { display: none !important; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    .cb {
+      position: fixed;
+      inset: 0;
+      /* clip (não hidden): impede o browser de scrollar o jogo pra fora da tela */
+      overflow: clip;
+      font-family: 'Oxanium', Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      color: var(--texto);
+      display: flex;
+      flex-direction: column;
+      /* tema "atlas noturno neon" */
+      --oceano: #081426;
+      --terra: #1c2f4f;
+      --ciano: #22e0ff;
+      --magenta: #ff3d81;
+      --verde: #2ee08a;
+      --texto: #eaf6ff;
+      background: var(--oceano);
+    }
+
+    /* ===== HUD ===== */
+    .hud {
+      position: relative; z-index: 30;
+      display: flex; align-items: center; gap: 16px;
+      padding: 8px 16px;
+      background: rgba(10, 22, 44, 0.6);
+      border-bottom: 1px solid rgba(34, 224, 255, 0.35);
+      box-shadow: 0 2px 18px rgba(34, 224, 255, 0.1);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .hud__bloco { display: flex; align-items: baseline; gap: 7px; }
+    .hud__bloco[hidden] { display: none; }
+    .hud__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
+    .hud__bloco strong { font-size: 1.5rem; line-height: 1; text-shadow: 0 0 8px rgba(34, 224, 255, 0.55); transition: transform 0.18s ease; }
+    .hud__bloco strong.pop { transform: scale(1.4); color: var(--verde); text-shadow: 0 0 10px rgba(46, 224, 138, 0.7); }
+    .hud__sub { font-size: 0.75rem; opacity: 0.85; }
+    .hud__bloco--nome { flex: 1; justify-content: center; font-weight: 700; font-size: 0.95rem; opacity: 0.9; }
+    .hud__bloco--vidas { align-items: center; }
+    .vidas { display: inline-flex; gap: 4px; font-size: 1.1rem; }
+    .vida--vazia { opacity: 0.25; filter: grayscale(1); }
+    .vida--pop { animation: vida-pop 0.45s ease; display: inline-block; }
+    @keyframes vida-pop { 0% { transform: scale(0.4); } 55% { transform: scale(1.5); } 100% { transform: scale(1); } }
+    .hud__mute {
+      width: 42px; height: 42px; border-radius: 10px; cursor: pointer;
+      border: 1px solid rgba(34, 224, 255, 0.45); background: rgba(10, 22, 44, 0.55);
+      box-shadow: 0 0 10px rgba(34, 224, 255, 0.18);
+      font-size: 1.15rem; display: grid; place-items: center; color: var(--texto);
+    }
+    .hud__mute:hover { background: rgba(34, 224, 255, 0.18); }
+    .hud__mute[hidden] { display: none; }
+
+    /* ===== Cartão da bandeira ===== */
+    .alvo {
+      position: relative; z-index: 25;
+      display: flex; align-items: center; justify-content: center; gap: 16px;
+      padding: 10px 14px 6px;
+    }
+    .alvo[hidden] { display: none; }
+    /* dimensões explícitas: o reset global img{max-width:100%} colapsa sem isso */
+    .alvo__bandeira {
+      height: 72px; width: auto; max-width: 150px;
+      border-radius: 8px;
+      border: 2px solid rgba(34, 224, 255, 0.55);
+      box-shadow: 0 0 16px rgba(34, 224, 255, 0.35), 0 6px 16px rgba(0, 0, 0, 0.5);
+      background: #fff;
+    }
+    .alvo__info { display: grid; gap: 4px; min-width: 150px; }
+    .alvo__pergunta { font-weight: 800; font-size: 1.1rem; text-shadow: 0 0 10px rgba(34, 224, 255, 0.5); }
+    .alvo__status { font-size: 0.85rem; opacity: 0.85; min-height: 1.1em; }
+    .tempo {
+      width: 100%; max-width: 220px; height: 10px; border-radius: 999px;
+      background: rgba(6, 12, 26, 0.9);
+      border: 1px solid rgba(34, 224, 255, 0.4);
+      overflow: hidden;
+    }
+    .tempo[hidden] { display: none; }
+    .tempo__fill {
+      height: 100%; width: 100%;
+      transform-origin: left center;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--verde), #ffd23f 65%, var(--magenta));
+    }
+
+    /* ===== Chips de zoom ===== */
+    .zoom {
+      position: relative; z-index: 25;
+      display: flex; gap: 8px;
+      padding: 4px 12px 8px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .zoom[hidden] { display: none; }
+    .zoom::-webkit-scrollbar { display: none; }
+    .chip {
+      flex-shrink: 0;
+      font-family: inherit; font-weight: 700; font-size: 0.85rem;
+      color: var(--texto); background: rgba(10, 22, 44, 0.7);
+      border: 1px solid rgba(34, 224, 255, 0.4); border-radius: 999px;
+      padding: 7px 14px; cursor: pointer;
+      touch-action: manipulation;
+    }
+    .chip--on, .chip:hover { background: rgba(34, 224, 255, 0.2); border-color: var(--ciano); }
+    .chip:focus-visible { outline: 3px solid var(--magenta); outline-offset: 2px; }
+
+    /* ===== Mapa ===== */
+    .mapa-area { position: relative; z-index: 10; flex: 1; min-height: 0; overflow: hidden; }
+    .mapa-wrap, .mapa-wrap svg.mapa { width: 100%; height: 100%; display: block; }
+    .mapa path {
+      fill: var(--terra);
+      stroke: rgba(34, 224, 255, 0.33);
+      stroke-width: 0.75px;
+      vector-effect: non-scaling-stroke;
+      cursor: pointer;
+      transition: fill 0.15s ease;
+    }
+    @media (hover: hover) {
+      .mapa path[data-iso]:hover { fill: #2c4a78; }
+    }
+    .mapa .terra-neutra { fill: #131f36; pointer-events: none; cursor: default; }
+    .mapa path.pais--sel {
+      fill: #2a6b9e;
+      stroke: var(--ciano); stroke-width: 2px;
+      filter: drop-shadow(0 0 6px rgba(34, 224, 255, 0.8));
+      animation: sel-pulsa 0.8s ease-in-out infinite alternate;
+    }
+    @keyframes sel-pulsa { from { fill: #2a6b9e; } to { fill: #3585c4; } }
+    .mapa path.pais--acerto {
+      fill: #17a866 !important;
+      stroke: var(--verde); stroke-width: 2px;
+      filter: drop-shadow(0 0 8px rgba(46, 224, 138, 0.8));
+      animation: none;
+    }
+    .mapa path.pais--erro {
+      fill: #b02050 !important;
+      stroke: var(--magenta); stroke-width: 2px;
+      filter: drop-shadow(0 0 8px rgba(255, 61, 129, 0.7));
+      animation: none;
+    }
+    .mapa path.pais--pisca { animation: pais-pisca 0.55s step-end infinite alternate; }
+    @keyframes pais-pisca { from { fill-opacity: 1; } to { fill-opacity: 0.45; } }
+
+    /* ===== Cartucho ===== */
+    .cartucho {
+      position: absolute; left: 50%; bottom: 14px; z-index: 40;
+      transform: translateX(-50%);
+      display: flex; align-items: center; gap: 12px;
+      max-width: 94%;
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: rgba(10, 22, 44, 0.85);
+      border: 1px solid rgba(34, 224, 255, 0.5);
+      box-shadow: 0 0 16px rgba(34, 224, 255, 0.25), 0 10px 26px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .cartucho[hidden] { display: none; }
+    .cartucho__txt { font-weight: 700; font-size: 1rem; line-height: 1.35; }
+
+    .selo {
+      position: absolute; left: 50%; top: 46%; z-index: 40;
+      transform: translate(-50%, -50%);
+      padding: 12px 22px; border-radius: 14px;
+      font-weight: 800; font-size: 1.15rem;
+      background: rgba(10, 22, 44, 0.9);
+      border: 2px solid var(--verde);
+      box-shadow: 0 0 18px rgba(46, 224, 138, 0.5);
+      pointer-events: none;
+    }
+    .selo[hidden] { display: none; }
+
+    /* ===== Painel de revelação (sala) ===== */
+    .painel-rev {
+      position: absolute; left: 50%; bottom: 14px; z-index: 40;
+      transform: translateX(-50%);
+      width: min(94%, 420px);
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: rgba(10, 22, 44, 0.9);
+      border: 1px solid rgba(34, 224, 255, 0.5);
+      box-shadow: 0 0 16px rgba(34, 224, 255, 0.25);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      text-align: center;
+    }
+    .painel-rev[hidden] { display: none; }
+    .painel-rev__minha { font-weight: 800; font-size: 1.1rem; margin-bottom: 4px; }
+    .painel-rev__stats { font-size: 0.85rem; opacity: 0.85; margin-bottom: 8px; }
+    .painel-rev__top { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; text-align: left; }
+    .painel-rev__top li {
+      display: flex; gap: 8px; padding: 3px 10px;
+      background: rgba(34, 224, 255, 0.07);
+      border-radius: 7px; font-size: 0.9rem;
+    }
+    .painel-rev__top .nome { font-weight: 800; flex: 1; letter-spacing: 1px; }
+    .painel-rev__top .pts { font-weight: 800; color: var(--ciano); }
+
+    /* ===== Banner de nível ===== */
+    .banner-nivel {
+      position: absolute; left: 50%; top: 24%; z-index: 45;
+      transform: translate(-50%, -50%);
+      text-align: center; pointer-events: none;
+      display: grid; gap: 6px;
+    }
+    .banner-nivel[hidden] { display: none; }
+    .banner-nivel strong {
+      font-size: clamp(2rem, 7vw, 3rem); font-weight: 800; letter-spacing: 0.08em;
+      color: #fff; text-shadow: 0 0 12px var(--ciano), 0 0 30px rgba(34, 224, 255, 0.6);
+    }
+    .banner-nivel span {
+      font-size: clamp(0.95rem, 3vw, 1.15rem); font-weight: 600;
+      text-shadow: 0 0 10px rgba(46, 224, 138, 0.7);
+    }
+    .banner-nivel.show { animation: banner-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1); }
+    @keyframes banner-in {
+      from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+      to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    }
+
+    /* ===== Contagem regressiva ===== */
+    .contagem {
+      position: absolute; inset: 0; z-index: 50;
+      display: grid; place-items: center;
+      background: rgba(8, 20, 38, 0.6);
+    }
+    .contagem[hidden] { display: none; }
+    .contagem span {
+      font-size: clamp(5rem, 30vw, 11rem); font-weight: 800;
+      color: #fff; text-shadow: 0 0 30px var(--ciano), 0 0 80px rgba(34, 224, 255, 0.5);
+    }
+
+    .conexao {
+      position: absolute; right: 10px; top: 10px; z-index: 50;
+      padding: 6px 12px; border-radius: 10px; font-size: 0.85rem; font-weight: 700;
+      background: rgba(60, 30, 8, 0.85); border: 1px solid #ffb34d;
+    }
+    .conexao[hidden] { display: none; }
+
+    /* ===== Toast ===== */
+    .toast {
+      position: absolute; left: 50%; top: 38%;
+      transform: translate(-50%, 0) translateY(8px);
+      z-index: 60;
+      max-width: min(88vw, 480px);
+      padding: 13px 20px; border-radius: 14px;
+      font-size: 1.05rem; font-weight: 700; text-align: center; color: #fff;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .toast.ok {
+      background: linear-gradient(180deg, rgba(23, 168, 102, 0.95), rgba(15, 122, 74, 0.95));
+      border: 1px solid rgba(110, 231, 160, 0.6);
+      box-shadow: 0 0 14px rgba(110, 231, 160, 0.35);
+    }
+    .toast.info {
+      background: linear-gradient(180deg, rgba(38, 84, 140, 0.95), rgba(24, 56, 100, 0.95));
+      border: 1px solid rgba(34, 224, 255, 0.5);
+      box-shadow: 0 0 14px rgba(34, 224, 255, 0.3);
+    }
+
+    /* ===== Modais ===== */
+    .modal {
+      position: absolute; inset: 0; z-index: 70;
+      display: grid; place-items: center; padding: 20px;
+      background: rgba(4, 10, 22, 0.6);
+    }
+    .modal[hidden] { display: none; }
+    .placa {
+      width: min(94vw, 480px);
+      max-height: 92svh; overflow: auto;
+      background: rgba(10, 20, 40, 0.94);
+      border: 2px solid rgba(34, 224, 255, 0.5);
+      border-radius: 18px;
+      box-shadow: 0 0 24px rgba(34, 224, 255, 0.25), 0 18px 50px rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      animation: placa-pop 0.25s ease;
+    }
+    .placa--lobby { width: min(96vw, 560px); }
+    @keyframes placa-pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .placa__topo {
+      padding: 12px 18px;
+      background: linear-gradient(90deg, rgba(34, 224, 255, 0.3), rgba(46, 224, 138, 0.22));
+      color: #fff; font-size: 1.15rem; font-weight: 800;
+      text-shadow: 0 0 10px rgba(34, 224, 255, 0.8);
+      border-bottom: 1px solid rgba(34, 224, 255, 0.4);
+    }
+    .placa__corpo { padding: 18px 22px 22px; color: var(--texto); }
+    .placa__corpo.center { text-align: center; }
+    .regras { margin: 0 0 16px 20px; display: grid; gap: 10px; font-size: 0.98rem; line-height: 1.45; }
+    .grande { font-size: 1.2rem; font-weight: 800; margin-bottom: 10px; }
+    .placar { font-size: 1.05rem; margin-bottom: 6px; }
+    .placar strong { font-size: 1.6rem; color: var(--ciano); text-shadow: 0 0 10px rgba(34, 224, 255, 0.6); }
+    .aviso { color: rgba(191, 233, 255, 0.75); font-size: 0.95rem; margin-bottom: 16px; min-height: 1.2em; }
+    .aviso--fonte { font-size: 0.82rem; margin-bottom: 12px; min-height: 1em; }
+
+    .botao[hidden] { display: none; }
+    .botao {
+      display: inline-block; text-align: center; text-decoration: none;
+      font-family: inherit; cursor: pointer; font-weight: 800;
+      padding: 11px 26px; border-radius: 12px; font-size: 1.05rem;
+      border: 2px solid rgba(34, 224, 255, 0.7); color: #04121f;
+      background: linear-gradient(180deg, #7ef0ff 0%, #22e0ff 55%, #0ea8d8 100%);
+      box-shadow: 0 0 14px rgba(34, 224, 255, 0.45), 0 4px 0 #086a8a;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .botao:active { transform: translateY(3px); box-shadow: 0 0 10px rgba(34, 224, 255, 0.35), 0 1px 0 #086a8a; }
+    .botao:focus-visible { outline: 3px solid var(--magenta); outline-offset: 2px; }
+    .botao[disabled] { opacity: 0.45; cursor: not-allowed; }
+    .botao--sec {
+      color: var(--texto);
+      background: rgba(10, 22, 44, 0.7);
+      border-color: rgba(34, 224, 255, 0.4);
+      box-shadow: 0 0 10px rgba(34, 224, 255, 0.15), 0 4px 0 rgba(8, 30, 60, 0.9);
+    }
+    .botao--sec:active { box-shadow: 0 0 8px rgba(34, 224, 255, 0.12), 0 1px 0 rgba(8, 30, 60, 0.9); }
+    .botao--mini { padding: 9px 18px; font-size: 0.95rem; }
+    .fim-acoes { display: grid; gap: 10px; justify-items: center; }
+    .pausa-acoes { display: grid; gap: 10px; }
+
+    .escolha__titulo { font-weight: 800; font-size: 1.05rem; margin-bottom: 10px; }
+    .escolha { display: grid; gap: 10px; }
+    .botao-modo {
+      font-family: inherit; cursor: pointer; text-align: left;
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 12px 16px; border-radius: 14px;
+      border: 3px solid transparent;
+      transition: transform 0.12s ease, filter 0.15s ease;
+    }
+    .botao-modo:hover { transform: translateY(-2px); filter: brightness(1.15); }
+    .botao-modo:focus-visible { outline: 3px solid var(--ciano); outline-offset: 2px; }
+    .botao-modo__titulo { font-size: 1.1rem; font-weight: 800; color: var(--texto); }
+    .botao-modo small { font-size: 0.85rem; line-height: 1.4; color: rgba(191, 233, 255, 0.8); }
+    .botao-modo--vidas {
+      background: linear-gradient(135deg, rgba(255, 61, 129, 0.16), rgba(255, 91, 127, 0.1));
+      border-color: rgba(255, 61, 129, 0.6);
+    }
+    .botao-modo--tranquilo {
+      background: linear-gradient(135deg, rgba(34, 224, 255, 0.14), rgba(110, 231, 160, 0.1));
+      border-color: rgba(34, 224, 255, 0.55);
+    }
+    .botao-modo--turma {
+      background: linear-gradient(135deg, rgba(46, 224, 138, 0.15), rgba(255, 210, 63, 0.1));
+      border-color: rgba(46, 224, 138, 0.6);
+    }
+    .recordes-btn {
+      display: block; margin: 14px auto 0;
+      font-family: inherit; cursor: pointer; font-weight: 800;
+      padding: 8px 18px; border-radius: 10px; font-size: 0.92rem;
+      color: #ffe9a8; background: rgba(10, 22, 44, 0.7);
+      border: 2px solid rgba(255, 210, 63, 0.6);
+      box-shadow: 0 0 10px rgba(255, 210, 63, 0.22);
+    }
+    .recordes-btn:focus-visible { outline: 3px solid #ffd23f; outline-offset: 2px; }
+
+    /* Entrada arcade + tabela (padrão dos jogos) */
+    .nome-slots {
+      font-size: 2rem; font-weight: 800; letter-spacing: 8px;
+      color: var(--ciano); text-shadow: 0 0 10px rgba(34, 224, 255, 0.7);
+      margin-bottom: 12px; min-height: 1.3em;
+    }
+    .grade-letras { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 12px; }
+    .letra {
+      height: 44px;
+      font-family: inherit; font-size: 1.1rem; font-weight: 800;
+      color: var(--texto); background: rgba(10, 22, 44, 0.85);
+      border: 2px solid rgba(34, 224, 255, 0.5); border-radius: 8px;
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .letra:active { transform: translateY(2px); box-shadow: none; }
+    .letra:focus-visible { outline: 3px solid var(--magenta); outline-offset: 1px; }
+    .letra--apagar { border-color: rgba(255, 61, 129, 0.6); color: #ffa8c4; }
+    .letra--ok { border-color: rgba(110, 231, 160, 0.7); color: #6ee7a0; }
+    .tabela {
+      margin: 0 0 12px; padding: 0; list-style: none;
+      display: grid; gap: 4px; font-size: 0.95rem; text-align: left;
+    }
+    .tabela li {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 10px;
+      background: rgba(34, 224, 255, 0.07);
+      border: 1px solid rgba(34, 224, 255, 0.18);
+      border-radius: 8px;
+    }
+    .tabela li.novo { background: rgba(255, 210, 63, 0.14); border-color: #ffd23f; box-shadow: 0 0 10px rgba(255, 210, 63, 0.4); }
+    .tabela .pos { font-weight: 800; width: 30px; color: var(--magenta); }
+    .tabela .nome { font-weight: 800; flex: 1; letter-spacing: 2px; }
+    .tabela .det { font-size: 0.78rem; color: rgba(191, 233, 255, 0.7); }
+    .tabela .pts { font-weight: 800; color: var(--ciano); }
+    .recordes-acoes { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    /* Criar sala */
+    .opcao__titulo { font-weight: 800; font-size: 0.95rem; margin: 12px 0 6px; }
+    .opcoes { display: flex; gap: 8px; flex-wrap: wrap; }
+    .telao-check { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 0.92rem; cursor: pointer; }
+    .telao-check input { width: 18px; height: 18px; accent-color: var(--ciano); }
+
+    /* Lobby */
+    .lobby__chame { font-size: 0.95rem; opacity: 0.9; }
+    .lobby__codigo {
+      font-size: clamp(3.4rem, 17vw, 7.5rem); font-weight: 800; letter-spacing: 0.22em;
+      color: #fff; text-shadow: 0 0 24px var(--ciano), 0 0 60px rgba(34, 224, 255, 0.5);
+      margin: 6px 0 2px; padding-left: 0.22em; /* compensa o letter-spacing do último char */
+      line-height: 1.1;
+    }
+    .lobby__info { font-size: 0.9rem; opacity: 0.85; margin-bottom: 10px; }
+    .lobby__nomes {
+      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+      min-height: 36px; max-height: 30svh; overflow: auto;
+    }
+    .lobby__nomes span {
+      padding: 5px 12px; border-radius: 999px; font-weight: 700; font-size: 0.9rem; letter-spacing: 1px;
+      background: rgba(46, 224, 138, 0.14); border: 1px solid rgba(46, 224, 138, 0.5);
+      animation: nome-pop 0.3s ease;
+    }
+    @keyframes nome-pop { from { transform: scale(0.5); opacity: 0; } }
+
+    /* Pódio */
+    .podio { display: flex; justify-content: center; align-items: flex-end; gap: 10px; margin-bottom: 16px; }
+    .podio__lugar { display: grid; gap: 4px; justify-items: center; }
+    .podio__nome { font-weight: 800; letter-spacing: 1px; font-size: 0.95rem; }
+    .podio__pts { font-size: 0.8rem; color: var(--ciano); }
+    .podio__bloco {
+      width: 76px; border-radius: 10px 10px 0 0; display: grid; place-items: center;
+      font-size: 1.8rem; padding-top: 6px;
+      background: linear-gradient(180deg, rgba(34, 224, 255, 0.35), rgba(34, 224, 255, 0.1));
+      border: 1px solid rgba(34, 224, 255, 0.4); border-bottom: none;
+    }
+    .podio__lugar--1 .podio__bloco { height: 86px; background: linear-gradient(180deg, rgba(255, 210, 63, 0.4), rgba(255, 210, 63, 0.12)); border-color: #ffd23f; }
+    .podio__lugar--2 .podio__bloco { height: 64px; }
+    .podio__lugar--3 .podio__bloco { height: 48px; }
+
+    /* ===== Modo telão ===== */
+    .cb--telao .zoom, .cb--telao .cartucho, .cb--telao .selo { display: none !important; }
+    .cb--telao .mapa-wrap { opacity: 0.25; }
+    .cb--telao .alvo { padding: 18px; }
+    .cb--telao .alvo__bandeira { height: min(38svh, 300px); max-width: min(72vw, 560px); }
+    .cb--telao .alvo__pergunta { font-size: clamp(1.4rem, 4vw, 2.2rem); }
+    .cb--telao .alvo__status { font-size: clamp(1rem, 3vw, 1.5rem); }
+    .cb--telao .tempo { max-width: 480px; height: 16px; }
+    .cb--telao .painel-rev { width: min(94%, 560px); bottom: 8svh; }
+    .cb--telao .painel-rev__minha { font-size: 1.5rem; }
+    .cb--telao .painel-rev__top li { font-size: 1.15rem; }
+
+    /* ===== Responsivo ===== */
+    @media (max-width: 700px) {
+      .hud { flex-wrap: wrap; gap: 8px 12px; padding: 6px 10px; }
+      .hud__bloco--nome { display: none; }
+      .hud__mute { width: 36px; height: 36px; font-size: 1rem; }
+      .alvo__bandeira { height: 56px; max-width: 110px; }
+      .alvo__pergunta { font-size: 0.95rem; }
+      .cartucho { bottom: 8px; padding: 8px 12px; gap: 8px; }
+      .cartucho__txt { font-size: 0.9rem; }
+    }
+    @media (max-height: 700px) {
+      .alvo__bandeira { height: 52px; }
+      .alvo { padding: 6px 10px 4px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .placa, .banner-nivel.show, .lobby__nomes span { animation: none !important; }
+      .toast, .vida--pop, .hud__bloco strong, .mapa path { transition: none !important; animation: none !important; }
+      .mapa path.pais--sel { animation: none !important; }
+      .mapa path.pais--pisca { animation: none !important; fill-opacity: 0.8; }
+    }
+  </style>
+
+  <script>
+    // ===== Dados =====
+    const dados = JSON.parse(document.querySelector('[data-dados]').textContent);
+    const PAISES = dados.paises;
+    const CFG = dados.config;
+    const NIVEIS = dados.niveis;
+    const VIEWBOXES = dados.viewBoxes;
+    const POR_ISO = new Map(PAISES.map((p) => [p.iso, p]));
+
+    const $ = (s) => document.querySelector(s);
+    const raizEl = $('.cb');
+    const mapaWrap = $('[data-mapa]');
+    const svgMapa = mapaWrap.querySelector('svg');
+    const alvoEl = $('[data-alvo]');
+    const bandeiraEl = $('[data-bandeira]');
+    const cartuchoEl = $('[data-cartucho]');
+    const cartuchoTxtEl = $('[data-cartucho-txt]');
+    const confirmarBtn = $('[data-confirmar]');
+    const seloEl = $('[data-selo]');
+    const painelRevEl = $('[data-painel-rev]');
+    const toastEl = $('[data-toast]');
+    const anuncioEl = $('[data-anuncio]');
+    const introModal = $('[data-intro]');
+    const pausaModal = $('[data-pausa]');
+    const winModal = $('[data-win]');
+    const fimModal = $('[data-fim]');
+    const entradaModal = $('[data-entrada]');
+    const recordesModal = $('[data-recordes]');
+    const salaMenuModal = $('[data-sala-menu]');
+    const salaCriarModal = $('[data-sala-criar]');
+    const salaLobbyModal = $('[data-sala-lobby]');
+    const salaFimModal = $('[data-sala-fim]');
+    const vidasWrapEl = $('[data-vidas-wrap]');
+    const vidasEl = $('[data-vidas]');
+    const bannerEl = $('[data-banner-nivel]');
+    const contagemEl = $('[data-contagem]');
+    const conexaoEl = $('[data-conexao]');
+    const zoomEl = $('[data-zoom]');
+    const tempoWrapEl = $('[data-tempo-wrap]');
+    const tempoFillEl = $('[data-tempo-fill]');
+    const statusEl = $('[data-alvo-status]');
+
+    const API_RANKING = '/class/api/ranking.php';
+    const API_SALAS = '/class/api/salas.php';
+    const JOGO_ID = 'caca-bandeiras';
+    const RANKING_KEY = 'caca-bandeiras:ranking';
+    const SESSAO_SALA_KEY = 'caca-bandeiras:sala';
+    const MOTION_REDUZIDO = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const estado = {
+      // 'inicio' | 'jogando' | 'revelando' | 'pausado' | 'vitoria' | 'fim'
+      // | 'entrada' | 'recordes'
+      // | 'salaMenu' | 'salaCriar' | 'salaLobby' | 'salaContagem' | 'salaRodada' | 'salaRevelacao' | 'salaFim'
+      fase: 'inicio',
+      modo: null,            // 'vidas' | 'tranquilo' | 'sala'
+      nivelIdx: 0,
+      pontos: 0,
+      vidas: 0,
+      streak: 0,
+      acertosNoNivel: 0,
+      fila: [],              // países do nível (o alvo errado volta pro fim)
+      alvo: null,            // pais da vez
+      bandeiraInicio: 0,     // performance.now() de quando a bandeira apareceu
+      pausaAcum: 0,
+      pausaDesde: 0,
+      mudo: false,
+    };
+
+    const sala = {
+      codigo: null, token: null, nome: null, telao: false, souHost: false,
+      cfgSala: null,
+      rodadaVista: -1, revelacaoVista: -1, respondi: false,
+      pollTimer: 0, pollAtivo: false, falhas: 0,
+      timerBase: null,       // {restanteMs, em, totalMs}
+      timerRaf: 0,
+      opcoes: { dificuldade: 'facil', rodadas: 10, rodadaMs: 20000, telao: false },
+    };
+
+    // ===== Áudio (Web Audio, sem arquivos) =====
+    let actx = null;
+    function initAudio() {
+      if (actx) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    function tom(freq, inicio, dur, tipo, vol) {
+      if (!actx) return;
+      const o = actx.createOscillator();
+      const g = actx.createGain();
+      o.type = tipo; o.frequency.value = freq;
+      o.connect(g); g.connect(actx.destination);
+      const t = actx.currentTime + inicio;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.start(t); o.stop(t + dur + 0.03);
+    }
+    function somClique() { if (estado.mudo) return; tom(600, 0, 0.06, 'triangle', 0.1); }
+    function somAcertoJogo() { if (estado.mudo) return; [523, 659, 784].forEach((f, i) => tom(f, i * 0.09, 0.18, 'triangle', 0.16)); }
+    function somErroJogo() { if (estado.mudo) return; tom(220, 0, 0.25, 'sine', 0.12); tom(170, 0.2, 0.3, 'sine', 0.1); }
+    function somNivel() { if (estado.mudo) return; [523, 659, 784, 1046].forEach((f, i) => tom(f, i * 0.12, 0.22, 'triangle', 0.2)); }
+    function somFimGentil() { if (estado.mudo) return; tom(392, 0, 0.5, 'triangle', 0.14); tom(494, 0.14, 0.5, 'triangle', 0.14); tom(587, 0.28, 0.6, 'triangle', 0.14); }
+    function somTic() { if (estado.mudo) return; tom(880, 0, 0.08, 'square', 0.08); }
+    function somLargada() { if (estado.mudo) return; tom(880, 0, 0.12, 'square', 0.1); tom(1320, 0.1, 0.25, 'square', 0.12); }
+
+    // ===== Mudo =====
+    const muteBtn = $('[data-mute]');
+    const muteIcon = $('[data-mute-icon]');
+    function aplicarMudo() {
+      muteBtn.setAttribute('aria-pressed', String(estado.mudo));
+      muteIcon.textContent = estado.mudo ? '🔈' : '🔊';
+      muteBtn.setAttribute('aria-label', estado.mudo ? 'Ligar o som' : 'Desligar o som');
+    }
+    (function initMudo() {
+      const salvo = localStorage.getItem('caca-bandeiras:mudo');
+      estado.mudo = salvo === null ? !CFG.somLigadoInicial : salvo === '1';
+      aplicarMudo();
+    })();
+    muteBtn.addEventListener('click', () => {
+      estado.mudo = !estado.mudo;
+      localStorage.setItem('caca-bandeiras:mudo', estado.mudo ? '1' : '0');
+      aplicarMudo();
+    });
+
+    // ===== Utilidades =====
+    function anunciar(msg) { anuncioEl.textContent = ''; requestAnimationFrame(() => { anuncioEl.textContent = msg; }); }
+
+    let toastTimer = null;
+    function mostrarToast(html, tipo, ms) {
+      toastEl.innerHTML = html;
+      toastEl.className = 'toast ' + tipo;
+      toastEl.hidden = false;
+      requestAnimationFrame(() => toastEl.classList.add('show'));
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toastEl.classList.remove('show');
+        setTimeout(() => { toastEl.hidden = true; }, 250);
+      }, ms || 2200);
+    }
+
+    function atualizarPlacar() {
+      const el = $('[data-pontos]');
+      el.textContent = String(estado.pontos);
+      el.classList.add('pop');
+      setTimeout(() => el.classList.remove('pop'), 200);
+    }
+
+    function atualizarVidas(pop) {
+      let html = '';
+      for (let i = 0; i < CFG.vidasMaximas; i++) {
+        const cheio = i < estado.vidas;
+        html += '<span class="vida' + (cheio ? '' : ' vida--vazia') + (pop && i === estado.vidas - 1 ? ' vida--pop' : '') + '">❤️</span>';
+      }
+      vidasEl.innerHTML = html;
+      vidasWrapEl.setAttribute('aria-label', 'Vidas: ' + estado.vidas + ' de ' + CFG.vidasMaximas);
+    }
+
+    // Frases com artigo: "Era o Japão!" / "Era Portugal!" / "no Japão" / "em Cuba"
+    function fraseEra(pais) {
+      return 'Era ' + (pais.artigo ? pais.artigo + ' ' : '') + pais.nome + '!';
+    }
+    function fraseEm(iso, nomeFallback) {
+      const p = POR_ISO.get(iso);
+      if (!p) return 'em ' + nomeFallback;
+      const em = { o: 'no', a: 'na', os: 'nos', as: 'nas', '': 'em' }[p.artigo];
+      return em + ' ' + p.nome;
+    }
+    function flagUrl(iso) { return '/class/img/flags/' + iso + '.svg'; }
+
+    // ===== Mapa: viewBox, seleção, pintura =====
+    function pathDe(iso) { return svgMapa.querySelector('path[data-iso="' + iso + '"]'); }
+
+    let vbRaf = 0;
+    function vbAtual() { return svgMapa.getAttribute('viewBox').split(' ').map(Number); }
+    function setVb(a) { svgMapa.setAttribute('viewBox', a.map((n) => n.toFixed(1)).join(' ')); }
+    function irPara(alvo, dur) {
+      cancelAnimationFrame(vbRaf);
+      if (MOTION_REDUZIDO) { setVb(alvo); return; }
+      const de = vbAtual();
+      const t0 = performance.now();
+      dur = dur || 450;
+      const passo = (ts) => {
+        const k = Math.min(1, (ts - t0) / dur);
+        const e = 1 - Math.pow(1 - k, 3);
+        setVb(de.map((v, i) => v + (alvo[i] - v) * e));
+        if (k < 1) vbRaf = requestAnimationFrame(passo);
+      };
+      vbRaf = requestAnimationFrame(passo);
+    }
+    function marcarChip(nome) {
+      zoomEl.querySelectorAll('.chip').forEach((c) => c.classList.toggle('chip--on', c.dataset.vb === nome));
+    }
+    function irParaNome(nome) {
+      const vb = VIEWBOXES[nome];
+      if (!vb) return;
+      irPara(vb.split(' ').map(Number));
+      marcarChip(nome);
+    }
+    zoomEl.querySelectorAll('.chip').forEach((c) => {
+      c.addEventListener('click', () => { somClique(); irParaNome(c.dataset.vb); });
+    });
+
+    // viewBox que enquadra um conjunto de países (revelação do erro)
+    function vbDePaths(els) {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      els.forEach((el) => {
+        const b = el.getBBox();
+        x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y);
+        x1 = Math.max(x1, b.x + b.width); y1 = Math.max(y1, b.y + b.height);
+      });
+      let w = x1 - x0, h = y1 - y0;
+      const pad = 0.45;
+      x0 -= w * pad; y0 -= h * pad; w *= 1 + 2 * pad; h *= 1 + 2 * pad;
+      if (w < 170) { x0 -= (170 - w) / 2; w = 170; }
+      if (h < 100) { y0 -= (100 - h) / 2; h = 100; }
+      return [x0, y0, w, h];
+    }
+
+    let selecionado = null;
+    function podeSelecionar() {
+      return estado.fase === 'jogando' || (estado.fase === 'salaRodada' && !sala.respondi);
+    }
+    function limparSelecao() {
+      if (selecionado) selecionado.classList.remove('pais--sel');
+      selecionado = null;
+      cartuchoEl.hidden = true;
+      confirmarBtn.hidden = true;
+    }
+    function limparPintura() {
+      svgMapa.querySelectorAll('.pais--acerto, .pais--erro, .pais--pisca').forEach((p) => {
+        p.classList.remove('pais--acerto', 'pais--erro', 'pais--pisca');
+      });
+      limparSelecao();
+    }
+    function selecionar(path) {
+      if (selecionado) selecionado.classList.remove('pais--sel');
+      selecionado = path;
+      path.classList.add('pais--sel');
+      somClique();
+      cartuchoTxtEl.textContent = '📍 ' + path.dataset.nome + ' — é esse?';
+      confirmarBtn.hidden = false;
+      cartuchoEl.hidden = false;
+      anunciar(path.dataset.nome + ' selecionado. Toque de novo pra confirmar.');
+    }
+    function mostrarCartuchoInfo(txt) {
+      cartuchoTxtEl.textContent = txt;
+      confirmarBtn.hidden = true;
+      cartuchoEl.hidden = false;
+    }
+    mapaWrap.addEventListener('click', (e) => {
+      if (!podeSelecionar()) return;
+      const path = e.target.closest && e.target.closest('path[data-iso]');
+      if (!path) { limparSelecao(); return; }
+      if (path === selecionado) { confirmarResposta(); return; }
+      selecionar(path);
+    });
+    confirmarBtn.addEventListener('click', confirmarResposta);
+
+    function confirmarResposta() {
+      if (!selecionado) return;
+      const iso = selecionado.dataset.iso;
+      if (estado.fase === 'jogando') resolverTreino(iso);
+      else if (estado.fase === 'salaRodada') enviarRespostaSala(iso);
+    }
+
+    // mini-confete (12 partículas CSS, sem lib)
+    function confete() {
+      if (MOTION_REDUZIDO) return;
+      const cores = ['#22e0ff', '#2ee08a', '#ffd23f', '#ff3d81'];
+      for (let i = 0; i < 12; i++) {
+        const p = document.createElement('span');
+        p.style.cssText =
+          'position:absolute;z-index:55;width:8px;height:8px;border-radius:2px;pointer-events:none;' +
+          'left:' + (35 + Math.random() * 30) + '%;top:30%;background:' + cores[i % 4] + ';' +
+          'transition:transform 0.9s ease-out, opacity 0.9s ease-out;';
+        $('.mapa-area').appendChild(p);
+        requestAnimationFrame(() => {
+          p.style.transform = 'translate(' + (Math.random() * 220 - 110) + 'px,' + (120 + Math.random() * 160) + 'px) rotate(' + (Math.random() * 500 - 250) + 'deg)';
+          p.style.opacity = '0';
+        });
+        setTimeout(() => p.remove(), 950);
+      }
+    }
+
+    // ===== Bandeira da vez =====
+    function setBandeira(iso) {
+      bandeiraEl.src = flagUrl(iso);
+      alvoEl.hidden = false;
+    }
+
+    // ===== TREINO =====
+    function sortearFila(nivel) {
+      const pool = PAISES.filter((p) => p.dificuldade <= nivel.dificuldadeMax);
+      const novatos = pool.filter((p) => p.dificuldade === nivel.dificuldadeMax);
+      const resto = pool.filter((p) => p.dificuldade < nivel.dificuldadeMax);
+      const fila = [];
+      for (let n = 0; n < nivel.quantas; n++) {
+        const deNovato = novatos.length && (Math.random() < nivel.pesoNovato || !resto.length);
+        const origem = deNovato ? novatos : resto;
+        fila.push(origem.splice(Math.floor(Math.random() * origem.length), 1)[0]);
+      }
+      return fila;
+    }
+
+    function prepararNivel(idx) {
+      estado.nivelIdx = idx;
+      estado.acertosNoNivel = 0;
+      estado.fila = sortearFila(NIVEIS[idx]);
+      $('[data-nivel]').textContent = String(idx + 1);
+      anunciar('Nível ' + (idx + 1) + ': ' + NIVEIS[idx].nome + '.');
+    }
+
+    let bannerTimer = null;
+    function mostrarBannerNivel(titulo, sub) {
+      $('[data-banner-titulo]').textContent = titulo;
+      $('[data-banner-sub]').textContent = sub;
+      bannerEl.hidden = false;
+      bannerEl.classList.remove('show');
+      void bannerEl.offsetWidth;
+      bannerEl.classList.add('show');
+      clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(() => { bannerEl.hidden = true; }, CFG.bannerNivelMs);
+    }
+
+    function proximaBandeira() {
+      if (estado.modo === 'sala') return;
+      limparPintura();
+      estado.fase = 'jogando';
+      estado.alvo = estado.fila[0];
+      estado.fila.shift();
+      estado.bandeiraInicio = performance.now();
+      estado.pausaAcum = 0;
+      setBandeira(estado.alvo.iso);
+      statusEl.textContent = 'Acertos no nível: ' + estado.acertosNoNivel + ' de ' + NIVEIS[estado.nivelIdx].quantas;
+      const nivel = NIVEIS[estado.nivelIdx];
+      irParaNome(nivel.zoomAjuda ? estado.alvo.continente : 'mundo');
+      // pré-carrega a próxima bandeira
+      if (estado.fila[0]) { const img = new Image(); img.src = flagUrl(estado.fila[0].iso); }
+      anunciar('Nova bandeira! Encontre o país no mapa.');
+    }
+
+    function resolverTreino(iso) {
+      const alvo = estado.alvo;
+      const certoEl = pathDe(alvo.iso);
+      const clicadoEl = selecionado;
+      const acertou = iso === alvo.iso;
+      estado.fase = 'revelando';
+      clicadoEl.classList.remove('pais--sel');
+      selecionado = null;
+      confirmarBtn.hidden = true;
+
+      if (acertou) {
+        const decorrido = performance.now() - estado.bandeiraInicio - estado.pausaAcum;
+        const bonus = Math.round(CFG.bonusVelocidadeMax * Math.max(0, 1 - decorrido / CFG.tempoBonusMs));
+        const ganho = CFG.pontosAcerto + bonus;
+        estado.pontos += ganho;
+        atualizarPlacar();
+        estado.streak++;
+        estado.acertosNoNivel++;
+        statusEl.textContent = 'Acertos no nível: ' + estado.acertosNoNivel + ' de ' + NIVEIS[estado.nivelIdx].quantas;
+        certoEl.classList.add('pais--acerto');
+        somAcertoJogo();
+        confete();
+        mostrarCartuchoInfo('🎉 ' + fraseEra(alvo) + ' +' + ganho + ' pontos');
+        anunciar('Acertou! ' + fraseEra(alvo) + ' Mais ' + ganho + ' pontos.');
+        if (estado.modo === 'vidas' && estado.streak % CFG.acertosPraRecuperarVida === 0 && estado.vidas < CFG.vidasMaximas) {
+          estado.vidas++;
+          atualizarVidas(true);
+          mostrarToast('💖 ' + CFG.acertosPraRecuperarVida + ' seguidos — coração recuperado!', 'ok', 1800);
+        }
+      } else {
+        estado.streak = 0;
+        estado.fila.push(alvo); // a bandeira errada volta mais tarde
+        clicadoEl.classList.add('pais--erro');
+        certoEl.classList.add('pais--acerto', 'pais--pisca');
+        irPara(vbDePaths([clicadoEl, certoEl]));
+        somErroJogo();
+        const frase = 'Você clicou ' + fraseEm(iso, clicadoEl.dataset.nome) + '. ' + fraseEra(alvo);
+        mostrarCartuchoInfo('💫 ' + frase);
+        anunciar(frase);
+        if (estado.modo === 'vidas') {
+          estado.vidas--;
+          atualizarVidas(false);
+        }
+      }
+      setTimeout(() => posRevelacao(acertou), CFG.revelacaoMs);
+    }
+
+    function posRevelacao(acertou) {
+      if (estado.modo === 'sala') return;
+      if (estado.modo === 'vidas' && estado.vidas <= 0) { fimDeJogo(); return; }
+      if (acertou && estado.acertosNoNivel >= NIVEIS[estado.nivelIdx].quantas) {
+        estado.pontos += CFG.bonusNivel;
+        atualizarPlacar();
+        if (estado.nivelIdx >= NIVEIS.length - 1) { venceu(); return; }
+        prepararNivel(estado.nivelIdx + 1);
+        somNivel();
+        mostrarBannerNivel('NÍVEL ' + (estado.nivelIdx + 1), NIVEIS[estado.nivelIdx].nome);
+        mostrarToast('⭐ Nível completo! +' + CFG.bonusNivel + ' pontos', 'ok', 1800);
+        setTimeout(proximaBandeira, CFG.respiroEntreNiveisMs);
+        return;
+      }
+      proximaBandeira();
+    }
+
+    function comecarTreino(modo) {
+      initAudio();
+      if (actx && actx.state === 'suspended') actx.resume();
+      estado.modo = modo;
+      estado.pontos = 0;
+      estado.streak = 0;
+      estado.vidas = modo === 'vidas' ? CFG.vidasIniciais : 0;
+      vidasWrapEl.hidden = modo !== 'vidas';
+      if (modo === 'vidas') atualizarVidas(false);
+      atualizarPlacar();
+      $('[data-hud-nivel]').hidden = false;
+      $('[data-hud-rodada]').hidden = true;
+      $('[data-pause]').hidden = false;
+      zoomEl.hidden = false;
+      tempoWrapEl.hidden = true;
+      introModal.hidden = true;
+      prepararNivel(0);
+      proximaBandeira();
+    }
+    document.querySelectorAll('[data-modo]').forEach((btn) => {
+      btn.addEventListener('click', () => comecarTreino(btn.dataset.modo));
+    });
+
+    function venceu() {
+      estado.fase = 'vitoria';
+      somNivel();
+      $('[data-final-score]').textContent = String(estado.pontos);
+      $('[data-final-msg]').textContent = 'Você encontrou países nos 6 continentes! 🗺️';
+      const gravar = winModal.querySelector('[data-gravar-nome]');
+      gravar.hidden = estado.modo !== 'vidas';
+      winModal.hidden = false;
+      setTimeout(() => (gravar.hidden ? $('[data-replay]') : gravar).focus(), 60);
+      anunciar('Parabéns! Você venceu com ' + estado.pontos + ' pontos.');
+    }
+
+    function fimDeJogo() {
+      estado.fase = 'fim';
+      somFimGentil();
+      $('[data-fim-msg]').textContent = 'Você chegou ao nível ' + (estado.nivelIdx + 1) + ' — ' + NIVEIS[estado.nivelIdx].nome + '!';
+      $('[data-fim-score]').textContent = String(estado.pontos);
+      const gravar = fimModal.querySelector('[data-gravar-nome]');
+      gravar.hidden = estado.modo !== 'vidas';
+      fimModal.hidden = false;
+      setTimeout(() => (gravar.hidden ? $('[data-replay-fim]') : gravar).focus(), 60);
+      anunciar('Fim da viagem! Você fez ' + estado.pontos + ' pontos.');
+    }
+
+    function reiniciar() {
+      estado.fase = 'inicio';
+      estado.modo = null;
+      limparPintura();
+      [pausaModal, winModal, fimModal, entradaModal, recordesModal,
+        salaMenuModal, salaCriarModal, salaLobbyModal, salaFimModal].forEach((m) => { m.hidden = true; });
+      alvoEl.hidden = true;
+      zoomEl.hidden = true;
+      cartuchoEl.hidden = true;
+      seloEl.hidden = true;
+      painelRevEl.hidden = true;
+      contagemEl.hidden = true;
+      bannerEl.hidden = true;
+      vidasWrapEl.hidden = true;
+      $('[data-hud-nivel]').hidden = true;
+      $('[data-hud-rodada]').hidden = true;
+      $('[data-hud-nome]').textContent = '';
+      $('[data-pause]').hidden = true;
+      raizEl.classList.remove('cb--telao');
+      estado.pontos = 0;
+      atualizarPlacar();
+      irParaNome('mundo');
+      introModal.hidden = false;
+      setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+    }
+    $('[data-replay]').addEventListener('click', reiniciar);
+    $('[data-replay-fim]').addEventListener('click', reiniciar);
+
+    // ===== Pausa (só treino — a sala corre no relógio do servidor) =====
+    function pausar() {
+      if (estado.fase !== 'jogando') return;
+      estado.fase = 'pausado';
+      estado.pausaDesde = performance.now();
+      pausaModal.hidden = false;
+      setTimeout(() => $('[data-continuar]').focus(), 60);
+      anunciar('Jogo pausado.');
+    }
+    function continuarJogo() {
+      if (estado.fase !== 'pausado') return;
+      estado.pausaAcum += performance.now() - estado.pausaDesde;
+      pausaModal.hidden = true;
+      estado.fase = 'jogando';
+      anunciar('Jogo continuando!');
+    }
+    $('[data-pause]').addEventListener('click', pausar);
+    $('[data-continuar]').addEventListener('click', continuarJogo);
+    $('[data-recomecar]').addEventListener('click', () => { pausaModal.hidden = true; reiniciar(); });
+
+    // ===== Entrada arcade (nome do ranking / nome da sala / código da sala) =====
+    let entradaCtx = null; // {titulo, min, max, valor, aoConfirmar(valor), aoVoltar()}
+    function abrirEntrada(ctx) {
+      entradaCtx = Object.assign({ valor: '' }, ctx);
+      estado.fase = 'entrada';
+      $('[data-entrada-titulo]').textContent = ctx.titulo;
+      atualizarSlots();
+      [winModal, fimModal, salaMenuModal, salaCriarModal].forEach((m) => { m.hidden = true; });
+      entradaModal.hidden = false;
+      setTimeout(() => $('[data-tecla-nome="A"]').focus(), 60);
+      anunciar(ctx.titulo + '. Use as letras da tela: de ' + ctx.min + ' a ' + ctx.max + ' letras.');
+    }
+    function atualizarSlots() {
+      const slots = [];
+      for (let i = 0; i < entradaCtx.max; i++) slots.push(entradaCtx.valor[i] || '_');
+      $('[data-entrada-slots]').textContent = slots.join(' ');
+    }
+    function digitarLetra(l) {
+      if (estado.fase !== 'entrada' || entradaCtx.valor.length >= entradaCtx.max) return;
+      entradaCtx.valor += l;
+      somClique();
+      atualizarSlots();
+    }
+    function apagarLetra() {
+      if (estado.fase !== 'entrada' || !entradaCtx.valor) return;
+      entradaCtx.valor = entradaCtx.valor.slice(0, -1);
+      somClique();
+      atualizarSlots();
+    }
+    function confirmarEntrada() {
+      if (estado.fase !== 'entrada') return;
+      if (entradaCtx.valor.length < entradaCtx.min) {
+        mostrarToast('Escreva pelo menos ' + entradaCtx.min + ' letras!', 'info', 1800);
+        return;
+      }
+      entradaModal.hidden = true;
+      entradaCtx.aoConfirmar(entradaCtx.valor);
+    }
+    document.querySelectorAll('[data-tecla-nome]').forEach((btn) => {
+      btn.addEventListener('click', () => digitarLetra(btn.dataset.teclaNome));
+    });
+    $('[data-nome-apagar]').addEventListener('click', apagarLetra);
+    $('[data-nome-ok]').addEventListener('click', confirmarEntrada);
+    $('[data-entrada-voltar]').addEventListener('click', () => {
+      entradaModal.hidden = true;
+      if (entradaCtx && entradaCtx.aoVoltar) entradaCtx.aoVoltar();
+      else reiniciar();
+    });
+
+    // ===== Ranking online (padrão do site: online + cache/fallback local) =====
+    function lerRanking() {
+      try { return JSON.parse(localStorage.getItem(RANKING_KEY) || '[]'); }
+      catch (_) { return []; }
+    }
+    function salvarRanking(lista) {
+      try { localStorage.setItem(RANKING_KEY, JSON.stringify(lista)); } catch (_) {}
+    }
+    function fetchRanking(opts) {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 4000);
+      const url = opts ? API_RANKING : API_RANKING + '?jogo=' + JOGO_ID;
+      return fetch(url, Object.assign({ signal: ctl.signal }, opts || {}))
+        .then((r) => (r.ok ? r.json() : null))
+        .then((lista) => (Array.isArray(lista) ? lista : null))
+        .catch(() => null)
+        .finally(() => clearTimeout(timer));
+    }
+    function enviarRankingOnline(entrada) {
+      return fetchRanking({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jogo: JOGO_ID, nome: entrada.nome, pontos: entrada.pontos, nivel: entrada.nivel }),
+      });
+    }
+    function indiceDe(lista, entrada) {
+      return lista.findIndex((r) => r.nome === entrada.nome && r.pontos === entrada.pontos && r.data === entrada.data);
+    }
+    function renderRecordes(lista, destaque, consulta, fonte) {
+      const tabela = $('[data-tabela]');
+      tabela.innerHTML = '';
+      $('[data-recordes-vazio]').hidden = lista.length > 0;
+      lista.forEach((r, i) => {
+        const li = document.createElement('li');
+        if (i === destaque) li.className = 'novo';
+        li.innerHTML =
+          '<span class="pos">' + (i + 1) + 'º</span>' +
+          '<span class="nome">' + r.nome + '</span>' +
+          '<span class="det">nível ' + r.nivel + '</span>' +
+          '<span class="pts">' + r.pontos + '</span>';
+        tabela.appendChild(li);
+      });
+      const fonteEl = $('[data-recordes-fonte]');
+      if (fonte === 'online') fonteEl.textContent = '🌐 Ranking online — vale pra turma toda!';
+      else if (fonte === 'offline') fonteEl.textContent = '📴 Sem internet agora: mostrando o ranking deste aparelho.';
+      else fonteEl.textContent = 'Buscando o ranking online…';
+      $('[data-voltar-intro]').hidden = !consulta;
+      $('[data-recordes-replay]').hidden = consulta;
+    }
+    function abrirRecordes(consulta, entrada) {
+      estado.fase = 'recordes';
+      const local = lerRanking();
+      const idxLocal = entrada ? indiceDe(local, entrada) : -1;
+      renderRecordes(local, idxLocal, consulta, 'buscando');
+      recordesModal.hidden = false;
+      setTimeout(() => (consulta ? $('[data-voltar-intro]') : $('[data-recordes-replay]')).focus(), 60);
+      const pedido = entrada ? enviarRankingOnline(entrada) : fetchRanking(null);
+      pedido.then((listaOnline) => {
+        if (estado.fase !== 'recordes') return;
+        if (listaOnline) {
+          salvarRanking(listaOnline);
+          renderRecordes(listaOnline, entrada ? indiceDe(listaOnline, entrada) : -1, consulta, 'online');
+        } else {
+          renderRecordes(local, idxLocal, consulta, 'offline');
+        }
+      });
+    }
+    document.querySelectorAll('[data-gravar-nome]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        abrirEntrada({
+          titulo: 'Digite seu nome, explorador!',
+          min: CFG.nomeMin, max: CFG.nomeMax,
+          aoConfirmar: (nome) => {
+            const entrada = {
+              nome: nome.toUpperCase(),
+              pontos: estado.pontos,
+              nivel: estado.nivelIdx + 1,
+              data: new Date().toISOString().slice(0, 10),
+            };
+            const local = lerRanking();
+            local.push(entrada);
+            local.sort((a, b) => b.pontos - a.pontos);
+            salvarRanking(local.slice(0, CFG.rankingMax));
+            somNivel();
+            abrirRecordes(false, entrada);
+          },
+          aoVoltar: () => { (estado.modo === 'vidas' && estado.vidas <= 0 ? fimModal : winModal).hidden = false; estado.fase = estado.vidas <= 0 ? 'fim' : 'vitoria'; },
+        });
+      });
+    });
+    $('[data-ver-recordes]').addEventListener('click', () => {
+      introModal.hidden = true;
+      abrirRecordes(true, null);
+    });
+    $('[data-voltar-intro]').addEventListener('click', () => {
+      recordesModal.hidden = true;
+      estado.fase = 'inicio';
+      introModal.hidden = false;
+      setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+    });
+    $('[data-recordes-replay]').addEventListener('click', () => {
+      recordesModal.hidden = true;
+      reiniciar();
+    });
+
+    // ===== SALA (multiplayer via polling) =====
+    async function apiSalas(body) {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 6000);
+      try {
+        const r = await fetch(API_SALAS, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: ctl.signal,
+        });
+        return await r.json();
+      } catch (_) {
+        return null;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    async function apiEstado() {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 6000);
+      try {
+        const r = await fetch(API_SALAS + '?codigo=' + sala.codigo + '&token=' + sala.token, { signal: ctl.signal });
+        return await r.json();
+      } catch (_) {
+        return null;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    function guardarSessao() {
+      try {
+        sessionStorage.setItem(SESSAO_SALA_KEY, JSON.stringify({
+          codigo: sala.codigo, token: sala.token, nome: sala.nome, telao: sala.telao,
+        }));
+      } catch (_) {}
+    }
+    function limparSessao() {
+      try { sessionStorage.removeItem(SESSAO_SALA_KEY); } catch (_) {}
+    }
+
+    function iniciarPoll() {
+      sala.pollAtivo = true;
+      loopPoll();
+    }
+    function pararPoll() {
+      sala.pollAtivo = false;
+      clearTimeout(sala.pollTimer);
+    }
+    async function loopPoll() {
+      if (!sala.pollAtivo) return;
+      const r = await apiEstado();
+      if (!sala.pollAtivo) return;
+      tratarEstadoSala(r);
+      const base = r && r.fase === 'lobby' ? CFG.salaPollLobbyMs : CFG.salaPollMs;
+      const jitter = (Math.random() * 2 - 1) * CFG.salaJitterMs;
+      sala.pollTimer = setTimeout(loopPoll, base + jitter);
+    }
+    function pollAgora() {
+      clearTimeout(sala.pollTimer);
+      sala.pollTimer = setTimeout(loopPoll, 150);
+    }
+
+    function tratarEstadoSala(r) {
+      if (!r) {
+        sala.falhas++;
+        conexaoEl.hidden = sala.falhas < 3;
+        return;
+      }
+      sala.falhas = 0;
+      conexaoEl.hidden = true;
+      if (r.erro) { sairDaSala('A sala fechou: ' + r.erro); return; }
+      switch (r.fase) {
+        case 'lobby': renderLobby(r); break;
+        case 'contagem': renderContagem(r); break;
+        case 'rodada': renderRodadaSala(r); break;
+        case 'revelacao': renderRevelacaoSala(r); break;
+        case 'fim': pararPoll(); renderPodio(r); break;
+      }
+    }
+
+    function entrarModoSala() {
+      estado.modo = 'sala';
+      estado.pontos = 0;
+      atualizarPlacar();
+      introModal.hidden = true;
+      $('[data-hud-nivel]').hidden = true;
+      $('[data-hud-rodada]').hidden = false;
+      $('[data-pause]').hidden = true;
+      vidasWrapEl.hidden = true;
+      $('[data-hud-nome]').textContent = sala.nome ? '🧑‍🚀 ' + sala.nome : '';
+      raizEl.classList.toggle('cb--telao', sala.telao);
+    }
+
+    function sairDaSala(msg) {
+      pararPoll();
+      limparSessao();
+      if (msg) mostrarToast(msg, 'info', 2600);
+      reiniciar();
+    }
+    document.querySelectorAll('[data-sala-sair]').forEach((b) => b.addEventListener('click', () => sairDaSala()));
+
+    // --- fluxo de criação/entrada ---
+    $('[data-abrir-sala]').addEventListener('click', () => {
+      initAudio();
+      if (actx && actx.state === 'suspended') actx.resume();
+      estado.fase = 'salaMenu';
+      introModal.hidden = true;
+      salaMenuModal.hidden = false;
+    });
+    $('[data-sala-menu-voltar]').addEventListener('click', () => {
+      salaMenuModal.hidden = true;
+      estado.fase = 'inicio';
+      introModal.hidden = false;
+    });
+    $('[data-sala-criar-btn]').addEventListener('click', () => {
+      estado.fase = 'salaCriar';
+      salaMenuModal.hidden = true;
+      salaCriarModal.hidden = false;
+    });
+    $('[data-sala-criar-voltar]').addEventListener('click', () => {
+      salaCriarModal.hidden = true;
+      estado.fase = 'salaMenu';
+      salaMenuModal.hidden = false;
+    });
+    // grupos de opções (chips exclusivos)
+    [['data-op-dificuldade', 'dificuldade', String], ['data-op-rodadas', 'rodadas', Number], ['data-op-tempo', 'rodadaMs', Number]].forEach(([attr, chave, conv]) => {
+      const grupo = $('[' + attr + ']');
+      grupo.querySelectorAll('.chip--op').forEach((c) => {
+        c.addEventListener('click', () => {
+          grupo.querySelectorAll('.chip--op').forEach((x) => x.classList.remove('chip--on'));
+          c.classList.add('chip--on');
+          sala.opcoes[chave] = conv(c.dataset.op);
+          somClique();
+        });
+      });
+    });
+    $('[data-sala-criar-ok]').addEventListener('click', () => {
+      sala.opcoes.telao = $('[data-op-telao]').checked;
+      salaCriarModal.hidden = true;
+      abrirEntrada({
+        titulo: sala.opcoes.telao ? 'Nome do professor' : 'Digite seu nome!',
+        min: CFG.nomeMin, max: CFG.nomeMax,
+        aoConfirmar: async (nome) => {
+          const r = await apiSalas({
+            acao: 'criar',
+            dificuldade: sala.opcoes.dificuldade,
+            rodadas: sala.opcoes.rodadas,
+            rodadaMs: sala.opcoes.rodadaMs,
+            nome,
+            telao: sala.opcoes.telao,
+          });
+          if (!r || r.erro) { mostrarToast(r && r.erro ? r.erro : 'Sem conexão — tente de novo.', 'info', 2600); reiniciar(); return; }
+          sala.codigo = r.codigo;
+          sala.token = r.token;
+          sala.nome = nome;
+          sala.telao = sala.opcoes.telao;
+          sala.souHost = true;
+          sala.rodadaVista = -1;
+          sala.revelacaoVista = -1;
+          guardarSessao();
+          entrarModoSala();
+          estado.fase = 'salaLobby';
+          salaLobbyModal.hidden = false;
+          iniciarPoll();
+        },
+        aoVoltar: () => { estado.fase = 'salaCriar'; salaCriarModal.hidden = false; },
+      });
+    });
+    $('[data-sala-entrar-btn]').addEventListener('click', () => {
+      salaMenuModal.hidden = true;
+      abrirEntrada({
+        titulo: 'Código da sala',
+        min: 4, max: 4,
+        aoConfirmar: (codigo) => {
+          abrirEntrada({
+            titulo: 'Digite seu nome!',
+            min: CFG.nomeMin, max: CFG.nomeMax,
+            aoConfirmar: async (nome) => {
+              const r = await apiSalas({ acao: 'entrar', codigo, nome });
+              if (!r || r.erro) {
+                mostrarToast(r && r.erro ? r.erro : 'Sem conexão — tente de novo.', 'info', 2600);
+                estado.fase = 'salaMenu';
+                salaMenuModal.hidden = false;
+                return;
+              }
+              sala.codigo = codigo;
+              sala.token = r.token;
+              sala.nome = nome;
+              sala.telao = false;
+              sala.souHost = false;
+              sala.rodadaVista = -1;
+              sala.revelacaoVista = -1;
+              guardarSessao();
+              entrarModoSala();
+              estado.fase = 'salaLobby';
+              salaLobbyModal.hidden = false;
+              iniciarPoll();
+            },
+            aoVoltar: () => { estado.fase = 'salaMenu'; salaMenuModal.hidden = false; },
+          });
+        },
+        aoVoltar: () => { estado.fase = 'salaMenu'; salaMenuModal.hidden = false; },
+      });
+    });
+    $('[data-sala-comecar]').addEventListener('click', async () => {
+      const r = await apiSalas({ acao: 'comecar', codigo: sala.codigo, token: sala.token });
+      if (r && r.erro) mostrarToast(r.erro, 'info', 2200);
+      pollAgora();
+    });
+
+    // --- renders por fase ---
+    function fecharModaisSala() {
+      salaLobbyModal.hidden = true;
+      salaFimModal.hidden = true;
+      contagemEl.hidden = true;
+    }
+
+    function renderLobby(r) {
+      estado.fase = 'salaLobby';
+      sala.souHost = r.souHost;
+      sala.cfgSala = r.cfg;
+      salaLobbyModal.hidden = false;
+      $('[data-lobby-codigo]').textContent = r.codigo;
+      $('[data-lobby-chame]').textContent = sala.souHost ? 'Chame a turma com o código:' : 'Você está dentro! Código:';
+      const tempos = { 15000: '15s', 20000: '20s', 30000: '30s' };
+      const dif = { facil: '😀 Fácil', medio: '🙂 Médio', dificil: '🤓 Difícil' };
+      $('[data-lobby-info]').textContent =
+        (dif[r.cfg.dificuldade] || r.cfg.dificuldade) + ' · ' + r.cfg.rodadas + ' rodadas · ' + (tempos[r.cfg.rodadaMs] || r.cfg.rodadaMs + 'ms') +
+        ' — ' + r.jogadores.length + (r.jogadores.length === 1 ? ' explorador' : ' exploradores');
+      const nomesEl = $('[data-lobby-nomes]');
+      nomesEl.innerHTML = '';
+      r.jogadores.forEach((n) => {
+        const s = document.createElement('span');
+        s.textContent = n;
+        nomesEl.appendChild(s);
+      });
+      const comecarBtn = $('[data-sala-comecar]');
+      comecarBtn.hidden = !sala.souHost;
+      comecarBtn.disabled = r.jogadores.length < 1;
+      if (!sala.souHost) anunciarUmaVez('lobby', 'Você entrou na sala. Espere o professor começar.');
+    }
+
+    const anunciados = new Set();
+    function anunciarUmaVez(chave, msg) {
+      if (anunciados.has(chave)) return;
+      anunciados.add(chave);
+      anunciar(msg);
+    }
+
+    let ultimaContagem = -1;
+    function renderContagem(r) {
+      fecharModaisSala();
+      estado.fase = 'salaContagem';
+      alvoEl.hidden = true;
+      contagemEl.hidden = false;
+      const n = Math.max(1, Math.ceil(r.restanteMs / 1000));
+      $('[data-contagem-num]').textContent = String(n);
+      if (n !== ultimaContagem) { ultimaContagem = n; somTic(); }
+      anunciarUmaVez('contagem', 'A partida vai começar!');
+    }
+
+    function setTimerBase(restanteMs, totalMs) {
+      sala.timerBase = { restanteMs, em: performance.now(), totalMs };
+      cancelAnimationFrame(sala.timerRaf);
+      const passo = () => {
+        if (!sala.timerBase) return;
+        const passado = performance.now() - sala.timerBase.em;
+        const resta = Math.max(0, sala.timerBase.restanteMs - passado);
+        tempoFillEl.style.transform = 'scaleX(' + (resta / sala.timerBase.totalMs) + ')';
+        if (resta > 0 && (estado.fase === 'salaRodada' || estado.fase === 'salaRevelacao')) {
+          sala.timerRaf = requestAnimationFrame(passo);
+        }
+      };
+      sala.timerRaf = requestAnimationFrame(passo);
+    }
+
+    function renderRodadaSala(r) {
+      if (sala.rodadaVista !== r.rodada) {
+        sala.rodadaVista = r.rodada;
+        sala.respondi = r.respondi;
+        fecharModaisSala();
+        limparPintura();
+        painelRevEl.hidden = true;
+        seloEl.hidden = r.respondi ? false : true;
+        estado.fase = 'salaRodada';
+        alvoEl.hidden = false;
+        zoomEl.hidden = sala.telao;
+        tempoWrapEl.hidden = false;
+        setBandeira(r.bandeira);
+        $('[data-rodada]').textContent = String(r.rodada + 1);
+        $('[data-rodada-total]').textContent = 'de ' + r.total;
+        const pais = POR_ISO.get(r.bandeira);
+        if (!sala.telao) {
+          irParaNome(sala.cfgSala && sala.cfgSala.dificuldade === 'facil' && pais ? pais.continente : 'mundo');
+        }
+        somLargada();
+        anunciar('Rodada ' + (r.rodada + 1) + ' de ' + r.total + '! Encontre o país da bandeira.');
+      }
+      estado.fase = sala.respondi || r.respondi ? estado.fase : 'salaRodada';
+      if (r.respondi && !sala.respondi) { sala.respondi = true; seloEl.hidden = false; }
+      setTimerBase(r.restanteMs, r.rodadaMs);
+      statusEl.textContent = 'Rodada ' + (r.rodada + 1) + ' de ' + r.total + ' · já responderam: ' + r.responderam + ' 🙋';
+    }
+
+    function enviarRespostaSala(iso) {
+      if (sala.respondi) return;
+      sala.respondi = true;
+      limparSelecao();
+      seloEl.hidden = false;
+      somClique();
+      anunciar('Resposta enviada! Espere a revelação.');
+      apiSalas({ acao: 'responder', codigo: sala.codigo, token: sala.token, rodada: sala.rodadaVista, iso })
+        .then(() => pollAgora());
+    }
+
+    function renderRevelacaoSala(r) {
+      setTimerBase(r.restanteMs, 7000);
+      if (sala.revelacaoVista === r.rodada) return;
+      sala.revelacaoVista = r.rodada;
+      estado.fase = 'salaRevelacao';
+      seloEl.hidden = true;
+      limparPintura();
+      const certoPais = POR_ISO.get(r.certo);
+      const certoEl = pathDe(r.certo);
+      if (certoEl) certoEl.classList.add('pais--acerto', 'pais--pisca');
+      const minhaEl = r.minha && !r.minha.acertou ? pathDe(r.minha.iso) : null;
+      if (minhaEl) minhaEl.classList.add('pais--erro');
+      if (!sala.telao && certoEl) irPara(vbDePaths(minhaEl ? [certoEl, minhaEl] : [certoEl]));
+
+      const minhaTxt = $('[data-rev-minha]');
+      if (sala.telao) {
+        minhaTxt.textContent = '🗺️ ' + (certoPais ? fraseEra(certoPais) : 'Era ' + r.certo.toUpperCase() + '!');
+      } else if (!r.minha) {
+        minhaTxt.textContent = '⏰ Tempo esgotado! ' + (certoPais ? fraseEra(certoPais) : '');
+        somErroJogo();
+      } else if (r.minha.acertou) {
+        minhaTxt.textContent = '🎉 Acertou! +' + r.minha.pontos + ' pontos';
+        somAcertoJogo();
+        confete();
+      } else {
+        minhaTxt.textContent = '💫 ' + (certoPais ? fraseEra(certoPais) : '');
+        somErroJogo();
+      }
+      $('[data-rev-stats]').textContent = r.acertaram + ' de ' + r.jogando + ' acertaram · seus pontos: ' + r.meusPontos;
+      estado.pontos = r.meusPontos;
+      atualizarPlacar();
+      const top = $('[data-rev-top]');
+      top.innerHTML = '';
+      (r.top5 || []).forEach((j, i) => {
+        const li = document.createElement('li');
+        li.innerHTML = '<span>' + ['🥇', '🥈', '🥉', '4º', '5º'][i] + '</span><span class="nome">' + j.nome + '</span><span class="pts">' + j.pontos + '</span>';
+        top.appendChild(li);
+      });
+      painelRevEl.hidden = false;
+      anunciar(minhaTxt.textContent + '. ' + r.acertaram + ' de ' + r.jogando + ' acertaram.');
+    }
+
+    function renderPodio(r) {
+      estado.fase = 'salaFim';
+      fecharModaisSala();
+      painelRevEl.hidden = true;
+      tempoWrapEl.hidden = true;
+      limparPintura();
+      limparSessao();
+      somNivel();
+      const podio = $('[data-podio]');
+      podio.innerHTML = '';
+      const medalhas = ['🥇', '🥈', '🥉'];
+      const ordem = [1, 0, 2]; // 2º, 1º, 3º (visual de pódio)
+      ordem.forEach((pos) => {
+        const j = r.placar[pos];
+        if (!j) return;
+        const d = document.createElement('div');
+        d.className = 'podio__lugar podio__lugar--' + (pos + 1);
+        d.innerHTML =
+          '<span class="podio__nome">' + j.nome + '</span>' +
+          '<span class="podio__pts">' + j.pontos + ' pts</span>' +
+          '<div class="podio__bloco">' + medalhas[pos] + '</div>';
+        podio.appendChild(d);
+      });
+      const lista = $('[data-podio-lista]');
+      lista.innerHTML = '';
+      r.placar.forEach((j, i) => {
+        const li = document.createElement('li');
+        li.innerHTML =
+          '<span class="pos">' + (i + 1) + 'º</span>' +
+          '<span class="nome">' + j.nome + '</span>' +
+          '<span class="det">' + j.acertos + ' acertos</span>' +
+          '<span class="pts">' + j.pontos + '</span>';
+        lista.appendChild(li);
+      });
+      salaFimModal.hidden = false;
+      const campeao = r.placar[0];
+      anunciar('Fim de jogo! ' + (campeao ? 'Campeão: ' + campeao.nome + ' com ' + campeao.pontos + ' pontos.' : ''));
+    }
+    $('[data-sala-denovo]').addEventListener('click', () => {
+      salaFimModal.hidden = true;
+      limparSessao();
+      pararPoll();
+      estado.fase = 'salaMenu';
+      salaMenuModal.hidden = false;
+    });
+    $('[data-sala-fim-menu]').addEventListener('click', () => sairDaSala());
+
+    // reconexão: recarregou a página no meio da partida? volta pra sala
+    (function tentarReconectar() {
+      let sessao = null;
+      try { sessao = JSON.parse(sessionStorage.getItem(SESSAO_SALA_KEY) || 'null'); } catch (_) {}
+      if (!sessao || !sessao.codigo) return;
+      sala.codigo = sessao.codigo;
+      sala.token = sessao.token;
+      sala.nome = sessao.nome;
+      sala.telao = !!sessao.telao;
+      apiEstado().then((r) => {
+        if (!r || r.erro || r.fase === 'fim') { limparSessao(); return; }
+        entrarModoSala();
+        iniciarPoll();
+      });
+    })();
+
+    // ===== Entrada: teclado físico =====
+    window.addEventListener('keydown', (e) => {
+      if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.key === 'Escape') {
+        if (estado.fase === 'jogando') { e.preventDefault(); pausar(); }
+        else if (estado.fase === 'pausado') { e.preventDefault(); continuarJogo(); }
+        return;
+      }
+      if (estado.fase === 'entrada') {
+        const l = e.key.length === 1 ? e.key.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '') : '';
+        if (/^[A-Z]$/.test(l)) { e.preventDefault(); digitarLetra(l); }
+        else if (e.key === 'Backspace') { e.preventDefault(); apagarLetra(); }
+        else if (e.key === 'Enter') {
+          if (document.activeElement && document.activeElement.tagName === 'BUTTON' && document.activeElement.dataset.teclaNome) return;
+          e.preventDefault();
+          confirmarEntrada();
+        }
+        return;
+      }
+    });
+
+    // Treino pausa ao trocar de aba; a sala segue no relógio do servidor
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && estado.fase === 'jogando') pausar();
+    });
+
+    // ===== Boot =====
+    document.body.classList.add('is-game');
+    irParaNome('mundo');
+    setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+  </script>
+</Layout>

@@ -1,0 +1,4 @@
+# Os JSONs das salas só saem pela API (salas.php) — nunca direto
+<FilesMatch "\.(json|lock|tmp.*)$">
+  Require all denied
+</FilesMatch>
