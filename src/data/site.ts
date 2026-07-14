@@ -10,10 +10,12 @@ export const site = {
   tagline: 'Faço jogos. E ensino crianças a fazer os delas.',
   // Parágrafo de apresentação do hero.
   descricao:
-    'Desenvolvo a franquia VMonsters em três engines ao mesmo tempo — Unity, Godot e Flutter — e dou aula de tecnologia pra crianças. Quando a aula precisa de um jogo que não existe, eu faço o jogo.',
+    'Sou programador e professor, e trabalho com desenvolvimento de jogos em geral. Hoje faço jogos educativos pras minhas aulas e toco a franquia VMonsters pela Red Studios.',
   // Usado em meta tags de SEO / compartilhamento.
   descricaoSEO:
-    'Manolo Neto: desenvolvedor de jogos (franquia VMonsters — Unity, Godot, Flutter) e professor. Jogos educativos gratuitos para sala de aula em omanoloneto.pro/class.',
+    'Manolo Neto: programador e professor. Desenvolvimento de jogos em geral — jogos educativos gratuitos para sala de aula e a franquia VMonsters pela Red Studios.',
+  // Link oficial da franquia VMonsters (Red Studios).
+  vmonstersUrl: 'https://vmonsters.com/',
   email: 'mano.afonso93@gmail.com',
   localizacao: 'Brasil',
 } as const;

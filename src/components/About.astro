@@ -1,5 +1,6 @@
 ---
 import Icon from './Icon.astro';
+import { site } from '../data/site';
 
 const stats = [
   { num: '4', label: 'jogos VMonsters em produção' },
@@ -13,12 +14,14 @@ const stats = [
       <p class="eyebrow">Sobre</p>
       <h2 class="section-title">Cada jogo pede uma engine. Cada turma pede um jogo.</h2>
       <p class="section-lead">
-        Sou o Manolo. Toco a <strong>VMonsters</strong>, uma família de jogos que vive em três
-        engines ao mesmo tempo — futebol de botão em Unity, fazendinha em Godot, coleção de
-        monstros em Flutter. Design, código, arte e publicação: tudo passa pela minha mão.
+        Sou o Manolo — <strong>programador e professor</strong>. Trabalho com desenvolvimento de
+        jogos em geral: design, código, arte e publicação passam pela minha mão. Hoje toco a
+        franquia <strong><a href={site.vmonstersUrl} target="_blank" rel="noopener">VMonsters</a></strong>
+        pela <strong>Red Studios</strong>, uma família de jogos que vive em três engines ao mesmo
+        tempo — futebol de botão em Unity, fazendinha em Godot, coleção de monstros em Flutter.
       </p>
       <p class="section-lead">
-        Também sou professor. Na minha sala, tecnologia não é matéria de decorar: as crianças
+        Também dou aula. Na minha sala, tecnologia não é matéria de decorar: as crianças
         aprendem hardware e software <strong>jogando um jogo que eu fiz pra elas</strong>. Quando
         a aula precisa de uma ferramenta que não existe, eu volto pro teclado e faço a ferramenta.
       </p>
@@ -52,6 +55,14 @@ const stats = [
   }
   .about-text .section-lead + .section-lead { margin-top: 16px; }
   .about-text strong { color: var(--text); font-weight: 600; }
+  .about-text a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+    transition: opacity 0.2s var(--ease);
+  }
+  .about-text a:hover { opacity: 0.75; }
 
   .about-points {
     list-style: none;
