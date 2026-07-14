@@ -106,6 +106,9 @@ export interface Mira {
 export interface Edicao {
   quebrar(): boolean;
   colocar(): boolean;
+  passo(dt: number): void; // relógio das mudas plantadas
+  iniciarMudas(): void; // re-arma o relógio após carregar um save
+  crescerMudasAgora(): void; // teste: adianta tudo
   executarModo(): void; // touch: quebra ou coloca conforme o modo
 }
 
@@ -127,7 +130,8 @@ export interface UI {
   selecionarSlot(i: number, anunciar: boolean): void;
   atualizarContagens(): void;
   montarCraft(): void;
-  alternarCraft(abrir?: boolean): void;
+  montarInventario(): void;
+  alternarCraft(abrir?: boolean): void; // abre/fecha o painel do inventário
   atualizarModo(): void;
   mostrarSalvando(estado: 'salvando' | 'salvo' | 'erro' | 'nada'): void;
 }

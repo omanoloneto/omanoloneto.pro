@@ -11,8 +11,11 @@ export interface Bloco {
   solido: boolean; // colide com o jogador
   render: RenderBloco;
   // sobrevivência: qual ITEM cai ao quebrar (estilo Minecraft:
-  // pedra → pedregulho, grama → terra). Ausente = dropa ele mesmo.
+  // pedra → pedregulho, grama → terra). Ausente = dropa ele mesmo;
+  // 0 = não dropa nada.
   drop?: number;
+  // drop de sorte: chance de cair um item EXTRA (folhas → muda de árvore)
+  dropSorte?: { id: number; chance: number };
 }
 
 export const blocos: Bloco[] = [
@@ -23,8 +26,9 @@ export const blocos: Bloco[] = [
   { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo' },
   { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo' },
   { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo' },
-  // folhas opacas de propósito (estilo "fast graphics"): cull entre vizinhas, zero blend
-  { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo' },
+  // folhas opacas de propósito (estilo "fast graphics"): cull entre vizinhas, zero blend.
+  // Não dropam folha: às vezes cai uma MUDA (planta e nasce árvore!)
+  { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 0, dropSorte: { id: 15, chance: 0.3 } },
   { id: 8, nome: 'vidro', tiles: [9, 9, 9], solido: true, render: 'recorte' },
   { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo' },
   { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo' },
@@ -33,10 +37,12 @@ export const blocos: Bloco[] = [
   // água só existe no mundo (não colocável no v1 — física de água espalhando é armadilha)
   { id: 13, nome: 'água', tiles: [14, 14, 14], solido: false, render: 'agua' },
   { id: 14, nome: 'rocha-mãe', tiles: [15, 15, 15], solido: true, render: 'cubo' },
+  // muda: cai das folhas, planta em grama/terra e vira árvore
+  { id: 15, nome: 'muda de árvore', tiles: [16, 16, 16], solido: false, render: 'cruz' },
 ];
 
-// ordem dos 12 slots da hotbar (ids de blocos colocáveis)
-export const hotbar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+// ordem dos slots da hotbar (ids de blocos colocáveis)
+export const hotbar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15];
 
 // craft simples da sobrevivência: toca na receita e transforma
 // (sem mesa, sem grade — proporcional a criança de 6 anos)
@@ -88,6 +94,8 @@ export const config = {
     subpassoMax: 0.45, // anti-tunneling
   },
   jogador: { largura: 0.6, altura: 1.8, olho: 1.62, alcance: 6 },
+  // muda plantada vira árvore depois de um tempinho (em tempo de simulação)
+  crescimento: { minMs: 20000, maxMs: 40000 },
   salvar: {
     api: '/class/api/mundos.php',
     debounceMs: 20000, // auto-save 20s após o último bloco editado

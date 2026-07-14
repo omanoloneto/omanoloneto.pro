@@ -4,8 +4,10 @@ import * as THREE from 'three';
 import type { Contexto, Textura } from './tipos';
 
 const TILE = 16;
-const GRADE = 4;
+const GRADE = 4;      // colunas
+const LINHAS = 8;     // linhas (com folga pra novos tiles)
 const LADO = TILE * GRADE; // 64
+const ALTO = TILE * LINHAS; // 128
 
 // rng determinístico pro ruído dos tiles (mesma cara em todo mundo)
 function mulberry32(seed: number) {
@@ -21,7 +23,7 @@ function mulberry32(seed: number) {
 export function criarTextura(_ctx: Contexto): Textura {
   const canvas = document.createElement('canvas');
   canvas.width = LADO;
-  canvas.height = LADO;
+  canvas.height = ALTO;
   const g = canvas.getContext('2d')!;
   const rng = mulberry32(20260714);
 
@@ -141,6 +143,17 @@ export function criarTextura(_ctx: Contexto): Textura {
       g.fillRect(ox + Math.floor(rng() * 13), oy + Math.floor(rng() * 13), 2, 2);
     }
   }
+  // --- 16 muda de árvore (cruz, fundo transparente) ---
+  {
+    const ox = (16 % GRADE) * TILE;
+    const oy = Math.floor(16 / GRADE) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    for (let y = 9; y < 15; y++) px(ox, oy, 8, y, '#6e5537'); // caulinho
+    for (const [x, y] of [[8, 4], [7, 5], [9, 5], [8, 6], [6, 6], [10, 6], [7, 7], [9, 7], [8, 8], [8, 3], [6, 5], [10, 5]] as const) {
+      px(ox, oy, x, y, '#3f8f37');
+    }
+    px(ox, oy, 7, 4, '#57a24c'); px(ox, oy, 9, 6, '#57a24c');
+  }
 
   const atlas = new THREE.CanvasTexture(canvas);
   atlas.magFilter = THREE.NearestFilter;
@@ -150,15 +163,16 @@ export function criarTextura(_ctx: Contexto): Textura {
 
   // meio texel de inset: NearestFilter não faz bleed, mas a borda exata
   // entre tiles pode amostrar o vizinho com arredondamento infeliz
-  const inset = 0.5 / LADO;
+  const insetU = 0.5 / LADO;
+  const insetV = 0.5 / ALTO;
   function uv(tile: number): [number, number, number, number] {
     const tx = tile % GRADE;
     const ty = Math.floor(tile / GRADE);
     // canvas Y cresce pra baixo; UV do three cresce pra cima
-    const u0 = tx / GRADE + inset;
-    const v1 = 1 - ty / GRADE - inset;
-    const u1 = (tx + 1) / GRADE - inset;
-    const v0 = 1 - (ty + 1) / GRADE + inset;
+    const u0 = tx / GRADE + insetU;
+    const v1 = 1 - ty / LINHAS - insetV;
+    const u1 = (tx + 1) / GRADE - insetU;
+    const v0 = 1 - (ty + 1) / LINHAS + insetV;
     return [u0, v0, u1, v1];
   }
 

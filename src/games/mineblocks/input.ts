@@ -26,6 +26,10 @@ export function ligarInput(ctx: Contexto) {
       // com pointer lock o browser já solta o lock no ESC e o
       // pointerlockchange pausa; este caminho cobre o touch/sem-lock
       if (estado.fase === 'pausado') { e.preventDefault(); ctx.fluxo.continuarJogo(); }
+      else if (estado.fase === 'jogando' && !ctx.ui.els.invPainel.hidden) {
+        e.preventDefault();
+        alternarInventario();
+      }
       return;
     }
     if (estado.fase !== 'jogando' || e.repeat) return;
@@ -43,7 +47,8 @@ export function ligarInput(ctx: Contexto) {
       return;
     }
     if (/^[1-9]$/.test(e.key)) ctx.ui.selecionarSlot(+e.key - 1, true);
-    if (e.key === 'c' || e.key === 'C') ctx.ui.alternarCraft();
+    // E = inventário (igual Minecraft); C também, de "craft"
+    if (/^[eEcC]$/.test(e.key)) { e.preventDefault(); alternarInventario(); }
   });
   window.addEventListener('keyup', (e) => {
     if (e.key === ' ') input.pulo = false;
@@ -82,9 +87,24 @@ export function ligarInput(ctx: Contexto) {
     if (!travado) {
       pararRepetir();
       // ESC nativo saiu do lock no meio do jogo → pausa amigável
-      if (estado.fase === 'jogando' && !modoTouch) ctx.fluxo.pausar();
+      // (menos com o inventário aberto: soltar o mouse ali é de propósito)
+      if (estado.fase === 'jogando' && !modoTouch && ctx.ui.els.invPainel.hidden) ctx.fluxo.pausar();
     }
   });
+
+  // inventário (tecla E / botão 🎒): abre soltando o mouse, fecha re-travando
+  function alternarInventario() {
+    if (estado.fase !== 'jogando') return;
+    const abrindo = ctx.ui.els.invPainel.hidden;
+    ctx.ui.alternarCraft(abrindo);
+    if (abrindo) {
+      if (travado) document.exitPointerLock();
+    } else if (!modoTouch) {
+      pedirLock();
+    }
+    ctx.audio.somUI();
+    ctx.ui.anunciar(abrindo ? 'Inventário aberto.' : 'Inventário fechado.');
+  }
   document.addEventListener('mousemove', (e) => {
     if (!travado || estado.fase !== 'jogando') return;
     ctx.fluxo.aoPrimeiroInput();
@@ -231,6 +251,7 @@ export function ligarInput(ctx: Contexto) {
       if (travado) document.exitPointerLock();
     },
     pedirLock,
+    alternarInventario,
     emModoTouch: () => modoTouch,
   };
 }

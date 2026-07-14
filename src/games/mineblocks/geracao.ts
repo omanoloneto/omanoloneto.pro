@@ -43,6 +43,27 @@ function relevo(x: number, z: number, seed: number, escala: number): number {
   );
 }
 
+// cria uma árvore com a base do tronco em (x, h+1, z) — usada na geração
+// E no crescimento das mudas plantadas. Folhas só ocupam células de ar.
+export function brotarArvore(ctx: Contexto, x: number, h: number, z: number, rng: () => number) {
+  const { mundo } = ctx;
+  const alt = 4 + Math.floor(rng() * 2);
+  for (let y = 1; y <= alt; y++) mundo.definir(x, h + y, z, 5);
+  // copa: caixa 5×5 em 2 camadas (cantos ralos) + cruz no topo
+  for (const dy of [alt - 1, alt]) {
+    for (let dx = -2; dx <= 2; dx++) {
+      for (let dz = -2; dz <= 2; dz++) {
+        if (dx === 0 && dz === 0 && dy === alt - 1) continue; // tronco
+        if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && rng() > 0.4) continue;
+        if (mundo.obter(x + dx, h + dy + 1, z + dz) === 0) mundo.definir(x + dx, h + dy + 1, z + dz, 7);
+      }
+    }
+  }
+  for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    if (mundo.obter(x + dx, h + alt + 2, z + dz) === 0) mundo.definir(x + dx, h + alt + 2, z + dz, 7);
+  }
+}
+
 export function gerarMundo(ctx: Contexto, seed: number) {
   const { mundo, cfg } = ctx;
   const { SX, SZ, SY, nivelAgua } = cfg.mundo;
@@ -98,21 +119,7 @@ export function gerarMundo(ctx: Contexto, seed: number) {
     if (Math.abs(x - SX / 2) < 4 && Math.abs(z - SZ / 2) < 4) continue;
     if (copas.some(([cx, cz]) => Math.abs(cx - x) < 5 && Math.abs(cz - z) < 5)) continue;
     copas.push([x, z]);
-    const alt = 4 + Math.floor(rng() * 2);
-    for (let y = 1; y <= alt; y++) mundo.definir(x, h + y, z, 5);
-    // copa: caixa 5×5 em 2 camadas (cantos ralos) + cruz no topo
-    for (const dy of [alt - 1, alt]) {
-      for (let dx = -2; dx <= 2; dx++) {
-        for (let dz = -2; dz <= 2; dz++) {
-          if (dx === 0 && dz === 0 && dy === alt - 1) continue; // tronco
-          if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && rng() > 0.4) continue;
-          if (mundo.obter(x + dx, h + dy + 1, z + dz) === 0) mundo.definir(x + dx, h + dy + 1, z + dz, 7);
-        }
-      }
-    }
-    for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-      if (mundo.obter(x + dx, h + alt + 2, z + dz) === 0) mundo.definir(x + dx, h + alt + 2, z + dz, 7);
-    }
+    brotarArvore(ctx, x, h, z, rng);
   }
 
   // ----- flores em grama livre -----

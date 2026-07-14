@@ -89,6 +89,7 @@ export function iniciarJogo() {
 
   const { ui, salvar } = ctx;
   ui.montarCraft();
+  ui.montarInventario();
   ui.montarHotbar();
 
   // craft simples: tocou na receita, transformou
@@ -111,10 +112,8 @@ export function iniciarJogo() {
     ui.anunciar('Fabricou ' + rec.ganha + ' ' + para.nome + '!');
     salvar.agendar();
   });
-  ui.els.craftBtn.addEventListener('click', () => {
-    ui.alternarCraft();
-    ctx.audio.somUI();
-  });
+  ui.els.craftBtn.addEventListener('click', () => inputRefs.alternarInventario());
+  (document.querySelector('[data-inv-fechar]') as HTMLElement).addEventListener('click', () => inputRefs.alternarInventario());
 
   // ----- medir/resize -----
   function medir() {
@@ -168,6 +167,7 @@ export function iniciarJogo() {
     }
 
     ctx.fisica.passo(dt);
+    ctx.edicao.passo(dt); // relógio das mudas plantadas
     ctx.camera3.passo();
     ctx.mira.passo();
     ceu.passo(dt);
@@ -256,6 +256,7 @@ export function iniciarJogo() {
         jogador.pitch = 0;
       }
       ctx.malha.construirTudo();
+      ctx.edicao.iniciarMudas(); // mudas do save voltam pro relógio
       if (!carregado) ctx.fisica.assentar();
       fluxo.entrarNoMundo();
       if (!carregado) salvar.salvarAgora('auto'); // mundo novo já nasce salvo
@@ -354,6 +355,8 @@ export function iniciarJogo() {
     jogador, estado, input,
     receitas: dados.receitas,
     fabricar: (i: number) => (ui.els.craftPainel.querySelectorAll('.receita')[i] as HTMLElement)?.click(),
+    crescerMudas: () => ctx.edicao.crescerMudasAgora(),
+    iniciarMudas: () => ctx.edicao.iniciarMudas(),
     obter: ctx.mundo.obter,
     definir: ctx.mundo.definir,
     quebrar: () => ctx.edicao.quebrar(),
