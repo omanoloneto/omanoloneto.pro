@@ -17,9 +17,9 @@ export const mapa: string[] = [
   'HHTP.p',
   'HHPP.P',
   'cDT.Pz',
-  'Has.PP',
+  'Ha.PsP',
   'HH.PPe',
-  'Hi.PTP',
+  'iH.PTP',
 ];
 
 // BR-101: avenida diagonal cruzando a cidade (como na foto do Maps).
@@ -94,6 +94,16 @@ export const config = {
   nomeMin: 2,
   nomeMax: 6,
   somLigadoInicial: true,
+  // ----- tráfego -----
+  trafego: {
+    carrosBR: 5,        // decorativos, em cima da rodovia
+    velBRMin: 8,
+    velBRMax: 12,
+    carrosCidade: 4,    // só no modo Normal — bater neles custa 1 coração
+    velCidade: 4.5,
+    raioCarro: 1.1,
+    invencivelMs: 2000, // sem dano duplo logo após uma batida
+  },
 } as const;
 
 // Skins do caminhão (cabine, baú) — troca a cada 2 níveis

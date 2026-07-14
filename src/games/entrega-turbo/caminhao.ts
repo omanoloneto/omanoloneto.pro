@@ -65,15 +65,18 @@ export function criarCaminhao(ctx: Contexto): Caminhao {
     grupo.add(farol);
   });
 
-  // ----- baú branco, mais alto que a cabine -----
-  const bau = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.6, 3.8), bauMat);
-  bau.position.set(0, 1.85, -1.2);
-  // tampa do teto e moldura inferior (cinza)
-  const tampa = new THREE.Mesh(new THREE.BoxGeometry(2.46, 0.1, 3.86), cinzaMat);
-  tampa.position.set(0, 3.2, -1.2);
-  const moldura = new THREE.Mesh(new THREE.BoxGeometry(2.44, 0.28, 3.84), cinzaMat);
-  moldura.position.set(0, 0.68, -1.2);
-  grupo.add(bau, tampa, moldura);
+  // ----- carroceria ABERTA: plataforma + guardas baixas (sem baú) -----
+  const plataforma = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.22, 3.7), bauMat);
+  plataforma.position.set(0, 0.94, -1.15);
+  grupo.add(plataforma);
+  ([-1, 1] as const).forEach((lado) => {
+    const guardaLateral = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.5, 3.7), bauMat);
+    guardaLateral.position.set(lado * 1.14, 1.3, -1.15);
+    grupo.add(guardaLateral);
+  });
+  const guardaTraseira = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.5, 0.12), bauMat);
+  guardaTraseira.position.set(0, 1.3, -2.94);
+  grupo.add(guardaTraseira);
 
   // traseira: faixas refletivas vermelhas/brancas (textura canvas)
   const faixasCanvas = document.createElement('canvas');
@@ -97,10 +100,10 @@ export function criarCaminhao(ctx: Contexto): Caminhao {
   const faixasTex = new THREE.CanvasTexture(faixasCanvas);
   faixasTex.colorSpace = THREE.SRGBColorSpace;
   const faixas = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.3, 0.45),
+    new THREE.PlaneGeometry(2.3, 0.34),
     new THREE.MeshBasicMaterial({ map: faixasTex })
   );
-  faixas.position.set(0, 1.0, -3.11);
+  faixas.position.set(0, 1.3, -3.01);
   faixas.rotation.y = Math.PI;
   grupo.add(faixas);
 
@@ -167,10 +170,11 @@ export function criarCaminhao(ctx: Contexto): Caminhao {
   return {
     grupo,
     atualizarCaixasVisiveis(n) {
+      // caixas visíveis DENTRO da carroceria aberta, em fila no leito
       const m = new THREE.Matrix4();
       caixaMesh.count = Math.min(3, n);
       for (let i = 0; i < caixaMesh.count; i++) {
-        m.makeTranslation((i % 2) * 1 - 0.5, 3.7 + Math.floor(i / 2) * 0.95, -1.2 - (i % 2) * 0.3);
+        m.makeTranslation((i % 2) * 1.1 - 0.55, 1.5, -0.45 - i * 0.92);
         caixaMesh.setMatrixAt(i, m);
       }
       caixaMesh.instanceMatrix.needsUpdate = true;

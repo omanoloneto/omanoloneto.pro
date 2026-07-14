@@ -36,11 +36,11 @@ export function criarMundo(ctx: Contexto): Mundo {
   const pontoAvenida = (t: number): [number, number] => [ax1 + avDirX * t, az1 + avDirZ * t];
 
   // vãos de viaduto: onde a linha da BR cruza as ruas da grade
-  const ALT_BR = 4.6;        // altura da pista elevada
-  const TALUDE_BASE = 9;     // meia-largura da base do aterro
-  // vão de 13m: atravessar 20m de aterro numa rua leste-oeste varre ~9.3m
-  // do parâmetro t da BR (ela é quase paralela ao norte-sul) + folga
-  const MEIO_VAO = 6.5;
+  const ALT_BR = 9;          // altura da pista elevada (rodovia alta de verdade)
+  const TALUDE_BASE = 12.5;  // meia-largura da base (inclinação ~igual, altura 2×)
+  // vão de 17m: com a base de 12.5m, atravessar o aterro numa rua
+  // leste-oeste varre ~12.4m do parâmetro t da BR + folga de manobra
+  const MEIO_VAO = 8.5;
   const tsVaos: number[] = [];
   for (let i = 0; i <= N; i++) {
     const rua = ruaCentro(i);
@@ -172,7 +172,7 @@ export function criarMundo(ctx: Contexto): Mundo {
       const cz = loteCentro(r);
       if (sim === '.') continue;
       // lote atravessado pela BR-101: não constrói (a avenida é dirigível)
-      if (naFaixaDaAvenida(cx, cz, 12) && sim !== 'D' && !porSimbolo.get(sim)) continue;
+      if (naFaixaDaAvenida(cx, cz, TALUDE_BASE + 4.5) && sim !== 'D' && !porSimbolo.get(sim)) continue;
       if (sim === 'T') {
         const nArv = 4 + ((r * 5 + q) % 3);
         for (let a = 0; a < nArv; a++) {
@@ -289,11 +289,11 @@ export function criarMundo(ctx: Contexto): Mundo {
       const b = tv + MEIO_VAO;
       if (a > cursor) geosConstrucoes.push(aterro(cursor, a)); // extrude já é não-indexado
       // tabuleiro do viaduto sobre o vão + 4 pilares fora da faixa da rua
-      geosConstrucoes.push(caixaBR(avenida.largura + 1, 0.9, MEIO_VAO * 2 + 1.6, tv, 0, ALT_BR - 0.45, CONCRETO));
+      geosConstrucoes.push(caixaBR(avenida.largura + 1, 1.2, MEIO_VAO * 2 + 1.6, tv, 0, ALT_BR - 0.6, CONCRETO));
       ([-1, 1] as const).forEach((ladoT) => {
         ([-1, 1] as const).forEach((ladoP) => {
           const tp = tv + ladoT * (MEIO_VAO - 0.8);
-          geosConstrucoes.push(caixaBR(1.1, ALT_BR - 0.9, 1.1, tp, ladoP * 4.6, (ALT_BR - 0.9) / 2, CONCRETO));
+          geosConstrucoes.push(caixaBR(1.4, ALT_BR - 1.2, 1.4, tp, ladoP * 4.6, (ALT_BR - 1.2) / 2, CONCRETO));
           const [pxp, pzp] = pontoAvenida(tp);
           const pcx = pxp + perpX * ladoP * 4.6;
           const pcz = pzp + perpZ * ladoP * 4.6;
@@ -495,8 +495,34 @@ export function criarMundo(ctx: Contexto): Mundo {
     const len = Math.hypot(nx, nz) || 0.001;
     nx /= len;
     nz /= len;
-    return { nx, nz, pen: TALUDE_BASE + raio - d };
+    // pen com teto: quem "nasce" fundo no aterro (ex.: saiu do vão dirigindo
+    // no eixo da BR) é empurrado pra fora em vários frames, sem teleporte
+    return { nx, nz, pen: Math.min(TALUDE_BASE + raio - d, 0.45) };
   }
 
-  return { zonas, aabbs, N, MEIO, loteCentro, ruaCentro, noMaisProximo, dentroDePredio, colisaoAvenida };
+  // volume de terra do talude (pro anti-clip da câmera): topo em ALT_BR na
+  // pista, descendo linear até 0 na borda da base
+  function dentroDeAterro(x: number, z: number, y: number) {
+    const d = distAvenida(x, z);
+    if (d > TALUDE_BASE) return false;
+    if (pertoDeVao(projAvenida(x, z), -0.5)) return false;
+    const topo = Math.min(ALT_BR, (ALT_BR * (TALUDE_BASE - d)) / (TALUDE_BASE - avenida.largura / 2));
+    return y < topo;
+  }
+
+  function sobViaduto(x: number, z: number) {
+    return distAvenida(x, z) < avenida.largura / 2 + 2 && pertoDeVao(projAvenida(x, z), 0);
+  }
+
+  return {
+    zonas, aabbs, N, MEIO, loteCentro, ruaCentro, noMaisProximo, dentroDePredio, colisaoAvenida,
+    dentroDeAterro, sobViaduto,
+    avenidaInfo: {
+      altura: ALT_BR,
+      comprimento: avLen,
+      dir: [avDirX, avDirZ],
+      perp: [perpX, perpZ],
+      ponto: pontoAvenida,
+    },
+  };
 }

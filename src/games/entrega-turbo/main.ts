@@ -11,6 +11,7 @@ import { criarFisica } from './fisica';
 import { criarCamera } from './camera';
 import { criarGuia } from './guia';
 import { criarPedidos } from './pedidos';
+import { criarTrafego } from './trafego';
 import { criarRanking } from './ranking';
 import { ligarInput } from './input';
 
@@ -85,8 +86,10 @@ export function iniciarJogo() {
   ctx.camera3 = criarCamera(ctx);
   ctx.guia = criarGuia(ctx);
   ctx.pedidos = criarPedidos(ctx);
+  ctx.trafego = criarTrafego(ctx);
+  ctx.trafego.reset(false); // carros da BR já animam de pano de fundo
 
-  const { ui, audio, mundo, caminhao, guia, pedidos, cfg } = ctx;
+  const { ui, audio, mundo, caminhao, guia, pedidos, trafego, cfg } = ctx;
 
   // ----- medir/resize (com re-render se o loop está parado) -----
   function medir() {
@@ -142,6 +145,7 @@ export function iniciarJogo() {
     }
 
     ctx.fisica.passo(dt);
+    trafego.passo(dt);
     pedidos.tentarZona(dt);
     ctx.camera3.passo(dt);
     audio.atualizarMotor();
@@ -231,6 +235,7 @@ export function iniciarJogo() {
       ui.els.controles.hidden = false;
       ui.els.fantasma.hidden = false;
       ui.els.fantasmaTxt.textContent = '▲ acelera · ◀ ▶ vira';
+      trafego.reset(modo === 'normal'); // carros na cidade só no Normal
       medir();
       ctx.camera3.iniciarFlyover();
       pedidos.novoPedido();
@@ -296,6 +301,7 @@ export function iniciarJogo() {
       ui.els.vidasWrap.hidden = true;
       ui.els.resgate.hidden = true;
       guia.esconderTudo();
+      trafego.reset(false);
       rotaAlvoKey = '';
       ui.els.destinoAtual.textContent = '';
       ui.els.introModal.hidden = false;
@@ -361,6 +367,7 @@ export function iniciarJogo() {
   // handle de depuração/testes (posição, estado e zonas — sem dados sensíveis)
   (window as any).__et = {
     truck, estado, input, zonas: mundo.zonas, renderer, scene, camera,
+    trafego: ctx.trafego, avenidaInfo: mundo.avenidaInfo,
     render: () => renderer.render(scene, camera),
   };
 }

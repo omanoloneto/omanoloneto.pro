@@ -18,19 +18,26 @@ export function criarCamera(ctx: Contexto) {
       const fwdX = Math.sin(truck.heading);
       const fwdZ = Math.cos(truck.heading);
       camAlvo.set(truck.x - fwdX * 10, 6, truck.z - fwdZ * 10);
-      // câmera cairia dentro de um prédio? aproxima do caminhão e sobe
-      if (mundo.dentroDePredio(camAlvo.x, camAlvo.z)) {
+      // câmera cairia dentro de prédio ou da terra do talude? aproxima do
+      // caminhão e sobe — mas sem subir se estamos embaixo do viaduto, senão
+      // o tabuleiro tapa o caminhão
+      const solido = (x: number, z: number, y: number) =>
+        mundo.dentroDePredio(x, z) || mundo.dentroDeAterro(x, z, y);
+      const sobDeck = mundo.sobViaduto(truck.x, truck.z);
+      if (solido(camAlvo.x, camAlvo.z, camAlvo.y)) {
         let achou = false;
         for (let t = 0.87; t >= 0.3; t -= 0.14) {
           const x = truck.x - fwdX * 10 * t;
           const z = truck.z - fwdZ * 10 * t;
-          if (!mundo.dentroDePredio(x, z)) {
-            camAlvo.set(x, 6 + (1 - t) * 11, z);
+          const y = sobDeck ? 6 : 6 + (1 - t) * 11;
+          if (!solido(x, z, y)) {
+            camAlvo.set(x, y, z);
             achou = true;
             break;
           }
         }
-        if (!achou) camAlvo.set(truck.x, 17, truck.z); // vista de cima como último recurso
+        // último recurso: de cima (ou colado no caminhão, se há laje em cima)
+        if (!achou) camAlvo.set(truck.x, sobDeck ? 6 : 17, truck.z);
       }
       camOlhar.set(truck.x + fwdX * 3, 1.5, truck.z + fwdZ * 3);
       const agora = performance.now();

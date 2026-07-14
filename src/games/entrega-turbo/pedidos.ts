@@ -141,7 +141,7 @@ export function criarPedidos(ctx: Contexto): Pedidos {
         extra += Math.min(cfg.bonusTempoTeto, Math.round((restMs / 1000) * cfg.bonusTempoPorS));
       } else {
         // prazo estourado: a entrega VALE (pontos base já dados), perde só bônus e 1 coração
-        estado.vidas--;
+        estado.vidas = Math.max(0, estado.vidas - 1);
         ui.atualizarVidas(false);
         audio.somUfa();
         ui.mostrarToast('⏰ Ufa, chegou! Mas o relógio estourou…', 'info', 2200);
@@ -161,6 +161,7 @@ export function criarPedidos(ctx: Contexto): Pedidos {
     ui.els.destinoAtual.textContent = '';
     if (estado.modo === 'normal' && estado.vidas <= 0) {
       // timer guardado + guarda de fase: não atravessa recomeço/partida nova
+      clearTimeout(respiroTimer); // nenhum "Pedido!" nasce na janela do fim
       clearTimeout(fimTimer);
       fimTimer = window.setTimeout(() => {
         if (estado.fase !== 'jogando' && estado.fase !== 'pausado') return;
@@ -183,7 +184,9 @@ export function criarPedidos(ctx: Contexto): Pedidos {
   function agendarRespiro(ms: number) {
     clearTimeout(respiroTimer);
     respiroTimer = window.setTimeout(() => {
-      if (ctx.estado.fase === 'jogando' && !ctx.estado.pedido) novoPedido();
+      // no Normal, vidas zeradas = fim já agendado: nenhum pedido novo nasce
+      const vivo = ctx.estado.modo !== 'normal' || ctx.estado.vidas > 0;
+      if (ctx.estado.fase === 'jogando' && !ctx.estado.pedido && vivo) novoPedido();
     }, ms);
   }
 
@@ -215,12 +218,34 @@ export function criarPedidos(ctx: Contexto): Pedidos {
     }
   }
 
+  function bateuEmCarro() {
+    const { estado, ui, audio } = ctx;
+    // vidas <= 0: fim já agendado, nada de dano extra na janela pós-morte
+    if (estado.modo !== 'normal' || estado.fase !== 'jogando' || estado.vidas <= 0) return;
+    if (estado.pedido) estado.pedido.bateu = true;
+    audio.somBatida();
+    estado.vidas--;
+    ui.atualizarVidas(false);
+    ui.mostrarToast('💥 Bateu no carro! Cuidado no trânsito!', 'info', 2200);
+    ui.anunciar('Você bateu num carro e perdeu um coração! Vidas: ' + estado.vidas + '.');
+    if (estado.vidas <= 0) {
+      clearTimeout(respiroTimer);
+      clearTimeout(fimTimer);
+      fimTimer = window.setTimeout(() => {
+        if (ctx.estado.fase !== 'jogando' && ctx.estado.fase !== 'pausado') return;
+        ui.els.pausaModal.hidden = true;
+        ctx.fluxo.fimDeTurno();
+      }, 900);
+    }
+  }
+
   return {
     novoPedido,
     tentarZona,
     alvoAtual,
     prazoRestanteMs,
     agendarRespiro,
+    bateuEmCarro,
     limparTimers() {
       clearTimeout(fimTimer);
       clearTimeout(respiroTimer);

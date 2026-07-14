@@ -83,6 +83,15 @@ export interface Mundo {
   noMaisProximo(x: number, z: number): [number, number];
   dentroDePredio(x: number, z: number): boolean;
   colisaoAvenida(x: number, z: number, raio: number): { nx: number; nz: number; pen: number } | null;
+  dentroDeAterro(x: number, z: number, y: number): boolean;
+  sobViaduto(x: number, z: number): boolean;
+  avenidaInfo: {
+    altura: number;
+    comprimento: number;
+    dir: [number, number];
+    perp: [number, number];
+    ponto(t: number): [number, number];
+  };
 }
 
 export interface Caminhao {
@@ -112,6 +121,13 @@ export interface Pedidos {
   prazoRestanteMs(): number;
   limparTimers(): void;
   agendarRespiro(ms: number): void;
+  bateuEmCarro(): void;
+}
+
+export interface Trafego {
+  passo(dt: number): void;
+  reset(comCidade: boolean): void;
+  carros: unknown[];
 }
 
 export interface UI {
@@ -170,6 +186,7 @@ export interface Contexto {
   caminhao: Caminhao;
   guia: Guia;
   pedidos: Pedidos;
+  trafego: Trafego;
   ranking: Ranking;
   fluxo: Fluxo;
   camera3: { passo(dt: number): void; iniciarFlyover(): void };
