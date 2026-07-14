@@ -32,6 +32,37 @@ export function criarMundo(ctx: Contexto): Mundo {
   }
   const naFaixaDaAvenida = (x: number, z: number, folga: number) =>
     distAvenida(x, z) < avenida.largura / 2 + folga;
+  const projAvenida = (x: number, z: number) => (x - ax1) * avDirX + (z - az1) * avDirZ;
+  const pontoAvenida = (t: number): [number, number] => [ax1 + avDirX * t, az1 + avDirZ * t];
+
+  // vãos de viaduto: onde a linha da BR cruza as ruas da grade
+  const ALT_BR = 4.6;        // altura da pista elevada
+  const TALUDE_BASE = 9;     // meia-largura da base do aterro
+  // vão de 13m: atravessar 20m de aterro numa rua leste-oeste varre ~9.3m
+  // do parâmetro t da BR (ela é quase paralela ao norte-sul) + folga
+  const MEIO_VAO = 6.5;
+  const tsVaos: number[] = [];
+  for (let i = 0; i <= N; i++) {
+    const rua = ruaCentro(i);
+    // SÓ ruas leste-oeste viram viaduto — as norte-sul são cortadas
+    // pela rodovia (igual à cidade de verdade)
+    if (Math.abs(avDirZ) > 1e-6) {
+      const t = (rua - az1) / avDirZ;
+      const [x] = pontoAvenida(t);
+      if (Math.abs(x) <= MEIO && t > 2 && t < avLen - 2) tsVaos.push(t);
+    }
+  }
+  tsVaos.sort((a, b) => a - b);
+  // cruzamentos quase no mesmo ponto (esquina) viram um vão só
+  const vaos: number[] = [];
+  tsVaos.forEach((t) => {
+    if (!vaos.length || t - vaos[vaos.length - 1] > 7) vaos.push(t);
+    else vaos[vaos.length - 1] = (vaos[vaos.length - 1] + t) / 2;
+  });
+
+  function pertoDeVao(t: number, folga: number) {
+    return vaos.some((tv) => Math.abs(t - tv) < MEIO_VAO + folga);
+  }
 
   const aabbs: Mundo['aabbs'] = [];
   const zonas = new Map<string, Zona>();
@@ -168,8 +199,8 @@ export function criarMundo(ctx: Contexto): Mundo {
         sombras.push([cx - 6, cz - 8, 12, 11]);
         const zona = { x: cx, z: cz + 14, destino };
         zonas.set(sim, zona);
-        if (naFaixaDaAvenida(zona.x, zona.z, 4.5)) {
-          console.warn('[entrega-turbo] zona de "' + destino.rotulo + '" caiu na avenida — ajuste o mapa');
+        if (distAvenida(zona.x, zona.z) < TALUDE_BASE + 1 && !pertoDeVao(projAvenida(zona.x, zona.z), 0)) {
+          console.warn('[entrega-turbo] zona de "' + destino.rotulo + '" colada no aterro da BR — ajuste o mapa');
         }
         continue;
       }
@@ -178,7 +209,7 @@ export function criarMundo(ctx: Contexto): Mundo {
         const seed = r * 17 + q * 5;
         const corCasa = PALETA_CASAS[seed % PALETA_CASAS.length];
         geosConstrucoes.push(caixa(7.4, 3, 7.4, cx, cz, corCasa, { comJanelas: true }));
-        geosConstrucoes.push(telhado(8, 8, 2.1, cx, cz + 4, 3));
+        geosConstrucoes.push(telhado(8, 8, 2.1, cx, cz, 3)); // o helper já centraliza em z
         geosDetalhes.push(porta(cx + 1.6, cz, cz + 3.72));
         aabbs.push({ minX: cx - 3.9, maxX: cx + 3.9, minZ: cz - 3.9, maxZ: cz + 3.9 });
         sombras.push([cx - 3.9, cz - 3.9, 7.8, 7.8]);
@@ -200,6 +231,82 @@ export function criarMundo(ctx: Contexto): Mundo {
         sombras.push([cx + 2.5, cz + 1, 6, 6]);
       }
     }
+  }
+
+  // ----- BR-101 elevada: aterros entre vãos + tabuleiros + pilares -----
+  const anguloBR = Math.atan2(avDirX, avDirZ);
+  const perpX = -avDirZ;
+  const perpZ = avDirX;
+  const ASFALTO = new THREE.Color(0x4a4d55);
+  const GRAMA_TALUDE = new THREE.Color(0x6ea44f);
+  const CONCRETO = new THREE.Color(0xb9bcc2);
+
+  // seção trapezoidal do aterro (x = perpendicular, y = altura)
+  function aterro(t0: number, t1: number) {
+    const s = new THREE.Shape();
+    s.moveTo(-TALUDE_BASE, 0);
+    s.lineTo(TALUDE_BASE, 0);
+    s.lineTo(avenida.largura / 2, ALT_BR);
+    s.lineTo(-avenida.largura / 2, ALT_BR);
+    s.closePath();
+    const geo = new THREE.ExtrudeGeometry(s, { depth: t1 - t0, bevelEnabled: false });
+    // vertex colors por altura: talude gramado, pista de asfalto
+    const pos = geo.getAttribute('position');
+    const cores: number[] = [];
+    for (let i = 0; i < pos.count; i++) {
+      const c = pos.getY(i) > ALT_BR - 0.6 ? ASFALTO : GRAMA_TALUDE;
+      cores.push(c.r, c.g, c.b);
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(cores, 3));
+    const uv = geo.getAttribute('uv') as THREE.BufferAttribute;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, 0.03, 0.03);
+    geo.rotateY(anguloBR);
+    const [sx, sz] = pontoAvenida(t0);
+    geo.translate(sx, 0, sz);
+    return geo;
+  }
+
+  // caixa rotacionada no ângulo da BR (tabuleiro, mureta, pilar)
+  function caixaBR(w: number, h: number, comp: number, tCentro: number, perpOff: number, yCentro: number, cor: THREE.Color) {
+    const geo = new THREE.BoxGeometry(w, h, comp);
+    const cores: number[] = [];
+    for (let i = 0; i < geo.getAttribute('position').count; i++) cores.push(cor.r, cor.g, cor.b);
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(cores, 3));
+    const uv = geo.getAttribute('uv') as THREE.BufferAttribute;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, 0.03, 0.03);
+    geo.rotateY(anguloBR);
+    const [cxp, czp] = pontoAvenida(tCentro);
+    geo.translate(cxp + perpX * perpOff, yCentro, czp + perpZ * perpOff);
+    return geo.toNonIndexed();
+  }
+
+  {
+    const tIni = -8;
+    const tFim = avLen + 8;
+    let cursor = tIni;
+    vaos.forEach((tv) => {
+      const a = tv - MEIO_VAO;
+      const b = tv + MEIO_VAO;
+      if (a > cursor) geosConstrucoes.push(aterro(cursor, a)); // extrude já é não-indexado
+      // tabuleiro do viaduto sobre o vão + 4 pilares fora da faixa da rua
+      geosConstrucoes.push(caixaBR(avenida.largura + 1, 0.9, MEIO_VAO * 2 + 1.6, tv, 0, ALT_BR - 0.45, CONCRETO));
+      ([-1, 1] as const).forEach((ladoT) => {
+        ([-1, 1] as const).forEach((ladoP) => {
+          const tp = tv + ladoT * (MEIO_VAO - 0.8);
+          geosConstrucoes.push(caixaBR(1.1, ALT_BR - 0.9, 1.1, tp, ladoP * 4.6, (ALT_BR - 0.9) / 2, CONCRETO));
+          const [pxp, pzp] = pontoAvenida(tp);
+          const pcx = pxp + perpX * ladoP * 4.6;
+          const pcz = pzp + perpZ * ladoP * 4.6;
+          aabbs.push({ minX: pcx - 0.8, maxX: pcx + 0.8, minZ: pcz - 0.8, maxZ: pcz + 0.8 });
+        });
+      });
+      cursor = b;
+    });
+    if (cursor < tFim) geosConstrucoes.push(aterro(cursor, tFim));
+    // guard-rail contínuo nas duas bordas da pista
+    ([-1, 1] as const).forEach((lado) => {
+      geosConstrucoes.push(caixaBR(0.35, 0.55, tFim - tIni, (tIni + tFim) / 2, lado * (avenida.largura / 2 - 0.3), ALT_BR + 0.27, CONCRETO));
+    });
   }
 
   // ----- chão: grama, calçadas, ruas, BR-101, sombras e rótulos -----
@@ -235,59 +342,19 @@ export function criarMundo(ctx: Contexto): Mundo {
       g.beginPath(); g.moveTo(px(-MEIO), cc); g.lineTo(px(MEIO), cc); g.stroke();
     }
     g.setLineDash([]);
-    // BR-101: faixa diagonal mais clara com bordas brancas e tracejado
-    g.strokeStyle = '#5a5e68';
-    g.lineWidth = avenida.largura * esc;
+    // sombra suave do aterro da BR-101 (a rodovia em si é 3D, elevada)
+    g.strokeStyle = 'rgba(20, 30, 20, 0.18)';
+    g.lineWidth = 20 * esc;
     g.lineCap = 'butt';
     g.beginPath();
     g.moveTo(px(ax1), px(az1));
     g.lineTo(px(ax2), px(az2));
     g.stroke();
-    const perpX = -avDirZ;
-    const perpZ = avDirX;
-    g.strokeStyle = 'rgba(255,255,255,0.85)';
-    g.lineWidth = 2;
-    ([-1, 1] as const).forEach((lado) => {
-      const off = (avenida.largura / 2 - 0.7) * lado;
-      g.beginPath();
-      g.moveTo(px(ax1 + perpX * off), px(az1 + perpZ * off));
-      g.lineTo(px(ax2 + perpX * off), px(az2 + perpZ * off));
-      g.stroke();
-    });
-    g.setLineDash([14, 16]);
-    g.strokeStyle = 'rgba(255,255,255,0.7)';
-    g.beginPath();
-    g.moveTo(px(ax1), px(az1));
-    g.lineTo(px(ax2), px(az2));
-    g.stroke();
-    g.setLineDash([]);
-    // escudos "101" ao longo da avenida
-    [0.28, 0.62].forEach((t) => {
-      const sx = px(ax1 + (ax2 - ax1) * t);
-      const sz = px(az1 + (az2 - az1) * t);
-      g.fillStyle = '#f4f4f4';
-      g.beginPath();
-      g.roundRect(sx - 14, sz - 10, 28, 20, 5);
-      g.fill();
-      g.fillStyle = '#333';
-      g.font = '700 13px Verdana, sans-serif';
-      g.textAlign = 'center';
-      g.fillText('101', sx, sz + 5);
-    });
     // sombras assadas das construções
     g.fillStyle = 'rgba(30, 40, 30, 0.25)';
     sombras.forEach(([x, z, w, d]) => {
       g.fillRect(px(x) - 8, px(z) + 8, w * esc, d * esc);
     });
-    // rótulos de bairro (como no Maps)
-    g.textAlign = 'center';
-    g.fillStyle = 'rgba(240, 246, 252, 0.55)';
-    g.font = '700 24px Verdana, sans-serif';
-    g.fillText('CENTRO', px(48), px(-46));
-    g.fillText('BELA VISTA', px(-54), px(50));
-    g.font = '800 30px Verdana, sans-serif';
-    g.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    g.fillText('Terra de Areia', px(6), px(82));
   }
   const chaoTex = new THREE.CanvasTexture(chaoCanvas);
   chaoTex.colorSpace = THREE.SRGBColorSpace;
@@ -365,6 +432,37 @@ export function criarMundo(ctx: Contexto): Mundo {
     scene.add(sp);
   });
 
+  // placas rodoviárias "BR-101" (3D, ao lado de dois viadutos — nada escrito no chão)
+  function placaRodovia() {
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 64;
+    const g = c.getContext('2d')!;
+    g.fillStyle = '#1c7a3d';
+    g.beginPath();
+    g.roundRect(2, 2, 124, 60, 8);
+    g.fill();
+    g.strokeStyle = '#f4f4f4';
+    g.lineWidth = 4;
+    g.stroke();
+    g.fillStyle = '#fff';
+    g.font = '800 26px Verdana, sans-serif';
+    g.textAlign = 'center';
+    g.fillText('BR-101', 64, 41);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+    sp.scale.set(4.2, 2.1, 1);
+    return sp;
+  }
+  [vaos[0], vaos[Math.max(0, vaos.length - 2)]].forEach((tv) => {
+    if (tv === undefined) return;
+    const [pxp, pzp] = pontoAvenida(tv);
+    const sp = placaRodovia();
+    sp.position.set(pxp + perpX * 12, 3, pzp + perpZ * 12);
+    scene.add(sp);
+  });
+
   function noMaisProximo(x: number, z: number): [number, number] {
     let melhor: [number, number] = [0, 0];
     let dist = Infinity;
@@ -384,5 +482,21 @@ export function criarMundo(ctx: Contexto): Mundo {
     return false;
   }
 
-  return { zonas, aabbs, N, MEIO, loteCentro, ruaCentro, noMaisProximo, dentroDePredio };
+  // colisão com o aterro da BR-101 (fora dos vãos de viaduto):
+  // devolve a normal perpendicular + penetração pro slide da física
+  function colisaoAvenida(x: number, z: number, raio: number) {
+    const d = distAvenida(x, z);
+    if (d > TALUDE_BASE + raio) return null;
+    const t = projAvenida(x, z);
+    if (pertoDeVao(t, -0.5)) return null; // embaixo do viaduto: passagem livre
+    const [cxp, czp] = pontoAvenida(t);
+    let nx = x - cxp;
+    let nz = z - czp;
+    const len = Math.hypot(nx, nz) || 0.001;
+    nx /= len;
+    nz /= len;
+    return { nx, nz, pen: TALUDE_BASE + raio - d };
+  }
+
+  return { zonas, aabbs, N, MEIO, loteCentro, ruaCentro, noMaisProximo, dentroDePredio, colisaoAvenida };
 }

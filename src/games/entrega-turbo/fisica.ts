@@ -33,6 +33,16 @@ export function criarFisica(ctx: Contexto) {
       truck.z = Math.max(-mundo.MEIO + 2, Math.min(mundo.MEIO - 2, truck.z));
       // colisão com slide (nunca trava — empurra pra fora pela normal)
       const r = cfg.raioColisao;
+      const registrarBatida = () => {
+        const agora = performance.now();
+        if (Math.abs(truck.v) > 2 && agora - truck.ultimaBatidaMs > cfg.batidaCooldownMs) {
+          truck.ultimaBatidaMs = agora;
+          truck.squashAte = agora + 90;
+          truck.v *= cfg.batidaFreio;
+          ctx.audio.somBatida();
+          if (estado.pedido) estado.pedido.bateu = true;
+        }
+      };
       for (const b of mundo.aabbs) {
         const px = Math.max(b.minX, Math.min(truck.x, b.maxX));
         const pz = Math.max(b.minZ, Math.min(truck.z, b.maxZ));
@@ -41,18 +51,17 @@ export function criarFisica(ctx: Contexto) {
         const d2 = dx * dx + dz * dz;
         if (d2 < r * r) {
           const d = Math.sqrt(d2) || 0.001;
-          const pen = r - d;
-          truck.x += (dx / d) * pen;
-          truck.z += (dz / d) * pen;
-          const agora = performance.now();
-          if (Math.abs(truck.v) > 2 && agora - truck.ultimaBatidaMs > cfg.batidaCooldownMs) {
-            truck.ultimaBatidaMs = agora;
-            truck.squashAte = agora + 90;
-            truck.v *= cfg.batidaFreio;
-            ctx.audio.somBatida();
-            if (estado.pedido) estado.pedido.bateu = true;
-          }
+          truck.x += (dx / d) * (r - d);
+          truck.z += (dz / d) * (r - d);
+          registrarBatida();
         }
+      }
+      // talude da BR-101 elevada (livre só embaixo dos viadutos)
+      const talude = mundo.colisaoAvenida(truck.x, truck.z, r);
+      if (talude) {
+        truck.x += talude.nx * talude.pen;
+        truck.z += talude.nz * talude.pen;
+        registrarBatida();
       }
       ctx.caminhao.atualizarVisual(dt, steer);
     },

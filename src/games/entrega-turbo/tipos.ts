@@ -82,6 +82,7 @@ export interface Mundo {
   ruaCentro(i: number): number;
   noMaisProximo(x: number, z: number): [number, number];
   dentroDePredio(x: number, z: number): boolean;
+  colisaoAvenida(x: number, z: number, raio: number): { nx: number; nz: number; pen: number } | null;
 }
 
 export interface Caminhao {
