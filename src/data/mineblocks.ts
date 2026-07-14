@@ -10,13 +10,16 @@ export interface Bloco {
   tiles: [number, number, number];
   solido: boolean; // colide com o jogador
   render: RenderBloco;
+  // sobrevivência: qual ITEM cai ao quebrar (estilo Minecraft:
+  // pedra → pedregulho, grama → terra). Ausente = dropa ele mesmo.
+  drop?: number;
 }
 
 export const blocos: Bloco[] = [
   { id: 0, nome: 'ar', tiles: [0, 0, 0], solido: false, render: 'cubo' },
-  { id: 1, nome: 'grama', tiles: [0, 1, 2], solido: true, render: 'cubo' },
+  { id: 1, nome: 'grama', tiles: [0, 1, 2], solido: true, render: 'cubo', drop: 2 },
   { id: 2, nome: 'terra', tiles: [2, 2, 2], solido: true, render: 'cubo' },
-  { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo' },
+  { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo', drop: 10 },
   { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo' },
   { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo' },
   { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo' },
@@ -34,6 +37,22 @@ export const blocos: Bloco[] = [
 
 // ordem dos 12 slots da hotbar (ids de blocos colocáveis)
 export const hotbar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+// craft simples da sobrevivência: toca na receita e transforma
+// (sem mesa, sem grade — proporcional a criança de 6 anos)
+export interface Receita {
+  de: number; // id do material
+  qtd: number; // quantos consome
+  para: number; // id do resultado
+  ganha: number; // quantos entrega
+}
+export const receitas: Receita[] = [
+  { de: 5, qtd: 1, para: 6, ganha: 4 }, // 1 tronco → 4 tábuas
+  { de: 4, qtd: 1, para: 8, ganha: 1 }, // 1 areia → 1 vidro
+  { de: 10, qtd: 2, para: 9, ganha: 1 }, // 2 pedregulhos → 1 tijolos
+  { de: 10, qtd: 1, para: 3, ganha: 1 }, // 1 pedregulho → 1 pedra (a "fornalha")
+  { de: 2, qtd: 1, para: 1, ganha: 1 }, // 1 terra → 1 grama (plantou, cresceu!)
+];
 
 export const config = {
   mundo: {

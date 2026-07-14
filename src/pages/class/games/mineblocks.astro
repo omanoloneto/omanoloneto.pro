@@ -1,8 +1,8 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { blocos, hotbar, config } from '../../../data/mineblocks';
+import { blocos, hotbar, config, receitas } from '../../../data/mineblocks';
 
-const dadosJson = JSON.stringify({ blocos, hotbar, config });
+const dadosJson = JSON.stringify({ blocos, hotbar, config, receitas });
 
 const title = 'MineBlocks — construa seu mundo de blocos em 3D! | Manolo Neto';
 const description =
@@ -31,9 +31,11 @@ const description =
       <div class="reticula" data-reticula aria-hidden="true" hidden>+</div>
       <div class="agua-overlay" data-agua aria-hidden="true" hidden></div>
 
-      <!-- hotbar de blocos -->
+      <!-- hotbar de blocos + fabricação -->
       <nav class="hotbar" data-hotbar aria-label="Blocos pra construir" hidden></nav>
       <div class="balao" data-balao aria-hidden="true"></div>
+      <button class="craft-btn" type="button" data-craft-btn aria-expanded="false" aria-label="Abrir a fabricação de blocos" hidden>🛠️</button>
+      <div class="craft" data-craft-painel aria-label="Receitas de fabricação" hidden></div>
 
       <!-- controles touch (aparecem no 1º toque) -->
       <div class="controles" data-controles hidden>
@@ -68,7 +70,7 @@ const description =
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="inicio-title">
         <div class="placa__topo" id="inicio-title">🧱 MineBlocks</div>
         <div class="placa__corpo">
-          <p class="sub">Explore a ilha, quebre blocos e construa o que quiser! Seu mundo fica guardado <b>na internet</b> com nome e senha — dá pra continuar de qualquer computador.</p>
+          <p class="sub">Explore a ilha e construa o que quiser — mas do jeito sobrevivência: <b>quebre blocos pra ganhar eles</b>, fabrique tábuas e vidro na oficina 🛠️! Seu mundo fica guardado <b>na internet</b> com nome e senha — dá pra continuar de qualquer computador.</p>
           <div class="abas" role="tablist">
             <button class="aba ativa" type="button" data-aba="novo" role="tab">🌱 Novo mundo</button>
             <button class="aba" type="button" data-aba="carregar" role="tab">📂 Carregar mundo</button>
@@ -244,6 +246,60 @@ const description =
       text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
       pointer-events: none;
     }
+    .slot__qtd {
+      position: absolute; right: 2px; bottom: 0;
+      font-size: 0.66rem; font-weight: 800; color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.9);
+      pointer-events: none;
+    }
+    .slot.vazio .slot__img { opacity: 0.28; filter: grayscale(0.7); }
+
+    /* ===== Fabricação ===== */
+    .craft-btn {
+      position: absolute; left: 12px; bottom: max(10px, env(safe-area-inset-bottom));
+      z-index: 41;
+      width: 54px; height: 54px; border-radius: 14px; cursor: pointer;
+      font-size: 1.5rem;
+      background: rgba(14, 26, 20, 0.55);
+      border: 1px solid rgba(123, 182, 97, 0.45);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .craft-btn[hidden] { display: none; }
+    .craft-btn[aria-expanded='true'] { border-color: var(--amarelo); }
+    .craft {
+      position: absolute; left: 12px; bottom: 74px;
+      z-index: 42;
+      display: grid; gap: 6px;
+      padding: 10px;
+      background: rgba(14, 26, 20, 0.88);
+      border: 1px solid rgba(123, 182, 97, 0.5);
+      border-radius: 14px;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .craft[hidden] { display: none; }
+    .craft__titulo { margin: 0 0 2px; font-weight: 800; font-size: 0.95rem; }
+    .receita {
+      display: flex; align-items: center; gap: 10px;
+      padding: 7px 10px; border-radius: 10px; cursor: pointer;
+      font-family: inherit; font-weight: 700; font-size: 0.95rem; color: var(--texto);
+      background: rgba(0, 0, 0, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      opacity: 0.55;
+    }
+    .receita.pode { opacity: 1; border-color: rgba(123, 182, 97, 0.7); }
+    .receita.pode:hover { background: rgba(123, 182, 97, 0.25); }
+    .receita__lado { display: inline-flex; align-items: center; gap: 5px; }
+    .receita__lado .slot__img {
+      position: static; display: inline-block;
+      width: 26px; height: 26px;
+      background-size: 400% 400%;
+      image-rendering: pixelated;
+      border-radius: 4px;
+    }
+    .receita__seta { color: var(--amarelo); font-weight: 800; }
+
     .balao {
       position: absolute; left: 50%; bottom: 68px;
       transform: translateX(-50%) translateY(6px);

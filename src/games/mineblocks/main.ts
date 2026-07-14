@@ -26,6 +26,8 @@ export function iniciarJogo() {
     sel: 0,
     modoColocar: false,
     primeiroInput: false,
+    // sobrevivência: começa de mãos vazias — quebrou, ganhou
+    inventario: new Array(dados.blocos.length).fill(0),
   };
   const jogador: Jogador = {
     x: dados.config.mundo.SX / 2 + 0.5,
@@ -58,6 +60,7 @@ export function iniciarJogo() {
   const ctx = {
     blocos: dados.blocos,
     hotbar: dados.hotbar,
+    receitas: dados.receitas,
     cfg: dados.config,
     porId: (id: number) => dados.blocos[id],
     motionReduzido: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -85,7 +88,33 @@ export function iniciarJogo() {
   ctx.salvar = criarSalvar(ctx);
 
   const { ui, salvar } = ctx;
+  ui.montarCraft();
   ui.montarHotbar();
+
+  // craft simples: tocou na receita, transformou
+  ui.els.craftPainel.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest('.receita') as HTMLElement | null;
+    if (!btn) return;
+    const rec = dados.receitas[+btn.dataset.receita!];
+    const inv = estado.inventario;
+    const de = ctx.porId(rec.de);
+    const para = ctx.porId(rec.para);
+    if ((inv[rec.de] || 0) < rec.qtd) {
+      ui.mostrarToast('🎒 Falta material! Precisa de ' + rec.qtd + '× ' + de.nome + '.', 'info', 2000);
+      ctx.audio.somErro();
+      return;
+    }
+    inv[rec.de] -= rec.qtd;
+    inv[rec.para] = Math.min(999, (inv[rec.para] || 0) + rec.ganha);
+    ui.atualizarContagens();
+    ctx.audio.somSalvo();
+    ui.anunciar('Fabricou ' + rec.ganha + ' ' + para.nome + '!');
+    salvar.agendar();
+  });
+  ui.els.craftBtn.addEventListener('click', () => {
+    ui.alternarCraft();
+    ctx.audio.somUI();
+  });
 
   // ----- medir/resize -----
   function medir() {
@@ -156,8 +185,10 @@ export function iniciarJogo() {
       ui.els.hotbar.hidden = false;
       ui.els.reticula.hidden = false;
       ui.els.pauseBtn.hidden = false;
+      ui.els.craftBtn.hidden = false;
       ui.els.fantasma.hidden = false;
       ui.els.nomeMundoHud.textContent = '🌍 ' + salvar.nomeMundo();
+      ui.atualizarContagens();
       ui.selecionarSlot(estado.sel, false);
       estado.modoColocar = false;
       ui.atualizarModo();
@@ -169,6 +200,7 @@ export function iniciarJogo() {
     pausar() {
       if (estado.fase !== 'jogando') return;
       estado.fase = 'pausado';
+      ui.alternarCraft(false);
       fluxo.soltarInputs();
       inputRefs.soltarLock();
       pararLoop();
@@ -320,6 +352,8 @@ export function iniciarJogo() {
   // handle de teste/depuração (Playwright dirige por aqui)
   (window as any).__mc = {
     jogador, estado, input,
+    receitas: dados.receitas,
+    fabricar: (i: number) => (ui.els.craftPainel.querySelectorAll('.receita')[i] as HTMLElement)?.click(),
     obter: ctx.mundo.obter,
     definir: ctx.mundo.definir,
     quebrar: () => ctx.edicao.quebrar(),

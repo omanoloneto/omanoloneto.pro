@@ -1,7 +1,7 @@
 // Tipos compartilhados do MineBlocks.
 // O Contexto é o único "fio" entre os módulos: main.ts monta e todos leem.
 import type * as THREE from 'three';
-import type { blocos, hotbar, config, Bloco } from '../../data/mineblocks';
+import type { blocos, hotbar, config, receitas, Bloco } from '../../data/mineblocks';
 
 export type Cfg = typeof config;
 
@@ -14,6 +14,9 @@ export interface Estado {
   sel: number; // índice selecionado na hotbar (0..11)
   modoColocar: boolean; // touch: ⛏️ quebrar × 🧱 colocar
   primeiroInput: boolean;
+  // sobrevivência: contagem de itens por id de bloco — colocar consome,
+  // quebrar devolve (o drop do bloco)
+  inventario: number[];
 }
 
 export interface Jogador {
@@ -122,6 +125,9 @@ export interface UI {
   mostrarToast(html: string, tipo: 'ok' | 'info' | 'err', ms?: number): void;
   montarHotbar(): void;
   selecionarSlot(i: number, anunciar: boolean): void;
+  atualizarContagens(): void;
+  montarCraft(): void;
+  alternarCraft(abrir?: boolean): void;
   atualizarModo(): void;
   mostrarSalvando(estado: 'salvando' | 'salvo' | 'erro' | 'nada'): void;
 }
@@ -139,6 +145,7 @@ export interface Fluxo {
 export interface Contexto {
   blocos: typeof blocos;
   hotbar: typeof hotbar;
+  receitas: typeof receitas;
   cfg: Cfg;
   porId: (id: number) => Bloco;
   motionReduzido: boolean;

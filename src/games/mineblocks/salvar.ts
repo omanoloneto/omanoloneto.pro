@@ -63,10 +63,11 @@ export function criarSalvar(ctx: Contexto): Salvar {
   function payloadAtual(): string {
     const p = ctx.jogador;
     return JSON.stringify({
-      v: 1,
+      v: 2, // v2 = sobrevivência (inventário); v1 (criativo antigo) ainda carrega
       seed: ctx.estado.seed,
       jogador: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(3), pitch: +p.pitch.toFixed(3) },
       sel: ctx.estado.sel,
+      inv: ctx.estado.inventario,
       blocos: codificarRLE(ctx.mundo.dados),
     });
   }
@@ -207,6 +208,16 @@ export function criarSalvar(ctx: Contexto): Salvar {
       ctx.mundo.dados.set(blocos);
       ctx.estado.seed = p.seed >>> 0;
       ctx.estado.sel = Math.max(0, Math.min(ctx.hotbar.length - 1, p.sel | 0));
+      // inventário: v2 traz salvo; v1 (mundo criativo antigo) migra vazio —
+      // a criança re-minera os próprios blocos, nada quebra
+      const inv = new Array(ctx.blocos.length).fill(0);
+      if (Array.isArray(p.inv)) {
+        for (let i = 0; i < inv.length; i++) {
+          const n = p.inv[i];
+          if (typeof n === 'number' && n > 0) inv[i] = Math.min(999, Math.floor(n));
+        }
+      }
+      ctx.estado.inventario = inv;
       const j = p.jogador || {};
       ctx.jogador.x = typeof j.x === 'number' ? j.x : ctx.cfg.mundo.SX / 2;
       ctx.jogador.y = typeof j.y === 'number' ? j.y : ctx.cfg.mundo.SY;

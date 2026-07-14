@@ -43,6 +43,7 @@ export function ligarInput(ctx: Contexto) {
       return;
     }
     if (/^[1-9]$/.test(e.key)) ctx.ui.selecionarSlot(+e.key - 1, true);
+    if (e.key === 'c' || e.key === 'C') ctx.ui.alternarCraft();
   });
   window.addEventListener('keyup', (e) => {
     if (e.key === ' ') input.pulo = false;

@@ -22,6 +22,8 @@ export function criarUI(ctx: Contexto): UI {
     btnPulo: $('[data-btn-pulo]'),
     joystick: $('[data-joystick]'),
     joystickPino: $('[data-joystick-pino]'),
+    craftBtn: $('[data-craft-btn]'),
+    craftPainel: $('[data-craft-painel]'),
     fantasma: $('[data-fantasma]'),
     pauseBtn: $('[data-pause]'),
     muteBtn: $('[data-mute]'),
@@ -36,25 +38,67 @@ export function criarUI(ctx: Contexto): UI {
   let anuncioMs = 0;
   let salvandoTimer = 0;
 
-  function montarHotbar() {
-    // ícones = recorte do próprio atlas via background-position (pixelado)
+  // ícone de bloco = recorte do próprio atlas via background-position
+  function imgDoBloco(id: number): string {
     const GRADE = 4;
+    const b = ctx.porId(id);
+    const tile = b.render === 'cruz' ? b.tiles[0] : b.tiles[1];
+    const tx = tile % GRADE;
+    const ty = Math.floor(tile / GRADE);
+    return '<span class="slot__img" style="background-image:url(' + ctx.textura.dataURL + ');' +
+      'background-position:' + (-tx * 100) + '% ' + (-ty * 100) + '%"></span>';
+  }
+
+  function montarHotbar() {
     els.hotbar.innerHTML = '';
     ctx.hotbar.forEach((id, i) => {
       const b = ctx.porId(id);
-      const tile = b.render === 'cruz' ? b.tiles[0] : b.tiles[1];
-      const tx = tile % GRADE;
-      const ty = Math.floor(tile / GRADE);
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'slot';
       btn.dataset.slot = String(i);
       btn.setAttribute('aria-label', 'Bloco ' + (i + 1) + ': ' + b.nome);
       btn.innerHTML =
-        '<span class="slot__img" style="background-image:url(' + ctx.textura.dataURL + ');' +
-        'background-position:' + (-tx * 100) + '% ' + (-ty * 100) + '%"></span>' +
-        '<span class="slot__num">' + (i < 9 ? i + 1 : '') + '</span>';
+        imgDoBloco(id) +
+        '<span class="slot__num">' + (i < 9 ? i + 1 : '') + '</span>' +
+        '<span class="slot__qtd" data-qtd></span>';
       els.hotbar.appendChild(btn);
+    });
+    atualizarContagens();
+  }
+
+  // sobrevivência: mostra quantos de cada bloco a criança TEM
+  function atualizarContagens() {
+    const inv = ctx.estado.inventario;
+    els.hotbar.querySelectorAll<HTMLElement>('.slot').forEach((s, i) => {
+      const id = ctx.hotbar[i];
+      const n = inv[id] || 0;
+      const qtd = s.querySelector('[data-qtd]') as HTMLElement;
+      qtd.textContent = n > 0 ? String(n) : '';
+      s.classList.toggle('vazio', n === 0);
+    });
+    // receitas acendem/apagam conforme o material disponível
+    els.craftPainel.querySelectorAll<HTMLElement>('.receita').forEach((r, i) => {
+      const rec = ctx.receitas[i];
+      r.classList.toggle('pode', (inv[rec.de] || 0) >= rec.qtd);
+    });
+  }
+
+  function montarCraft() {
+    els.craftPainel.innerHTML = '<p class="craft__titulo">🛠️ Fabricar</p>';
+    ctx.receitas.forEach((rec, i) => {
+      const de = ctx.porId(rec.de);
+      const para = ctx.porId(rec.para);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'receita';
+      btn.dataset.receita = String(i);
+      btn.setAttribute('aria-label', 'Fabricar: ' + rec.qtd + ' ' + de.nome + ' vira ' + rec.ganha + ' ' + para.nome);
+      btn.innerHTML =
+        '<span class="receita__lado">' + rec.qtd + '× ' + imgDoBloco(rec.de) + '</span>' +
+        '<span class="receita__seta">→</span>' +
+        '<span class="receita__lado">' + rec.ganha + '× ' + imgDoBloco(rec.para) + '</span>';
+      els.craftPainel.appendChild(btn);
     });
   }
 
@@ -63,7 +107,9 @@ export function criarUI(ctx: Contexto): UI {
     els.hotbar.querySelectorAll('.slot').forEach((s, j) => {
       s.classList.toggle('sel', j === ctx.estado.sel);
     });
-    const nome = ctx.porId(ctx.hotbar[ctx.estado.sel]).nome;
+    const id = ctx.hotbar[ctx.estado.sel];
+    const n = ctx.estado.inventario[id] || 0;
+    const nome = ctx.porId(id).nome + (n > 0 ? ' × ' + n : ' (você não tem!)');
     els.balao.textContent = nome;
     els.balao.classList.add('show');
     clearTimeout(balaoTimer);
@@ -99,6 +145,14 @@ export function criarUI(ctx: Contexto): UI {
     },
     montarHotbar,
     selecionarSlot,
+    atualizarContagens,
+    montarCraft,
+    alternarCraft(abrir) {
+      const painel = els.craftPainel;
+      const quer = abrir === undefined ? painel.hidden : abrir;
+      painel.hidden = !quer;
+      els.craftBtn.setAttribute('aria-expanded', String(quer));
+    },
     atualizarModo() {
       const colocar = ctx.estado.modoColocar;
       els.btnModo.innerHTML = colocar ? '🧱' : '⛏️';
