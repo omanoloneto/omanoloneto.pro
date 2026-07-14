@@ -277,6 +277,9 @@ const jogos = [
     width: 100%;
     height: 100%;
     object-fit: cover;
+    /* acima do emoji (o drop-shadow do emoji cria stacking context e ele
+       pintava NA FRENTE do ícone); emoji segue como fallback via onerror */
+    z-index: 1;
   }
   .app__emoji {
     font-size: clamp(2.4rem, 6vw, 3.2rem);
