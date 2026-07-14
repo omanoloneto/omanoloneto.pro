@@ -187,7 +187,10 @@ export function iniciarJogo() {
       ui.els.pauseBtn.hidden = false;
       ui.els.craftBtn.hidden = false;
       ui.els.fantasma.hidden = false;
-      ui.els.nomeMundoHud.textContent = '🌍 ' + salvar.nomeMundo();
+      ui.els.nomeMundoHud.textContent = salvar.temMundo() ? '🌍 ' + salvar.nomeMundo() : '🎲 mundo aleatório';
+      if (!salvar.temMundo()) {
+        ui.mostrarToast('🎲 Mundo de brincadeira! Se gostar dele, dá um nome na pausa pra guardar.', 'info', 3400);
+      }
       ui.atualizarContagens();
       ui.selecionarSlot(estado.sel, false);
       estado.modoColocar = false;
@@ -205,6 +208,15 @@ export function iniciarJogo() {
       inputRefs.soltarLock();
       pararLoop();
       renderer.render(scene, camera);
+      // pausa muda de cara no mundo aleatório: sem "salvar agora",
+      // com "dar um nome" e saída honesta
+      const guest = !salvar.temMundo();
+      ui.els.salvarAgoraBtn.hidden = guest;
+      ui.els.batizarBtn.hidden = !guest;
+      ui.els.sairBtn.textContent = guest ? '🚪 Sair sem salvar' : '🚪 Salvar e sair';
+      ui.els.pausaAviso.textContent = guest
+        ? 'Esse mundo aleatório some quando você sai — dá um nome pra ele se quiser guardar!'
+        : 'Relaxa: o mundo se salva sozinho de tempos em tempos. 😉';
       ui.els.pausaModal.hidden = false;
       salvar.salvarAgora('auto');
       setTimeout(() => (document.querySelector('[data-continuar]') as HTMLElement).focus(), 60);
@@ -213,6 +225,9 @@ export function iniciarJogo() {
     continuarJogo() {
       if (estado.fase !== 'pausado') return;
       ui.els.pausaModal.hidden = true;
+      // batizar cancelado/terminado: o modal inicial fecha junto, sempre
+      ui.els.inicioModal.hidden = true;
+      batizando = false;
       estado.fase = 'jogando';
       medir();
       retomarLoop();
@@ -222,7 +237,14 @@ export function iniciarJogo() {
       if (!inputRefs.emModoTouch()) inputRefs.pedirLock();
     },
     async sairDoMundo() {
-      await salvar.salvarAgora('manual');
+      const okSave = await salvar.salvarAgora('manual');
+      // "Salvar e sair" não pode sair SEM salvar em silêncio (wifi caiu)
+      if (!okSave && salvar.sujo()) {
+        const sairAssim = window.confirm(
+          'Não consegui salvar agora (sem internet?).\n\nOK = sair mesmo assim (perde o que fez desde o último save)\nCancelar = continuar jogando e tentar de novo'
+        );
+        if (!sairAssim) return;
+      }
       window.location.href = '/class/games/';
     },
     medir,
@@ -241,6 +263,32 @@ export function iniciarJogo() {
   const inputRefs = ligarInput(ctx);
 
   // ----- gerar/carregar mundo -----
+  // batizar = dar nome+senha a um mundo aleatório já em jogo (o modal
+  // inicial reabre em modo especial, com o mundo congelado atrás)
+  let batizando = false;
+
+  function abrirBatizar() {
+    batizando = true;
+    ui.els.pausaModal.hidden = true;
+    ui.els.erroInicio.hidden = true;
+    // campos limpos: sobra de digitação antiga não pode virar senha sem querer
+    (ui.els.formNovo.querySelector('[data-campo-nome]') as HTMLInputElement).value = '';
+    (ui.els.formNovo.querySelector('[data-campo-senha]') as HTMLInputElement).value = '';
+    ui.els.inicioTitulo.textContent = '💾 Salvar este mundo';
+    ui.els.inicioSub.hidden = true;
+    ui.els.jogarAleatorio.hidden = true;
+    ui.els.divisor.hidden = true;
+    ui.els.abasEl.hidden = true;
+    ui.els.formCarregar.hidden = true;
+    ui.els.formNovo.hidden = false;
+    ui.els.voltarJogos.hidden = true;
+    ui.els.batizarVoltar.hidden = false;
+    (ui.els.formNovo.querySelector('button[type=submit]') as HTMLElement).textContent = '💾 Salvar meu mundo!';
+    ui.els.inicioModal.hidden = false;
+    setTimeout(() => (ui.els.formNovo.querySelector('[data-campo-nome]') as HTMLElement).focus(), 60);
+    ui.anunciar('Escolha um nome e uma senha pra guardar este mundo.');
+  }
+
   function gerarEntrar(seed: number, carregado: boolean) {
     estado.fase = 'gerando';
     ui.els.inicioModal.hidden = true;
@@ -284,7 +332,9 @@ export function iniciarJogo() {
     ctx.audio.somErro();
   }
   function travarForms(travar: boolean) {
-    document.querySelectorAll('[data-form-novo] button, [data-form-carregar] button').forEach((b) => {
+    // trava TUDO que pode iniciar outro mundo (o 🎲 e as abas também —
+    // senão um clique impaciente troca o mundo debaixo do jogador)
+    document.querySelectorAll('[data-form-novo] button, [data-form-carregar] button, [data-jogar-aleatorio], .aba').forEach((b) => {
       (b as HTMLButtonElement).disabled = travar;
     });
   }
@@ -299,8 +349,30 @@ export function iniciarJogo() {
     const erro = await salvar.criarMundo(cred.nome, cred.senha);
     travarForms(false);
     if (erro) return mostrarErroInicio(erro);
+    // batizando: o mundo JÁ existe em jogo — só salva e volta, sem regenerar
+    if (batizando) {
+      const okSave = await salvar.salvarAgora('manual');
+      ui.els.nomeMundoHud.textContent = '🌍 ' + salvar.nomeMundo();
+      // honestidade: se a rede falhou, o nome existe mas o mundo ainda
+      // não subiu — o auto-save re-tenta sozinho (agora que tem nome,
+      // até o flush de fechar aba funciona)
+      ui.mostrarToast(okSave
+        ? '🌍 Mundo salvo! Agora é seu pra sempre: ' + salvar.nomeMundo()
+        : '📡 O nome foi criado, mas ainda não consegui salvar — vou tentar de novo sozinho!', okSave ? 'ok' : 'err', 3400);
+      fluxo.continuarJogo();
+      return;
+    }
     gerarEntrar((Math.random() * 4294967296) >>> 0, false);
   });
+
+  // 🎲 mundo aleatório: entra na hora, sem nome, sem servidor
+  ui.els.jogarAleatorio.addEventListener('click', () => {
+    if ((ui.els.jogarAleatorio as HTMLButtonElement).disabled) return;
+    ctx.audio.retomar();
+    gerarEntrar((Math.random() * 4294967296) >>> 0, false);
+  });
+  ui.els.batizarBtn.addEventListener('click', abrirBatizar);
+  ui.els.batizarVoltar.addEventListener('click', () => fluxo.continuarJogo());
 
   ui.els.formCarregar.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -333,7 +405,16 @@ export function iniciarJogo() {
   ui.els.pauseBtn.addEventListener('click', () => fluxo.pausar());
   (document.querySelector('[data-continuar]') as HTMLElement).addEventListener('click', () => fluxo.continuarJogo());
   (document.querySelector('[data-salvar-agora]') as HTMLElement).addEventListener('click', () => salvar.salvarAgora('manual'));
-  (document.querySelector('[data-sair]') as HTMLElement).addEventListener('click', () => fluxo.sairDoMundo());
+  (document.querySelector('[data-sair]') as HTMLElement).addEventListener('click', () => {
+    // mundo aleatório: saída é perda — pergunta antes
+    if (!salvar.temMundo()) {
+      const vai = window.confirm('Esse mundo aleatório NÃO está salvo — saindo, ele some pra sempre.\n\nOK = sair mesmo assim\nCancelar = voltar (dá pra salvar com um nome!)');
+      if (!vai) return;
+      window.location.href = '/class/games/';
+      return;
+    }
+    fluxo.sairDoMundo();
+  });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       if (estado.fase === 'jogando') fluxo.pausar();
@@ -342,6 +423,13 @@ export function iniciarJogo() {
   });
   window.addEventListener('pagehide', () => {
     if (salvar.temMundo() && salvar.sujo()) salvar.salvarAgora('flush');
+  });
+  // mundo aleatório em jogo: F5/fechar aba pergunta antes de jogar tudo fora
+  window.addEventListener('beforeunload', (e) => {
+    if (!salvar.temMundo() && estado.fase !== 'inicio' && estado.primeiroInput) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
   });
 
   // ----- boot -----

@@ -80,9 +80,11 @@ const description =
     <!-- Modal: início (novo mundo × carregar) -->
     <div class="modal" data-inicio>
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="inicio-title">
-        <div class="placa__topo" id="inicio-title">🧱 MineBlocks</div>
+        <div class="placa__topo" id="inicio-title" data-inicio-titulo>🧱 MineBlocks</div>
         <div class="placa__corpo">
-          <p class="sub">Explore a ilha e construa o que quiser — mas do jeito sobrevivência: <b>quebre blocos pra ganhar eles</b>, fabrique tábuas e vidro na oficina 🛠️! Seu mundo fica guardado <b>na internet</b> com nome e senha — dá pra continuar de qualquer computador.</p>
+          <p class="sub" data-inicio-sub>Explore a ilha e construa o que quiser — mas do jeito sobrevivência: <b>quebre blocos pra ganhar eles</b>, fabrique tábuas e vidro na oficina 🛠️! Seu mundo fica guardado <b>na internet</b> com nome e senha — dá pra continuar de qualquer computador.</p>
+          <button class="botao botao--aleatorio" type="button" data-jogar-aleatorio>🎲 Jogar num mundo aleatório</button>
+          <p class="divisor" data-divisor><span>— ou —</span></p>
           <div class="abas" role="tablist">
             <button class="aba ativa" type="button" data-aba="novo" role="tab">🌱 Novo mundo</button>
             <button class="aba" type="button" data-aba="carregar" role="tab">📂 Carregar mundo</button>
@@ -111,7 +113,8 @@ const description =
             <button class="botao botao--go" type="submit">Entrar no mundo!</button>
           </form>
           <p class="erro" data-erro-inicio role="alert" hidden></p>
-          <a class="voltar" href="/class/games/">← voltar pros jogos</a>
+          <button class="botao botao--sec botao--mini" type="button" data-batizar-voltar hidden>← voltar pro jogo</button>
+          <a class="voltar" href="/class/games/" data-voltar-jogos>← voltar pros jogos</a>
         </div>
       </div>
     </div>
@@ -124,9 +127,10 @@ const description =
           <div class="pausa-acoes">
             <button class="botao botao--go" type="button" data-continuar>▶ Continuar</button>
             <button class="botao botao--sec" type="button" data-salvar-agora>💾 Salvar agora</button>
+            <button class="botao botao--sec" type="button" data-batizar hidden>💾 Dar um nome pra salvar</button>
             <button class="botao botao--sec" type="button" data-sair>🚪 Salvar e sair</button>
           </div>
-          <p class="aviso">Relaxa: o mundo se salva sozinho de tempos em tempos. 😉</p>
+          <p class="aviso" data-pausa-aviso>Relaxa: o mundo se salva sozinho de tempos em tempos. 😉</p>
         </div>
       </div>
     </div>
@@ -480,7 +484,19 @@ const description =
     .placa__corpo.center { text-align: center; }
     .sub { font-size: 0.95rem; line-height: 1.45; margin: 0 0 14px; }
 
+    .botao--aleatorio {
+      width: 100%;
+      background: linear-gradient(135deg, #ffd23f, #f2a33c);
+      font-size: 1.1rem;
+    }
+    .botao--mini { padding: 8px 14px; font-size: 0.9rem; margin-top: 12px; }
+    .divisor {
+      display: flex; align-items: center; justify-content: center;
+      margin: 12px 0; font-size: 0.85rem; opacity: 0.7;
+    }
+    .divisor[hidden] { display: none; }
     .abas { display: flex; gap: 8px; margin-bottom: 14px; }
+    .abas[hidden] { display: none; }
     .aba {
       flex: 1; padding: 10px; border-radius: 10px; cursor: pointer;
       font-family: inherit; font-weight: 700; font-size: 0.95rem; color: var(--texto);
@@ -523,6 +539,7 @@ const description =
     }
     .erro[hidden] { display: none; }
     .voltar { display: inline-block; margin-top: 14px; color: var(--verde); font-weight: 600; font-size: 0.9rem; }
+    .voltar[hidden] { display: none; }
 
     @media (max-width: 560px) {
       .hotbar { gap: 2px; padding: 4px; }

@@ -33,6 +33,18 @@ export function criarUI(ctx: Contexto): UI {
     formNovo: $('[data-form-novo]'),
     formCarregar: $('[data-form-carregar]'),
     erroInicio: $('[data-erro-inicio]'),
+    // mundo aleatório + batizar
+    jogarAleatorio: $('[data-jogar-aleatorio]'),
+    divisor: $('[data-divisor]'),
+    abasEl: $('.abas'),
+    inicioTitulo: $('[data-inicio-titulo]'),
+    inicioSub: $('[data-inicio-sub]'),
+    voltarJogos: $('[data-voltar-jogos]'),
+    batizarVoltar: $('[data-batizar-voltar]'),
+    batizarBtn: $('[data-batizar]'),
+    salvarAgoraBtn: $('[data-salvar-agora]'),
+    sairBtn: $('[data-sair]'),
+    pausaAviso: $('[data-pausa-aviso]'),
   };
 
   let toastTimer = 0;
