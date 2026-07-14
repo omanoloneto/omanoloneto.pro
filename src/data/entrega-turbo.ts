@@ -85,9 +85,9 @@ export const config = {
 
 // Skins do caminhão (cabine, baú) — troca a cada 2 níveis
 export const skins: Array<[number, number]> = [
+  [0xf7cf3d, 0xf0efe8], // amarelo com baú branco (o da foto!)
+  [0x3d7dd8, 0xf0efe8], // azul
   [0xd94f3d, 0xf2e8d5], // vermelho clássico
-  [0x3d7dd8, 0xffd23f], // azul/amarelo
   [0x7bc950, 0xf2e8d5], // verde
   [0x9b6dd6, 0xffd1ec], // roxo/rosa
-  [0xff8c42, 0x4a4e69], // laranja/grafite
 ];

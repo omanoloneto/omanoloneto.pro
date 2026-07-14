@@ -182,12 +182,16 @@ export function iniciarJogo() {
       }
     }
 
-    // barra de prazo (Normal)
+    // relógio digital do prazo (Normal): m:ss com cor por urgência
     if (estado.modo === 'normal' && p) {
       const rest = pedidos.prazoRestanteMs();
       const frac = Math.max(0, Math.min(1, rest / p.prazoMs));
-      ui.els.prazoFill.style.transform = 'scaleX(' + frac + ')';
-      ui.els.prazoFill.className = 'prazo__fill' + (frac < 0.25 ? ' urgente' : frac < 0.55 ? ' ambar' : '');
+      const seg = Math.ceil(rest / 1000);
+      const txt = Math.floor(seg / 60) + ':' + String(seg % 60).padStart(2, '0');
+      const rel = ui.els.relogio;
+      if (rel.textContent !== txt) rel.textContent = txt;
+      const cls = 'relogio' + (frac < 0.25 ? ' urgente' : frac < 0.55 ? ' ambar' : '');
+      if (rel.className !== cls) rel.className = cls;
     }
 
     guia.passoMorador(ts);
@@ -350,5 +354,8 @@ export function iniciarJogo() {
   setTimeout(() => (document.querySelector('[data-modo="facil"]') as HTMLElement).focus(), 60);
 
   // handle de depuração/testes (posição, estado e zonas — sem dados sensíveis)
-  (window as any).__et = { truck, estado, input, zonas: mundo.zonas, renderer };
+  (window as any).__et = {
+    truck, estado, input, zonas: mundo.zonas, renderer, scene, camera,
+    render: () => renderer.render(scene, camera),
+  };
 }

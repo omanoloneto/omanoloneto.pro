@@ -17,7 +17,7 @@ export function criarUI(ctx: Contexto): UI {
     vidasWrap: $('[data-vidas-wrap]'),
     vidas: $('[data-vidas]'),
     prazoWrap: $('[data-prazo-wrap]'),
-    prazoFill: $('[data-prazo-fill]'),
+    relogio: $('[data-relogio]'),
     setaBorda: $('[data-seta-borda]'),
     controles: $('[data-controles]'),
     fantasma: $('[data-fantasma]'),
