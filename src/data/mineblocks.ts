@@ -16,33 +16,39 @@ export interface Bloco {
   drop?: number;
   // drop de sorte: chance de cair um item EXTRA (folhas → muda de árvore)
   dropSorte?: { id: number; chance: number };
+  // quanto tempo segurando pra quebrar (ms); ausente = não quebra (rocha-mãe, água)
+  dureza?: number;
 }
 
 export const blocos: Bloco[] = [
   { id: 0, nome: 'ar', tiles: [0, 0, 0], solido: false, render: 'cubo' },
-  { id: 1, nome: 'grama', tiles: [0, 1, 2], solido: true, render: 'cubo', drop: 2 },
-  { id: 2, nome: 'terra', tiles: [2, 2, 2], solido: true, render: 'cubo' },
-  { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo', drop: 10 },
-  { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo' },
-  { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo' },
-  { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo' },
+  { id: 1, nome: 'grama', tiles: [0, 1, 2], solido: true, render: 'cubo', drop: 2, dureza: 550 },
+  { id: 2, nome: 'terra', tiles: [2, 2, 2], solido: true, render: 'cubo', dureza: 500 },
+  { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo', drop: 10, dureza: 1300 },
+  { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo', dureza: 450 },
+  { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo', dureza: 800 },
+  { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo', dureza: 800 },
   // folhas opacas de propósito (estilo "fast graphics"): cull entre vizinhas, zero blend.
-  // Não dropam folha: às vezes cai uma MUDA (planta e nasce árvore!)
-  { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 0, dropSorte: { id: 15, chance: 0.3 } },
-  { id: 8, nome: 'vidro', tiles: [9, 9, 9], solido: true, render: 'recorte' },
-  { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo' },
-  { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo' },
-  { id: 11, nome: 'flor amarela', tiles: [12, 12, 12], solido: false, render: 'cruz' },
-  { id: 12, nome: 'flor vermelha', tiles: [13, 13, 13], solido: false, render: 'cruz' },
+  // Naturais (id 7): dropam folhas E às vezes uma muda; DECAEM sem tronco conectado.
+  { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', dropSorte: { id: 15, chance: 0.3 }, dureza: 300 },
+  { id: 8, nome: 'vidro', tiles: [9, 9, 9], solido: true, render: 'recorte', dureza: 350 },
+  { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo', dureza: 1400 },
+  { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo', dureza: 1100 },
+  { id: 11, nome: 'flor amarela', tiles: [12, 12, 12], solido: false, render: 'cruz', dureza: 350 },
+  { id: 12, nome: 'flor vermelha', tiles: [13, 13, 13], solido: false, render: 'cruz', dureza: 350 },
   // água só existe no mundo (não colocável no v1 — física de água espalhando é armadilha)
   { id: 13, nome: 'água', tiles: [14, 14, 14], solido: false, render: 'agua' },
   { id: 14, nome: 'rocha-mãe', tiles: [15, 15, 15], solido: true, render: 'cubo' },
   // muda: cai das folhas, planta em grama/terra e vira árvore
-  { id: 15, nome: 'muda de árvore', tiles: [16, 16, 16], solido: false, render: 'cruz' },
+  { id: 15, nome: 'muda de árvore', tiles: [16, 16, 16], solido: false, render: 'cruz', dureza: 350 },
+  // folhas COLOCADAS pela criança: mesma cara, mas nunca decaem e devolvem
+  // o item ao quebrar (sem sorte de muda — anti-farm infinita)
+  { id: 16, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 7, dureza: 300 },
 ];
 
-// ordem dos slots da hotbar (ids de blocos colocáveis)
-export const hotbar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15];
+// tipos de item coletáveis (grade do inventário/E); a hotbar agora é
+// dinâmica: 9 slots vazios que enchem conforme a criança coleta
+export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15];
 
 // craft simples da sobrevivência: toca na receita e transforma
 // (sem mesa, sem grade — proporcional a criança de 6 anos)
@@ -96,6 +102,9 @@ export const config = {
   jogador: { largura: 0.6, altura: 1.8, olho: 1.62, alcance: 6 },
   // muda plantada vira árvore depois de um tempinho (em tempo de simulação)
   crescimento: { minMs: 20000, maxMs: 40000 },
+  hotbarTamanho: 9,
+  // folhas órfãs: espera antes de cair (decay em cascata, estilo Minecraft)
+  decay: { atrasoMinMs: 400, atrasoMaxMs: 2900, chanceMuda: 0.15, alcanceTronco: 6 },
   salvar: {
     api: '/class/api/mundos.php',
     debounceMs: 20000, // auto-save 20s após o último bloco editado

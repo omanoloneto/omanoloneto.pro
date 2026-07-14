@@ -28,6 +28,8 @@ export function iniciarJogo() {
     primeiroInput: false,
     // sobrevivência: começa de mãos vazias — quebrou, ganhou
     inventario: new Array(dados.blocos.length).fill(0),
+    // hotbar Minecraft: 9 espaços vazios que enchem coletando
+    hotbarSlots: new Array(dados.config.hotbarTamanho).fill(0),
   };
   const jogador: Jogador = {
     x: dados.config.mundo.SX / 2 + 0.5,
@@ -39,6 +41,7 @@ export function iniciarJogo() {
   };
   const input: Input = {
     frente: false, tras: false, esq: false, dir: false, pulo: false,
+    golpe: false,
     joyX: 0, joyY: 0,
   };
 
@@ -59,7 +62,7 @@ export function iniciarJogo() {
 
   const ctx = {
     blocos: dados.blocos,
-    hotbar: dados.hotbar,
+    itens: dados.itens,
     receitas: dados.receitas,
     cfg: dados.config,
     porId: (id: number) => dados.blocos[id],
@@ -107,6 +110,7 @@ export function iniciarJogo() {
     }
     inv[rec.de] -= rec.qtd;
     inv[rec.para] = Math.min(999, (inv[rec.para] || 0) + rec.ganha);
+    ctx.edicao.registrarItemNaHotbar(rec.para); // fabricou algo novo → hotbar
     ui.atualizarContagens();
     ctx.audio.somSalvo();
     ui.anunciar('Fabricou ' + rec.ganha + ' ' + para.nome + '!');
@@ -167,7 +171,13 @@ export function iniciarJogo() {
     }
 
     ctx.fisica.passo(dt);
-    ctx.edicao.passo(dt); // relógio das mudas plantadas
+    // golpe/mudas/decay usam relógio QUASE-real (clamp frouxo): a física
+    // precisa do clamp apertado, mas quebrar 2× mais devagar num
+    // Chromebook de 10fps seria injusto justo com a máquina mais fraca
+    const dtReal = Math.min(dtMs / 1000, 0.25);
+    ctx.edicao.passo(dtReal); // relógios: mudas + decay das folhas
+    if (input.golpe) ctx.edicao.golpear(dtReal);
+    else if (ctx.edicao.golpeando()) ctx.edicao.soltarGolpe();
     ctx.camera3.passo();
     ctx.mira.passo();
     ceu.passo(dt);
@@ -250,7 +260,9 @@ export function iniciarJogo() {
     medir,
     soltarInputs() {
       input.frente = input.tras = input.esq = input.dir = input.pulo = false;
+      input.golpe = false;
       input.joyX = input.joyY = 0;
+      ctx.edicao.soltarGolpe();
       inputRefs.soltarTouch();
     },
     aoPrimeiroInput() {
@@ -297,6 +309,8 @@ export function iniciarJogo() {
     requestAnimationFrame(() => setTimeout(() => {
       estado.seed = seed;
       if (!carregado) {
+        estado.inventario.fill(0);
+        estado.hotbarSlots.fill(0);
         gerarMundo(ctx, seed);
         jogador.x = ctx.cfg.mundo.SX / 2 + 0.5;
         jogador.z = ctx.cfg.mundo.SZ / 2 + 0.5;
@@ -445,6 +459,8 @@ export function iniciarJogo() {
     fabricar: (i: number) => (ui.els.craftPainel.querySelectorAll('.receita')[i] as HTMLElement)?.click(),
     crescerMudas: () => ctx.edicao.crescerMudasAgora(),
     iniciarMudas: () => ctx.edicao.iniciarMudas(),
+    decairAgora: () => ctx.edicao.decairAgora(),
+    porNoSlot: (i: number, id: number) => { estado.hotbarSlots[i] = id; ctx.ui.atualizarContagens(); },
     obter: ctx.mundo.obter,
     definir: ctx.mundo.definir,
     quebrar: () => ctx.edicao.quebrar(),

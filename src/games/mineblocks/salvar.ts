@@ -63,11 +63,12 @@ export function criarSalvar(ctx: Contexto): Salvar {
   function payloadAtual(): string {
     const p = ctx.jogador;
     return JSON.stringify({
-      v: 2, // v2 = sobrevivência (inventário); v1 (criativo antigo) ainda carrega
+      v: 3, // v3 = hotbar dinâmica; v2/v1 ainda carregam (migração abaixo)
       seed: ctx.estado.seed,
       jogador: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(3), pitch: +p.pitch.toFixed(3) },
       sel: ctx.estado.sel,
       inv: ctx.estado.inventario,
+      slots: ctx.estado.hotbarSlots,
       blocos: codificarRLE(ctx.mundo.dados),
     });
   }
@@ -207,8 +208,9 @@ export function criarSalvar(ctx: Contexto): Salvar {
       conflito = false;
       ctx.mundo.dados.set(blocos);
       ctx.estado.seed = p.seed >>> 0;
-      ctx.estado.sel = Math.max(0, Math.min(ctx.hotbar.length - 1, p.sel | 0));
-      // inventário: v2 traz salvo; v1 (mundo criativo antigo) migra vazio —
+      const NSLOTS = ctx.cfg.hotbarTamanho;
+      ctx.estado.sel = Math.max(0, Math.min(NSLOTS - 1, p.sel | 0));
+      // inventário: v2+ traz salvo; v1 (criativo antigo) migra vazio —
       // a criança re-minera os próprios blocos, nada quebra
       const inv = new Array(ctx.blocos.length).fill(0);
       if (Array.isArray(p.inv)) {
@@ -218,6 +220,22 @@ export function criarSalvar(ctx: Contexto): Salvar {
         }
       }
       ctx.estado.inventario = inv;
+      // hotbar: v3 traz os slots; v2 migra (primeiros tipos que a criança
+      // tem viram atalhos); v1 fica vazia
+      const slots = new Array(NSLOTS).fill(0);
+      if (Array.isArray(p.slots)) {
+        for (let i = 0; i < NSLOTS; i++) {
+          const id = p.slots[i] | 0;
+          if (id > 0 && id < ctx.blocos.length && ctx.itens.includes(id)) slots[i] = id;
+        }
+      } else {
+        let s = 0;
+        for (const id of ctx.itens) {
+          if (s >= NSLOTS) break;
+          if (inv[id] > 0) slots[s++] = id;
+        }
+      }
+      ctx.estado.hotbarSlots = slots;
       const j = p.jogador || {};
       ctx.jogador.x = typeof j.x === 'number' ? j.x : ctx.cfg.mundo.SX / 2;
       ctx.jogador.y = typeof j.y === 'number' ? j.y : ctx.cfg.mundo.SY;

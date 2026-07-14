@@ -155,6 +155,32 @@ export function criarTextura(_ctx: Contexto): Textura {
     px(ox, oy, 7, 4, '#57a24c'); px(ox, oy, 9, 6, '#57a24c');
   }
 
+  // --- 17/18/19 rachaduras (overlay de quebra, cutout) ---
+  {
+    const riscos: Array<Array<[number, number, number, number]>> = [
+      // estágio 1: uns riscos
+      [[7, 4, 8, 8], [8, 8, 6, 11], [9, 7, 11, 9]],
+      // estágio 2: teia crescendo
+      [[7, 2, 8, 8], [8, 8, 5, 12], [8, 8, 12, 11], [4, 6, 8, 8], [9, 4, 11, 2]],
+      // estágio 3: quase quebrando
+      [[7, 1, 8, 8], [8, 8, 3, 13], [8, 8, 13, 12], [2, 6, 8, 8], [8, 8, 12, 3], [5, 13, 8, 8], [8, 8, 14, 7], [1, 10, 5, 9]],
+    ];
+    riscos.forEach((linhas, i) => {
+      const n = 17 + i;
+      const ox = (n % GRADE) * TILE;
+      const oy = Math.floor(n / GRADE) * TILE;
+      g.clearRect(ox, oy, TILE, TILE);
+      g.strokeStyle = 'rgba(20, 14, 8, 0.9)';
+      g.lineWidth = 1;
+      for (const [x0, y0, x1, y1] of linhas) {
+        g.beginPath();
+        g.moveTo(ox + x0 + 0.5, oy + y0 + 0.5);
+        g.lineTo(ox + x1 + 0.5, oy + y1 + 0.5);
+        g.stroke();
+      }
+    });
+  }
+
   const atlas = new THREE.CanvasTexture(canvas);
   atlas.magFilter = THREE.NearestFilter;
   atlas.minFilter = THREE.NearestFilter;

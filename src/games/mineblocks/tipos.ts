@@ -1,7 +1,7 @@
 // Tipos compartilhados do MineBlocks.
 // O Contexto é o único "fio" entre os módulos: main.ts monta e todos leem.
 import type * as THREE from 'three';
-import type { blocos, hotbar, config, receitas, Bloco } from '../../data/mineblocks';
+import type { blocos, itens, config, receitas, Bloco } from '../../data/mineblocks';
 
 export type Cfg = typeof config;
 
@@ -17,6 +17,8 @@ export interface Estado {
   // sobrevivência: contagem de itens por id de bloco — colocar consome,
   // quebrar devolve (o drop do bloco)
   inventario: number[];
+  // hotbar estilo Minecraft: 9 atalhos que enchem conforme coleta (0 = vazio)
+  hotbarSlots: number[];
 }
 
 export interface Jogador {
@@ -39,6 +41,8 @@ export interface Input {
   esq: boolean;
   dir: boolean;
   pulo: boolean;
+  golpe: boolean; // segurando o botão/dedo pra quebrar
+
   // joystick touch analógico (-1..1); teclado escreve 0/±1 nos digitais acima
   joyX: number;
   joyY: number;
@@ -104,12 +108,16 @@ export interface Mira {
 }
 
 export interface Edicao {
-  quebrar(): boolean;
+  quebrar(): boolean; // INSTANTÂNEO — backdoor de teste/depuração
   colocar(): boolean;
-  passo(dt: number): void; // relógio das mudas plantadas
+  golpear(dt: number): void; // segurando: acumula progresso até quebrar
+  soltarGolpe(): void; // soltou o botão/dedo: progresso zera
+  golpeando(): boolean;
+  passo(dt: number): void; // relógio das mudas + decay das folhas
   iniciarMudas(): void; // re-arma o relógio após carregar um save
   crescerMudasAgora(): void; // teste: adianta tudo
-  executarModo(): void; // touch: quebra ou coloca conforme o modo
+  decairAgora(): void; // teste: processa todo o decay pendente já
+  registrarItemNaHotbar(item: number): boolean; // item novo entra no 1º slot vazio (false = cheia)
 }
 
 export interface Salvar {
@@ -148,7 +156,7 @@ export interface Fluxo {
 
 export interface Contexto {
   blocos: typeof blocos;
-  hotbar: typeof hotbar;
+  itens: typeof itens;
   receitas: typeof receitas;
   cfg: Cfg;
   porId: (id: number) => Bloco;

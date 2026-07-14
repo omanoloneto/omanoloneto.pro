@@ -1,8 +1,8 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { blocos, hotbar, config, receitas } from '../../../data/mineblocks';
+import { blocos, itens, config, receitas } from '../../../data/mineblocks';
 
-const dadosJson = JSON.stringify({ blocos, hotbar, config, receitas });
+const dadosJson = JSON.stringify({ blocos, itens, config, receitas });
 
 const title = 'MineBlocks — construa seu mundo de blocos em 3D! | Manolo Neto';
 const description =
@@ -60,8 +60,8 @@ const description =
 
       <!-- dica fantasma (some no 1º input) -->
       <div class="fantasma" data-fantasma hidden>
-        <span class="fantasma__desktop">Clique na tela pra olhar · W A S D anda · espaço pula · clique quebra · botão direito coloca · E abre o inventário</span>
-        <span class="fantasma__touch">Dedo esquerdo anda · arraste pra olhar · toque quebra ou coloca</span>
+        <span class="fantasma__desktop">Clique na tela pra olhar · W A S D anda · espaço pula · SEGURE o clique pra quebrar · botão direito coloca · E abre o inventário</span>
+        <span class="fantasma__touch">Dedo esquerdo anda · arraste pra olhar · SEGURE o dedo parado pra quebrar · no modo 🧱 o toque coloca</span>
       </div>
 
       <div class="toast" data-toast aria-live="polite" hidden></div>
@@ -269,6 +269,8 @@ const description =
       pointer-events: none;
     }
     .slot.vazio .slot__img { opacity: 0.28; filter: grayscale(0.7); }
+    .slot.vago { background: rgba(0, 0, 0, 0.45); border-style: dashed; }
+    .slot__img[hidden] { display: none; }
 
     /* ===== Fabricação ===== */
     .craft-btn {

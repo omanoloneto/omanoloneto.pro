@@ -60,6 +60,8 @@ export function ligarInput(ctx: Contexto) {
   // ----- hotbar: scroll cicla, clique seleciona -----
   window.addEventListener('wheel', (e) => {
     if (estado.fase !== 'jogando') return;
+    // rolando o inventário aberto (touchpad = wheel) não gira a hotbar
+    if (!ctx.ui.els.invPainel.hidden) return;
     ctx.ui.selecionarSlot(estado.sel + (e.deltaY > 0 ? 1 : -1), false);
   }, { passive: true });
   ctx.ui.els.hotbar.addEventListener('pointerdown', (e) => {
@@ -98,6 +100,8 @@ export function ligarInput(ctx: Contexto) {
     const abrindo = ctx.ui.els.invPainel.hidden;
     ctx.ui.alternarCraft(abrindo);
     if (abrindo) {
+      // solta TUDO: minerar/andar às cegas atrás do painel não
+      ctx.fluxo.soltarInputs();
       if (travado) document.exitPointerLock();
     } else if (!modoTouch) {
       pedirLock();
@@ -112,21 +116,34 @@ export function ligarInput(ctx: Contexto) {
     jogador.pitch = Math.max(-PITCH_MAX, Math.min(PITCH_MAX, jogador.pitch - e.movementY * cfg.camera.sensibilidade));
   });
 
-  // clique segura = repete (quebrar em sequência estilo criativo)
-  let repetirTimer = 0;
+  // esquerdo SEGURADO golpeia (quebra com tempo, estilo Minecraft);
+  // direito coloca (segurar repete). Botões independentes: um toque no
+  // direito NÃO cancela a mineração do esquerdo.
+  let colocarTimer = 0;
+  function pararColocar() {
+    clearInterval(colocarTimer);
+    colocarTimer = 0;
+  }
   function pararRepetir() {
-    clearInterval(repetirTimer);
-    repetirTimer = 0;
+    pararColocar();
+    input.golpe = false;
   }
   canvas.addEventListener('mousedown', (e) => {
     if (!travado || estado.fase !== 'jogando') return;
     e.preventDefault();
-    const acao = e.button === 2 ? () => ctx.edicao.colocar() : () => ctx.edicao.quebrar();
-    acao();
-    pararRepetir();
-    repetirTimer = window.setInterval(acao, 240);
+    if (e.button === 2) {
+      ctx.edicao.colocar();
+      pararColocar();
+      colocarTimer = window.setInterval(() => ctx.edicao.colocar(), 240);
+    } else if (e.button === 0) {
+      input.golpe = true;
+      ctx.fluxo.aoPrimeiroInput();
+    }
   });
-  window.addEventListener('mouseup', pararRepetir);
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 2) pararColocar();
+    else if (e.button === 0) input.golpe = false;
+  });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // ----- touch -----
@@ -180,6 +197,8 @@ export function ligarInput(ctx: Contexto) {
       tapX0 = e.clientX;
       tapY0 = e.clientY;
       tapMoveu = false;
+      // modo ⛏️: dedo parado na tela = golpeando o bloco mirado
+      if (!estado.modoColocar) input.golpe = true;
     }
   });
   canvas.addEventListener('pointermove', (e) => {
@@ -196,7 +215,10 @@ export function ligarInput(ctx: Contexto) {
     } else if (e.pointerId === olharId) {
       const dx = e.clientX - olharX;
       const dy = e.clientY - olharY;
-      if (Math.abs(e.clientX - tapX0) + Math.abs(e.clientY - tapY0) > 12) tapMoveu = true;
+      if (Math.abs(e.clientX - tapX0) + Math.abs(e.clientY - tapY0) > 12) {
+        tapMoveu = true;
+        input.golpe = false; // virou olhar: solta o golpe
+      }
       olharX = e.clientX;
       olharY = e.clientY;
       jogador.yaw -= dx * cfg.camera.sensTouch;
@@ -207,9 +229,10 @@ export function ligarInput(ctx: Contexto) {
     if (e.pointerId === joyId) largarJoystick();
     if (e.pointerId === olharId) {
       olharId = -1;
-      // tap curto e parado = ação do modo atual (⛏️ quebra / 🧱 coloca)
-      if (!tapMoveu && performance.now() - tapT0 < 220 && estado.fase === 'jogando') {
-        ctx.edicao.executarModo();
+      input.golpe = false;
+      // tap curto e parado no modo 🧱 coloca (quebrar agora é SEGURAR)
+      if (!tapMoveu && performance.now() - tapT0 < 220 && estado.fase === 'jogando' && estado.modoColocar) {
+        ctx.edicao.colocar();
       }
     }
   };

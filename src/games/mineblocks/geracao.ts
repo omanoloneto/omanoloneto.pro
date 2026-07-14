@@ -117,7 +117,9 @@ export function gerarMundo(ctx: Contexto, seed: number) {
     if (!ehGrama(x, z) || h <= nivelAgua) continue;
     // clareira do spawn: ninguém nasce em pé no topo de uma copa
     if (Math.abs(x - SX / 2) < 4 && Math.abs(z - SZ / 2) < 4) continue;
-    if (copas.some(([cx, cz]) => Math.abs(cx - x) < 5 && Math.abs(cz - z) < 5)) continue;
+    // 7 de distância: copas (raio 2) nunca se encostam — senão cortar uma
+    // árvore deixa meia copa da vizinha "segurando" folhas no ar
+    if (copas.some(([cx, cz]) => Math.abs(cx - x) < 7 && Math.abs(cz - z) < 7)) continue;
     copas.push([x, z]);
     brotarArvore(ctx, x, h, z, rng);
   }

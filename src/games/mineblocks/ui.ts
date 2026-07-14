@@ -63,41 +63,61 @@ export function criarUI(ctx: Contexto): UI {
       'background-position:' + (-tx * 100) + '% ' + (-ty * 100) + '%"></span>';
   }
 
+  // hotbar Minecraft: 9 slots VAZIOS que enchem conforme a criança coleta
   function montarHotbar() {
     els.hotbar.innerHTML = '';
-    ctx.hotbar.forEach((id, i) => {
-      const b = ctx.porId(id);
+    for (let i = 0; i < ctx.cfg.hotbarTamanho; i++) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'slot';
       btn.dataset.slot = String(i);
-      btn.setAttribute('aria-label', 'Bloco ' + (i + 1) + ': ' + b.nome);
+      btn.setAttribute('aria-label', 'Espaço ' + (i + 1) + ' da hotbar');
       btn.innerHTML =
-        imgDoBloco(id) +
-        '<span class="slot__num">' + (i < 9 ? i + 1 : '') + '</span>' +
+        '<span class="slot__img" data-img hidden></span>' +
+        '<span class="slot__num">' + (i + 1) + '</span>' +
         '<span class="slot__qtd" data-qtd></span>';
       els.hotbar.appendChild(btn);
-    });
+    }
     atualizarContagens();
   }
 
-  // sobrevivência: mostra quantos de cada bloco a criança TEM
+  // posiciona ícone/contagem de cada slot conforme hotbarSlots + inventario
   function atualizarContagens() {
     const inv = ctx.estado.inventario;
+    const slots = ctx.estado.hotbarSlots;
+    // contagem zerou → slot esvazia (o buraco fica, igual Minecraft)
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i] !== 0 && (inv[slots[i]] || 0) <= 0) slots[i] = 0;
+    }
     els.hotbar.querySelectorAll<HTMLElement>('.slot').forEach((s, i) => {
-      const id = ctx.hotbar[i];
-      const n = inv[id] || 0;
+      const id = slots[i] || 0;
+      const img = s.querySelector('[data-img]') as HTMLElement;
       const qtd = s.querySelector('[data-qtd]') as HTMLElement;
-      qtd.textContent = n > 0 ? String(n) : '';
-      s.classList.toggle('vazio', n === 0);
+      if (id === 0) {
+        img.hidden = true;
+        qtd.textContent = '';
+        s.classList.add('vago');
+        s.setAttribute('aria-label', 'Espaço ' + (i + 1) + ' da hotbar: vazio');
+      } else {
+        const b = ctx.porId(id);
+        const GRADE = 4;
+        const tile = b.render === 'cruz' ? b.tiles[0] : b.tiles[1];
+        img.hidden = false;
+        img.style.backgroundImage = 'url(' + ctx.textura.dataURL + ')';
+        img.style.backgroundPosition = (-(tile % GRADE) * 100) + '% ' + (-Math.floor(tile / GRADE) * 100) + '%';
+        qtd.textContent = String(inv[id] || 0);
+        s.classList.remove('vago');
+        s.setAttribute('aria-label', 'Espaço ' + (i + 1) + ': ' + b.nome + ', ' + (inv[id] || 0));
+      }
+      s.classList.remove('vazio');
     });
-    // grade do inventário (tecla E): mesmas contagens, ícones grandes
+    // grade do inventário (tecla E): todos os tipos com contagem
     els.invGrade.querySelectorAll<HTMLElement>('.inv-item').forEach((s, i) => {
-      const id = ctx.hotbar[i];
+      const id = ctx.itens[i];
       const n = inv[id] || 0;
       (s.querySelector('[data-qtd]') as HTMLElement).textContent = n > 0 ? '× ' + n : '—';
       s.classList.toggle('vazio', n === 0);
-      s.classList.toggle('sel', i === ctx.estado.sel);
+      s.classList.toggle('sel', id === ctx.estado.hotbarSlots[ctx.estado.sel]);
     });
     // receitas acendem/apagam conforme o material disponível
     els.craftPainel.querySelectorAll<HTMLElement>('.receita').forEach((r, i) => {
@@ -106,22 +126,33 @@ export function criarUI(ctx: Contexto): UI {
     });
   }
 
-  // grade do inventário estilo Minecraft: todos os itens com contagem;
-  // clicar escolhe o bloco na hotbar
+  // grade do inventário estilo Minecraft: todos os tipos com contagem;
+  // clicar num item PÕE ele no slot selecionado da hotbar (atalho —
+  // as contagens são globais, nada se perde na troca)
   function montarInventario() {
     els.invGrade.innerHTML = '';
-    ctx.hotbar.forEach((id, i) => {
+    ctx.itens.forEach((id) => {
       const b = ctx.porId(id);
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'inv-item';
-      btn.dataset.slot = String(i);
-      btn.setAttribute('aria-label', b.nome);
+      btn.setAttribute('aria-label', b.nome + ' — pôr no espaço selecionado da hotbar');
       btn.innerHTML =
         imgDoBloco(id) +
         '<span class="inv-item__nome">' + b.nome + '</span>' +
         '<span class="inv-item__qtd" data-qtd>—</span>';
-      btn.addEventListener('click', () => selecionarSlot(i, true));
+      btn.addEventListener('click', () => {
+        // item que a criança ainda não TEM não vira atalho (apagaria o
+        // atalho atual e anunciaria sucesso falso)
+        if ((ctx.estado.inventario[id] || 0) <= 0) {
+          api.mostrarToast('🎒 Você ainda não tem ' + b.nome + ' — quebre blocos pra ganhar!', 'info', 2000);
+          return;
+        }
+        ctx.estado.hotbarSlots[ctx.estado.sel] = id;
+        atualizarContagens();
+        selecionarSlot(ctx.estado.sel, false);
+        api.anunciar(b.nome + ' está no espaço ' + (ctx.estado.sel + 1) + ' da hotbar.');
+      });
       els.invGrade.appendChild(btn);
     });
   }
@@ -145,13 +176,14 @@ export function criarUI(ctx: Contexto): UI {
   }
 
   function selecionarSlot(i: number, anunciarSel: boolean) {
-    ctx.estado.sel = ((i % ctx.hotbar.length) + ctx.hotbar.length) % ctx.hotbar.length;
+    const N = ctx.cfg.hotbarTamanho;
+    ctx.estado.sel = ((i % N) + N) % N;
     els.hotbar.querySelectorAll('.slot').forEach((s, j) => {
       s.classList.toggle('sel', j === ctx.estado.sel);
     });
-    const id = ctx.hotbar[ctx.estado.sel];
-    const n = ctx.estado.inventario[id] || 0;
-    const nome = ctx.porId(id).nome + (n > 0 ? ' × ' + n : ' (você não tem!)');
+    const id = ctx.estado.hotbarSlots[ctx.estado.sel] || 0;
+    const n = id ? ctx.estado.inventario[id] || 0 : 0;
+    const nome = id ? ctx.porId(id).nome + ' × ' + n : 'espaço vazio';
     els.balao.textContent = nome;
     els.balao.classList.add('show');
     clearTimeout(balaoTimer);
