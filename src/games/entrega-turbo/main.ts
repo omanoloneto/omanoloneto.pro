@@ -38,8 +38,8 @@ export function iniciarJogo() {
   const cenaEl = document.querySelector('[data-cena]') as HTMLElement;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x79c4e8);
-  scene.fog = new THREE.Fog(0x79c4e8, 60, 120);
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 130);
+  scene.fog = new THREE.Fog(0x79c4e8, 70, 140); // mundo 6×6 é maior
+  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 150);
   camera.position.set(0, 30, 40);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -65,6 +65,7 @@ export function iniciarJogo() {
     cfg: dados.config,
     skins: dados.skins,
     porSimbolo: new Map(dados.destinos.map((d: { simbolo: string }) => [d.simbolo, d])),
+    avenida: dados.avenida,
     motionReduzido: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     scene,
     camera,
@@ -219,8 +220,12 @@ export function iniciarJogo() {
       ui.popHud('[data-nivel]', 1);
       caminhao.atualizarCaixasVisiveis(0);
       caminhao.aplicarSkin(1);
-      // nasce uma rua ao sul do depósito, já olhando pra ele
-      truck.x = 0; truck.z = 42; truck.heading = Math.PI; truck.v = 0;
+      // nasce uma rua (célula) ao sul do depósito, já olhando pra ele
+      const dep = mundo.zonas.get('D')!;
+      truck.x = dep.x;
+      truck.z = dep.z + 28;
+      truck.heading = Math.PI;
+      truck.v = 0;
       ui.els.introModal.hidden = true;
       ui.els.pauseBtn.hidden = false;
       ui.els.controles.hidden = false;

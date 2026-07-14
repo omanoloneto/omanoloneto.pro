@@ -1,22 +1,34 @@
 // ============================================================
-//  Jogo "Entrega Turbo" — caminhão 3D de entregas na cidadezinha.
+//  Jogo "Entrega Turbo" — caminhão 3D de entregas em TERRA DE AREIA!
+//  A cidadezinha é inspirada no mapa real (Google Maps): a BR-101
+//  cruzando na diagonal, o CENTRO com prédios a leste e o bairro
+//  BELA VISTA de casinhas a oeste — com os comércios de verdade.
 //  Público: crianças 6-10 anos, Chromebooks fracos com touch.
 //
-//  O MAPA é autorável: grade 5×5 de lotes (célula = 28m: lote de
-//  20m + rua de 8m em volta de todos). Símbolos:
-//    P = prédio comum   T = arvoredo   . = pracinha (grama)
-//    D = depósito (coleta — deixe no centro!)
+//  O MAPA é autorável: grade de lotes (célula = 28m: lote de 20m +
+//  rua de 8m em volta de todos). Símbolos:
+//    P = prédio   H = casa com telhado   T = arvoredo   . = vazio/avenida
+//    D = depósito (coleta)
 //    letras minúsculas = destinos de entrega (ver DESTINOS)
 //  Dela derivam geometria, colisões e pontos de entrega.
 // ============================================================
 
 export const mapa: string[] = [
-  'PmPTe',
-  'TPP.P',
-  'pPDPa',
-  'P.PTs',
-  'bPTPf',
+  'HHTP.p',
+  'HHPP.P',
+  'cDT.Pz',
+  'Has.PP',
+  'HH.PPe',
+  'Hi.PTP',
 ];
+
+// BR-101: avenida diagonal cruzando a cidade (como na foto do Maps).
+// Lotes atravessados pela faixa não constroem nada — ela é dirigível.
+export const avenida = {
+  de: [50, -88] as [number, number],
+  para: [-30, 88] as [number, number],
+  largura: 11,
+};
 
 export type Destino = {
   simbolo: string;
@@ -26,14 +38,15 @@ export type Destino = {
   cor: number;       // cor do prédio do destino (hex three.js)
 };
 
+// Os comércios de verdade de Terra de Areia (do Google Maps) + clássicos
 export const destinos: Destino[] = [
-  { simbolo: 'p', nome: 'a padaria', rotulo: 'Padaria', emoji: '🥖', cor: 0xf2c14e },
-  { simbolo: 'e', nome: 'a escola', rotulo: 'Escola', emoji: '🏫', cor: 0xe4572e },
-  { simbolo: 'm', nome: 'o mercado', rotulo: 'Mercado', emoji: '🛒', cor: 0x4ea5d9 },
-  { simbolo: 's', nome: 'a sorveteria', rotulo: 'Sorveteria', emoji: '🍦', cor: 0xf7a1c4 },
-  { simbolo: 'f', nome: 'a floricultura', rotulo: 'Floricultura', emoji: '🌷', cor: 0x7bc950 },
+  { simbolo: 'p', nome: 'a Padaria Sabor do Céu', rotulo: 'Sabor do Céu', emoji: '🥖', cor: 0xf2c14e },
+  { simbolo: 's', nome: 'o Super da Praia', rotulo: 'Super da Praia', emoji: '🛒', cor: 0x4ea5d9 },
+  { simbolo: 'z', nome: 'a Pizzaria Skentta', rotulo: 'Skentta', emoji: '🍕', cor: 0xe4572e },
+  { simbolo: 'c', nome: 'o Sempre Certo', rotulo: 'Sempre Certo', emoji: '🏪', cor: 0x7bc950 },
+  { simbolo: 'e', nome: 'a escola', rotulo: 'Escola', emoji: '🏫', cor: 0xd97757 },
   { simbolo: 'a', nome: 'a casa azul', rotulo: 'Casa Azul', emoji: '🏠', cor: 0x3d7dd8 },
-  { simbolo: 'b', nome: 'a biblioteca', rotulo: 'Biblioteca', emoji: '📚', cor: 0x9b6dd6 },
+  { simbolo: 'i', nome: 'a sorveteria', rotulo: 'Sorveteria', emoji: '🍦', cor: 0xf7a1c4 },
 ];
 
 export const config = {

@@ -1,7 +1,7 @@
 // Tipos compartilhados do Entrega Turbo.
 // O Contexto é o único "fio" entre os módulos: main.ts monta e todos leem.
 import type * as THREE from 'three';
-import type { config, destinos, skins, mapa } from '../../data/entrega-turbo';
+import type { config, destinos, skins, mapa, avenida } from '../../data/entrega-turbo';
 import type { Destino } from '../../data/entrega-turbo';
 
 export type Cfg = typeof config;
@@ -150,6 +150,7 @@ export interface Contexto {
   destinos: typeof destinos;
   cfg: Cfg;
   skins: typeof skins;
+  avenida: typeof avenida;
   porSimbolo: Map<string, Destino>;
   motionReduzido: boolean;
   // núcleo three
