@@ -120,6 +120,37 @@ const janelas: DadosSim['janelas'] = [
         <div class="notas__status bisel-baixo" data-nota-status></div>
       </div>`,
   },
+  {
+    id: 'player',
+    titulo: 'Reprodutor de Mídia',
+    icone: 'player',
+    classe: 'janela--player',
+    cru: true,
+    app: 'player',
+    html: `
+      <div class="player">
+        <div class="player__menu" aria-hidden="true"><span>Arquivo</span><span>Exibir</span><span>Ajuda</span></div>
+        <div class="player__visor bisel-campo">
+          <span class="player__nome" data-player-visor-nome>—</span>
+          <span data-player-visor-tempo>0:00 / 0:00</span>
+        </div>
+        <input class="player__seek" type="range" data-player-seek min="0" max="0" step="0.1" value="0" aria-label="Posição da música" />
+        <div class="player__controles" role="toolbar" aria-label="Controles do reprodutor">
+          <button type="button" class="bisel-alto" data-player-ant aria-label="Faixa anterior">⏮</button>
+          <button type="button" class="bisel-alto" data-player-tocar aria-label="Tocar">▶</button>
+          <button type="button" class="bisel-alto" data-player-pausar aria-label="Pausar">⏸</button>
+          <button type="button" class="bisel-alto" data-player-parar aria-label="Parar">⏹</button>
+          <button type="button" class="bisel-alto" data-player-prox aria-label="Próxima faixa">⏭</button>
+          <label class="player__vol">🔉<input type="range" data-player-volume min="0" max="1" step="0.05" value="0.8" aria-label="Volume" /></label>
+        </div>
+        <div class="player__lista bisel-campo" data-player-lista role="group" aria-label="Lista de músicas"></div>
+        <div class="player__acoes">
+          <button type="button" class="bisel-alto" data-player-pasta>💻 Abrir uma pasta do computador</button>
+          <input type="file" data-player-input-pasta webkitdirectory multiple hidden />
+        </div>
+        <div class="player__status bisel-baixo" role="status" data-player-status></div>
+      </div>`,
+  },
   // (o Leia-me.txt agora é um ARQUIVO de verdade — veja arquivosSeed — e
   //  abre no Bloco de Notas como uma nota protegida)
   {
@@ -469,6 +500,7 @@ export const dados: DadosSim = {
       submenu: [
         { id: 'bloco-de-notas', icone: 'bloco', rotulo: 'Bloco de Notas' },
         { id: 'internet-explorer', icone: 'ie', rotulo: 'Internet Explorer' },
+        { id: 'player', icone: 'player', rotulo: 'Reprodutor de Mídia' },
         { id: 'programas', icone: 'ajuda', rotulo: 'O que eram os programas?' },
       ],
     },
@@ -519,6 +551,17 @@ export const dados: DadosSim = {
     tocando: 'Tocando… ♪ ♫',
     parado: 'Parado',
     somDesligado: 'Som desligado! Liga no alto-falante 🔊',
+    // reprodutor de mídia
+    playerParado: 'Parado',
+    playerTocando: 'Tocando: {nome}',
+    playerPausado: 'Pausado',
+    playerErro: 'Não consegui tocar {nome} 😢 Tenta outra!',
+    playerFimDaLista: 'A lista acabou! Aperte ▶ pra ouvir de novo.',
+    playerSemMusicas: 'Nenhuma música por aqui ainda…',
+    playerPastaVazia: 'Não achei músicas nessa pasta 🤔 Procure uma pasta com arquivos .mp3!',
+    playerPastaDeNovo: 'Hmm, não deu por aqui. Clica no botão de novo!',
+    playerLocais: '{n} música(s) do seu computador entraram na lista! 💻',
+    playerFaixaLocal: 'música do seu computador',
     // Meus Documentos / Lixeira
     statusPasta: '{n} objeto(s) — clique num arquivo pra abrir!',
     excluirRotulo: 'Excluir {nome}',

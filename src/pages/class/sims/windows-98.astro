@@ -3,16 +3,64 @@
 // genérico (src/games/sim-os/*) e o conteúdo de src/data/windows-98.ts.
 // Aqui ficam só: sprite SVG do tema, esqueleto com os ganchos [data-*],
 // tokens de skin --sim-* e o CSS do conteúdo autoral (folha/paint/mini-web).
+import fs from 'node:fs';
+import path from 'node:path';
 import Layout from '../../../layouts/Layout.astro';
 import { dados } from '../../../data/windows-98';
+import type { ArquivoSeed, DadosSim, Faixa } from '../../../games/sim-os/tipos';
 import '../../../styles/sim-os.css';
 
 const title = 'Simulador do Windows 98 — viaje até 1998 | Sala do Professor Manolo';
 const description =
-  'Um Windows 98 de mentirinha pra crianças explorarem: ligue o computador, abra as janelas, escreva no Bloco de Notas e descubra a internet discada. Grátis, em português, direto no navegador.';
+  'Um Windows 98 de mentirinha pra crianças explorarem: ligue o computador, abra as janelas, escreva no Bloco de Notas, ouça música no Reprodutor de Mídia e descubra a internet discada. Grátis, em português, direto no navegador.';
+
+// ===== Playlist do Reprodutor de Mídia: soltou .mp3 (ou .ogg/.wav/.m4a) em
+// public/class/sims/musicas/, build + deploy e a música aparece no player e
+// em Meus Documentos. O scan roda NO BUILD (fs), nada em runtime.
+const PASTA_MUSICAS = path.join(process.cwd(), 'public/class/sims/musicas');
+const EXT_MUSICA = /\.(mp3|ogg|wav|m4a)$/i;
+
+const nomesMusicas = fs.existsSync(PASTA_MUSICAS)
+  ? fs
+      .readdirSync(PASTA_MUSICAS)
+      .filter((n) => EXT_MUSICA.test(n) && !n.startsWith('.'))
+      .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }))
+  : [];
+
+// nome CRU na URL (encodeURIComponent): os bytes têm que casar com o FTP
+const playlist: Faixa[] = nomesMusicas.map((n) => ({
+  nome: n,
+  url: '/class/sims/musicas/' + encodeURIComponent(n),
+}));
+
+function slugFaixa(nome: string): string {
+  return (
+    nome
+      .replace(EXT_MUSICA, '')
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'faixa'
+  );
+}
+const idsVistos = new Map<string, number>();
+const seedsMusica: ArquivoSeed[] = playlist.map((f) => {
+  let id = 'mus-' + slugFaixa(f.nome);
+  const n = (idsVistos.get(id) || 0) + 1;
+  idsVistos.set(id, n);
+  if (n > 1) id += '-' + n;
+  return { id, nome: f.nome, icone: 'musica', abrirCom: 'player', url: f.url };
+});
+
+const dadosCompletos: DadosSim = {
+  ...dados,
+  playlist,
+  arquivosSeed: [...dados.arquivosSeed, ...seedsMusica],
+};
 
 // '</' escapado: conteúdo autoral não pode fechar o <script> do JSON sem querer
-const dadosJson = JSON.stringify(dados).replaceAll('</', '<\\/');
+const dadosJson = JSON.stringify(dadosCompletos).replaceAll('</', '<\\/');
 ---
 
 <Layout title={title} description={description}>
@@ -103,6 +151,16 @@ const dadosJson = JSON.stringify(dados).replaceAll('</', '<\\/');
         <rect x="3" y="4" width="18" height="16" fill="#fff" stroke="#555"></rect>
         <circle cx="9" cy="10" r="2.2" fill="#fd0" stroke="#f90"></circle>
         <path d="M4 18 L10 12 L14 16 L17 13 L20 16 V19 H4 Z" fill="#6db36d" stroke="#3a7a3a" stroke-width="0.8"></path>
+      </symbol>
+      <symbol id="i-player" viewBox="0 0 24 24">
+        <rect x="2" y="4" width="20" height="16" rx="1" fill="#c0c0c0" stroke="#404040"></rect>
+        <rect x="4" y="6" width="16" height="8" fill="#000"></rect>
+        <path d="M9 7.5 V12 M9 7.5 L13 6.8 V11.2" stroke="#3f3" stroke-width="1.2" fill="none"></path>
+        <circle cx="8" cy="12" r="1.3" fill="#3f3"></circle>
+        <circle cx="12.6" cy="11.2" r="1.3" fill="#3f3"></circle>
+        <path d="M6 16.5 L9.5 18 L6 19.5 Z" fill="#2d8a3e" stroke="#131" stroke-width="0.5"></path>
+        <rect x="11" y="16.5" width="2" height="3" fill="#404040"></rect>
+        <rect x="14" y="16.5" width="2" height="3" fill="#404040"></rect>
       </symbol>
       <symbol id="i-musica" viewBox="0 0 24 24">
         <path d="M9 18.5 V6 L19 4 V16.5" fill="none" stroke="#2b4fa0" stroke-width="2"></path>
@@ -344,6 +402,7 @@ const dadosJson = JSON.stringify(dados).replaceAll('</', '<\\/');
     import { criarExplorador } from '../../../games/sim-os/apps/explorador';
     import { criarLixeira } from '../../../games/sim-os/apps/lixeira';
     import { criarTocador } from '../../../games/sim-os/apps/tocador';
+    import { criarPlayer } from '../../../games/sim-os/apps/player';
 
     iniciarSim({
       apps: {
@@ -352,6 +411,7 @@ const dadosJson = JSON.stringify(dados).replaceAll('</', '<\\/');
         explorador: criarExplorador,
         lixeira: criarLixeira,
         tocador: criarTocador,
+        player: criarPlayer,
       },
     });
   </script>

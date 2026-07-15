@@ -60,6 +60,14 @@ export interface ArquivoSeed {
   /** …OU app que abre o arquivo (ex.: 'bloco-de-notas') com este texto */
   abrirCom?: string;
   texto?: string;
+  /** mídia real servida do site (seeds de música do player) */
+  url?: string;
+}
+
+/** faixa da playlist do player — gerada no BUILD (a página escaneia public/) */
+export interface Faixa {
+  nome: string;
+  url: string;
 }
 
 export interface ItemMenu {
@@ -101,6 +109,8 @@ export interface DadosSim {
   arquivosSeed: ArquivoSeed[];
   sites: Site[];
   navegador: { home: string };
+  /** playlist do player de música — a PÁGINA injeta no build (fs.readdir) */
+  playlist?: Faixa[];
   sons: { ligar: Trecho; melodia: Trecho };
   tempos: {
     boot: number;
@@ -125,6 +135,8 @@ export interface Arquivo {
   /** notas do aluno: app que abre o arquivo (ex.: 'bloco-de-notas') */
   abrirCom?: string;
   texto?: string;
+  /** mídia real servida do site (música) */
+  url?: string;
   naLixeira: boolean;
 }
 
@@ -191,6 +203,8 @@ export interface Audio {
   somClique(): void;
   /** lê/grava `${chave}:mudo` e liga o botão da bandeja */
   bindMute(): void;
+  /** assina mudanças do mute global; retorna a função de cancelar */
+  aoMudarMudo(fn: (mudo: boolean) => void): () => void;
 }
 
 export interface Janelas {

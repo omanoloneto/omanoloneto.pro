@@ -345,6 +345,61 @@ body.is-game::before { display: none !important; }
 :is(.janela--max, .janela--dimensionada) .notas__texto { flex: 1; height: auto; min-height: 0; }
 .notas__status { min-height: 19px; padding: 2px 8px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* ===== App: reprodutor de mídia ===== */
+/* min-height vence o height inline do redimensionador: encolher demais
+   cortaria os controles sem barra de rolagem */
+.janela--player { width: min(430px, calc(100% - 16px)); min-height: 280px; min-width: 300px; }
+.player { display: flex; flex-direction: column; gap: 4px; margin-top: 3px; }
+.player__menu { display: flex; gap: 14px; padding: 2px 6px; font-size: 12px; flex-shrink: 0; }
+/* .sim vence o .sim .bisel-campo — o visor é preto/verde por cima do bisel */
+.sim .player__visor {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: #000;
+  color: #3f3;
+  font: 700 13px 'Courier New', monospace;
+  flex-shrink: 0;
+}
+.player__nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player__seek { width: 100%; accent-color: var(--sim-selecao); flex-shrink: 0; }
+.player__controles { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; flex-shrink: 0; }
+.player__controles button { min-width: 36px; padding: 5px 8px; font-size: 13px; }
+.player__vol { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.player__vol input { width: 80px; accent-color: var(--sim-selecao); }
+.player__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px;
+  min-height: 96px;
+  max-height: 26vh;
+  overflow: auto;
+}
+.player__faixa {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  box-shadow: none;
+  font-size: 12px;
+}
+.sim .player__faixa:active { border-color: transparent; box-shadow: none; }
+.player__faixa:hover { background: var(--sim-arq-hover); }
+.player__faixa:focus-visible { outline: 1px dotted var(--sim-texto); background: var(--sim-arq-selecao); }
+.player__faixa span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.player__faixa[aria-current='true'] { background: var(--sim-selecao); color: var(--sim-selecao-texto); }
+.player__vazio { color: var(--sim-borda-media); text-align: center; margin: auto; }
+.player__acoes { display: flex; flex-shrink: 0; }
+.player__acoes button { padding: 4px 10px; font-size: 12px; }
+.player__status { min-height: 19px; padding: 2px 8px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+/* redimensionada/max: a LISTA é quem estica */
+:is(.janela--max, .janela--dimensionada) .player__lista { flex: 1; max-height: none; min-height: 0; }
+
 /* ===== App: tocador ===== */
 .tocador { margin-bottom: 12px; }
 .tocador__visor {
@@ -512,6 +567,11 @@ body.is-game::before { display: none !important; }
   .lixo__item button { padding: 6px 14px; }
   .notas__menu button { padding: 6px 12px; }
   .notas__aviso-botoes button { padding: 6px 14px; }
+  .player__controles button { min-width: 44px; min-height: 44px; padding: 8px 10px; }
+  .player__faixa { padding: 8px 6px; }
+  /* área de toque dos sliders: a altura do elemento é o hit-target no touch */
+  .player__seek { height: 32px; }
+  .player__vol input { height: 32px; width: 110px; }
   /* leste começa ABAIXO da barra de título engordada — senão rouba o tap
      no cantinho do botão fechar */
   .janela__alca--leste { width: 16px; right: -6px; top: 40px; }

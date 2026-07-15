@@ -12,6 +12,7 @@ export function criarArquivos(ctx: Contexto): Arquivos {
     janela: s.janela,
     abrirCom: s.abrirCom,
     texto: s.texto,
+    url: s.url,
     naLixeira: false,
   }));
   let seq = 0;

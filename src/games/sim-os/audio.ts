@@ -113,6 +113,14 @@ export function criarAudio(ctx: Contexto): Audio {
     tom(880, 0, 0.04, 'square', 0.05);
   }
 
+  // apps que tocam mídia de verdade (player) precisam saber quando o mute
+  // global muda — mesmo padrão de assinatura do Arquivos.assinar
+  const assinantesMudo = new Set<(mudo: boolean) => void>();
+  function aoMudarMudo(fn: (mudo: boolean) => void) {
+    assinantesMudo.add(fn);
+    return () => assinantesMudo.delete(fn);
+  }
+
   function bindMute() {
     const chave = ctx.dados.chave + ':mudo';
     const { mute, muteUse } = ctx.ui.els;
@@ -127,6 +135,7 @@ export function criarAudio(ctx: Contexto): Audio {
       ctx.estado.mudo = !ctx.estado.mudo;
       localStorage.setItem(chave, ctx.estado.mudo ? '1' : '0');
       aplicar();
+      assinantesMudo.forEach((fn) => fn(ctx.estado.mudo));
     });
   }
 
@@ -136,5 +145,5 @@ export function criarAudio(ctx: Contexto): Audio {
     if (actx && actx.state === 'suspended') actx.resume();
   }, { once: true, capture: true });
 
-  return { init, pronto, tom, tocarTrecho, pararTrecho, dtmf, ruidoFiltrado, somClique, bindMute };
+  return { init, pronto, tom, tocarTrecho, pararTrecho, dtmf, ruidoFiltrado, somClique, bindMute, aoMudarMudo };
 }
