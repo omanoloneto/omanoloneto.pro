@@ -55,18 +55,27 @@ export interface ArquivoSeed {
   id: string;
   nome: string;
   icone: string;
-  /** id da janela-visualizadora que este arquivo abre */
-  janela: string;
+  /** id da janela-visualizadora que este arquivo abre… */
+  janela?: string;
+  /** …OU app que abre o arquivo (ex.: 'bloco-de-notas') com este texto */
+  abrirCom?: string;
+  texto?: string;
 }
 
 export interface ItemMenu {
-  id: string;
+  /** id da janela que o item abre (ausente quando é um grupo com submenu) */
+  id?: string;
   icone: string;
   rotulo: string;
+  /** cascata: itens do submenu (1 nível) */
+  submenu?: ItemMenu[];
 }
 
 export interface IconeDesktop {
-  id: string;
+  /** id da janela que o ícone abre… */
+  id?: string;
+  /** …OU id de arquivo do VFS (abre pelo visualizador/app do arquivo) */
+  abreArquivo?: string;
   icone: string;
   rotulo: string;
 }

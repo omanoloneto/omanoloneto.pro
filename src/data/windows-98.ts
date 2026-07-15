@@ -120,18 +120,8 @@ const janelas: DadosSim['janelas'] = [
         <div class="notas__status bisel-baixo" data-nota-status></div>
       </div>`,
   },
-  {
-    id: 'leiame',
-    titulo: 'Leia-me.txt — Bloco de Notas',
-    icone: 'bloco',
-    html: `
-      <p>Olá, turma! Bem-vindos a <b>1998</b>! 👋</p>
-      <p>Este é o Windows 98, o sistema que os computadores usavam quando o professor
-      Manolo era criança. Explorem à vontade: cliquem nos ícones da tela e nos itens
-      do menu <b>Iniciar</b>. Pra fechar uma janela, use o botãozinho ✕.</p>
-      <p class="dica">💡 <b>Curiosidade:</b> antigamente era preciso clicar DUAS vezes
-      bem rapidinho pra abrir um ícone. Aqui deixamos um clique só — de nada. 😄</p>`,
-  },
+  // (o Leia-me.txt agora é um ARQUIVO de verdade — veja arquivosSeed — e
+  //  abre no Bloco de Notas como uma nota protegida)
   {
     id: 'programas',
     titulo: 'Programas',
@@ -432,8 +422,27 @@ export const dados: DadosSim = {
   sites,
 
   // Arquivos que já vêm "de fábrica" em Meus Documentos (não podem ser
-  // excluídos; cada um abre a própria janela-visualizadora acima)
+  // excluídos; cada um abre a própria janela-visualizadora acima — o
+  // Leia-me abre no Bloco de Notas de verdade, editável mas protegido:
+  // Salvar numa nota de fábrica cai no "salvar como" e vira cópia do aluno)
   arquivosSeed: [
+    {
+      id: 'arq-leiame',
+      icone: 'bloco',
+      nome: 'Leia-me.txt',
+      abrirCom: 'bloco-de-notas',
+      texto: [
+        'Olá, turma! Bem-vindos a 1998!',
+        '',
+        'Este é o Windows 98, o sistema que os computadores usavam quando o professor Manolo era criança. Explorem à vontade: cliquem nos ícones da tela e no menu Iniciar.',
+        '',
+        'Este arquivo está aberto no Bloco de Notas — podem apagar tudo e escrever o que quiserem! Pra guardar, cliquem em Salvar e deem um nome: a nota vai aparecer na pasta Meus Documentos.',
+        '',
+        'Dica: dá pra arrastar as janelas segurando na barra azul e mudar o tamanho delas puxando pelo cantinho de baixo.',
+        '',
+        'Curiosidade: antigamente era preciso clicar DUAS vezes bem rapidinho pra abrir um ícone. Aqui deixamos um clique só — de nada. :)',
+      ].join('\n'),
+    },
     { id: 'arq-carta', icone: 'doc', nome: 'Carta pra vovó.doc', janela: 'arq-carta' },
     { id: 'arq-trabalho', icone: 'doc', nome: 'Trabalho de Ciências.doc', janela: 'arq-trabalho' },
     { id: 'arq-diario', icone: 'txt', nome: 'diário secreto.txt', janela: 'arq-diario' },
@@ -447,13 +456,20 @@ export const dados: DadosSim = {
     { id: 'meus-documentos', icone: 'pasta', rotulo: 'Meus Documentos' },
     { id: 'lixeira', icone: 'lixeira', rotulo: 'Lixeira' },
     { id: 'internet-explorer', icone: 'ie', rotulo: 'Internet Explorer' },
-    { id: 'leiame', icone: 'bloco', rotulo: 'Leia-me.txt' },
+    { abreArquivo: 'arq-leiame', icone: 'bloco', rotulo: 'Leia-me.txt' },
   ],
 
-  // Itens do menu Iniciar (flat) — o Bloco de Notas é a estrela
+  // Itens do menu Iniciar — Programas abre a cascata (como no Win98 real)
   menu: [
-    { id: 'bloco-de-notas', icone: 'bloco', rotulo: 'Bloco de Notas' },
-    { id: 'programas', icone: 'programas', rotulo: 'Programas' },
+    {
+      icone: 'programas',
+      rotulo: 'Programas',
+      submenu: [
+        { id: 'bloco-de-notas', icone: 'bloco', rotulo: 'Bloco de Notas' },
+        { id: 'internet-explorer', icone: 'ie', rotulo: 'Internet Explorer' },
+        { id: 'programas', icone: 'ajuda', rotulo: 'O que eram os programas?' },
+      ],
+    },
     { id: 'documentos', icone: 'pasta', rotulo: 'Documentos' },
     { id: 'configuracoes', icone: 'config', rotulo: 'Configurações' },
     { id: 'ajuda', icone: 'ajuda', rotulo: 'Ajuda' },

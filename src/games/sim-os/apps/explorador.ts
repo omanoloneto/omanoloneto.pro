@@ -16,8 +16,7 @@ export function criarExplorador(ctx: Contexto): AppInstancia {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'arq';
-    if (arq.janela) btn.dataset.abre = arq.janela;
-    else btn.dataset.arqNota = arq.id;
+    btn.dataset.abreArquivo = arq.id; // a delegação global do main resolve
     const nome = document.createElement('span');
     nome.className = 'arq__nome';
     nome.textContent = arq.nome; // nome pode vir do aluno — textContent sempre
@@ -70,15 +69,8 @@ export function criarExplorador(ctx: Contexto): AppInstancia {
           } else {
             ctx.ui.anunciar(textos.protegido);
           }
-          return;
         }
-        const nota = alvo.closest<HTMLElement>('[data-arq-nota]');
-        if (nota) {
-          const arq = ctx.arquivos.obter(nota.dataset.arqNota!);
-          if (arq && arq.abrirCom && ctx.apps[arq.abrirCom]?.abrirArquivo) {
-            ctx.apps[arq.abrirCom].abrirArquivo!(arq.id, nota);
-          }
-        }
+        // abrir arquivo fica com a delegação global ([data-abre-arquivo])
       });
     },
   };

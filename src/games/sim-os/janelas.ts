@@ -65,6 +65,7 @@ export function criarJanelas(ctx: Contexto): Janelas {
 
     // listeners 1× na construção (nunca no reopen — duplicaria)
     ligarArraste(sec, barra);
+    ligarRedimensionar(sec);
     sec.addEventListener('pointerdown', () => focar(def.id));
     btnMin.addEventListener('click', () => { ctx.audio.somClique(); minimizar(def.id); });
     btnMax.addEventListener('click', () => { ctx.audio.somClique(); alternarMax(def.id); });
@@ -147,6 +148,24 @@ export function criarJanelas(ctx: Contexto): Janelas {
     const btn = tarefas().querySelector<HTMLElement>('[data-tarefa="' + id + '"]');
     if (btn) btn.focus();
   }
+
+  // viewport mudou (rotação do conversível, janela do navegador): re-clampa
+  // posição e tamanho inline — senão o ✕ fica clipado fora da área pra sempre
+  window.addEventListener('resize', () => {
+    const aw = area().clientWidth;
+    const ah = area().clientHeight;
+    if (!aw || !ah) return;
+    area().querySelectorAll<HTMLElement>('.janela').forEach((sec) => {
+      if (sec.style.left) sec.style.left = Math.max(0, Math.min(parseFloat(sec.style.left), aw - 60)) + 'px';
+      if (sec.style.top) sec.style.top = Math.max(0, Math.min(parseFloat(sec.style.top), ah - 24)) + 'px';
+      if (sec.style.width) {
+        sec.style.width = Math.max(MIN_LARG, Math.min(parseFloat(sec.style.width), aw - Math.max(0, sec.offsetLeft))) + 'px';
+      }
+      if (sec.style.height) {
+        sec.style.height = Math.max(MIN_ALT, Math.min(parseFloat(sec.style.height), ah - Math.max(0, sec.offsetTop))) + 'px';
+      }
+    });
+  });
 
   // a janela visível de maior z vira a ativa (Esc continua funcionando em cadeia)
   function elegerTopoVisivel() {
@@ -278,6 +297,54 @@ export function criarJanelas(ctx: Contexto): Janelas {
     barra.addEventListener('pointerup', finalizar);
     barra.addEventListener('pointercancel', finalizar);
     barra.addEventListener('lostpointercapture', finalizar);
+  }
+
+  // ===== Redimensionar: alças na borda direita, de baixo e no canto =====
+  const MIN_LARG = 220;
+  const MIN_ALT = 140;
+  function ligarRedimensionar(sec: HTMLElement) {
+    (['leste', 'sul', 'canto'] as const).forEach((tipo) => {
+      const alca = document.createElement('div');
+      alca.className = 'janela__alca janela__alca--' + tipo;
+      alca.dataset.alca = tipo;
+      sec.appendChild(alca);
+
+      let drag: { id: number; x0: number; y0: number; w0: number; h0: number } | null = null;
+
+      function finalizar(e: PointerEvent) {
+        if (!drag || e.pointerId !== drag.id) return;
+        try { alca.releasePointerCapture(drag.id); } catch { /* já solto */ }
+        drag = null;
+      }
+
+      alca.addEventListener('pointerdown', (e) => {
+        if (sec.classList.contains('janela--max')) return;
+        focar(sec.dataset.janela!);
+        drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, w0: sec.offsetWidth, h0: sec.offsetHeight };
+        // congela AMBAS as dimensões antes da classe: um tap sem arrasto (ou
+        // arrasto só-leste) não pode deixar a janela em flex com altura auto —
+        // textarea colapsaria e corpo de texto estouraria a área
+        sec.style.width = drag.w0 + 'px';
+        sec.style.height = drag.h0 + 'px';
+        sec.classList.add('janela--dimensionada');
+        try { alca.setPointerCapture(e.pointerId); } catch { /* segue sem captura */ }
+        e.preventDefault();
+      });
+      alca.addEventListener('pointermove', (e) => {
+        if (!drag || e.pointerId !== drag.id) return;
+        const maxW = area().clientWidth - Math.max(0, sec.offsetLeft);
+        const maxH = area().clientHeight - Math.max(0, sec.offsetTop);
+        if (tipo !== 'sul') {
+          sec.style.width = Math.max(MIN_LARG, Math.min(drag.w0 + e.clientX - drag.x0, maxW)) + 'px';
+        }
+        if (tipo !== 'leste') {
+          sec.style.height = Math.max(MIN_ALT, Math.min(drag.h0 + e.clientY - drag.y0, maxH)) + 'px';
+        }
+      });
+      alca.addEventListener('pointerup', finalizar);
+      alca.addEventListener('pointercancel', finalizar);
+      alca.addEventListener('lostpointercapture', finalizar);
+    });
   }
 
   return {

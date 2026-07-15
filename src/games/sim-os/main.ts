@@ -38,7 +38,8 @@ export function iniciarSim(opcoes: OpcoesSim = {}) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'icone';
-    btn.dataset.abre = i.id;
+    if (i.abreArquivo) btn.dataset.abreArquivo = i.abreArquivo;
+    else if (i.id) btn.dataset.abre = i.id;
     const nome = document.createElement('span');
     nome.className = 'icone__nome';
     nome.textContent = i.rotulo;
@@ -52,10 +53,27 @@ export function iniciarSim(opcoes: OpcoesSim = {}) {
 
   const menu = criarMenu(ctx, { aoDesligar: desligar });
 
-  // delegação global: qualquer [data-abre] abre a janela correspondente
-  // (ícones do desktop, itens do menu, arquivos-seed do explorador)
+  // arquivo do VFS abre pelo visualizador (seeds) ou pelo app (notas)
+  function abrirArquivo(id: string, abridor: HTMLElement) {
+    const arq = ctx.arquivos.obter(id);
+    if (!arq || arq.naLixeira) return;
+    if (arq.janela) ctx.janelas.abrir(arq.janela, abridor);
+    else if (arq.abrirCom && ctx.apps[arq.abrirCom]?.abrirArquivo) {
+      ctx.apps[arq.abrirCom].abrirArquivo!(arq.id, abridor);
+    }
+  }
+
+  // delegação global: [data-abre] abre janela; [data-abre-arquivo] abre
+  // arquivo do VFS (ícones do desktop, itens do menu, células do explorador)
   document.addEventListener('click', (e) => {
-    const btn = (e.target as Element).closest<HTMLElement>('[data-abre]');
+    const alvo = e.target as Element;
+    const arqBtn = alvo.closest<HTMLElement>('[data-abre-arquivo]');
+    if (arqBtn) {
+      menu.alternar(false);
+      abrirArquivo(arqBtn.dataset.abreArquivo!, arqBtn);
+      return;
+    }
+    const btn = alvo.closest<HTMLElement>('[data-abre]');
     if (!btn) return;
     menu.alternar(false);
     ctx.janelas.abrir(btn.dataset.abre!, btn);

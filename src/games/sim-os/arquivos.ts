@@ -10,6 +10,8 @@ export function criarArquivos(ctx: Contexto): Arquivos {
     icone: s.icone,
     origem: 'fabrica',
     janela: s.janela,
+    abrirCom: s.abrirCom,
+    texto: s.texto,
     naLixeira: false,
   }));
   let seq = 0;
