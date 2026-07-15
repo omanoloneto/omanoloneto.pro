@@ -3,11 +3,11 @@
 // genérico (src/games/sim-os/*) e o conteúdo de src/data/windows-98.ts.
 // Aqui ficam só: sprite SVG do tema, esqueleto com os ganchos [data-*],
 // tokens de skin --sim-* e o CSS do conteúdo autoral (folha/paint/mini-web).
-import fs from 'node:fs';
 import path from 'node:path';
 import Layout from '../../../layouts/Layout.astro';
 import { dados } from '../../../data/windows-98';
-import type { ArquivoSeed, DadosSim, Faixa } from '../../../games/sim-os/tipos';
+import type { DadosSim } from '../../../games/sim-os/tipos';
+import { montarPlaylist } from '../../../games/sim-os/playlist-build';
 import '../../../styles/sim-os.css';
 
 const title = 'Simulador do Windows 98 — viaje até 1998 | Sala do Professor Manolo';
@@ -16,42 +16,12 @@ const description =
 
 // ===== Playlist do Reprodutor de Mídia: soltou .mp3 (ou .ogg/.wav/.m4a) em
 // public/class/sims/musicas/, build + deploy e a música aparece no player e
-// em Meus Documentos. O scan roda NO BUILD (fs), nada em runtime.
-const PASTA_MUSICAS = path.join(process.cwd(), 'public/class/sims/musicas');
-const EXT_MUSICA = /\.(mp3|ogg|wav|m4a)$/i;
-
-const nomesMusicas = fs.existsSync(PASTA_MUSICAS)
-  ? fs
-      .readdirSync(PASTA_MUSICAS)
-      .filter((n) => EXT_MUSICA.test(n) && !n.startsWith('.'))
-      .sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true, sensitivity: 'base' }))
-  : [];
-
-// nome CRU na URL (encodeURIComponent): os bytes têm que casar com o FTP
-const playlist: Faixa[] = nomesMusicas.map((n) => ({
-  nome: n,
-  url: '/class/sims/musicas/' + encodeURIComponent(n),
-}));
-
-function slugFaixa(nome: string): string {
-  return (
-    nome
-      .replace(EXT_MUSICA, '')
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'faixa'
-  );
-}
-const idsVistos = new Map<string, number>();
-const seedsMusica: ArquivoSeed[] = playlist.map((f) => {
-  let id = 'mus-' + slugFaixa(f.nome);
-  const n = (idsVistos.get(id) || 0) + 1;
-  idsVistos.set(id, n);
-  if (n > 1) id += '-' + n;
-  return { id, nome: f.nome, icone: 'musica', abrirCom: 'player', url: f.url };
-});
+// em Meus Documentos. O scan roda NO BUILD (fs), nada em runtime — a pasta é
+// COMPARTILHADA entre os sims de propósito.
+const { playlist, seedsMusica } = montarPlaylist(
+  path.join(process.cwd(), 'public/class/sims/musicas'),
+  '/class/sims/musicas/'
+);
 
 const dadosCompletos: DadosSim = {
   ...dados,
@@ -237,7 +207,7 @@ const dadosJson = JSON.stringify(dadosCompletos).replaceAll('</', '<\\/');
       --sim-realce: #fff;
       --sim-campo: #fff;
       --sim-desktop: #008080;
-      --sim-wallpaper: url('/class/sims/wallpaper-98.jpg');
+      --sim-wallpaper: url('/class/sims/wallpapers/wallpaper-98.jpg');
       --sim-titulo-grad-a: #000080;
       --sim-titulo-grad-b: #1084d0;
       --sim-titulo-texto: #fff;

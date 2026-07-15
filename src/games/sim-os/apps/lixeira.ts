@@ -2,8 +2,28 @@
 // esvazia com confirmação em dois toques (sem window.confirm). O ícone do
 // desktop troca pra "cheia" quando tem coisa dentro (se o sprite tiver
 // o symbol #i-lixeira-cheia).
+// ATENÇÃO: este módulo é importado no BUILD (Node) pelos arquivos de dados
+// (pra usar o HTML_ padrão) — nada de document/window no top-level.
 import type { AppInstancia, Contexto } from '../tipos';
 import { preencher } from '../ui';
+
+
+// HTML da Lixeira
+// Estrutura PADRÃO da janela (compartilhada entre os sims — feature nova
+// aqui aparece em todos). Rótulos NEUTROS de era; um sim pode sobrescrever
+// o html inteiro nos dados se quiser outra estrutura.
+export const HTML_LIXEIRA = `
+      <div class="lixo">
+        <p class="lixo__intro">Apagou um arquivo sem querer? Ele não some na hora: vem parar
+        aqui. Clique em <b>Restaurar</b> pra devolver ele pra Meus Documentos — como resgatar
+        um brinquedo do lixo antes do caminhão passar.</p>
+        <div class="lixo__lista bisel-campo" data-lixeira-lista role="group" aria-label="Arquivos na Lixeira"></div>
+        <div class="lixo__acoes">
+          <button type="button" class="bisel-alto" data-lixeira-esvaziar>Esvaziar Lixeira</button>
+        </div>
+        <p class="dica">💡 <b>Curiosidade:</b> antigamente, apagar um arquivo não apagava
+        de verdade — só "esvaziar a Lixeira" apagava pra sempre. Pensa bem antes!</p>
+      </div>`;
 
 export function criarLixeira(ctx: Contexto): AppInstancia {
   const { textos } = ctx.dados;

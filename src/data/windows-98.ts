@@ -2,6 +2,12 @@
 // menu, sons, textos). O formato vem do motor: src/games/sim-os/tipos.ts.
 // EDITE livremente — tom pra criança, curiosidades de 1998.
 import type { DadosSim } from '../games/sim-os/tipos';
+import { HTML_BLOCO_DE_NOTAS } from '../games/sim-os/apps/bloco-de-notas';
+import { HTML_EXPLORADOR } from '../games/sim-os/apps/explorador';
+import { HTML_LIXEIRA } from '../games/sim-os/apps/lixeira';
+import { HTML_NAVEGADOR } from '../games/sim-os/apps/navegador';
+import { HTML_PLAYER } from '../games/sim-os/apps/player';
+import { HTML_TOCADOR } from '../games/sim-os/apps/tocador';
 
 const janelas: DadosSim['janelas'] = [
   {
@@ -23,19 +29,7 @@ const janelas: DadosSim['janelas'] = [
     classe: 'janela--exp',
     cru: true,
     app: 'explorador',
-    html: `
-      <div class="exp">
-        <div class="exp__tools" aria-hidden="true">
-          <span class="ie__btn bisel-alto exp__btn--off">◀ Voltar</span>
-          <span class="ie__btn bisel-alto exp__btn--off">▲ Acima</span>
-        </div>
-        <div class="exp__end">
-          <span class="exp__rotulo">Endereço</span>
-          <span class="bisel-campo exp__caminho">C:\\Meus Documentos</span>
-        </div>
-        <div class="exp__grade bisel-campo" data-arquivos role="group" aria-label="Arquivos da pasta"></div>
-        <div class="exp__status bisel-baixo" data-arquivos-status></div>
-      </div>`,
+    html: HTML_EXPLORADOR,
   },
   {
     id: 'lixeira',
@@ -44,18 +38,7 @@ const janelas: DadosSim['janelas'] = [
     classe: 'janela--lixo',
     cru: true,
     app: 'lixeira',
-    html: `
-      <div class="lixo">
-        <p class="lixo__intro">Apagou um arquivo sem querer? Ele não some na hora: vem parar
-        aqui. Clique em <b>Restaurar</b> pra devolver ele pra Meus Documentos — como resgatar
-        um brinquedo do lixo antes do caminhão passar.</p>
-        <div class="lixo__lista bisel-campo" data-lixeira-lista role="group" aria-label="Arquivos na Lixeira"></div>
-        <div class="lixo__acoes">
-          <button type="button" class="bisel-alto" data-lixeira-esvaziar>Esvaziar Lixeira</button>
-        </div>
-        <p class="dica">💡 <b>Curiosidade:</b> no Windows 98, apagar um arquivo não apagava
-        de verdade — só "esvaziar a Lixeira" apagava pra sempre. Pensa bem antes!</p>
-      </div>`,
+    html: HTML_LIXEIRA,
   },
   // (o Internet Explorer traz o chrome do navegador no html e o comportamento
   //  no app 'navegador' — a mini-web vem do array `sites` abaixo)
@@ -66,24 +49,7 @@ const janelas: DadosSim['janelas'] = [
     classe: 'janela--ie',
     cru: true,
     app: 'navegador',
-    html: `
-      <div class="ie">
-        <div class="ie__tools" role="toolbar" aria-label="Botões de navegação">
-          <button type="button" class="ie__btn bisel-alto" data-ie-voltar disabled><span aria-hidden="true">◀</span> Voltar</button>
-          <button type="button" class="ie__btn bisel-alto" data-ie-avancar disabled>Avançar <span aria-hidden="true">▶</span></button>
-          <button type="button" class="ie__btn bisel-alto" data-ie-atualizar disabled><span aria-hidden="true">⟳</span> Atualizar</button>
-          <button type="button" class="ie__btn bisel-alto" data-ie-inicio><span aria-hidden="true">🏠</span> Início</button>
-        </div>
-        <div class="ie__endereco">
-          <label for="ie-url">Endereço</label>
-          <input id="ie-url" class="bisel-campo" type="text" data-ie-url inputmode="url"
-            autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
-            placeholder="www.algumsite.com.br" />
-          <button type="button" class="ie__btn bisel-alto" data-ie-ir>Ir</button>
-        </div>
-        <div class="ie__pagina bisel-campo" data-ie-pagina tabindex="0" aria-label="Página da internet"></div>
-        <div class="ie__status bisel-baixo" role="status" data-ie-status>Pronto</div>
-      </div>`,
+    html: HTML_NAVEGADOR,
   },
   {
     id: 'bloco-de-notas',
@@ -92,33 +58,7 @@ const janelas: DadosSim['janelas'] = [
     classe: 'janela--notas',
     cru: true,
     app: 'bloco-de-notas',
-    html: `
-      <div class="notas">
-        <div class="notas__menu" role="toolbar" aria-label="Menu do Bloco de Notas">
-          <button type="button" data-nota-novo>Novo</button>
-          <button type="button" data-nota-salvar>Salvar</button>
-          <button type="button" data-nota-baixar>Baixar</button>
-        </div>
-        <div class="notas__aviso bisel-baixo" data-nota-confirma hidden>
-          <span data-nota-confirma-msg></span>
-          <span class="notas__aviso-botoes">
-            <button type="button" class="bisel-alto" data-nota-descartar>Descartar</button>
-            <button type="button" class="bisel-alto" data-nota-voltar>Voltar</button>
-          </span>
-        </div>
-        <div class="notas__aviso bisel-baixo" data-nota-salvarcomo hidden>
-          <label for="nota-nome">Nome:</label>
-          <input id="nota-nome" class="bisel-campo" type="text" data-nota-nome maxlength="44"
-            autocomplete="off" placeholder="minha nota" />
-          <span class="notas__aviso-botoes">
-            <button type="button" class="bisel-alto" data-nota-confirmar>Salvar</button>
-            <button type="button" class="bisel-alto" data-nota-cancelar>Cancelar</button>
-          </span>
-        </div>
-        <textarea class="notas__texto bisel-campo" data-nota-texto spellcheck="false"
-          aria-label="Texto da nota" placeholder="Escreva aqui a sua nota…"></textarea>
-        <div class="notas__status bisel-baixo" data-nota-status></div>
-      </div>`,
+    html: HTML_BLOCO_DE_NOTAS,
   },
   {
     id: 'player',
@@ -127,31 +67,7 @@ const janelas: DadosSim['janelas'] = [
     classe: 'janela--player',
     cru: true,
     app: 'player',
-    html: `
-      <div class="player">
-        <div class="player__menu" aria-hidden="true"><span>Arquivo</span><span>Exibir</span><span>Ajuda</span></div>
-        <div class="player__visor bisel-campo">
-          <span class="player__nome" data-player-visor-nome>—</span>
-          <span data-player-visor-tempo>0:00 / 0:00</span>
-        </div>
-        <input class="player__seek" type="range" data-player-seek min="0" max="0" step="0.1" value="0" aria-label="Posição da música" />
-        <div class="player__controles" role="toolbar" aria-label="Controles do reprodutor">
-          <button type="button" class="bisel-alto" data-player-ant aria-label="Faixa anterior">⏮</button>
-          <button type="button" class="bisel-alto" data-player-tocar aria-label="Tocar">▶</button>
-          <button type="button" class="bisel-alto" data-player-pausar aria-label="Pausar">⏸</button>
-          <button type="button" class="bisel-alto" data-player-parar aria-label="Parar">⏹</button>
-          <button type="button" class="bisel-alto" data-player-prox aria-label="Próxima faixa">⏭</button>
-          <label class="player__vol">🔉<input type="range" data-player-volume min="0" max="1" step="0.05" value="0.8" aria-label="Volume" /></label>
-        </div>
-        <div class="player__lista bisel-campo" data-player-lista role="group" aria-label="Lista de músicas"></div>
-        <div class="player__acoes">
-          <button type="button" class="bisel-alto" data-player-pasta>💻 Abrir uma pasta do computador</button>
-          <input type="file" data-player-input-pasta webkitdirectory multiple hidden />
-        </div>
-        <p class="player__aviso">Nada é enviado pra internet: a música toca só neste computador.
-        (Se o navegador falar em "upload", é só o nome do botão dele — pode confirmar!)</p>
-        <div class="player__status bisel-baixo" role="status" data-player-status></div>
-      </div>`,
+    html: HTML_PLAYER,
   },
   // (o Leia-me.txt agora é um ARQUIVO de verdade — veja arquivosSeed — e
   //  abre no Bloco de Notas como uma nota protegida)
@@ -312,17 +228,7 @@ const janelas: DadosSim['janelas'] = [
     titulo: 'musiquinha.mid — Tocador de Mídia',
     icone: 'musica',
     app: 'tocador',
-    html: `
-      <div class="tocador">
-        <div class="tocador__visor bisel-campo">
-          <span class="tocador__nota" aria-hidden="true">♪</span>
-          <span data-midi-status>Parado</span>
-        </div>
-        <div class="tocador__botoes">
-          <button type="button" class="bisel-alto" data-midi-tocar>▶ Tocar</button>
-          <button type="button" class="bisel-alto" data-midi-parar>⏹ Parar</button>
-        </div>
-      </div>
+    html: HTML_TOCADOR + `
       <p>Arquivo <b>.mid</b> (MIDI) não guardava o som gravado — guardava a <b>partitura</b>,
       e o computador tocava as notas na hora, com aquele timbre de videogame.</p>
       <p class="dica">💡 <b>Curiosidade:</b> uma música inteira em MIDI pesava menos que

@@ -2,8 +2,29 @@
 // Seeds abrem a janela-visualizadora ([data-abre] → delegação global do
 // main); notas do aluno abrem via app (arquivo.abrirCom) e têm botão de
 // excluir que manda pra Lixeira.
+// ATENÇÃO: este módulo é importado no BUILD (Node) pelos arquivos de dados
+// (pra usar o HTML_ padrão) — nada de document/window no top-level.
 import type { AppInstancia, Arquivo, Contexto } from '../tipos';
 import { preencher } from '../ui';
+
+
+// HTML do Meus Documentos
+// Estrutura PADRÃO da janela (compartilhada entre os sims — feature nova
+// aqui aparece em todos). Rótulos NEUTROS de era; um sim pode sobrescrever
+// o html inteiro nos dados se quiser outra estrutura.
+export const HTML_EXPLORADOR = `
+      <div class="exp">
+        <div class="exp__tools" aria-hidden="true">
+          <span class="ie__btn bisel-alto exp__btn--off">◀ Voltar</span>
+          <span class="ie__btn bisel-alto exp__btn--off">▲ Acima</span>
+        </div>
+        <div class="exp__end">
+          <span class="exp__rotulo">Endereço</span>
+          <span class="bisel-campo exp__caminho">C:\\Meus Documentos</span>
+        </div>
+        <div class="exp__grade bisel-campo" data-arquivos role="group" aria-label="Arquivos da pasta"></div>
+        <div class="exp__status bisel-baixo" data-arquivos-status></div>
+      </div>`;
 
 export function criarExplorador(ctx: Contexto): AppInstancia {
   const { textos } = ctx.dados;

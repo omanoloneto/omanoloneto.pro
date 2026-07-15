@@ -1,28 +1,24 @@
 ---
-import Layout from '../../layouts/Layout.astro';
+import Layout from '../../../layouts/Layout.astro';
 
-const title = 'Sala de Aula do Professor Manolo — jogos e experiências pra aprender';
+const title = 'Simuladores — viaje no tempo dos computadores | Sala do Professor Manolo';
 const description =
-  'A sala de aula digital do Professor Manolo: jogos educativos gratuitos em português e, em breve, simuladores de sistemas antigos como o Windows 98.';
+  'Simuladores de sistemas antigos pra crianças explorarem: o Windows 98 de 1998 e o Windows XP de 2001. Grátis, em português, direto no navegador.';
 
-// Categorias da sala de aula. Pra ativar uma nova: troque breve por
-// false e aponte a url.
-const categorias = [
+const sims = [
   {
-    url: '/class/games/',
-    emoji: '🎮',
-    nome: 'Jogos',
-    desc: 'Aprender brincando: montar palavras, digitar rápido, resolver continhas e mais.',
-    meta: '6 jogos disponíveis',
-    breve: false,
+    url: '/class/sims/windows-98/',
+    tema: 'w98',
+    nome: 'Windows 98',
+    desc: 'O computador de 1998: janelas cinzas, disquete e internet discada que fazia barulho.',
+    meta: '1998 — bisel cinza e internet discada',
   },
   {
-    url: '/class/sims/',
-    emoji: null, // usa a janelinha retrô desenhada em CSS
-    nome: 'Simuladores',
-    desc: 'Viaje no tempo: explore o Windows 98 e o Windows XP, os sistemas de antigamente.',
-    meta: '2 simuladores',
-    breve: false,
+    url: '/class/sims/windows-xp/',
+    tema: 'xp',
+    nome: 'Windows XP',
+    desc: 'O computador de 2001: tema Luna azul, botão Iniciar verde e CDs de música.',
+    meta: '2001 — tema Luna azul e verde',
   },
 ];
 ---
@@ -37,57 +33,46 @@ const categorias = [
     </header>
 
     <section class="miolo">
-      <h1 class="chamada">O que vamos fazer hoje?</h1>
+      <h1 class="chamada">Qual computador vamos ligar hoje?</h1>
 
       <div class="cats">
         {
-          categorias.map((c) =>
-            c.breve ? (
-              <div class="cat cat--breve">
-                <span class="cat__icone" aria-hidden="true">
-                  <span class="win98">
-                    <span class="win98__barra">
+          sims.map((s) => (
+            <a class="cat" href={s.url}>
+              <span class="cat__icone" aria-hidden="true">
+                {s.tema === 'w98' ? (
+                  <span class="mini mini--98">
+                    <span class="mini__barra mini__barra--98">
                       <i />
                     </span>
-                    <span class="win98__corpo">C:\&gt;_</span>
+                    <span class="mini__corpo mini__corpo--98">C:\&gt;_</span>
                   </span>
-                </span>
-                <span class="cat__info">
-                  <span class="cat__nome">{c.nome}</span>
-                  <span class="cat__desc">{c.desc}</span>
-                  <span class="cat__meta cat__meta--breve">{c.meta}</span>
-                </span>
-              </div>
-            ) : (
-              <a class="cat" href={c.url}>
-                <span class="cat__icone" aria-hidden="true">
-                  {c.emoji ? (
-                    c.emoji
-                  ) : (
-                    <span class="win98">
-                      <span class="win98__barra">
-                        <i />
-                      </span>
-                      <span class="win98__corpo">C:\&gt;_</span>
+                ) : (
+                  <span class="mini mini--xp">
+                    <span class="mini__barra mini__barra--xp">
+                      <i />
                     </span>
-                  )}
-                </span>
-                <span class="cat__info">
-                  <span class="cat__nome">{c.nome}</span>
-                  <span class="cat__desc">{c.desc}</span>
-                  <span class="cat__meta">{c.meta}</span>
-                </span>
-                <span class="cat__ir" aria-hidden="true">ENTRAR ▶</span>
-              </a>
-            )
-          )
+                    <span class="mini__corpo mini__corpo--xp">
+                      <span class="mini__iniciar">Iniciar</span>
+                    </span>
+                  </span>
+                )}
+              </span>
+              <span class="cat__info">
+                <span class="cat__nome">{s.nome}</span>
+                <span class="cat__desc">{s.desc}</span>
+                <span class="cat__meta">{s.meta}</span>
+              </span>
+              <span class="cat__ir" aria-hidden="true">LIGAR ▶</span>
+            </a>
+          ))
         }
       </div>
     </section>
 
     <footer class="pe">
       <p>👩‍🏫 Professor(a)? Tudo aqui é livre pra usar na sua escola.</p>
-      <a class="pe__site" href="/">← site do Manolo</a>
+      <a class="pe__site" href="/class/">← sala de aula</a>
     </footer>
   </main>
 </Layout>
@@ -111,7 +96,6 @@ const categorias = [
     background: #fff;
   }
 
-  /* ===== Topo ===== */
   .topo {
     display: flex;
     align-items: center;
@@ -129,7 +113,6 @@ const categorias = [
   .topo__nome { font-size: 1rem; }
   .topo__nome b { font-weight: 800; }
 
-  /* ===== Miolo ===== */
   .miolo {
     flex: 1;
     width: min(720px, 100%);
@@ -172,7 +155,6 @@ const categorias = [
     height: 76px;
     display: grid;
     place-items: center;
-    font-size: 2.6rem;
     border-radius: 20px;
     background: #f4f1fb;
   }
@@ -200,41 +182,33 @@ const categorias = [
   }
   a.cat:hover .cat__ir { filter: brightness(1.08); }
 
-  /* Categoria "em breve" */
-  .cat--breve {
-    border-style: dashed;
-    background: #fafafa;
-    box-shadow: none;
-  }
-  .cat--breve .cat__nome,
-  .cat--breve .cat__desc { color: #8e8e93; }
-  .cat__meta--breve { color: #8e8e93; }
-
-  /* Janelinha retrô (Windows 98 de mentirinha) */
-  .win98 {
+  /* Janelinhas dos temas */
+  .mini {
     width: 58px;
     display: block;
+  }
+  .mini--98 {
     border: 2px solid;
     border-color: #fff #808080 #808080 #fff;
     background: #c0c0c0;
     box-shadow: 1px 1px 0 #000;
   }
-  .win98__barra {
+  .mini__barra {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     height: 12px;
     padding: 0 3px;
-    background: linear-gradient(90deg, #000080, #1084d0);
   }
-  .win98__barra i {
+  .mini__barra--98 { background: linear-gradient(90deg, #000080, #1084d0); }
+  .mini__barra--98 i {
     width: 7px;
     height: 7px;
     background: #c0c0c0;
     border: 1px solid;
     border-color: #fff #404040 #404040 #fff;
   }
-  .win98__corpo {
+  .mini__corpo--98 {
     display: block;
     padding: 6px 5px 8px;
     background: #000;
@@ -243,8 +217,40 @@ const categorias = [
     font-size: 0.6rem;
     font-weight: 700;
   }
+  .mini--xp {
+    border: 1.5px solid #0831d9;
+    border-radius: 6px 6px 2px 2px;
+    background: #3a6ea5;
+    box-shadow: 1px 2px 3px rgba(0, 20, 80, 0.35);
+    overflow: hidden;
+  }
+  .mini__barra--xp {
+    background: linear-gradient(180deg, #3a93ff, #0058e6);
+    border-radius: 4px 4px 0 0;
+  }
+  .mini__barra--xp i {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #f1707a, #e81123);
+    border: 1px solid #fff;
+  }
+  .mini__corpo--xp {
+    display: flex;
+    align-items: flex-end;
+    height: 30px;
+    padding: 3px;
+  }
+  .mini__iniciar {
+    font-size: 0.5rem;
+    font-weight: 700;
+    font-style: italic;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 2px 6px 6px 2px;
+    background: linear-gradient(180deg, #6cbf6c, #2a6f2a);
+  }
 
-  /* ===== Rodapé ===== */
   .pe {
     padding: 24px clamp(16px, 4vw, 40px);
     border-top: 1px solid #ececec;

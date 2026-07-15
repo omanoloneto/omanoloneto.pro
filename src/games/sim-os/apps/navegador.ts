@@ -1,8 +1,34 @@
 // Navegador de mentirinha (o "Internet Explorer" do Win98): mini-web vem
 // de dados.sites, histórico voltar/avançar, discagem sintetizada, gags de
 // download. Entrada do aluno vai SEMPRE por textContent/.value.
+// ATENÇÃO: este módulo é importado no BUILD (Node) pelos arquivos de dados
+// (pra usar o HTML_ padrão) — nada de document/window no top-level.
 import type { AppInstancia, Contexto } from '../tipos';
 import { preencher } from '../ui';
+
+
+// HTML do navegador
+// Estrutura PADRÃO da janela (compartilhada entre os sims — feature nova
+// aqui aparece em todos). Rótulos NEUTROS de era; um sim pode sobrescrever
+// o html inteiro nos dados se quiser outra estrutura.
+export const HTML_NAVEGADOR = `
+      <div class="ie">
+        <div class="ie__tools" role="toolbar" aria-label="Botões de navegação">
+          <button type="button" class="ie__btn bisel-alto" data-ie-voltar disabled><span aria-hidden="true">◀</span> Voltar</button>
+          <button type="button" class="ie__btn bisel-alto" data-ie-avancar disabled>Avançar <span aria-hidden="true">▶</span></button>
+          <button type="button" class="ie__btn bisel-alto" data-ie-atualizar disabled><span aria-hidden="true">⟳</span> Atualizar</button>
+          <button type="button" class="ie__btn bisel-alto" data-ie-inicio><span aria-hidden="true">🏠</span> Início</button>
+        </div>
+        <div class="ie__endereco">
+          <label for="ie-url">Endereço</label>
+          <input id="ie-url" class="bisel-campo" type="text" data-ie-url inputmode="url"
+            autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+            placeholder="www.algumsite.com.br" />
+          <button type="button" class="ie__btn bisel-alto" data-ie-ir>Ir</button>
+        </div>
+        <div class="ie__pagina bisel-campo" data-ie-pagina tabindex="0" aria-label="Página da internet"></div>
+        <div class="ie__status bisel-baixo" role="status" data-ie-status>Pronto</div>
+      </div>`;
 
 export function criarNavegador(ctx: Contexto): AppInstancia {
   const { textos } = ctx.dados;

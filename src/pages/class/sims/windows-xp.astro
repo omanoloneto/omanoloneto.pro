@@ -1,0 +1,497 @@
+---
+// Simulador do Windows XP — SHELL da página. O comportamento vem TODO do
+// motor genérico (src/games/sim-os/*) e o conteúdo de src/data/windows-xp.ts.
+// Aqui ficam só: sprite SVG do tema Luna, esqueleto com os ganchos [data-*],
+// tokens --sim-* + overrides de skin e o CSS do conteúdo autoral.
+import path from 'node:path';
+import Layout from '../../../layouts/Layout.astro';
+import { dados } from '../../../data/windows-xp';
+import type { DadosSim } from '../../../games/sim-os/tipos';
+import { montarPlaylist } from '../../../games/sim-os/playlist-build';
+import '../../../styles/sim-os.css';
+
+const title = 'Simulador do Windows XP — viaje até 2001 | Sala do Professor Manolo';
+const description =
+  'Um Windows XP de mentirinha pra crianças explorarem: tema Luna azul, botão Iniciar verde, Bloco de Notas, Reprodutor de Mídia e a internet de 2001. Grátis, em português, direto no navegador.';
+
+// mesma pasta de músicas do Windows 98 — de propósito: uma música nova
+// aparece nos dois simuladores
+const { playlist, seedsMusica } = montarPlaylist(
+  path.join(process.cwd(), 'public/class/sims/musicas'),
+  '/class/sims/musicas/'
+);
+
+const dadosCompletos: DadosSim = {
+  ...dados,
+  playlist,
+  arquivosSeed: [...dados.arquivosSeed, ...seedsMusica],
+};
+
+// '</' escapado: conteúdo autoral não pode fechar o <script> do JSON sem querer
+const dadosJson = JSON.stringify(dadosCompletos).replaceAll('</', '<\\/');
+---
+
+<Layout title={title} description={description}>
+  <main id="conteudo" class="sim xp" data-sim role="application" aria-label="Simulador do Windows XP">
+    <!-- Ícones desenhados estilo Luna (sem marcas registradas — tudo genérico).
+         PNGs opcionais em /class/sims/icons/xp/ cobrem estes symbols. -->
+    <svg hidden aria-hidden="true">
+      <defs>
+        <linearGradient id="xg-azul" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#7ab6f5"></stop><stop offset="1" stop-color="#1f5bd8"></stop>
+        </linearGradient>
+        <linearGradient id="xg-amarelo" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#ffe9a0"></stop><stop offset="1" stop-color="#f5b915"></stop>
+        </linearGradient>
+        <linearGradient id="xg-verde" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#9ad979"></stop><stop offset="1" stop-color="#3c8b3c"></stop>
+        </linearGradient>
+        <linearGradient id="xg-cinza" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fdfdfd"></stop><stop offset="1" stop-color="#c9c9d4"></stop>
+        </linearGradient>
+      </defs>
+      <symbol id="i-logo" viewBox="0 0 24 24">
+        <path d="M3 6.5 Q7 4.5 11 5.5 L10.4 11 Q6.5 10 3 12 Z" fill="#e2402c"></path>
+        <path d="M12.6 5.8 Q17 6.8 21 5 L20.5 10.5 Q16.8 12 12 11.2 Z" fill="#7fba00"></path>
+        <path d="M2.8 13.6 Q6.5 11.6 10.2 12.6 L9.6 18.2 Q6 17.4 2.4 19.2 Z" fill="#2e6fd8"></path>
+        <path d="M11.8 12.9 Q16.4 13.8 20.3 12.1 L19.7 17.7 Q16 19.4 11.2 18.4 Z" fill="#ffb900"></path>
+      </symbol>
+      <symbol id="i-computador" viewBox="0 0 24 24">
+        <rect x="3" y="3" width="18" height="13" rx="1.6" fill="url(#xg-cinza)" stroke="#8a8aa0" stroke-width="0.8"></rect>
+        <rect x="5" y="5" width="14" height="9" rx="0.8" fill="#3a93ff"></rect>
+        <path d="M5 11 Q9 8.4 12 10.4 T19 10 L19 14 L5 14 Z" fill="#5fb54a"></path>
+        <rect x="9.5" y="17" width="5" height="1.8" fill="#a8a8bc"></rect>
+        <rect x="6.5" y="19" width="11" height="2.2" rx="1.1" fill="url(#xg-cinza)" stroke="#8a8aa0" stroke-width="0.6"></rect>
+      </symbol>
+      <symbol id="i-pasta" viewBox="0 0 24 24">
+        <path d="M3 6.5 Q3 5.5 4 5.5 L9 5.5 L11 7.5 L20 7.5 Q21 7.5 21 8.5 L21 18.5 Q21 19.5 20 19.5 L4 19.5 Q3 19.5 3 18.5 Z" fill="url(#xg-amarelo)" stroke="#c9941a" stroke-width="0.8"></path>
+        <path d="M3 10.5 L21 10.5 L21 18.5 Q21 19.5 20 19.5 L4 19.5 Q3 19.5 3 18.5 Z" fill="#ffdf7e"></path>
+      </symbol>
+      <symbol id="i-lixeira" viewBox="0 0 24 24">
+        <path d="M7.5 8 L16.5 8 L15.6 20.4 Q15.5 21 14.9 21 L9.1 21 Q8.5 21 8.4 20.4 Z" fill="#cfe4f7" stroke="#5f87b8" stroke-width="0.9" opacity="0.92"></path>
+        <path d="M9.6 10 L10 19 M12 10 L12 19 M14.4 10 L14 19" stroke="#8fb4dd" stroke-width="1.1" fill="none"></path>
+        <rect x="6.4" y="5.6" width="11.2" height="2.2" rx="1.1" fill="url(#xg-cinza)" stroke="#5f87b8" stroke-width="0.7"></rect>
+        <rect x="10.2" y="3.8" width="3.6" height="1.9" rx="0.9" fill="url(#xg-cinza)" stroke="#5f87b8" stroke-width="0.7"></rect>
+      </symbol>
+      <symbol id="i-lixeira-cheia" viewBox="0 0 24 24">
+        <path d="M8.4 6 L12 2.8 L14.8 5.4 L17.6 3.6 L18 6.6" fill="#fff" stroke="#5f87b8" stroke-width="0.9"></path>
+        <path d="M9.8 5.6 L12 3.8 L13.6 5.3" fill="none" stroke="#8fb4dd" stroke-width="0.8"></path>
+        <path d="M7.5 8 L16.5 8 L15.6 20.4 Q15.5 21 14.9 21 L9.1 21 Q8.5 21 8.4 20.4 Z" fill="#cfe4f7" stroke="#5f87b8" stroke-width="0.9" opacity="0.92"></path>
+        <path d="M9.6 10 L10 19 M12 10 L12 19 M14.4 10 L14 19" stroke="#8fb4dd" stroke-width="1.1" fill="none"></path>
+        <rect x="6.4" y="5.6" width="11.2" height="2.2" rx="1.1" fill="url(#xg-cinza)" stroke="#5f87b8" stroke-width="0.7"></rect>
+      </symbol>
+      <symbol id="i-ie" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.6" fill="url(#xg-azul)"></circle>
+        <text x="12" y="16.6" text-anchor="middle" font-family="Georgia, serif" font-size="13" font-weight="bold" fill="#fff">e</text>
+        <path d="M2.5 9.5 Q12 3.5 22.5 8.5" stroke="#ffd24a" stroke-width="1.7" fill="none" stroke-linecap="round"></path>
+      </symbol>
+      <symbol id="i-bloco" viewBox="0 0 24 24">
+        <rect x="5" y="4" width="14" height="17" rx="1.4" fill="#fff" stroke="#8a9ab8" stroke-width="0.9"></rect>
+        <path d="M8 9 H16 M8 12 H16 M8 15 H13" stroke="#7aa3d6" stroke-width="1.2"></path>
+        <path d="M7 3 L7 6 M11 3 L11 6 M15 3 L15 6" stroke="#3a76c9" stroke-width="1.4" stroke-linecap="round"></path>
+      </symbol>
+      <symbol id="i-ajuda" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" fill="url(#xg-azul)" stroke="#1443a8" stroke-width="0.8"></circle>
+        <text x="12" y="17" text-anchor="middle" font-family="Georgia, serif" font-size="13" font-weight="bold" fill="#fff">?</text>
+      </symbol>
+      <symbol id="i-config" viewBox="0 0 24 24">
+        <path d="M12 4.2 L13.6 6.6 L16.4 5.9 L16.7 8.8 L19.5 9.7 L18 12 L19.5 14.3 L16.7 15.2 L16.4 18.1 L13.6 17.4 L12 19.8 L10.4 17.4 L7.6 18.1 L7.3 15.2 L4.5 14.3 L6 12 L4.5 9.7 L7.3 8.8 L7.6 5.9 L10.4 6.6 Z" fill="url(#xg-azul)" stroke="#1443a8" stroke-width="0.7"></path>
+        <circle cx="12" cy="12" r="3" fill="#ece9d8" stroke="#1443a8" stroke-width="0.8"></circle>
+      </symbol>
+      <symbol id="i-executar" viewBox="0 0 24 24">
+        <rect x="3" y="5" width="18" height="14" rx="1.6" fill="#0c0c1e" stroke="#5a5a78"></rect>
+        <text x="6" y="15.5" font-family="'Courier New', monospace" font-size="8" font-weight="bold" fill="#4be04b">C:\&gt;_</text>
+      </symbol>
+      <symbol id="i-programas" viewBox="0 0 24 24">
+        <rect x="3" y="5.5" width="13" height="11" rx="1.4" fill="#fff" stroke="#3a76c9" stroke-width="0.9"></rect>
+        <rect x="3" y="5.5" width="13" height="3.4" rx="1.4" fill="url(#xg-azul)"></rect>
+        <rect x="8" y="9.5" width="13" height="11" rx="1.4" fill="#fff" stroke="#3a76c9" stroke-width="0.9"></rect>
+        <rect x="8" y="9.5" width="13" height="3.4" rx="1.4" fill="url(#xg-azul)"></rect>
+      </symbol>
+      <symbol id="i-doc" viewBox="0 0 24 24">
+        <path d="M6 3.4 Q6 2.4 7 2.4 L14.6 2.4 L19 6.8 L19 20.6 Q19 21.6 18 21.6 L7 21.6 Q6 21.6 6 20.6 Z" fill="#fff" stroke="#8a9ab8" stroke-width="0.9"></path>
+        <path d="M14.6 2.4 L14.6 6.8 L19 6.8" fill="none" stroke="#8a9ab8" stroke-width="0.9"></path>
+        <path d="M9 11 H16 M9 14 H16 M9 17 H13" stroke="#7aa3d6" stroke-width="1.2"></path>
+        <text x="8.6" y="9" font-family="Georgia, serif" font-size="6" font-weight="bold" fill="#2b4fa0">W</text>
+      </symbol>
+      <symbol id="i-txt" viewBox="0 0 24 24">
+        <path d="M6 3.4 Q6 2.4 7 2.4 L14.6 2.4 L19 6.8 L19 20.6 Q19 21.6 18 21.6 L7 21.6 Q6 21.6 6 20.6 Z" fill="#fff" stroke="#8a9ab8" stroke-width="0.9"></path>
+        <path d="M14.6 2.4 L14.6 6.8 L19 6.8" fill="none" stroke="#8a9ab8" stroke-width="0.9"></path>
+        <path d="M9 10 H16 M9 13 H16 M9 16 H16 M9 19 H12" stroke="#aab4c8" stroke-width="1.2"></path>
+      </symbol>
+      <symbol id="i-imagem" viewBox="0 0 24 24">
+        <rect x="3" y="4" width="18" height="16" rx="1.4" fill="#fff" stroke="#8a9ab8" stroke-width="0.9"></rect>
+        <circle cx="9" cy="10" r="2.2" fill="#ffd24a" stroke="#f5a415" stroke-width="0.8"></circle>
+        <path d="M4 18 L10 12 L14 16 L17 13 L20 16 L20 18.6 Q20 19.2 19.4 19.2 L4.8 19.2 Q4 19.2 4 18.4 Z" fill="url(#xg-verde)"></path>
+      </symbol>
+      <symbol id="i-musica" viewBox="0 0 24 24">
+        <path d="M9 18.5 V6 L19 4 V16.5" fill="none" stroke="url(#xg-azul)" stroke-width="2.2" stroke-linecap="round"></path>
+        <ellipse cx="6.8" cy="18.8" rx="2.7" ry="2.1" fill="url(#xg-azul)"></ellipse>
+        <ellipse cx="16.8" cy="16.8" rx="2.7" ry="2.1" fill="url(#xg-azul)"></ellipse>
+      </symbol>
+      <symbol id="i-som" viewBox="0 0 24 24">
+        <path d="M4 10 H8 L13 5 V19 L8 14 H4 Z" fill="url(#xg-azul)" stroke="#1443a8" stroke-width="0.6"></path>
+        <path d="M16 9 Q19 12 16 15 M18 6 Q23 12 18 18" stroke="#1f5bd8" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
+      </symbol>
+      <symbol id="i-som-mudo" viewBox="0 0 24 24">
+        <path d="M4 10 H8 L13 5 V19 L8 14 H4 Z" fill="url(#xg-azul)" stroke="#1443a8" stroke-width="0.6"></path>
+        <path d="M16 9 L22 15 M22 9 L16 15" stroke="#e2402c" stroke-width="2" fill="none" stroke-linecap="round"></path>
+      </symbol>
+      <symbol id="i-player" viewBox="0 0 24 24">
+        <rect x="2" y="4" width="20" height="16" rx="2" fill="url(#xg-cinza)" stroke="#8a8aa0" stroke-width="0.8"></rect>
+        <rect x="4" y="6" width="16" height="8" rx="1" fill="#0c0c1e"></rect>
+        <path d="M9 8 V11.6 M9 8 L13 7.4 V11" stroke="#4be04b" stroke-width="1.1" fill="none"></path>
+        <circle cx="8.2" cy="11.8" r="1.1" fill="#4be04b"></circle>
+        <circle cx="12.4" cy="11.2" r="1.1" fill="#4be04b"></circle>
+        <path d="M6 15.8 L9.6 17.4 L6 19 Z" fill="url(#xg-verde)" stroke="#2a6f2a" stroke-width="0.5"></path>
+        <rect x="11.4" y="15.8" width="2" height="3.2" rx="0.5" fill="#8a8aa0"></rect>
+        <rect x="14.4" y="15.8" width="2" height="3.2" rx="0.5" fill="#8a8aa0"></rect>
+      </symbol>
+    </svg>
+
+    <!-- ===== Tela: boot ===== -->
+    <div class="tela tela--boot" data-tela="boot">
+      <div class="boot__arte">
+        <svg class="boot__logo" aria-hidden="true"><use href="#i-logo"></use></svg>
+        <p class="boot__nome">Windows<b>XP</b></p>
+        <p class="boot__sub">Simulador — Sala do Professor Manolo</p>
+      </div>
+      <div class="boot__barra" aria-hidden="true"><i></i></div>
+    </div>
+
+    <!-- ===== Tela: desktop (o motor preenche ícones, menu, janelas e taskbar) ===== -->
+    <div class="tela tela--desktop" data-tela="desktop" hidden>
+      <div class="area" data-area>
+        <div class="icones" role="group" aria-label="Ícones da área de trabalho" data-icones></div>
+      </div>
+
+      <nav class="menu" data-menu hidden aria-label="Menu Iniciar">
+        <div class="menu__topo" aria-hidden="true"><span class="menu__foto">🧒</span> Aluno(a)</div>
+        <ul data-menu-itens></ul>
+      </nav>
+
+      <footer class="barra">
+        <button class="iniciar" type="button" data-iniciar aria-expanded="false" aria-haspopup="true">
+          <svg aria-hidden="true"><use href="#i-logo"></use></svg>
+          Iniciar
+        </button>
+        <div class="barra__tarefas" data-tarefas></div>
+        <div class="bandeja">
+          <button class="bandeja__som" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+            <svg aria-hidden="true"><use data-mute-use href="#i-som"></use></svg>
+          </button>
+          <span data-relogio>--:--</span>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ===== Tela: desligado ===== -->
+    <div class="tela tela--desligado" data-tela="desligado" hidden>
+      <p class="desligado__aguarde" data-aguarde hidden>O Windows está sendo desativado…</p>
+      <p class="desligado__msg" data-msg-final hidden>Agora é seguro desligar o seu computador.</p>
+      <button class="desligado__religar" type="button" data-religar hidden>🔌 Ligar de novo</button>
+    </div>
+
+    <p class="sr-only" data-anuncio aria-live="polite"></p>
+  </main>
+
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <style is:global>
+    /* ===== Skin Windows XP (tema Luna): tokens — estrutura vem de sim-os.css ===== */
+    .sim.xp {
+      --sim-fonte: Tahoma, 'Segoe UI', Geneva, sans-serif;
+      --sim-fonte-tamanho: 13px;
+      --sim-superficie: #ece9d8;
+      --sim-borda-clara: #fff;
+      --sim-borda-escura: #aca899;
+      --sim-borda-media: #aca899;
+      --sim-realce: #fff;
+      --sim-campo: #fff;
+      --sim-desktop: #3a6ea5;
+      --sim-wallpaper: url('/class/sims/wallpapers/wallpaper-xp.webp');
+      --sim-titulo-grad-a: #0058e6;
+      --sim-titulo-grad-b: #3a93ff;
+      --sim-titulo-texto: #fff;
+      /* inativa escura o bastante pro título branco continuar legível */
+      --sim-titulo-inativa-a: #5a7fd0;
+      --sim-titulo-inativa-b: #8aa8e8;
+      --sim-selecao: #316ac5;
+      --sim-selecao-texto: #fff;
+      --sim-barra-altura: 30px;
+      --sim-arq-hover: #e8f0fc;
+      --sim-arq-selecao: #cde2fc;
+    }
+
+    /* ===== Overrides estruturais Luna (regra: .sim → .sim.xp = vence sempre) ===== */
+    .sim.xp .janela {
+      border: 1px solid #0831d9;
+      border-radius: 8px 8px 0 0;
+      box-shadow: 2px 3px 10px rgba(0, 20, 80, 0.4);
+      padding: 3px;
+    }
+    .sim.xp .janela__barra {
+      background: linear-gradient(180deg, #3a93ff, #0058e6 45%, #0046d5);
+      border-radius: 6px 6px 0 0;
+      padding: 4px 5px;
+    }
+    .sim.xp .janela:not(.ativa) .janela__barra {
+      background: linear-gradient(180deg, var(--sim-titulo-inativa-b), var(--sim-titulo-inativa-a) 60%);
+    }
+    .sim.xp .janela__acoes button {
+      width: 21px;
+      height: 21px;
+      border-radius: 3px;
+      border: 1px solid #fff;
+      background: linear-gradient(180deg, #8bb0f8, #1f48b0);
+      color: #fff;
+      font-size: 10px;
+      box-shadow: none;
+    }
+    .sim.xp .janela__acoes [data-fecha] {
+      background: linear-gradient(180deg, #f1707a, #e81123 60%, #bb0f0f);
+    }
+    .sim.xp .janela__acoes button:active { border-color: #dfe8ff; box-shadow: inset 0 1px 3px rgba(0, 0, 40, 0.5); }
+
+    /* botões Luna em todo lugar (apps inclusos) — o :active fica RESTRITO ao
+       .bisel-alto: um "button:active" genérico atropelaria os neutralizadores
+       do motor (ícones do desktop, arquivos, faixas do player não afundam) */
+    .sim.xp .bisel-alto {
+      border: 1px solid #003c74;
+      border-radius: 3px;
+      box-shadow: none;
+      background: linear-gradient(180deg, #fff, #ece9d8);
+    }
+    .sim.xp .bisel-alto:active {
+      border-color: #003c74;
+      box-shadow: inset 0 1px 3px rgba(0, 30, 80, 0.35);
+    }
+    .sim.xp .bisel-baixo { border: 1px solid #aca899; box-shadow: none; border-radius: 3px; }
+    .sim.xp .bisel-campo { border: 1px solid #7f9db9; box-shadow: none; }
+
+    /* barra de tarefas azul + Iniciar verde */
+    .sim.xp .barra {
+      border: 0;
+      box-shadow: none;
+      background: linear-gradient(180deg, #4a80f0 0 2px, #245edb 2px, #1941a5);
+      padding: 2px 3px;
+    }
+    .sim.xp .iniciar {
+      border: 0;
+      border-radius: 3px 12px 12px 3px;
+      background: linear-gradient(180deg, #6cbf6c, #3c8b3c 45%, #2a6f2a);
+      color: #fff;
+      font-style: italic;
+      font-weight: 700;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+      height: 26px;
+      padding: 3px 14px 3px 8px;
+      box-shadow: none;
+    }
+    .sim.xp .iniciar[aria-expanded='true'] {
+      background: linear-gradient(180deg, #4a9a4a, #2a6f2a 45%, #1d5a1d);
+      border: 0;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+    .sim.xp .tarefa {
+      background: linear-gradient(180deg, #2f6fe0, #1e4fbe);
+      border: 1px solid #163e9a;
+      border-radius: 3px;
+      color: #fff;
+      box-shadow: none;
+    }
+    .sim.xp .tarefa--ativa {
+      background: #1c50b0;
+      border-color: #123a86;
+      box-shadow: inset 0 1px 3px rgba(0, 0, 40, 0.5);
+      font-weight: 700;
+    }
+    .sim.xp .bandeja {
+      border: 0;
+      box-shadow: none;
+      background: linear-gradient(180deg, #0d6eb8, #084f8c);
+      border-radius: 3px;
+      color: #fff;
+    }
+    .sim.xp .bandeja__som svg path { stroke: #fff; }
+
+    /* menu iniciar Luna: branco, borda azul, header do usuário */
+    .sim.xp .menu {
+      background: #fff;
+      border: 1px solid #0831d9;
+      border-radius: 6px 6px 0 0;
+      padding: 0;
+      flex-direction: column;
+      bottom: calc(var(--sim-barra-altura) + 1px);
+    }
+    .sim.xp .menu[hidden] { display: none; }
+    .menu__topo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: linear-gradient(180deg, #3a93ff, #0058e6);
+      color: #fff;
+      font-weight: 700;
+      border-radius: 5px 5px 0 0;
+    }
+    .menu__foto {
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      background: #fff;
+      border-radius: 5px;
+      font-size: 20px;
+    }
+    .sim.xp .menu ul { padding: 3px 0; }
+    .sim.xp .menu__sub {
+      background: #fff;
+      border: 1px solid #0831d9;
+      border-radius: 0 6px 6px 0;
+      box-shadow: 2px 2px 8px rgba(0, 20, 80, 0.3);
+    }
+
+    /* ===== Tema do shell: boot e desligamento XP ===== */
+    .tela--boot {
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 44px;
+      color: #fff;
+    }
+    .boot__arte { text-align: center; }
+    .boot__logo { width: clamp(90px, 18vw, 150px); height: clamp(90px, 18vw, 150px); filter: drop-shadow(0 0 14px rgba(80, 140, 255, 0.35)); }
+    .boot__nome { font-size: clamp(2rem, 7vw, 3.4rem); font-weight: 400; letter-spacing: -0.02em; margin-top: 8px; }
+    .boot__nome b { font-weight: 800; color: #ff8c1a; font-size: 0.72em; vertical-align: super; }
+    .boot__sub { color: #9a9aa0; font-size: 0.85rem; margin-top: 6px; }
+    .boot__barra {
+      width: 200px;
+      height: 16px;
+      border: 1px solid #b0b0b0;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      background: #101018;
+    }
+    .boot__barra i {
+      position: absolute;
+      top: 2px;
+      bottom: 2px;
+      width: 44px;
+      background: repeating-linear-gradient(90deg, #3b6ff7 0 9px, transparent 9px 14px);
+      border-radius: 4px;
+      animation: boot-anda 1.6s linear infinite;
+    }
+    @keyframes boot-anda {
+      from { left: -46px; }
+      to { left: 100%; }
+    }
+
+    .tela--desligado {
+      background: linear-gradient(180deg, #5a7edc, #3652b4 60%, #27408f);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 34px;
+      padding: 24px;
+      text-align: center;
+      color: #fff;
+    }
+    .desligado__aguarde { font-size: clamp(1rem, 3vw, 1.5rem); }
+    .desligado__msg {
+      font-size: clamp(1.3rem, 4.5vw, 2.2rem);
+      font-weight: 700;
+      text-shadow: 0 2px 8px rgba(0, 0, 40, 0.45);
+      max-width: 26ch;
+      line-height: 1.35;
+    }
+    .desligado__religar {
+      padding: 10px 26px;
+      font-size: 1rem;
+      font-weight: 700;
+      border: 1px solid #003c74;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #fff, #ece9d8);
+      cursor: pointer;
+    }
+
+    /* ===== Conteúdo autoral (PROVISÓRIO — professor edita) ===== */
+    .xp .dica {
+      margin-top: 12px;
+      padding: 8px 10px;
+      background: #fffbd6;
+      border: 1px solid #e0d68a;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .folha {
+      background: #fff;
+      border: 1px solid #999;
+      padding: 12px 14px;
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 14px;
+      box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.12);
+      margin-bottom: 10px;
+    }
+    .folha p { margin-bottom: 10px; }
+    .folha p:last-child { margin-bottom: 0; }
+    .folha__titulo { text-align: center; font-weight: 700; font-size: 15px; }
+    .folha__sub { text-align: center; font-size: 12px; color: #555; }
+
+    /* mini-web era 2001: mais limpa que a de 1998 */
+    .ie__pagina { background: #fff; }
+    .pg { padding: 14px 16px 20px; line-height: 1.55; font-size: 13px; }
+    .pg h1 { text-align: center; font-size: 1.5rem; margin: 8px 0 6px; font-family: Verdana, Geneva, sans-serif; }
+    .pg ul { padding-left: 22px; margin: 8px 0; }
+    .pg li { margin-bottom: 6px; }
+    .pg a { color: #0000ee; text-decoration: underline; cursor: pointer; }
+    .pg-centro { text-align: center; }
+    .pg-hr { border: 0; border-top: 1px solid #bbb; margin: 12px 0; }
+    .pg-rodape { text-align: center; font-size: 11px; color: #666; margin-top: 16px; }
+    .pg-nav { text-align: center; margin-top: 14px; font-size: 12px; }
+    .pg-dica { margin-top: 12px; padding: 8px 10px; background: #fffbd6; border: 1px solid #e0d68a; border-radius: 4px; font-size: 12px; }
+    .pg--diario { background: #f4f8ff; }
+    .pg--diario h1 { color: #2450b0; }
+    .pg-post { margin: 10px 0; padding: 8px 12px; background: #fff; border: 1px solid #b9cdf2; border-radius: 6px; }
+    .pg--jogos { background: #eefaf0; }
+    .pg--jogos h1 { color: #1b7a3a; }
+    .pg--erro { font-family: Arial, Helvetica, sans-serif; }
+    .pg--erro h1 { text-align: left; font-size: 1.25rem; margin-bottom: 10px; }
+    .pg-erro__tec { margin-top: 14px; font-size: 12px; color: #666; }
+
+    /* touch: os 21px do Luna não podem anular o alvo de dedo do motor */
+    @media (pointer: coarse) {
+      .sim.xp .janela__acoes button { width: 30px; height: 26px; font-size: 12px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .boot__barra i { animation: none; left: 50%; margin-left: -22px; }
+    }
+  </style>
+
+  <script>
+    import { iniciarSim } from '../../../games/sim-os/main';
+    import { criarNavegador } from '../../../games/sim-os/apps/navegador';
+    import { criarBlocoDeNotas } from '../../../games/sim-os/apps/bloco-de-notas';
+    import { criarExplorador } from '../../../games/sim-os/apps/explorador';
+    import { criarLixeira } from '../../../games/sim-os/apps/lixeira';
+    import { criarTocador } from '../../../games/sim-os/apps/tocador';
+    import { criarPlayer } from '../../../games/sim-os/apps/player';
+
+    iniciarSim({
+      apps: {
+        navegador: criarNavegador,
+        'bloco-de-notas': criarBlocoDeNotas,
+        explorador: criarExplorador,
+        lixeira: criarLixeira,
+        tocador: criarTocador,
+        player: criarPlayer,
+      },
+    });
+  </script>
+</Layout>

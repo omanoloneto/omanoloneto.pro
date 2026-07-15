@@ -2,8 +2,43 @@
 // (sistema de arquivos virtual — só na sessão), reabre, edita, baixa.
 // Instância única, como o notepad original. Nome digitado pelo aluno passa
 // SEMPRE por textContent/aria-label — nunca innerHTML.
+// ATENÇÃO: este módulo é importado no BUILD (Node) pelos arquivos de dados
+// (pra usar o HTML_ padrão) — nada de document/window no top-level.
 import type { AppInstancia, Contexto } from '../tipos';
 import { preencher } from '../ui';
+
+
+// HTML do Bloco de Notas
+// Estrutura PADRÃO da janela (compartilhada entre os sims — feature nova
+// aqui aparece em todos). Rótulos NEUTROS de era; um sim pode sobrescrever
+// o html inteiro nos dados se quiser outra estrutura.
+export const HTML_BLOCO_DE_NOTAS = `
+      <div class="notas">
+        <div class="notas__menu" role="toolbar" aria-label="Menu do Bloco de Notas">
+          <button type="button" data-nota-novo>Novo</button>
+          <button type="button" data-nota-salvar>Salvar</button>
+          <button type="button" data-nota-baixar>Baixar</button>
+        </div>
+        <div class="notas__aviso bisel-baixo" data-nota-confirma hidden>
+          <span data-nota-confirma-msg></span>
+          <span class="notas__aviso-botoes">
+            <button type="button" class="bisel-alto" data-nota-descartar>Descartar</button>
+            <button type="button" class="bisel-alto" data-nota-voltar>Voltar</button>
+          </span>
+        </div>
+        <div class="notas__aviso bisel-baixo" data-nota-salvarcomo hidden>
+          <label for="nota-nome">Nome:</label>
+          <input id="nota-nome" class="bisel-campo" type="text" data-nota-nome maxlength="44"
+            autocomplete="off" placeholder="minha nota" />
+          <span class="notas__aviso-botoes">
+            <button type="button" class="bisel-alto" data-nota-confirmar>Salvar</button>
+            <button type="button" class="bisel-alto" data-nota-cancelar>Cancelar</button>
+          </span>
+        </div>
+        <textarea class="notas__texto bisel-campo" data-nota-texto spellcheck="false"
+          aria-label="Texto da nota" placeholder="Escreva aqui a sua nota…"></textarea>
+        <div class="notas__status bisel-baixo" data-nota-status></div>
+      </div>`;
 
 export function criarBlocoDeNotas(ctx: Contexto): AppInstancia {
   const { textos } = ctx.dados;

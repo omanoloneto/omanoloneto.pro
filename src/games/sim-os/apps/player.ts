@@ -15,6 +15,8 @@
 //   [data-player-input-pasta]  <input type=file webkitdirectory hidden> (fallback)
 //   [data-player-status]       linha de status (role=status)
 // Nome de faixa LOCAL é input do aluno — SEMPRE textContent, nunca innerHTML.
+// ATENÇÃO: este módulo é importado no BUILD (Node) pelos arquivos de dados
+// (pra usar o HTML_ padrão) — nada de document/window no top-level.
 import type { AppInstancia, Contexto, Faixa } from '../tipos';
 import { preencher } from '../ui';
 
@@ -27,6 +29,37 @@ interface FaixaViva extends Faixa {
 
 const EXT_MUSICA = /\.(mp3|ogg|wav|m4a)$/i;
 const MAX_LOCAIS = 100;
+
+
+// HTML do Reprodutor de Mídia
+// Estrutura PADRÃO da janela (compartilhada entre os sims — feature nova
+// aqui aparece em todos). Rótulos NEUTROS de era; um sim pode sobrescrever
+// o html inteiro nos dados se quiser outra estrutura.
+export const HTML_PLAYER = `
+      <div class="player">
+        <div class="player__menu" aria-hidden="true"><span>Arquivo</span><span>Exibir</span><span>Ajuda</span></div>
+        <div class="player__visor bisel-campo">
+          <span class="player__nome" data-player-visor-nome>—</span>
+          <span data-player-visor-tempo>0:00 / 0:00</span>
+        </div>
+        <input class="player__seek" type="range" data-player-seek min="0" max="0" step="0.1" value="0" aria-label="Posição da música" />
+        <div class="player__controles" role="toolbar" aria-label="Controles do reprodutor">
+          <button type="button" class="bisel-alto" data-player-ant aria-label="Faixa anterior">⏮</button>
+          <button type="button" class="bisel-alto" data-player-tocar aria-label="Tocar">▶</button>
+          <button type="button" class="bisel-alto" data-player-pausar aria-label="Pausar">⏸</button>
+          <button type="button" class="bisel-alto" data-player-parar aria-label="Parar">⏹</button>
+          <button type="button" class="bisel-alto" data-player-prox aria-label="Próxima faixa">⏭</button>
+          <label class="player__vol">🔉<input type="range" data-player-volume min="0" max="1" step="0.05" value="0.8" aria-label="Volume" /></label>
+        </div>
+        <div class="player__lista bisel-campo" data-player-lista role="group" aria-label="Lista de músicas"></div>
+        <div class="player__acoes">
+          <button type="button" class="bisel-alto" data-player-pasta>💻 Abrir uma pasta do computador</button>
+          <input type="file" data-player-input-pasta webkitdirectory multiple hidden />
+        </div>
+        <p class="player__aviso">Nada é enviado pra internet: a música toca só neste computador.
+        (Se o navegador falar em "upload", é só o nome do botão dele — pode confirmar!)</p>
+        <div class="player__status bisel-baixo" role="status" data-player-status></div>
+      </div>`;
 
 export function criarPlayer(ctx: Contexto): AppInstancia {
   const { textos } = ctx.dados;
