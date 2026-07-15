@@ -417,7 +417,9 @@ const sites: DadosSim['sites'] = [
 
 export const dados: DadosSim = {
   chave: 'win98',
-  pastaIcones: '/class/sims/icons/',
+  // PNGs pixel-art opcionais cobrem os SVGs desenhados (padrão triplo do
+  // motor); o que não tiver PNG aqui continua com o símbolo do sprite
+  pastaIcones: '/class/sims/icons/98/',
   janelas,
   sites,
 

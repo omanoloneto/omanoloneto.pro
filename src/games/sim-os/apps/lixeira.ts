@@ -15,11 +15,26 @@ export function criarLixeira(ctx: Contexto): AppInstancia {
 
   // ícone do desktop cheio/vazio — assina já na criação (funciona antes
   // de a janela da Lixeira ser aberta pela primeira vez)
-  const temCheia = !!document.getElementById('i-lixeira-cheia');
+  const temCheiaSvg = !!document.getElementById('i-lixeira-cheia');
   function atualizarIconeDesktop() {
-    if (!temCheia) return;
-    const use = ctx.ui.els.icones.querySelector('[data-abre="lixeira"] use');
-    if (use) use.setAttribute('href', ctx.arquivos.naLixeira().length ? '#i-lixeira-cheia' : '#i-lixeira');
+    const ico = ctx.ui.els.icones.querySelector('[data-abre="lixeira"] .ico');
+    if (!ico) return;
+    const cheia = ctx.arquivos.naLixeira().length > 0;
+    const use = ico.querySelector('use');
+    if (use && temCheiaSvg) use.setAttribute('href', cheia ? '#i-lixeira-cheia' : '#i-lixeira');
+    if (!ctx.dados.pastaIcones) return;
+    // PNG opcional POR ESTADO: lixeira.png / lixeira-cheia.png. Se o do
+    // estado não existir, o 404 remove o <img> e o SVG do sprite aparece;
+    // recriamos o <img> na próxima troca pra tentar o outro do par.
+    const alvo = ctx.dados.pastaIcones + (cheia ? 'lixeira-cheia.png' : 'lixeira.png');
+    let img = ico.querySelector('img');
+    if (!img) {
+      img = document.createElement('img');
+      img.alt = '';
+      img.addEventListener('error', () => img!.remove());
+      ico.prepend(img);
+    }
+    if (!img.src.endsWith(alvo)) img.src = alvo;
   }
   ctx.arquivos.assinar(atualizarIconeDesktop);
 
