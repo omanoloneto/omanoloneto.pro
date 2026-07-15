@@ -148,6 +148,8 @@ const janelas: DadosSim['janelas'] = [
           <button type="button" class="bisel-alto" data-player-pasta>💻 Abrir uma pasta do computador</button>
           <input type="file" data-player-input-pasta webkitdirectory multiple hidden />
         </div>
+        <p class="player__aviso">Nada é enviado pra internet: a música toca só neste computador.
+        (Se o navegador falar em "upload", é só o nome do botão dele — pode confirmar!)</p>
         <div class="player__status bisel-baixo" role="status" data-player-status></div>
       </div>`,
   },
@@ -560,6 +562,7 @@ export const dados: DadosSim = {
     playerSemMusicas: 'Nenhuma música por aqui ainda…',
     playerPastaVazia: 'Não achei músicas nessa pasta 🤔 Procure uma pasta com arquivos .mp3!',
     playerPastaDeNovo: 'Hmm, não deu por aqui. Clica no botão de novo!',
+    playerSemUpload: 'Nada foi enviado: a música toca só neste computador! 😉',
     playerLocais: '{n} música(s) do seu computador entraram na lista! 💻',
     playerFaixaLocal: 'música do seu computador',
     // Meus Documentos / Lixeira

@@ -178,7 +178,8 @@ export function criarPlayer(ctx: Contexto): AppInstancia {
       faixas.push({ nome: arq.name, url, local: true });
     }
     renderLista();
-    const msg = preencher(textos.playerLocais, { n: musicas.length });
+    // o seletor clássico do navegador fala em "upload" — desfaz o susto
+    const msg = preencher(textos.playerLocais, { n: musicas.length }) + ' ' + textos.playerSemUpload;
     status(msg);
     ctx.ui.anunciar(msg);
   }

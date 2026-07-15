@@ -121,7 +121,8 @@ body.is-game::before { display: none !important; }
   border: 1px solid transparent;
 }
 .sim .icone:active { border-color: transparent; box-shadow: none; }
-.icone__img { width: 40px; height: 40px; filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.45)); }
+/* 32px (clássico): divisor inteiro dos PNGs de 256 — pixelated fica cravado */
+.icone__img { width: 32px; height: 32px; filter: drop-shadow(1px 2px 2px rgba(0, 0, 0, 0.45)); }
 .icone__nome {
   color: var(--sim-icone-texto);
   font-size: 12px;
@@ -264,7 +265,7 @@ body.is-game::before { display: none !important; }
 .sim .arq:active { border-color: transparent; box-shadow: none; }
 .arq:hover { background: var(--sim-arq-hover); }
 .arq:focus-visible { outline: 1px dotted var(--sim-texto); background: var(--sim-arq-selecao); }
-.arq__ico { width: 34px; height: 34px; }
+.arq__ico { width: 32px; height: 32px; }
 .arq__nome { font-size: 11.5px; line-height: 1.25; text-align: center; word-break: break-word; }
 .arq__excluir {
   position: absolute;
@@ -396,6 +397,7 @@ body.is-game::before { display: none !important; }
 .player__vazio { color: var(--sim-borda-media); text-align: center; margin: auto; }
 .player__acoes { display: flex; flex-shrink: 0; }
 .player__acoes button { padding: 4px 10px; font-size: 12px; }
+.player__aviso { margin: 0; padding: 0 2px; font-size: 10.5px; color: var(--sim-borda-media); line-height: 1.3; flex-shrink: 0; }
 .player__status { min-height: 19px; padding: 2px 8px; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
 /* redimensionada/max: a LISTA é quem estica */
 :is(.janela--max, .janela--dimensionada) .player__lista { flex: 1; max-height: none; min-height: 0; }
@@ -475,7 +477,7 @@ body.is-game::before { display: none !important; }
   text-align: left;
   font-size: 13px;
 }
-.menu li button .menu__ico { width: 22px; height: 22px; }
+.menu li button .menu__ico { width: 16px; height: 16px; }
 .menu li button:hover,
 .menu li button:focus-visible {
   background: var(--sim-selecao);
@@ -529,7 +531,7 @@ body.is-game::before { display: none !important; }
   padding: 2px 8px;
   font-size: 12px;
 }
-.tarefa .ico { width: 15px; height: 15px; }
+.tarefa .ico { width: 16px; height: 16px; }
 .tarefa span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tarefa--ativa {
   border-color: var(--sim-borda-escura) var(--sim-borda-clara) var(--sim-borda-clara) var(--sim-borda-escura);
@@ -582,7 +584,7 @@ body.is-game::before { display: none !important; }
 /* ===== Responsivo ===== */
 @media (max-width: 640px) {
   .icone { width: 72px; }
-  .icone__img { width: 34px; height: 34px; }
+  .icone__img { width: 32px; height: 32px; }
   .janela { width: calc(100vw - 8px); }
   .janela__corpo { max-height: 62vh; }
   .tarefa { flex-basis: 110px; }
