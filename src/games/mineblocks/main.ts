@@ -315,7 +315,20 @@ export function iniciarJogo() {
     ui.anunciar('Escolha um nome e uma senha pra guardar este mundo.');
   }
 
-  // ----- sala de amigos (multiplayer) -----
+  // ----- sanitização dos campos (transparente pra criança: ela digita e
+  // o campo se ajusta sozinho) -----
+  // nome do mundo: minúsculas + números + traços; espaço vira traço,
+  // maiúscula/acento/símbolo somem enquanto a criança digita
+  function limparNomeMundo(bruto: string): string {
+    return bruto
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '')
+      .slice(0, 16);
+  }
+  // nome do jogador / apelido: SÓ caixa alta e números, sem espaço
   function nomeJogadorLimpo(bruto: string): string {
     return bruto
       .normalize('NFD')
@@ -324,6 +337,27 @@ export function iniciarJogo() {
       .replace(/[^A-Z0-9]/g, '')
       .slice(0, ctx.cfg.sala.nomeMax);
   }
+  // código da sala: 4 letras maiúsculas
+  function codigoLimpo(bruto: string): string {
+    return bruto.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+  }
+  // ao digitar, reescreve o valor pelo filtro (caret vai pro fim — a
+  // criança está sempre digitando no fim mesmo)
+  function filtrarAoDigitar(el: HTMLInputElement, fn: (s: string) => string) {
+    el.addEventListener('input', () => {
+      const limpo = fn(el.value);
+      if (el.value !== limpo) el.value = limpo;
+    });
+  }
+  function ligarSanitizacao() {
+    document.querySelectorAll<HTMLInputElement>('[data-campo-nome]').forEach((el) => filtrarAoDigitar(el, limparNomeMundo));
+    document.querySelectorAll<HTMLInputElement>('[data-campo-senha]').forEach((el) => filtrarAoDigitar(el, (s) => s.replace(/\D/g, '').slice(0, 4)));
+    filtrarAoDigitar(document.querySelector('[data-campo-apelido]') as HTMLInputElement, nomeJogadorLimpo);
+    filtrarAoDigitar(document.querySelector('[data-campo-codigo]') as HTMLInputElement, codigoLimpo);
+    filtrarAoDigitar(ui.els.salaNome as HTMLInputElement, nomeJogadorLimpo);
+  }
+
+  // ----- sala de amigos (multiplayer) -----
 
   function atualizarSalaPausa() {
     const em = sync.emSala();
@@ -438,15 +472,14 @@ export function iniciarJogo() {
 
   // ----- forms do modal inicial -----
   function lerForm(form: HTMLElement): { nome: string; senha: string } | null {
-    const nome = (form.querySelector('[data-campo-nome]') as HTMLInputElement).value
-      .toLowerCase().trim().replace(/\s+/g, '-');
+    const nome = limparNomeMundo((form.querySelector('[data-campo-nome]') as HTMLInputElement).value);
     const senha = (form.querySelector('[data-campo-senha]') as HTMLInputElement).value.trim();
     if (!/^[a-z0-9-]{3,16}$/.test(nome)) {
-      mostrarErroInicio('O nome do mundo precisa ter de 3 a 16 letras ou números (sem acento).');
+      mostrarErroInicio('O nome do mundo precisa ter de 3 a 16 letrinhas ou números (sem espaço).');
       return null;
     }
-    if (senha.length < 4 || senha.length > 20) {
-      mostrarErroInicio('A senha precisa ter pelo menos 4 letrinhas ou números.');
+    if (!/^\d{4}$/.test(senha)) {
+      mostrarErroInicio('A senha são 4 números.');
       return null;
     }
     return { nome, senha };
@@ -570,6 +603,7 @@ export function iniciarJogo() {
   });
 
   // ----- boot -----
+  ligarSanitizacao();
   document.body.classList.add('is-game');
   medir();
   renderer.render(scene, camera);
