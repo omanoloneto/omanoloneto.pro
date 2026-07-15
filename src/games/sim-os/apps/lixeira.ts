@@ -31,7 +31,11 @@ export function criarLixeira(ctx: Contexto): AppInstancia {
     if (!img) {
       img = document.createElement('img');
       img.alt = '';
-      img.addEventListener('error', () => img!.remove());
+      img.addEventListener('load', () => ico.classList.add('ico--png'));
+      img.addEventListener('error', () => {
+        ico.classList.remove('ico--png');
+        img!.remove();
+      });
       ico.prepend(img);
     }
     if (!img.src.endsWith(alvo)) img.src = alvo;

@@ -53,8 +53,8 @@ const janelas: DadosSim['janelas'] = [
         <div class="lixo__acoes">
           <button type="button" class="bisel-alto" data-lixeira-esvaziar>Esvaziar Lixeira</button>
         </div>
-        <p class="dica">💡 <b>Curiosidade:</b> pra apagar de verdade é preciso "esvaziar a
-        Lixeira" — e o ícone dela muda de cheio pra vazio. Repare lá na área de trabalho!</p>
+        <p class="dica">💡 <b>Curiosidade:</b> no Windows 98, apagar um arquivo não apagava
+        de verdade — só "esvaziar a Lixeira" apagava pra sempre. Pensa bem antes!</p>
       </div>`,
   },
   // (o Internet Explorer traz o chrome do navegador no html e o comportamento

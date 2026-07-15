@@ -49,8 +49,12 @@ export function criarUI(ctx: Contexto): UI {
     if (ctx.dados.pastaIcones && !semPng.has(nome)) {
       const img = document.createElement('img');
       img.alt = '';
+      // PNG carregado ESCONDE o SVG (senão o desenhado vaza por trás nas
+      // áreas transparentes do pixel-art)
+      img.addEventListener('load', () => span.classList.add('ico--png'));
       img.addEventListener('error', () => {
         semPng.add(nome);
+        span.classList.remove('ico--png');
         img.remove();
       });
       img.src = ctx.dados.pastaIcones + nome + '.png';
