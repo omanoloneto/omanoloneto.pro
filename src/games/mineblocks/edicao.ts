@@ -343,8 +343,12 @@ export function criarEdicao(ctx: Contexto): Edicao {
   }
 
   // ----- relógios (mudas + decay), em tempo de simulação -----
-  function passo(dt: number) {
+  // simular=false (visitante que não é anfitrião): o tempoMs SEGUE
+  // andando (o toc-toc do golpe depende dele), mas mudas/decay não
+  // rodam — Math.random em duas máquinas divergiria o mundo
+  function passo(dt: number, simular = true) {
     tempoMs += dt * 1000;
+    if (!simular) return;
     for (let i = mudas.length - 1; i >= 0; i--) {
       const m = mudas[i];
       if (tempoMs < m.quandoMs) continue;
@@ -392,6 +396,19 @@ export function criarEdicao(ctx: Contexto): Edicao {
     }
   }
 
+  // edição vinda da REDE (só o anfitrião chama): os sistemas automáticos
+  // precisam reagir ao que os visitantes fazem — sem inventário, sem som
+  function aoEdicaoRemota(x: number, y: number, z: number, id: number) {
+    if (id === 0) {
+      // abriu um buraco: pode ter deixado folhas órfãs (árvore cortada)
+      enfileirarVizinhas(x, y, z);
+    } else if (id === 15) {
+      // visitante plantou muda — entra no relógio do anfitrião
+      const C = ctx.cfg.crescimento;
+      mudas.push({ x, y, z, quandoMs: tempoMs + C.minMs + Math.random() * (C.maxMs - C.minMs) });
+    }
+  }
+
   return {
     quebrar,
     colocar,
@@ -401,6 +418,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     passo,
     iniciarMudas,
     registrarItemNaHotbar,
+    aoEdicaoRemota,
     crescerMudasAgora() {
       for (const m of mudas) m.quandoMs = tempoMs;
       passo(0);

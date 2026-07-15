@@ -111,6 +111,21 @@ export const config = {
     minEntreSavesMs: 5000,
     maxPayload: 700000,
   },
+  // multiplayer por sala (mb-salas.php): snapshot + diário de edições,
+  // polling puro — funciona de qualquer casa, sem rede local
+  sala: {
+    api: '/class/api/mb-salas.php',
+    pollMs: 1200,
+    jitterMs: 200, // dessincroniza a turma (ninguém bate no servidor junto)
+    nudgeMs: 250, // 1ª edição na fila apressa o próximo sync
+    maxEdicoesPorSync: 200,
+    // compactação: o anfitrião manda uma foto nova quando o diário engorda
+    fotoACadaEdicoes: 400,
+    fotoJournalMin: 200,
+    fotoACadaMs: 90000,
+    nomeMin: 2,
+    nomeMax: 10,
+  },
   camera: { fov: 75, sensibilidade: 0.0024, sensTouch: 0.0044 },
   somLigadoInicial: true,
 };

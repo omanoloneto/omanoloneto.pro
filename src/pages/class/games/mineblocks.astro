@@ -17,6 +17,7 @@ const description =
     <header class="hud">
       <div class="hud__bloco hud__bloco--nome" data-nome-mundo></div>
       <span class="salvando" data-salvando hidden></span>
+      <span class="sala-chip" data-sala-chip hidden></span>
       <span class="hud__vao" aria-hidden="true"></span>
       <button class="hud__mute" type="button" data-pause aria-label="Pausar o jogo" hidden>⏸</button>
       <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
@@ -86,8 +87,9 @@ const description =
           <button class="botao botao--aleatorio" type="button" data-jogar-aleatorio>🎲 Jogar num mundo aleatório</button>
           <p class="divisor" data-divisor><span>— ou —</span></p>
           <div class="abas" role="tablist">
-            <button class="aba ativa" type="button" data-aba="novo" role="tab">🌱 Novo mundo</button>
-            <button class="aba" type="button" data-aba="carregar" role="tab">📂 Carregar mundo</button>
+            <button class="aba ativa" type="button" data-aba="novo" role="tab">🌱 Novo</button>
+            <button class="aba" type="button" data-aba="carregar" role="tab">📂 Carregar</button>
+            <button class="aba" type="button" data-aba="visitar" role="tab">🧑‍🤝‍🧑 Visitar</button>
           </div>
           <form data-form-novo>
             <label class="campo">
@@ -112,6 +114,18 @@ const description =
             </label>
             <button class="botao botao--go" type="submit">Entrar no mundo!</button>
           </form>
+          <form data-form-visitar hidden>
+            <p class="sub">Um amigo abriu uma sala? Digite o código que ele te mandou e construam <b>juntos</b> — cada um na sua casa!</p>
+            <label class="campo">
+              <span>Código da sala <small>(4 letras)</small></span>
+              <input data-campo-codigo class="campo--codigo" type="text" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ex: KZTP" required />
+            </label>
+            <label class="campo">
+              <span>Seu nome <small>(pros amigos te verem)</small></span>
+              <input data-campo-apelido type="text" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ex: LEO" required />
+            </label>
+            <button class="botao botao--go" type="submit">🧑‍🤝‍🧑 Entrar na sala!</button>
+          </form>
           <p class="erro" data-erro-inicio role="alert" hidden></p>
           <button class="botao botao--sec botao--mini" type="button" data-batizar-voltar hidden>← voltar pro jogo</button>
           <a class="voltar" href="/class/games/" data-voltar-jogos>← voltar pros jogos</a>
@@ -129,6 +143,22 @@ const description =
             <button class="botao botao--sec" type="button" data-salvar-agora>💾 Salvar agora</button>
             <button class="botao botao--sec" type="button" data-batizar hidden>💾 Dar um nome pra salvar</button>
             <button class="botao botao--sec" type="button" data-sair>🚪 Salvar e sair</button>
+          </div>
+          <div class="sala" data-sala-secao>
+            <div data-sala-abrir>
+              <p class="sala__chamada">🧑‍🤝‍🧑 Chame amigos pro seu mundo — cada um na casa dele!</p>
+              <div class="sala__linha">
+                <input class="sala__nome" data-sala-nome type="text" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="seu nome (ex: LEO)" aria-label="Seu nome na sala" />
+                <button class="botao botao--sec" type="button" data-sala-criar>🎮 Abrir sala</button>
+              </div>
+            </div>
+            <div data-sala-info hidden>
+              <p class="sala__chamada">Manda esse código pros seus amigos:</p>
+              <div class="sala__codigo" data-sala-codigo></div>
+              <p class="sala__quem" data-sala-lista></p>
+              <button class="botao botao--sec botao--mini" type="button" data-sala-sair>🚪 Sair da sala</button>
+            </div>
+            <p class="erro" data-sala-erro role="alert" hidden></p>
           </div>
           <p class="aviso" data-pausa-aviso>Relaxa: o mundo se salva sozinho de tempos em tempos. 😉</p>
         </div>
@@ -540,6 +570,47 @@ const description =
       border: 1px solid rgba(255, 92, 57, 0.55);
     }
     .erro[hidden] { display: none; }
+
+    /* ===== Sala de amigos (multiplayer) ===== */
+    .sala-chip {
+      font-size: 0.82rem; font-weight: 800;
+      padding: 3px 10px; border-radius: 999px;
+      background: rgba(46, 224, 138, 0.18);
+      border: 1px solid rgba(46, 224, 138, 0.55);
+      white-space: nowrap;
+    }
+    .sala-chip[hidden] { display: none; }
+    .sala {
+      margin: 2px 0 12px; padding: 12px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px dashed rgba(123, 182, 97, 0.5);
+    }
+    .sala[hidden] { display: none; }
+    .sala__chamada { margin: 0 0 8px; font-size: 0.9rem; font-weight: 700; }
+    .sala__linha { display: flex; gap: 8px; }
+    .sala__nome {
+      flex: 1; min-width: 0;
+      padding: 9px 10px; border-radius: 10px;
+      font-family: inherit; font-size: 0.95rem; font-weight: 700; color: var(--texto);
+      text-transform: uppercase;
+      background: rgba(0, 0, 0, 0.35);
+      border: 2px solid rgba(123, 182, 97, 0.4);
+    }
+    .sala__nome:focus { outline: none; border-color: var(--verde); }
+    .sala__linha .botao { padding: 9px 14px; font-size: 0.92rem; white-space: nowrap; }
+    .sala__codigo {
+      margin: 4px 0 8px;
+      font-size: 2.4rem; font-weight: 800; letter-spacing: 0.35em; text-indent: 0.35em;
+      color: var(--amarelo);
+      text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .sala__quem { margin: 0 0 10px; font-size: 0.85rem; opacity: 0.9; overflow-wrap: anywhere; }
+    .sala .botao--mini { margin-top: 0; }
+    div[data-sala-abrir][hidden], div[data-sala-info][hidden] { display: none; }
+    .campo--codigo { text-transform: uppercase; letter-spacing: 0.3em; font-weight: 800; }
     .voltar { display: inline-block; margin-top: 14px; color: var(--verde); font-weight: 600; font-size: 0.9rem; }
     .voltar[hidden] { display: none; }
 
@@ -549,6 +620,8 @@ const description =
       .slot__img { inset: 2px; }
       .slot__num { display: none; }
       .hud__bloco--nome { font-size: 0.85rem; }
+      .sala-chip { font-size: 0.7rem; padding: 3px 7px; }
+      .sala__codigo { font-size: 1.9rem; }
     }
 
     @media (prefers-reduced-motion: reduce) {

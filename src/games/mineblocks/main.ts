@@ -14,6 +14,8 @@ import { criarCamera } from './camera';
 import { criarMira } from './mira';
 import { criarEdicao } from './edicao';
 import { criarSalvar } from './salvar';
+import { criarSync } from './sync';
+import { criarBonecos } from './boneco';
 import { ligarInput } from './input';
 
 export function iniciarJogo() {
@@ -89,8 +91,10 @@ export function iniciarJogo() {
   ctx.mira = criarMira(ctx);
   ctx.edicao = criarEdicao(ctx);
   ctx.salvar = criarSalvar(ctx);
+  ctx.bonecos = criarBonecos(ctx);
+  ctx.sync = criarSync(ctx);
 
-  const { ui, salvar } = ctx;
+  const { ui, salvar, sync } = ctx;
   ui.montarCraft();
   ui.montarInventario();
   ui.montarHotbar();
@@ -175,9 +179,13 @@ export function iniciarJogo() {
     // precisa do clamp apertado, mas quebrar 2× mais devagar num
     // Chromebook de 10fps seria injusto justo com a máquina mais fraca
     const dtReal = Math.min(dtMs / 1000, 0.25);
-    ctx.edicao.passo(dtReal); // relógios: mudas + decay das folhas
+    // em sala, SÓ o anfitrião simula mudas/decay — Math.random em duas
+    // máquinas divergiria o mundo; o resultado chega como edição remota
+    // (o relógio anda pra todo mundo: o toc-toc do golpe depende dele)
+    ctx.edicao.passo(dtReal, !sync.emSala() || sync.souAnfitriao());
     if (input.golpe) ctx.edicao.golpear(dtReal);
     else if (ctx.edicao.golpeando()) ctx.edicao.soltarGolpe();
+    ctx.bonecos.passo(dt); // colegas da sala perseguem o alvo do poll
     ctx.camera3.passo();
     ctx.mira.passo();
     ceu.passo(dt);
@@ -219,14 +227,19 @@ export function iniciarJogo() {
       pararLoop();
       renderer.render(scene, camera);
       // pausa muda de cara no mundo aleatório: sem "salvar agora",
-      // com "dar um nome" e saída honesta
+      // com "dar um nome" e saída honesta. Na VISITA, nada de save —
+      // o mundo é do amigo (e fica salvo com ele)
+      const visita = sync.emVisita();
       const guest = !salvar.temMundo();
-      ui.els.salvarAgoraBtn.hidden = guest;
-      ui.els.batizarBtn.hidden = !guest;
-      ui.els.sairBtn.textContent = guest ? '🚪 Sair sem salvar' : '🚪 Salvar e sair';
-      ui.els.pausaAviso.textContent = guest
-        ? 'Esse mundo aleatório some quando você sai — dá um nome pra ele se quiser guardar!'
-        : 'Relaxa: o mundo se salva sozinho de tempos em tempos. 😉';
+      ui.els.salvarAgoraBtn.hidden = guest || visita;
+      ui.els.batizarBtn.hidden = !guest || visita;
+      ui.els.sairBtn.textContent = visita ? '🚪 Sair da visita' : guest ? '🚪 Sair sem salvar' : '🚪 Salvar e sair';
+      ui.els.pausaAviso.textContent = visita
+        ? 'Vocês estão construindo juntos no mundo do seu amigo — divirtam-se!'
+        : guest
+          ? 'Esse mundo aleatório some quando você sai — dá um nome pra ele se quiser guardar!'
+          : 'Relaxa: o mundo se salva sozinho de tempos em tempos. 😉';
+      atualizarSalaPausa();
       ui.els.pausaModal.hidden = false;
       salvar.salvarAgora('auto');
       setTimeout(() => (document.querySelector('[data-continuar]') as HTMLElement).focus(), 60);
@@ -253,8 +266,9 @@ export function iniciarJogo() {
         const sairAssim = window.confirm(
           'Não consegui salvar agora (sem internet?).\n\nOK = sair mesmo assim (perde o que fez desde o último save)\nCancelar = continuar jogando e tentar de novo'
         );
-        if (!sairAssim) return;
+        if (!sairAssim) return; // ficou — e continua na sala também
       }
+      sync.sairDaSala(); // só sai da sala quando a saída é pra valer
       window.location.href = '/class/games/';
     },
     medir,
@@ -300,6 +314,103 @@ export function iniciarJogo() {
     setTimeout(() => (ui.els.formNovo.querySelector('[data-campo-nome]') as HTMLElement).focus(), 60);
     ui.anunciar('Escolha um nome e uma senha pra guardar este mundo.');
   }
+
+  // ----- sala de amigos (multiplayer) -----
+  function nomeJogadorLimpo(bruto: string): string {
+    return bruto
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, ctx.cfg.sala.nomeMax);
+  }
+
+  function atualizarSalaPausa() {
+    const em = sync.emSala();
+    ui.els.salaErro.hidden = true;
+    ui.els.salaAbrir.hidden = em;
+    ui.els.salaInfo.hidden = !em;
+    if (em) ui.els.salaCodigo.textContent = sync.codigoSala();
+    // visita sai da sala pelo botão principal ("Sair da visita")
+    ui.els.salaSairBtn.hidden = sync.emVisita();
+  }
+
+  function mostrarErroSala(msg: string) {
+    ui.els.salaErro.textContent = msg;
+    ui.els.salaErro.hidden = false;
+    ctx.audio.somErro();
+  }
+
+  ui.els.salaCriarBtn.addEventListener('click', async () => {
+    const btn = ui.els.salaCriarBtn as HTMLButtonElement;
+    if (btn.disabled) return;
+    const nome = nomeJogadorLimpo((ui.els.salaNome as HTMLInputElement).value);
+    if (nome.length < ctx.cfg.sala.nomeMin) {
+      mostrarErroSala('Escreve teu nome primeiro (só letras, sem espaço)!');
+      return;
+    }
+    ui.els.salaErro.hidden = true;
+    btn.disabled = true;
+    const erro = await sync.criarSala(nome);
+    btn.disabled = false;
+    if (erro) return mostrarErroSala(erro);
+    atualizarSalaPausa();
+    ui.anunciar('Sala aberta! O código é ' + sync.codigoSala().split('').join(' ') + '.');
+  });
+
+  ui.els.salaSairBtn.addEventListener('click', () => {
+    sync.sairDaSala();
+    atualizarSalaPausa();
+    ui.mostrarToast('🚪 Você saiu da sala — os amigos continuam lá.', 'info', 2800);
+  });
+
+  // visita: mundo do amigo chega como foto (snapshot) + edições por poll
+  function entrarVisita() {
+    estado.fase = 'gerando';
+    ui.els.inicioModal.hidden = true;
+    ui.els.overlayGerando.hidden = false;
+    requestAnimationFrame(() => setTimeout(() => {
+      if (!sync.aplicarFotoInicial()) {
+        estado.fase = 'inicio';
+        ui.els.overlayGerando.hidden = true;
+        ui.els.inicioModal.hidden = false;
+        mostrarErroInicio('O mundo do amigo veio quebrado — tenta entrar de novo?');
+        return;
+      }
+      // visita começa de mãos vazias (o inventário é de cada um)
+      estado.inventario.fill(0);
+      estado.hotbarSlots.fill(0);
+      estado.sel = 0;
+      jogador.x = ctx.cfg.mundo.SX / 2 + 0.5;
+      jogador.z = ctx.cfg.mundo.SZ / 2 + 0.5;
+      jogador.yaw = Math.PI * 0.75;
+      jogador.pitch = 0;
+      ctx.malha.construirTudo();
+      ctx.fisica.assentar();
+      fluxo.entrarNoMundo();
+      sync.ligarPoll();
+    }, 30));
+  }
+
+  ui.els.formVisitar.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    ui.els.erroInicio.hidden = true;
+    const codigo = (ui.els.formVisitar.querySelector('[data-campo-codigo]') as HTMLInputElement).value
+      .toUpperCase().trim();
+    const nome = nomeJogadorLimpo((ui.els.formVisitar.querySelector('[data-campo-apelido]') as HTMLInputElement).value);
+    if (!/^[A-Z]{4}$/.test(codigo)) {
+      return mostrarErroInicio('O código da sala tem 4 letras — pede pro teu amigo conferir!');
+    }
+    if (nome.length < ctx.cfg.sala.nomeMin) {
+      return mostrarErroInicio('Escreve teu nome (só letras, sem espaço)!');
+    }
+    ctx.audio.retomar();
+    travarForms(true);
+    const erro = await sync.entrarSala(codigo, nome);
+    travarForms(false);
+    if (erro) return mostrarErroInicio(erro);
+    entrarVisita();
+  });
 
   function gerarEntrar(seed: number, carregado: boolean) {
     estado.fase = 'gerando';
@@ -348,7 +459,7 @@ export function iniciarJogo() {
   function travarForms(travar: boolean) {
     // trava TUDO que pode iniciar outro mundo (o 🎲 e as abas também —
     // senão um clique impaciente troca o mundo debaixo do jogador)
-    document.querySelectorAll('[data-form-novo] button, [data-form-carregar] button, [data-jogar-aleatorio], .aba').forEach((b) => {
+    document.querySelectorAll('[data-form-novo] button, [data-form-carregar] button, [data-form-visitar] button, [data-jogar-aleatorio], .aba').forEach((b) => {
       (b as HTMLButtonElement).disabled = travar;
     });
   }
@@ -404,13 +515,14 @@ export function iniciarJogo() {
     gerarEntrar(estado.seed, true);
   });
 
-  // abas do modal inicial (novo × carregar)
+  // abas do modal inicial (novo × carregar × visitar)
   document.querySelectorAll<HTMLElement>('[data-aba]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const alvo = btn.dataset.aba!;
       document.querySelectorAll<HTMLElement>('[data-aba]').forEach((b) => b.classList.toggle('ativa', b === btn));
       ui.els.formNovo.hidden = alvo !== 'novo';
       ui.els.formCarregar.hidden = alvo !== 'carregar';
+      ui.els.formVisitar.hidden = alvo !== 'visitar';
       ui.els.erroInicio.hidden = true;
     });
   });
@@ -420,14 +532,23 @@ export function iniciarJogo() {
   (document.querySelector('[data-continuar]') as HTMLElement).addEventListener('click', () => fluxo.continuarJogo());
   (document.querySelector('[data-salvar-agora]') as HTMLElement).addEventListener('click', () => salvar.salvarAgora('manual'));
   (document.querySelector('[data-sair]') as HTMLElement).addEventListener('click', () => {
+    // visita: nada a salvar — o mundo fica com o dono
+    if (sync.emVisita()) {
+      const vai = window.confirm('Sair da visita? O mundo continua com o seu amigo — você pode voltar com o mesmo código.');
+      if (!vai) return;
+      sync.sairDaSala();
+      window.location.href = '/class/games/';
+      return;
+    }
     // mundo aleatório: saída é perda — pergunta antes
     if (!salvar.temMundo()) {
       const vai = window.confirm('Esse mundo aleatório NÃO está salvo — saindo, ele some pra sempre.\n\nOK = sair mesmo assim\nCancelar = voltar (dá pra salvar com um nome!)');
       if (!vai) return;
+      sync.sairDaSala();
       window.location.href = '/class/games/';
       return;
     }
-    fluxo.sairDoMundo();
+    fluxo.sairDoMundo(); // ele decide se sai mesmo — e só então deixa a sala
   });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
@@ -437,10 +558,12 @@ export function iniciarJogo() {
   });
   window.addEventListener('pagehide', () => {
     if (salvar.temMundo() && salvar.sujo()) salvar.salvarAgora('flush');
+    sync.flushSair(); // avisa a sala que saiu (senão o boneco fica 2min parado)
   });
   // mundo aleatório em jogo: F5/fechar aba pergunta antes de jogar tudo fora
+  // (visita não: o mundo fica guardado com o amigo, fechar não perde nada)
   window.addEventListener('beforeunload', (e) => {
-    if (!salvar.temMundo() && estado.fase !== 'inicio' && estado.primeiroInput) {
+    if (!salvar.temMundo() && !sync.emVisita() && estado.fase !== 'inicio' && estado.primeiroInput) {
       e.preventDefault();
       e.returnValue = '';
     }
@@ -468,6 +591,8 @@ export function iniciarJogo() {
     alvo: () => ctx.mira.alvo(),
     selecionar: (i: number) => ctx.ui.selecionarSlot(i, false),
     salvarAgora: () => salvar.salvarAgora('manual'),
+    sync,
+    bonecos: ctx.bonecos,
     renderer, camera, scene,
     render: () => renderer.render(scene, camera),
   };

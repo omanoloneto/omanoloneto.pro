@@ -86,6 +86,10 @@ export interface Mundo {
   sujos: Set<number>; // índices de chunk (cx + cz*NCX)
   chaoMaisAlto(x: number, z: number): number; // y do bloco sólido mais alto
   limpar(): void;
+  // gancho do multiplayer: TODA escrita via definir passa aqui (quebrar,
+  // colocar, flor caindo, decay, árvore crescendo). O sync instala só
+  // com sala ativa; a geração escreve dados[] cru e não emite.
+  aoMudar?: (x: number, y: number, z: number, id: number) => void;
 }
 
 export interface Malha {
@@ -113,11 +117,15 @@ export interface Edicao {
   golpear(dt: number): void; // segurando: acumula progresso até quebrar
   soltarGolpe(): void; // soltou o botão/dedo: progresso zera
   golpeando(): boolean;
-  passo(dt: number): void; // relógio das mudas + decay das folhas
+  passo(dt: number, simular?: boolean): void; // relógio das mudas + decay (simular=false: só o tempo anda)
   iniciarMudas(): void; // re-arma o relógio após carregar um save
   crescerMudasAgora(): void; // teste: adianta tudo
   decairAgora(): void; // teste: processa todo o decay pendente já
   registrarItemNaHotbar(item: number): boolean; // item novo entra no 1º slot vazio (false = cheia)
+  // multiplayer: SÓ o anfitrião chama, pra edição vinda da rede — os
+  // sistemas automáticos precisam saber o que os visitantes fizeram
+  // (muda plantada entra no relógio; ar aberto re-checa folhas órfãs)
+  aoEdicaoRemota(x: number, y: number, z: number, id: number): void;
 }
 
 export interface Salvar {
@@ -154,6 +162,38 @@ export interface Fluxo {
   aoPrimeiroInput(): void;
 }
 
+// jogador remoto como veio do servidor (posição do último poll)
+export interface JogadorRemoto {
+  nome: string;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+}
+
+export interface Sync {
+  emSala(): boolean;
+  emVisita(): boolean;
+  souAnfitriao(): boolean;
+  codigoSala(): string;
+  criarSala(nomeJogador: string): Promise<string | null>; // null=ok, string=erro
+  entrarSala(codigo: string, nomeJogador: string): Promise<string | null>;
+  aplicarFotoInicial(): boolean; // visita: escreve o mundo recebido (sem malha)
+  ligarPoll(): void; // visita: começa a sincronizar (depois do mundo montado)
+  sairDaSala(): Promise<void>; // avisa o servidor + limpa tudo local
+  flushSair(): void; // pagehide: sendBeacon de 'sair'
+  pollAgora(): void; // teste/depuração: sync já
+}
+
+export interface Bonecos {
+  atualizarLista(jogadores: JogadorRemoto[]): void;
+  passo(dt: number): void; // interpolação + nametag
+  limpar(): void;
+  quantos(): number;
+  nomes(): string[];
+}
+
 export interface Contexto {
   blocos: typeof blocos;
   itens: typeof itens;
@@ -182,5 +222,7 @@ export interface Contexto {
   mira: Mira;
   edicao: Edicao;
   salvar: Salvar;
+  sync: Sync;
+  bonecos: Bonecos;
   fluxo: Fluxo;
 }

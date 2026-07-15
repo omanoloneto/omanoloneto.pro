@@ -23,6 +23,7 @@ export function criarMundo(ctx: Contexto): Mundo {
   function definir(x: number, y: number, z: number, id: number) {
     if (x < 0 || x >= SX || z < 0 || z >= SZ || y < 0 || y >= SY) return;
     dados[x + z * SX + y * SX * SZ] = id;
+    api.aoMudar?.(x, y, z, id); // multiplayer escuta TODA escrita daqui
     // AO alcança a diagonal: um edit na borda muda vértices do chunk vizinho
     marcarSujo(x, z);
     marcarSujo(x - 1, z); marcarSujo(x + 1, z);
@@ -39,7 +40,7 @@ export function criarMundo(ctx: Contexto): Mundo {
     return 0;
   }
 
-  return {
+  const api: Mundo = {
     dados,
     obter,
     definir,
@@ -50,4 +51,5 @@ export function criarMundo(ctx: Contexto): Mundo {
       sujos.clear();
     },
   };
+  return api;
 }

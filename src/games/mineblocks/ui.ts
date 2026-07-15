@@ -45,6 +45,18 @@ export function criarUI(ctx: Contexto): UI {
     salvarAgoraBtn: $('[data-salvar-agora]'),
     sairBtn: $('[data-sair]'),
     pausaAviso: $('[data-pausa-aviso]'),
+    // multiplayer (sala de amigos)
+    formVisitar: $('[data-form-visitar]'),
+    salaChip: $('[data-sala-chip]'),
+    salaSecao: $('[data-sala-secao]'),
+    salaAbrir: $('[data-sala-abrir]'),
+    salaNome: $('[data-sala-nome]'),
+    salaCriarBtn: $('[data-sala-criar]'),
+    salaInfo: $('[data-sala-info]'),
+    salaCodigo: $('[data-sala-codigo]'),
+    salaLista: $('[data-sala-lista]'),
+    salaSairBtn: $('[data-sala-sair]'),
+    salaErro: $('[data-sala-erro]'),
   };
 
   let toastTimer = 0;
