@@ -21,8 +21,11 @@ import { site, socials } from '../data/site';
       <p class="contexto" data-reveal>{site.descricao}</p>
 
       <div class="acoes" data-reveal>
-        <a href="/class/games/" class="btn">
+        <a href="/class/" class="btn">
           Sala de aula <Icon name="arrow" size={18} />
+        </a>
+        <a href="/emulators/" class="btn btn--ghost">
+          Emuladores <Icon name="arrow" size={18} />
         </a>
       </div>
 
@@ -93,6 +96,9 @@ import { site, socials } from '../data/site';
   /* ===== Ações ===== */
   .acoes {
     margin-top: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
   /* ===== Redes ===== */
