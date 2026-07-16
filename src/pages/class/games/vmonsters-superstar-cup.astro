@@ -1,0 +1,174 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+
+// O jogo roda hospedado no itch.io (embed oficial). O iframe tem tamanho fixo
+// de 820×520 — em vez de esticar o iframe (o que cortaria o canvas do jogo),
+// mantemos esse tamanho e escalamos o wrapper via transform pra caber na tela.
+const EMBED = 'https://itch.io/embed-upload/18045699?color=333333';
+const PAGINA_ITCH = 'https://redstudiosbr.itch.io/vmonsters-superstar-cup';
+const LARGURA = 820;
+const ALTURA = 520;
+
+const title = 'V-Monsters: Superstar Cup — jogue no navegador | Manolo Neto';
+const description =
+  'V-Monsters: Superstar Cup rodando direto no navegador. Futebol de botão com os monstrinhos do universo V-Monsters — sem instalar nada.';
+---
+
+<Layout title={title} description={description}>
+  <main id="conteudo" class="sc" data-jogo>
+    <header class="topo">
+      <a class="topo__marca" href="/class/games/">
+        <span class="topo__logo" aria-hidden="true">⚽</span>
+        <span class="topo__nome">V-Monsters: <b>Superstar Cup</b></span>
+      </a>
+      <div class="topo__acoes">
+        <button class="btn" type="button" data-tela-cheia>Tela cheia</button>
+        <a class="btn btn--fraco" href="/class/games/">← sair</a>
+      </div>
+    </header>
+
+    <div class="palco" data-palco>
+      <div class="moldura" data-moldura style={`width:${LARGURA}px;height:${ALTURA}px`}>
+        <iframe
+          class="jogo"
+          data-frame
+          src={EMBED}
+          title="V-Monsters: Superstar Cup"
+          width={LARGURA}
+          height={ALTURA}
+          frameborder="0"
+          allowfullscreen
+        >
+          <a href={PAGINA_ITCH}>Play V-Monsters: Superstar Cup on itch.io</a>
+        </iframe>
+      </div>
+    </div>
+
+    <footer class="pe">
+      <p>
+        Jogo hospedado no itch.io · <a href={PAGINA_ITCH} target="_blank" rel="noopener">ver a página oficial</a>
+      </p>
+    </footer>
+  </main>
+</Layout>
+
+<style is:global>
+  body.is-embed { background: #14161a; overflow: hidden; }
+  body.is-embed::before { display: none !important; }
+</style>
+
+<style>
+  .sc {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    background: #14161a;
+    color: #e9e9ee;
+    font-family: Verdana, Tahoma, 'Segoe UI', Geneva, sans-serif;
+  }
+
+  .topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px clamp(12px, 3vw, 24px);
+    background: #1c1f26;
+    border-bottom: 1px solid #2b2f39;
+  }
+  .topo__marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: inherit;
+    text-decoration: none;
+    min-width: 0;
+  }
+  .topo__logo { font-size: 1.4rem; line-height: 1; }
+  .topo__nome {
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topo__nome b { font-weight: 800; }
+
+  .topo__acoes { display: flex; gap: 8px; flex-shrink: 0; }
+  .btn {
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #3a4050;
+    background: #262b35;
+    color: #e9e9ee;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .btn:hover { border-color: #7a5fd0; }
+  .btn--fraco { background: transparent; color: #a9adba; }
+
+  /* palco = área livre; a moldura tem 820×520 fixos e é escalada por JS.
+     Absoluta no centro: centralizar com grid/flex faria a coluna crescer pros
+     820px e vazar pra direita quando a tela é menor que o iframe. */
+  .palco {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .moldura {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform-origin: center center;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    background: #333;
+  }
+  .jogo { display: block; width: 100%; height: 100%; border: 0; }
+
+  .pe {
+    padding: 8px clamp(12px, 3vw, 24px) calc(8px + env(safe-area-inset-bottom));
+    border-top: 1px solid #2b2f39;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #8b90a0;
+  }
+  .pe a { color: #9b7ff0; }
+
+  @media (max-width: 480px) {
+    .topo__nome { font-size: 0.8rem; }
+    .btn { padding: 7px 10px; font-size: 0.72rem; }
+  }
+</style>
+
+<script>
+  document.body.classList.add('is-embed');
+
+  const palco = document.querySelector('[data-palco]') as HTMLElement;
+  const moldura = document.querySelector('[data-moldura]') as HTMLElement;
+  const frame = document.querySelector('[data-frame]') as HTMLIFrameElement;
+
+  // Escala pra caber no palco sem passar de 1× (não borra em tela grande).
+  function ajustar() {
+    const w = palco.clientWidth - 24;
+    const h = palco.clientHeight - 24;
+    const escala = Math.min(w / moldura.offsetWidth, h / moldura.offsetHeight, 1);
+    moldura.style.transform = `translate(-50%, -50%) scale(${escala})`;
+  }
+
+  window.addEventListener('resize', ajustar);
+  window.addEventListener('orientationchange', ajustar);
+  ajustar();
+
+  document.querySelector('[data-tela-cheia]')!.addEventListener('click', () => {
+    const alvo = frame as any;
+    if (document.fullscreenElement) document.exitFullscreen();
+    else (alvo.requestFullscreen ?? alvo.webkitRequestFullscreen)?.call(alvo);
+  });
+</script>
