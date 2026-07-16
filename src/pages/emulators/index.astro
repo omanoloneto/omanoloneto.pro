@@ -1,0 +1,412 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+// Emulador de SNES no navegador. A ROM é lida do PC do usuário via File API
+// (blob local) — nada sobe pra servidor. O emulador em si (EmulatorJS/snes9x)
+// vem do CDN oficial; só o programa é baixado, o arquivo do jogo fica no PC.
+const title = 'Emulador de SNES online — jogue no navegador | Manolo Neto';
+const description =
+  'Emulador de Super Nintendo (SNES) que roda direto no navegador. Abra a ROM do seu próprio computador — nada é enviado pra servidor nenhum, tudo roda localmente.';
+---
+
+<Layout title={title} description={description}>
+  <main id="conteudo" class="emu">
+    <!-- ====== TELA INICIAL: escolher/arrastar a ROM ====== -->
+    <section class="landing" data-landing>
+      <p class="eyebrow">Emulador · roda no seu navegador</p>
+      <h1 class="titulo">Super Nintendo <span class="titulo__sig">(SNES)</span></h1>
+      <p class="sub">
+        Abra uma ROM que está no <strong>seu computador</strong> e jogue na hora.
+        O arquivo <strong>não é enviado</strong> pra lugar nenhum — tudo acontece aqui, no navegador.
+      </p>
+
+      <label class="dz" data-dz>
+        <input
+          class="dz__input"
+          type="file"
+          accept=".sfc,.smc,.fig,.swc,.zip"
+          data-file
+          aria-label="Escolher arquivo de ROM do SNES"
+        />
+        <span class="dz__icone" aria-hidden="true">🎮</span>
+        <span class="dz__forte">Escolher ROM</span>
+        <span class="dz__fraco">ou arraste o arquivo aqui</span>
+        <span class="dz__formatos">.sfc · .smc · .fig · .swc · .zip</span>
+      </label>
+
+      <p class="erro" data-erro hidden></p>
+
+      <ul class="pilulas">
+        <li class="pilula pilula--ok">🔒 Roda 100% local — nada sai do seu PC</li>
+        <li class="pilula">💾 Salvar/carregar estado no menu ⚙️</li>
+        <li class="pilula">📱 Funciona no celular com controle na tela</li>
+      </ul>
+
+      <details class="ajuda">
+        <summary>Controles no teclado</summary>
+        <div class="ajuda__corpo">
+          <div><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> mexer</div>
+          <div><kbd>Z</kbd> / <kbd>X</kbd> — B / A</div>
+          <div><kbd>A</kbd> / <kbd>S</kbd> — Y / X</div>
+          <div><kbd>Enter</kbd> Start · <kbd>Shift</kbd> Select</div>
+          <p class="ajuda__nota">Padrão — dá pra remapear tudo no menu ⚙️ do emulador.</p>
+        </div>
+      </details>
+
+      <p class="legal">
+        Use apenas ROMs de jogos que você possui. Você é responsável pelos arquivos que abre aqui.
+      </p>
+
+      <a class="voltar" href="/">← Voltar pro início</a>
+    </section>
+
+    <!-- ====== PLAYER: onde o EmulatorJS monta a tela ====== -->
+    <section class="player" data-player hidden>
+      <header class="bar">
+        <span class="bar__nome" data-game-name>ROM</span>
+        <div class="bar__acoes">
+          <button class="bar__btn" type="button" data-fullscreen>⛶ Tela cheia</button>
+          <button class="bar__btn" type="button" data-change>↻ Trocar ROM</button>
+        </div>
+      </header>
+      <div class="stage" data-stage><div id="game"></div></div>
+    </section>
+  </main>
+
+  <script>
+    // ---- Configuração do CDN do EmulatorJS ----
+    const EJS_DATA = 'https://cdn.emulatorjs.org/stable/data/';
+    const EXTENSOES = ['.sfc', '.smc', '.fig', '.swc', '.zip'];
+
+    const w = window as any;
+    const $ = (sel: string) => document.querySelector(sel);
+
+    const landing = $('[data-landing]') as HTMLElement;
+    const player = $('[data-player]') as HTMLElement;
+    const input = $('[data-file]') as HTMLInputElement;
+    const dz = $('[data-dz]') as HTMLElement;
+    const erro = $('[data-erro]') as HTMLElement;
+    const nomeEl = $('[data-game-name]') as HTMLElement;
+    const stage = $('[data-stage]') as HTMLElement;
+    const btnTrocar = $('[data-change]') as HTMLButtonElement;
+    const btnFull = $('[data-fullscreen]') as HTMLButtonElement;
+
+    let emuIniciado = false;
+
+    function extOk(nome: string) {
+      const n = nome.toLowerCase();
+      return EXTENSOES.some((e) => n.endsWith(e));
+    }
+
+    function mostrarErro(msg: string) {
+      erro.textContent = msg;
+      erro.hidden = false;
+    }
+
+    function iniciar(file: File) {
+      if (emuIniciado) return;
+      if (!extOk(file.name)) {
+        mostrarErro('Formato não reconhecido. Use um arquivo ' + EXTENSOES.join(', ') + '.');
+        return;
+      }
+      erro.hidden = true;
+      emuIniciado = true;
+
+      const nomeLimpo = file.name.replace(/\.[^.]+$/, '');
+      nomeEl.textContent = nomeLimpo;
+
+      // File API: cria uma URL local (blob:) — o arquivo fica na memória do
+      // navegador, nunca é enviado pra rede.
+      w.EJS_player = '#game';
+      w.EJS_core = 'snes';
+      w.EJS_pathtodata = EJS_DATA;
+      w.EJS_gameUrl = URL.createObjectURL(file);
+      w.EJS_gameName = nomeLimpo;
+      w.EJS_startOnLoaded = true;
+      w.EJS_language = 'pt-BR';
+      w.EJS_color = '#34d399';
+      w.EJS_backgroundColor = '#0a0e14';
+
+      landing.hidden = true;
+      player.hidden = false;
+
+      const s = document.createElement('script');
+      s.src = EJS_DATA + 'loader.js';
+      document.body.appendChild(s);
+    }
+
+    // ---- Seleção por clique ----
+    input.addEventListener('change', () => {
+      const f = input.files && input.files[0];
+      if (f) iniciar(f);
+    });
+
+    // ---- Arrastar e soltar (na zona e na janela toda) ----
+    const parar = (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    ['dragenter', 'dragover'].forEach((ev) =>
+      window.addEventListener(ev, (e) => {
+        parar(e as DragEvent);
+        dz.classList.add('is-drag');
+      })
+    );
+    ['dragleave', 'drop'].forEach((ev) =>
+      window.addEventListener(ev, (e) => {
+        parar(e as DragEvent);
+        if (ev === 'dragleave' && e.target !== document.documentElement) return;
+        dz.classList.remove('is-drag');
+      })
+    );
+    window.addEventListener('drop', (e) => {
+      const dt = (e as DragEvent).dataTransfer;
+      const f = dt && dt.files && dt.files[0];
+      if (f) iniciar(f);
+    });
+
+    // ---- Botões do player ----
+    btnTrocar.addEventListener('click', () => location.reload());
+    btnFull.addEventListener('click', () => {
+      const alvo: any = stage;
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (alvo.requestFullscreen) alvo.requestFullscreen();
+      else if (alvo.webkitRequestFullscreen) alvo.webkitRequestFullscreen();
+    });
+  </script>
+
+  <style>
+    .emu {
+      min-height: 100svh;
+    }
+
+    /* ===================== TELA INICIAL ===================== */
+    .landing {
+      min-height: 100svh;
+      width: min(92vw, 620px);
+      margin-inline: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 56px 0 40px;
+      gap: 18px;
+    }
+
+    .titulo {
+      font-size: clamp(2.2rem, 7vw, 3.6rem);
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      line-height: 1.05;
+      color: var(--text);
+    }
+    .titulo__sig {
+      color: var(--accent);
+    }
+
+    .sub {
+      color: var(--text-soft);
+      font-size: 1.05rem;
+      max-width: 52ch;
+    }
+    .sub strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* ---- Zona de arrastar/escolher ---- */
+    .dz {
+      width: 100%;
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 34px 24px;
+      border: 2px dashed var(--border-strong);
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.2s var(--ease), background 0.2s var(--ease),
+        transform 0.2s var(--ease);
+    }
+    .dz:hover,
+    .dz:focus-within,
+    .dz.is-drag {
+      border-color: var(--accent);
+      background: var(--bg-card-hover);
+    }
+    .dz.is-drag {
+      transform: scale(1.01);
+      box-shadow: 0 0 0 4px var(--accent-glow);
+    }
+    .dz__input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .dz__icone {
+      font-size: 2.4rem;
+      line-height: 1;
+    }
+    .dz__forte {
+      font-weight: 700;
+      font-size: 1.15rem;
+      color: var(--accent);
+    }
+    .dz__fraco {
+      color: var(--text-soft);
+    }
+    .dz__formatos {
+      margin-top: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      letter-spacing: 0.02em;
+    }
+
+    .erro {
+      color: #fca5a5;
+      font-size: 0.92rem;
+      font-weight: 500;
+    }
+
+    /* ---- Pílulas de destaque ---- */
+    .pilulas {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .pilula {
+      font-size: 0.82rem;
+      color: var(--text-soft);
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 12px;
+    }
+    .pilula--ok {
+      color: var(--accent);
+      border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+      background: var(--accent-glow);
+    }
+
+    /* ---- Ajuda de controles ---- */
+    .ajuda {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-soft);
+    }
+    .ajuda summary {
+      cursor: pointer;
+      padding: 12px 16px;
+      font-weight: 600;
+      color: var(--text-soft);
+      user-select: none;
+    }
+    .ajuda summary::marker {
+      color: var(--accent);
+    }
+    .ajuda__corpo {
+      padding: 0 16px 16px;
+      display: grid;
+      gap: 8px;
+      color: var(--text-soft);
+      font-size: 0.92rem;
+    }
+    .ajuda__nota {
+      color: var(--text-dim);
+      font-size: 0.84rem;
+    }
+    kbd {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      border-bottom-width: 2px;
+      border-radius: 6px;
+      padding: 2px 7px;
+      margin-right: 4px;
+      color: var(--text);
+    }
+
+    .legal {
+      color: var(--text-dim);
+      font-size: 0.8rem;
+      max-width: 60ch;
+    }
+
+    .voltar {
+      color: var(--text-soft);
+      font-weight: 500;
+      transition: color 0.15s var(--ease);
+    }
+    .voltar:hover {
+      color: var(--accent);
+    }
+
+    /* ===================== PLAYER ===================== */
+    .player {
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      background: #000;
+    }
+    .bar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      background: var(--bg-soft);
+      border-bottom: 1px solid var(--border);
+    }
+    .bar__nome {
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bar__acoes {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
+    .bar__btn {
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-soft);
+      background: var(--bg-card);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      padding: 7px 12px;
+      cursor: pointer;
+      transition: color 0.15s var(--ease), border-color 0.15s var(--ease),
+        background 0.15s var(--ease);
+    }
+    .bar__btn:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--bg-card-hover);
+    }
+    .stage {
+      flex: 1 1 auto;
+      min-height: 0;
+      position: relative;
+      background: #000;
+    }
+    /* O EmulatorJS monta a tela dentro de #game — ocupa todo o palco. */
+    .stage #game {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</Layout>
