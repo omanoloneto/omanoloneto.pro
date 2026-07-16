@@ -162,6 +162,7 @@ export const config = {
     nomeMin: 2,
     nomeMax: 10,
   },
+  codigo: { tam: 5, charset: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789' },
   camera: { fov: 75, sensibilidade: 0.0024, sensTouch: 0.0044 },
   somLigadoInicial: true,
 };

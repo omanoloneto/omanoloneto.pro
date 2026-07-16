@@ -31,18 +31,9 @@ export function criarUI(ctx: Contexto): UI {
     pauseBtn: $('[data-pause]'),
     muteBtn: $('[data-mute]'),
     muteIcon: $('[data-mute-icon]'),
-    formNovo: $('[data-form-novo]'),
-    formCarregar: $('[data-form-carregar]'),
+    formJogar: $('[data-form-jogar]'),
+    formEntrar: $('[data-form-entrar]'),
     erroInicio: $('[data-erro-inicio]'),
-    // mundo aleatório + batizar
-    jogarAleatorio: $('[data-jogar-aleatorio]'),
-    divisor: $('[data-divisor]'),
-    abasEl: $('.abas'),
-    inicioTitulo: $('[data-inicio-titulo]'),
-    inicioSub: $('[data-inicio-sub]'),
-    voltarJogos: $('[data-voltar-jogos]'),
-    batizarVoltar: $('[data-batizar-voltar]'),
-    batizarBtn: $('[data-batizar]'),
     salvarAgoraBtn: $('[data-salvar-agora]'),
     sairBtn: $('[data-sair]'),
     pausaAviso: $('[data-pausa-aviso]'),
@@ -58,17 +49,11 @@ export function criarUI(ctx: Contexto): UI {
     placaOk: $('[data-placa-ok]'),
     placaCancelar: $('[data-placa-cancelar]'),
     // multiplayer (sala de amigos)
-    formVisitar: $('[data-form-visitar]'),
     salaChip: $('[data-sala-chip]'),
     salaSecao: $('[data-sala-secao]'),
-    salaAbrir: $('[data-sala-abrir]'),
-    salaNome: $('[data-sala-nome]'),
-    salaCriarBtn: $('[data-sala-criar]'),
     salaInfo: $('[data-sala-info]'),
     salaCodigo: $('[data-sala-codigo]'),
     salaLista: $('[data-sala-lista]'),
-    salaSairBtn: $('[data-sala-sair]'),
-    salaErro: $('[data-sala-erro]'),
   };
 
   let toastTimer = 0;

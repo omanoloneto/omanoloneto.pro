@@ -30,7 +30,7 @@ header('Content-Type: application/json; charset=utf-8');
 header('Cache-Control: no-store');
 
 const DIR_SALAS = __DIR__ . '/mb-salas';
-const LETRAS_CODIGO = 'BCDFGHJKLMNPQRSTVWXZ'; // 20 consoantes — não forma palavra
+const LETRAS_CODIGO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const TTL_S = 10800;            // sala parada há 3h é limpa na criação de outra
 const MAX_SALAS = 30;
 const MAX_JOGADORES = 30;       // turma inteira
@@ -97,7 +97,7 @@ function comLock(string $codigo, callable $fn) {
 // \z e não $: o $ do PCRE aceita um \n no final — daria dois nomes
 // visualmente idênticos na mesma sala
 function validarCodigo(string $codigo): bool {
-  return preg_match('/^[' . LETRAS_CODIGO . ']{4}\z/', $codigo) === 1;
+  return preg_match('/^[' . LETRAS_CODIGO . ']{5}\z/', $codigo) === 1;
 }
 
 function validarNome(string $nome): bool {
@@ -262,7 +262,7 @@ if ($acao === 'criar') {
 
   // limpeza oportunista de salas abandonadas (mtime = última atividade)
   $vivas = 0;
-  foreach (glob(DIR_SALAS . '/sala-????.json') ?: [] as $f) {
+  foreach (glob(DIR_SALAS . '/sala-?????.json') ?: [] as $f) {
     if (time() - (filemtime($f) ?: time()) > TTL_S) {
       $cod = substr(basename($f, '.json'), 5);
       @unlink($f);
@@ -279,13 +279,12 @@ if ($acao === 'criar') {
   }
   if ($vivas >= MAX_SALAS) falha(429, 'muitas salas abertas agora — espera um pouquinho!');
 
-  // fopen 'x' CLAIMA o código atomicamente — dois "criar" simultâneos
-  // nunca sorteiam a mesma sala (file_exists sozinho seria corrida)
-  do {
-    $codigo = '';
-    for ($i = 0; $i < 4; $i++) $codigo .= LETRAS_CODIGO[random_int(0, strlen(LETRAS_CODIGO) - 1)];
-    $claim = @fopen(arquivoSala($codigo), 'x');
-  } while ($claim === false);
+  $codigo = $corpo['codigo'] ?? '';
+  if (!is_string($codigo)) falha(400, 'código inválido');
+  $codigo = strtoupper($codigo);
+  if (!validarCodigo($codigo)) falha(400, 'código inválido');
+  $claim = @fopen(arquivoSala($codigo), 'x');
+  if ($claim === false) falha(409, 'esse mundo já está aberto — entra nele!');
   fclose($claim);
 
   $token = bin2hex(random_bytes(8));

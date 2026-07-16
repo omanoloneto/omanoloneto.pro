@@ -106,55 +106,28 @@ const description =
       </div>
     </div>
 
-    <!-- Modal: início (novo mundo × carregar) -->
+    <!-- Modal: início (jogar agora × entrar por código) -->
     <div class="modal" data-inicio>
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="inicio-title">
-        <div class="placa__topo" id="inicio-title" data-inicio-titulo>🧱 MineBlocks</div>
+        <div class="placa__topo" id="inicio-title">🧱 MineBlocks</div>
         <div class="placa__corpo">
-          <p class="sub" data-inicio-sub hidden></p>
-          <button class="botao botao--aleatorio" type="button" data-jogar-aleatorio>Jogar agora</button>
-          <p class="divisor" data-divisor><span>— ou —</span></p>
-          <div class="abas" role="tablist">
-            <button class="aba ativa" type="button" data-aba="novo" role="tab">🌱 Novo</button>
-            <button class="aba" type="button" data-aba="carregar" role="tab">📂 Carregar</button>
-            <button class="aba" type="button" data-aba="visitar" role="tab">Join</button>
-          </div>
-          <form data-form-novo>
+          <form data-form-jogar>
             <label class="campo">
-              <span>Nome do seu mundo</span>
-              <input data-campo-nome type="text" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ex: castelo-do-leo" required />
-            </label>
-            <label class="campo">
-              <span>Crie uma senha <small>(4 números fáceis de lembrar!)</small></span>
-              <input data-campo-senha type="text" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ex: 2015" required />
-            </label>
-            <p class="aviso-senha">⚠️ Não esqueça a senha! Sem ela não dá pra abrir o mundo de novo.</p>
-            <button class="botao botao--go" type="submit">Criar meu mundo!</button>
-          </form>
-          <form data-form-carregar hidden>
-            <label class="campo">
-              <span>Nome do mundo</span>
-              <input data-campo-nome type="text" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false" required />
-            </label>
-            <label class="campo">
-              <span>Senha</span>
-              <input data-campo-senha type="text" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" required />
-            </label>
-            <button class="botao botao--go" type="submit">Entrar no mundo!</button>
-          </form>
-          <form data-form-visitar hidden>
-            <label class="campo">
-              <span>Código da sala <small>(4 letras)</small></span>
-              <input data-campo-codigo class="campo--codigo" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ex: KZTP" required />
-            </label>
-            <label class="campo">
-              <span>Seu nome <small>(pros amigos te verem)</small></span>
+              <span>Seu nome</span>
               <input data-campo-apelido type="text" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ex: LEO" required />
             </label>
-            <button class="botao botao--go" type="submit">🧑‍🤝‍🧑 Entrar na sala!</button>
+            <button class="botao botao--aleatorio" type="submit">▶ Jogar agora</button>
+            <p class="aviso-senha">Seu mundo ganha um código de 5 letrinhas — anota ele pra voltar depois ou chamar amigos!</p>
+          </form>
+          <p class="divisor"><span>— ou —</span></p>
+          <form data-form-entrar>
+            <label class="campo">
+              <span>Código do mundo <small>(5 letras e números)</small></span>
+              <input data-campo-codigo class="campo--codigo" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ex: K7Q2X" required />
+            </label>
+            <button class="botao botao--go" type="submit">🌍 Entrar nesse mundo</button>
           </form>
           <p class="erro" data-erro-inicio role="alert" hidden></p>
-          <button class="botao botao--sec botao--mini" type="button" data-batizar-voltar hidden>← voltar pro jogo</button>
           <a class="voltar" href="/class/games/" data-voltar-jogos>← voltar pros jogos</a>
         </div>
       </div>
@@ -168,24 +141,14 @@ const description =
           <div class="pausa-acoes">
             <button class="botao botao--go" type="button" data-continuar>▶ Continuar</button>
             <button class="botao botao--sec" type="button" data-salvar-agora>💾 Salvar agora</button>
-            <button class="botao botao--sec" type="button" data-batizar hidden>💾 Dar um nome pra salvar</button>
             <button class="botao botao--sec" type="button" data-sair>🚪 Salvar e sair</button>
           </div>
           <div class="sala" data-sala-secao>
-            <div data-sala-abrir>
-              <p class="sala__chamada">🧑‍🤝‍🧑 Chame amigos pro seu mundo — cada um na casa dele!</p>
-              <div class="sala__linha">
-                <input class="sala__nome" data-sala-nome type="text" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="seu nome (ex: LEO)" aria-label="Seu nome na sala" />
-                <button class="botao botao--sec" type="button" data-sala-criar>🎮 Abrir sala</button>
-              </div>
-            </div>
             <div data-sala-info hidden>
-              <p class="sala__chamada">Manda esse código pros seus amigos:</p>
+              <p class="sala__chamada">Esse é o código do mundo — fala pros amigos entrarem (ou anota pra voltar)!</p>
               <div class="sala__codigo" data-sala-codigo></div>
               <p class="sala__quem" data-sala-lista></p>
-              <button class="botao botao--sec botao--mini" type="button" data-sala-sair>🚪 Sair da sala</button>
             </div>
-            <p class="erro" data-sala-erro role="alert" hidden></p>
           </div>
           <p class="aviso" data-pausa-aviso>Relaxa: o mundo se salva sozinho de tempos em tempos. 😉</p>
         </div>

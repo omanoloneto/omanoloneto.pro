@@ -183,12 +183,13 @@ export interface Edicao {
 }
 
 export interface Salvar {
-  criarMundo(nome: string, senha: string): Promise<string | null>; // null=ok, string=erro
-  carregarMundo(nome: string, senha: string): Promise<string | null>;
+  criarMundo(): Promise<string | null>;
+  carregarMundo(codigo: string): Promise<string | null>;
+  adotarMundo(codigo: string): void;
   salvarAgora(motivo?: 'auto' | 'manual' | 'flush'): Promise<boolean>;
   agendar(): void;
   temMundo(): boolean;
-  nomeMundo(): string;
+  codigoMundo(): string;
   sujo(): boolean;
 }
 
@@ -241,7 +242,7 @@ export interface Sync {
   souAnfitriao(): boolean;
   codigoSala(): string;
   meuNomeNaSala(): string; // '' quando solo; senão o nome do jogador na sala
-  criarSala(nomeJogador: string): Promise<string | null>; // null=ok, string=erro
+  criarSala(nomeJogador: string, codigo: string): Promise<string | null>;
   entrarSala(codigo: string, nomeJogador: string): Promise<string | null>;
   aplicarFotoInicial(): boolean; // visita: escreve o mundo recebido (sem malha)
   ligarPoll(): void; // visita: começa a sincronizar (depois do mundo montado)

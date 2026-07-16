@@ -127,7 +127,7 @@ export function criarSync(ctx: Contexto): Sync {
     }
     if (mudou) {
       ctx.ui.atualizarBau(); // um baú aberto pode ter mudado
-      if (modo === 'dono' && ctx.salvar.temMundo()) ctx.salvar.agendar();
+      if (ctx.salvar.temMundo()) ctx.salvar.agendar();
     }
   }
 
@@ -181,8 +181,7 @@ export function criarSync(ctx: Contexto): Sync {
       if (anfitriao) ctx.edicao.aoEdicaoRemota(x, y, z, b);
     }
     aplicandoRemoto = false;
-    // o dono salva o mundo NOMEADO com as construções dos amigos dentro
-    if (mudouAlgo && modo === 'dono' && ctx.salvar.temMundo()) ctx.salvar.agendar();
+    if (mudouAlgo && ctx.salvar.temMundo()) ctx.salvar.agendar();
   }
 
   function tratarJogadores(lista: JogadorRemoto[]) {
@@ -343,6 +342,11 @@ export function criarSync(ctx: Contexto): Sync {
       if (anfitriao && !eraAnfitriao) {
         ctx.edicao.iniciarMudas();
         ultimaFotoMs = performance.now();
+        if (!ctx.salvar.temMundo()) {
+          ctx.salvar.adotarMundo(codigo);
+          ctx.salvar.agendar();
+          ctx.ui.mostrarToast('👑 Agora o mundo está com você — e continua salvando!', 'ok', 3000);
+        }
       }
       // NÃO limpo ackPendentes ao perder o posto: se eu resolvi uma
       // entrega e virei não-anfitrião antes de ackar, preciso seguir
@@ -415,13 +419,13 @@ export function criarSync(ctx: Contexto): Sync {
     codigoSala: () => codigo,
     meuNomeNaSala: () => (pollAtivo ? meuNome : ''),
 
-    async criarSala(nomeJogador) {
+    async criarSala(nomeJogador, cod) {
       if (pollAtivo) return null;
       const foto = fotoAtual();
       if (foto.blocos.length > ctx.cfg.salvar.maxPayload) return '😅 O mundo ficou grande demais pra abrir sala!';
-      const r = await api({ acao: 'criar', nome: nomeJogador, foto });
+      const r = await api({ acao: 'criar', codigo: cod, nome: nomeJogador, foto });
       if (!r.ok) return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
-      codigo = r.json.codigo;
+      codigo = cod;
       token = r.json.token;
       meuNome = nomeJogador;
       donoNome = nomeJogador; // eu sou o dono

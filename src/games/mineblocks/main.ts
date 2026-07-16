@@ -211,9 +211,11 @@ export function iniciarJogo() {
       ui.els.pauseBtn.hidden = false;
       ui.els.craftBtn.hidden = false;
       ui.els.fantasma.hidden = false;
-      ui.els.nomeMundoHud.textContent = salvar.temMundo() ? '🌍 ' + salvar.nomeMundo() : '🎲 mundo aleatório';
-      if (!salvar.temMundo()) {
-        ui.mostrarToast('🎲 Mundo de brincadeira! Se gostar dele, dá um nome na pausa pra guardar.', 'info', 3400);
+      ui.els.nomeMundoHud.textContent = salvar.temMundo()
+        ? '🌍 ' + salvar.codigoMundo()
+        : sync.emVisita() ? '🌍 ' + sync.codigoSala() : '🎲 mundo de brincadeira';
+      if (!salvar.temMundo() && !sync.emVisita()) {
+        ui.mostrarToast('🎲 Mundo de brincadeira (sem internet) — ele some quando você sai!', 'info', 3400);
       }
       ui.atualizarContagens();
       ui.selecionarSlot(estado.sel, false);
@@ -232,18 +234,14 @@ export function iniciarJogo() {
       inputRefs.soltarLock();
       pararLoop();
       renderer.render(scene, camera);
-      // pausa muda de cara no mundo aleatório: sem "salvar agora",
-      // com "dar um nome" e saída honesta. Na VISITA, nada de save —
-      // o mundo é do amigo (e fica salvo com ele)
       const visita = sync.emVisita();
       const guest = !salvar.temMundo();
       ui.els.salvarAgoraBtn.hidden = guest || visita;
-      ui.els.batizarBtn.hidden = !guest || visita;
-      ui.els.sairBtn.textContent = visita ? '🚪 Sair da visita' : guest ? '🚪 Sair sem salvar' : '🚪 Salvar e sair';
+      ui.els.sairBtn.textContent = visita ? '🚪 Sair do mundo' : guest ? '🚪 Sair sem salvar' : '🚪 Salvar e sair';
       ui.els.pausaAviso.textContent = visita
-        ? 'Vocês estão construindo juntos no mundo do seu amigo — divirtam-se!'
+        ? 'Vocês estão construindo juntos — o mundo se salva sozinho!'
         : guest
-          ? 'Esse mundo aleatório some quando você sai — dá um nome pra ele se quiser guardar!'
+          ? 'Esse mundo de brincadeira some quando você sai (sem internet, sem código).'
           : 'Relaxa: o mundo se salva sozinho de tempos em tempos. 😉';
       atualizarSalaPausa();
       ui.els.pausaModal.hidden = false;
@@ -254,9 +252,7 @@ export function iniciarJogo() {
     continuarJogo() {
       if (estado.fase !== 'pausado') return;
       ui.els.pausaModal.hidden = true;
-      // batizar cancelado/terminado: o modal inicial fecha junto, sempre
       ui.els.inicioModal.hidden = true;
-      batizando = false;
       estado.fase = 'jogando';
       medir();
       retomarLoop();
@@ -294,47 +290,14 @@ export function iniciarJogo() {
   ctx.fluxo = fluxo as Contexto['fluxo'];
   const inputRefs = ligarInput(ctx);
 
-  // ----- gerar/carregar mundo -----
-  // batizar = dar nome+senha a um mundo aleatório já em jogo (o modal
-  // inicial reabre em modo especial, com o mundo congelado atrás)
-  let batizando = false;
-
-  function abrirBatizar() {
-    batizando = true;
-    ui.els.pausaModal.hidden = true;
-    ui.els.erroInicio.hidden = true;
-    // campos limpos: sobra de digitação antiga não pode virar senha sem querer
-    (ui.els.formNovo.querySelector('[data-campo-nome]') as HTMLInputElement).value = '';
-    (ui.els.formNovo.querySelector('[data-campo-senha]') as HTMLInputElement).value = '';
-    ui.els.inicioTitulo.textContent = '💾 Salvar este mundo';
-    ui.els.inicioSub.hidden = true;
-    ui.els.jogarAleatorio.hidden = true;
-    ui.els.divisor.hidden = true;
-    ui.els.abasEl.hidden = true;
-    ui.els.formCarregar.hidden = true;
-    ui.els.formNovo.hidden = false;
-    ui.els.voltarJogos.hidden = true;
-    ui.els.batizarVoltar.hidden = false;
-    (ui.els.formNovo.querySelector('button[type=submit]') as HTMLElement).textContent = '💾 Salvar meu mundo!';
-    ui.els.inicioModal.hidden = false;
-    setTimeout(() => (ui.els.formNovo.querySelector('[data-campo-nome]') as HTMLElement).focus(), 60);
-    ui.anunciar('Escolha um nome e uma senha pra guardar este mundo.');
+  const NOME_KEY = 'mineblocks:nome';
+  function nomeGuardado(): string {
+    try { return localStorage.getItem(NOME_KEY) || ''; } catch { return ''; }
+  }
+  function guardarNome(n: string) {
+    try { localStorage.setItem(NOME_KEY, n); } catch { }
   }
 
-  // ----- sanitização dos campos (transparente pra criança: ela digita e
-  // o campo se ajusta sozinho) -----
-  // nome do mundo: minúsculas + números + traços; espaço vira traço,
-  // maiúscula/acento/símbolo somem enquanto a criança digita
-  function limparNomeMundo(bruto: string): string {
-    return bruto
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '')
-      .slice(0, 16);
-  }
-  // nome do jogador / apelido: SÓ caixa alta e números, sem espaço
   function nomeJogadorLimpo(bruto: string): string {
     return bruto
       .normalize('NFD')
@@ -343,12 +306,10 @@ export function iniciarJogo() {
       .replace(/[^A-Z0-9]/g, '')
       .slice(0, ctx.cfg.sala.nomeMax);
   }
-  // código da sala: 4 letras maiúsculas
   function codigoLimpo(bruto: string): string {
-    return bruto.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+    const re = new RegExp('[^' + ctx.cfg.codigo.charset + ']', 'g');
+    return bruto.toUpperCase().replace(re, '').slice(0, ctx.cfg.codigo.tam);
   }
-  // ao digitar, reescreve o valor pelo filtro (caret vai pro fim — a
-  // criança está sempre digitando no fim mesmo)
   function filtrarAoDigitar(el: HTMLInputElement, fn: (s: string) => string) {
     el.addEventListener('input', () => {
       const limpo = fn(el.value);
@@ -356,53 +317,15 @@ export function iniciarJogo() {
     });
   }
   function ligarSanitizacao() {
-    document.querySelectorAll<HTMLInputElement>('[data-campo-nome]').forEach((el) => filtrarAoDigitar(el, limparNomeMundo));
-    document.querySelectorAll<HTMLInputElement>('[data-campo-senha]').forEach((el) => filtrarAoDigitar(el, (s) => s.replace(/\D/g, '').slice(0, 4)));
     filtrarAoDigitar(document.querySelector('[data-campo-apelido]') as HTMLInputElement, nomeJogadorLimpo);
     filtrarAoDigitar(document.querySelector('[data-campo-codigo]') as HTMLInputElement, codigoLimpo);
-    filtrarAoDigitar(ui.els.salaNome as HTMLInputElement, nomeJogadorLimpo);
   }
-
-  // ----- sala de amigos (multiplayer) -----
 
   function atualizarSalaPausa() {
-    const em = sync.emSala();
-    ui.els.salaErro.hidden = true;
-    ui.els.salaAbrir.hidden = em;
-    ui.els.salaInfo.hidden = !em;
-    if (em) ui.els.salaCodigo.textContent = sync.codigoSala();
-    // visita sai da sala pelo botão principal ("Sair da visita")
-    ui.els.salaSairBtn.hidden = sync.emVisita();
+    const codigo = salvar.temMundo() ? salvar.codigoMundo() : sync.codigoSala();
+    ui.els.salaInfo.hidden = !codigo;
+    if (codigo) ui.els.salaCodigo.textContent = codigo;
   }
-
-  function mostrarErroSala(msg: string) {
-    ui.els.salaErro.textContent = msg;
-    ui.els.salaErro.hidden = false;
-    ctx.audio.somErro();
-  }
-
-  ui.els.salaCriarBtn.addEventListener('click', async () => {
-    const btn = ui.els.salaCriarBtn as HTMLButtonElement;
-    if (btn.disabled) return;
-    const nome = nomeJogadorLimpo((ui.els.salaNome as HTMLInputElement).value);
-    if (nome.length < ctx.cfg.sala.nomeMin) {
-      mostrarErroSala('Escreve teu nome primeiro (só letras, sem espaço)!');
-      return;
-    }
-    ui.els.salaErro.hidden = true;
-    btn.disabled = true;
-    const erro = await sync.criarSala(nome);
-    btn.disabled = false;
-    if (erro) return mostrarErroSala(erro);
-    atualizarSalaPausa();
-    ui.anunciar('Sala aberta! O código é ' + sync.codigoSala().split('').join(' ') + '.');
-  });
-
-  ui.els.salaSairBtn.addEventListener('click', () => {
-    sync.sairDaSala();
-    atualizarSalaPausa();
-    ui.mostrarToast('🚪 Você saiu da sala — os amigos continuam lá.', 'info', 2800);
-  });
 
   // visita: mundo do amigo chega como foto (snapshot) + edições por poll
   function entrarVisita() {
@@ -433,27 +356,7 @@ export function iniciarJogo() {
     }, 30));
   }
 
-  ui.els.formVisitar.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    ui.els.erroInicio.hidden = true;
-    const codigo = (ui.els.formVisitar.querySelector('[data-campo-codigo]') as HTMLInputElement).value
-      .toUpperCase().trim();
-    const nome = nomeJogadorLimpo((ui.els.formVisitar.querySelector('[data-campo-apelido]') as HTMLInputElement).value);
-    if (!/^[A-Z]{4}$/.test(codigo)) {
-      return mostrarErroInicio('O código da sala tem 4 letras — pede pro teu amigo conferir!');
-    }
-    if (nome.length < ctx.cfg.sala.nomeMin) {
-      return mostrarErroInicio('Escreve teu nome (só letras, sem espaço)!');
-    }
-    ctx.audio.retomar();
-    travarForms(true);
-    const erro = await sync.entrarSala(codigo, nome);
-    travarForms(false);
-    if (erro) return mostrarErroInicio(erro);
-    entrarVisita();
-  });
-
-  function gerarEntrar(seed: number, carregado: boolean) {
+  function gerarEntrar(seed: number, carregado: boolean, aoPronto?: () => void) {
     estado.fase = 'gerando';
     ui.els.inicioModal.hidden = true;
     ui.els.overlayGerando.hidden = false;
@@ -477,97 +380,76 @@ export function iniciarJogo() {
       if (!carregado) ctx.fisica.assentar();
       fluxo.entrarNoMundo();
       if (!carregado) salvar.salvarAgora('auto'); // mundo novo já nasce salvo
+      if (aoPronto) aoPronto();
     }, 30));
   }
 
-  // ----- forms do modal inicial -----
-  function lerForm(form: HTMLElement): { nome: string; senha: string } | null {
-    const nome = limparNomeMundo((form.querySelector('[data-campo-nome]') as HTMLInputElement).value);
-    const senha = (form.querySelector('[data-campo-senha]') as HTMLInputElement).value.trim();
-    if (!/^[a-z0-9-]{3,16}$/.test(nome)) {
-      mostrarErroInicio('O nome do mundo precisa ter de 3 a 16 letrinhas ou números (sem espaço).');
-      return null;
-    }
-    if (!/^\d{4}$/.test(senha)) {
-      mostrarErroInicio('A senha são 4 números.');
-      return null;
-    }
-    return { nome, senha };
-  }
   function mostrarErroInicio(msg: string) {
     ui.els.erroInicio.textContent = msg;
     ui.els.erroInicio.hidden = false;
     ctx.audio.somErro();
   }
   function travarForms(travar: boolean) {
-    // trava TUDO que pode iniciar outro mundo (o 🎲 e as abas também —
-    // senão um clique impaciente troca o mundo debaixo do jogador)
-    document.querySelectorAll('[data-form-novo] button, [data-form-carregar] button, [data-form-visitar] button, [data-jogar-aleatorio], .aba').forEach((b) => {
+    document.querySelectorAll('[data-form-jogar] button, [data-form-entrar] button').forEach((b) => {
       (b as HTMLButtonElement).disabled = travar;
     });
   }
+  function lerNome(): string | null {
+    const nome = nomeJogadorLimpo((document.querySelector('[data-campo-apelido]') as HTMLInputElement).value);
+    if (nome.length < ctx.cfg.sala.nomeMin) {
+      mostrarErroInicio('Escreve teu nome primeiro (só letras e números, sem espaço)!');
+      return null;
+    }
+    guardarNome(nome);
+    return nome;
+  }
+  async function abrirSalaDoMundo(nome: string) {
+    if (!salvar.temMundo()) return;
+    await sync.criarSala(nome, salvar.codigoMundo());
+    atualizarSalaPausa();
+  }
 
-  ui.els.formNovo.addEventListener('submit', async (e) => {
+  ui.els.formJogar.addEventListener('submit', async (e) => {
     e.preventDefault();
     ui.els.erroInicio.hidden = true;
-    const cred = lerForm(ui.els.formNovo);
-    if (!cred) return;
+    const nome = lerNome();
+    if (!nome) return;
     ctx.audio.retomar();
     travarForms(true);
-    const erro = await salvar.criarMundo(cred.nome, cred.senha);
+    const erro = await salvar.criarMundo();
     travarForms(false);
-    if (erro) return mostrarErroInicio(erro);
-    // batizando: o mundo JÁ existe em jogo — só salva e volta, sem regenerar
-    if (batizando) {
-      const okSave = await salvar.salvarAgora('manual');
-      ui.els.nomeMundoHud.textContent = '🌍 ' + salvar.nomeMundo();
-      // honestidade: se a rede falhou, o nome existe mas o mundo ainda
-      // não subiu — o auto-save re-tenta sozinho (agora que tem nome,
-      // até o flush de fechar aba funciona)
-      ui.mostrarToast(okSave
-        ? '🌍 Mundo salvo! Agora é seu pra sempre: ' + salvar.nomeMundo()
-        : '📡 O nome foi criado, mas ainda não consegui salvar — vou tentar de novo sozinho!', okSave ? 'ok' : 'err', 3400);
-      fluxo.continuarJogo();
+    gerarEntrar((Math.random() * 4294967296) >>> 0, false, () => {
+      if (erro) return;
+      ui.mostrarToast('🌍 Seu mundo é <b>' + salvar.codigoMundo() + '</b> — anote pra voltar!', 'ok', 6000);
+      ui.anunciar('Seu mundo tem o código ' + salvar.codigoMundo().split('').join(' ') + '. Anote pra voltar!');
+      abrirSalaDoMundo(nome);
+    });
+  });
+
+  ui.els.formEntrar.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    ui.els.erroInicio.hidden = true;
+    const codigo = codigoLimpo((document.querySelector('[data-campo-codigo]') as HTMLInputElement).value);
+    if (codigo.length !== ctx.cfg.codigo.tam) {
+      return mostrarErroInicio('O código do mundo tem ' + ctx.cfg.codigo.tam + ' letrinhas — pede pro teu amigo conferir!');
+    }
+    const nome = lerNome();
+    if (!nome) return;
+    ctx.audio.retomar();
+    travarForms(true);
+    const erroSala = await sync.entrarSala(codigo, nome);
+    if (!erroSala) {
+      travarForms(false);
+      entrarVisita();
       return;
     }
-    gerarEntrar((Math.random() * 4294967296) >>> 0, false);
-  });
-
-  // 🎲 mundo aleatório: entra na hora, sem nome, sem servidor
-  ui.els.jogarAleatorio.addEventListener('click', () => {
-    if ((ui.els.jogarAleatorio as HTMLButtonElement).disabled) return;
-    ctx.audio.retomar();
-    gerarEntrar((Math.random() * 4294967296) >>> 0, false);
-  });
-  ui.els.batizarBtn.addEventListener('click', abrirBatizar);
-  ui.els.batizarVoltar.addEventListener('click', () => fluxo.continuarJogo());
-
-  ui.els.formCarregar.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    ui.els.erroInicio.hidden = true;
-    const cred = lerForm(ui.els.formCarregar);
-    if (!cred) return;
-    ctx.audio.retomar();
-    travarForms(true);
-    const erro = await salvar.carregarMundo(cred.nome, cred.senha);
+    const erroMundo = await salvar.carregarMundo(codigo);
     travarForms(false);
-    // mundo criado mas nunca salvo (fechou a aba cedo demais): a mesma
-    // credencial ganha um mundo novinho em vez de virar nome morto
-    if (erro === '__NOVO__') return gerarEntrar((Math.random() * 4294967296) >>> 0, false);
-    if (erro) return mostrarErroInicio(erro);
-    gerarEntrar(estado.seed, true);
-  });
-
-  // abas do modal inicial (novo × carregar × visitar)
-  document.querySelectorAll<HTMLElement>('[data-aba]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const alvo = btn.dataset.aba!;
-      document.querySelectorAll<HTMLElement>('[data-aba]').forEach((b) => b.classList.toggle('ativa', b === btn));
-      ui.els.formNovo.hidden = alvo !== 'novo';
-      ui.els.formCarregar.hidden = alvo !== 'carregar';
-      ui.els.formVisitar.hidden = alvo !== 'visitar';
-      ui.els.erroInicio.hidden = true;
-    });
+    if (erroMundo === '__NOVO__') {
+      return gerarEntrar((Math.random() * 4294967296) >>> 0, false, () => abrirSalaDoMundo(nome));
+    }
+    if (erroMundo) return mostrarErroInicio(erroMundo);
+    gerarEntrar(estado.seed, true, () => abrirSalaDoMundo(nome));
   });
 
   // ----- bindings de fluxo -----
@@ -585,7 +467,7 @@ export function iniciarJogo() {
     }
     // mundo aleatório: saída é perda — pergunta antes
     if (!salvar.temMundo()) {
-      const vai = window.confirm('Esse mundo aleatório NÃO está salvo — saindo, ele some pra sempre.\n\nOK = sair mesmo assim\nCancelar = voltar (dá pra salvar com um nome!)');
+      const vai = window.confirm('Esse mundo de brincadeira NÃO está salvo — saindo, ele some pra sempre.\n\nOK = sair mesmo assim\nCancelar = voltar');
       if (!vai) return;
       sync.sairDaSala();
       window.location.href = '/class/games/';
@@ -617,7 +499,9 @@ export function iniciarJogo() {
   document.body.classList.add('is-game');
   medir();
   renderer.render(scene, camera);
-  setTimeout(() => (document.querySelector('[data-campo-nome]') as HTMLElement)?.focus(), 60);
+  const campoApelido = document.querySelector('[data-campo-apelido]') as HTMLInputElement;
+  campoApelido.value = nomeGuardado();
+  setTimeout(() => campoApelido.focus(), 60);
 
   // handle de teste/depuração (Playwright dirige por aqui)
   (window as any).__mc = {
@@ -635,6 +519,7 @@ export function iniciarJogo() {
     alvo: () => ctx.mira.alvo(),
     selecionar: (i: number) => ctx.ui.selecionarSlot(i, false),
     salvarAgora: () => salvar.salvarAgora('manual'),
+    salvar,
     sync,
     bonecos: ctx.bonecos,
     metas: ctx.metas,

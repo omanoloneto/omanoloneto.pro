@@ -50,11 +50,10 @@ export function decodificarRLE(b64: string, tamanho: number, maxId: number): Uin
 
 export function criarSalvar(ctx: Contexto): Salvar {
   const S = ctx.cfg.salvar;
-  // nome/senha SÓ em memória — nada persiste no PC (pedido do professor)
-  let nome = '';
-  let senha = '';
+  let codigo = '';
   let baseSalvoEm = 0; // versão do servidor que este cliente conhece
   let conflito = false; // outro save mais novo existe: auto-save pausado
+  let forcarProximo = false;
   let sujoDesdeUltimoSave = false;
   let salvandoAgora = false;
   let debounce = 0;
@@ -90,11 +89,11 @@ export function criarSalvar(ctx: Contexto): Salvar {
   }
 
   async function enviarSave(payload: string, force: boolean) {
-    return api({ acao: 'salvar', nome, senha, payload, base: baseSalvoEm, force });
+    return api({ acao: 'salvar', codigo, payload, base: baseSalvoEm, force: force || forcarProximo });
   }
 
   async function salvarAgora(motivo: 'auto' | 'manual' | 'flush' = 'manual'): Promise<boolean> {
-    if (!nome || salvandoAgora) return false;
+    if (!codigo || salvandoAgora) return false;
     const agora = performance.now();
     if (motivo === 'auto' && agora - ultimoSaveMs < S.minEntreSavesMs) {
       agendar(); // cedo demais: tenta de novo depois
@@ -111,7 +110,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
     // flush no fechar da aba: melhor esforço, NUNCA passa por cima de
     // save alheio (sem force) e só marca limpo se o beacon foi aceito
     if (motivo === 'flush') {
-      const corpo = JSON.stringify({ acao: 'salvar', nome, senha, payload, base: baseSalvoEm, force: false });
+      const corpo = JSON.stringify({ acao: 'salvar', codigo, payload, base: baseSalvoEm, force: false });
       if (navigator.sendBeacon && corpo.length < 60000) {
         if (navigator.sendBeacon(S.api, new Blob([corpo], { type: 'application/json' }))) {
           sujoDesdeUltimoSave = false;
@@ -152,6 +151,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
     salvandoAgora = false;
     if (r.ok) {
       conflito = false;
+      forcarProximo = false;
       baseSalvoEm = r.json.salvoEm || baseSalvoEm;
       ultimoSaveMs = performance.now();
       sujoDesdeUltimoSave = false;
@@ -177,37 +177,34 @@ export function criarSalvar(ctx: Contexto): Salvar {
   }
 
   return {
-    async criarMundo(n, s) {
-      const r = await api({ acao: 'criar', nome: n, senha: s });
-      if (!r.ok) return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
-      nome = n;
-      senha = s;
+    async criarMundo() {
+      const r = await api({ acao: 'criar' });
+      if (!r.ok || typeof r.json.codigo !== 'string') return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
+      codigo = r.json.codigo;
       baseSalvoEm = 0;
       conflito = false;
-      sujoDesdeUltimoSave = true; // mundo recém-gerado ainda não foi salvo
+      forcarProximo = false;
+      sujoDesdeUltimoSave = true;
       return null;
     },
-    // devolve null = carregou; '__NOVO__' = mundo existe mas nunca foi
-    // salvo (criança criou e fechou a aba): gera de novo com a mesma
-    // credencial em vez de deixar o nome morto; outra string = erro
-    async carregarMundo(n, s) {
-      const r = await api({ acao: 'carregar', nome: n, senha: s });
+    async carregarMundo(cod) {
+      const r = await api({ acao: 'carregar', codigo: cod });
       if (!r.ok) return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
       const p = r.json.payload;
       if (!p || typeof p.blocos !== 'string') {
-        nome = n;
-        senha = s;
+        codigo = cod;
         baseSalvoEm = r.json.salvoEm || 0;
         conflito = false;
+        forcarProximo = false;
         sujoDesdeUltimoSave = true;
         return '__NOVO__';
       }
       const blocos = decodificarRLE(p.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
       if (!blocos) return 'Esse mundo está vazio ou quebrado. 😢';
-      nome = n;
-      senha = s;
+      codigo = cod;
       baseSalvoEm = r.json.salvoEm || 0;
       conflito = false;
+      forcarProximo = false;
       ctx.mundo.dados.set(blocos);
       ctx.estado.seed = p.seed >>> 0;
       if (typeof p.tempoDia === 'number') ctx.ceu.definirTempo(p.tempoDia); // v<5 → fica de manhã
@@ -249,10 +246,18 @@ export function criarSalvar(ctx: Contexto): Salvar {
       sujoDesdeUltimoSave = false;
       return null;
     },
+    adotarMundo(cod) {
+      if (codigo === cod) return;
+      codigo = cod;
+      baseSalvoEm = 0;
+      conflito = false;
+      forcarProximo = true;
+      sujoDesdeUltimoSave = true;
+    },
     salvarAgora,
     agendar,
-    temMundo: () => nome !== '',
-    nomeMundo: () => nome,
+    temMundo: () => codigo !== '',
+    codigoMundo: () => codigo,
     sujo: () => sujoDesdeUltimoSave,
   };
 }
