@@ -214,6 +214,23 @@ export function criarTextura(_ctx: Contexto): Textura {
     for (const y of [5, 7]) g.fillRect(ox + 4, oy + y, 8, 1);
   }
 
+  // --- 25 lã: tufo felpudo off-white (cruz, fundo transparente) ---
+  {
+    const ox = (25 % GRADE) * TILE;
+    const oy = Math.floor(25 / GRADE) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    // corpo do tufo (bloco irregular de nuvem)
+    g.fillStyle = '#f3efe4';
+    g.fillRect(ox + 3, oy + 5, 10, 8);
+    g.fillRect(ox + 2, oy + 7, 12, 5);
+    g.fillRect(ox + 5, oy + 3, 6, 3);
+    // caroços claros e sombra pra dar textura de lã
+    g.fillStyle = '#fffdf6';
+    for (const [x, y] of [[4, 6], [7, 5], [10, 7], [5, 10], [9, 10], [11, 5]] as const) g.fillRect(ox + x, oy + y, 2, 2);
+    g.fillStyle = '#d9d2c0';
+    for (const [x, y] of [[3, 11], [12, 10], [6, 12], [9, 12]] as const) g.fillRect(ox + x, oy + y, 2, 1);
+  }
+
   // --- 17/18/19 rachaduras (overlay de quebra, cutout) ---
   {
     const riscos: Array<Array<[number, number, number, number]>> = [

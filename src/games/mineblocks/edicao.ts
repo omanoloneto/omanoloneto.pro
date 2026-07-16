@@ -96,6 +96,9 @@ export function criarEdicao(ctx: Contexto): Edicao {
 
   // ----- inventário / hotbar dinâmica -----
   function registrarItemNaHotbar(item: number): boolean {
+    // materiais (lã etc.) não são colocáveis → nunca viram atalho da hotbar
+    // (true = "nada a fazer", sem aviso de hotbar cheia)
+    if (!ctx.itens.includes(item)) return true;
     const slots = ctx.estado.hotbarSlots;
     if (slots.includes(item)) return true;
     const vazio = slots.indexOf(0);

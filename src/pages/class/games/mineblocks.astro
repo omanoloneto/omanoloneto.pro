@@ -1,8 +1,8 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { blocos, itens, config, receitas } from '../../../data/mineblocks';
+import { blocos, itens, materiais, config, receitas } from '../../../data/mineblocks';
 
-const dadosJson = JSON.stringify({ blocos, itens, config, receitas });
+const dadosJson = JSON.stringify({ blocos, itens, materiais, config, receitas });
 
 const title = 'MineBlocks — construa seu mundo de blocos em 3D! | Manolo Neto';
 const description =
@@ -45,6 +45,8 @@ const description =
             <button class="inv__fechar" type="button" data-inv-fechar aria-label="Fechar o inventário">✖</button>
           </div>
           <div class="inv__grade" data-inv-grade></div>
+          <p class="mat__titulo">🧶 Materiais <small>(recursos pra fabricar)</small></p>
+          <div class="mat__lista" data-mat-lista></div>
           <p class="craft__titulo">🛠️ Fabricar</p>
           <div class="craft__lista" data-craft-painel></div>
         </div>
@@ -443,6 +445,34 @@ const description =
 
     .craft__lista { display: grid; gap: 6px; }
     .craft__titulo { margin: 0 0 6px; font-weight: 800; font-size: 0.95rem; }
+
+    /* materiais (recursos só-coletáveis, ex.: lã do Winpup) */
+    .mat__titulo { margin: 2px 0 6px; font-weight: 800; font-size: 0.95rem; }
+    .mat__titulo small { font-weight: 400; opacity: 0.72; font-size: 0.78rem; }
+    .mat__lista {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .mat-item {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 8px 4px 6px; border-radius: 10px;
+      color: var(--texto);
+      background: rgba(0, 0, 0, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+    }
+    .mat-item .slot__img {
+      position: static; display: block;
+      width: 34px; height: 34px;
+      background-size: 400% 800%;
+      image-rendering: pixelated;
+      border-radius: 5px;
+    }
+    .mat-item__nome { font-size: 0.72rem; font-weight: 700; line-height: 1.1; text-align: center; }
+    .mat-item__qtd { font-size: 0.78rem; font-weight: 800; color: var(--amarelo); }
+    .mat-item.vazio { opacity: 0.5; }
+    .mat-item.vazio .mat-item__qtd { color: rgba(255, 255, 255, 0.4); }
     .receita {
       display: flex; align-items: center; gap: 10px;
       padding: 7px 10px; border-radius: 10px; cursor: pointer;

@@ -59,28 +59,39 @@ export function criarCeu(ctx: Contexto): Ceu {
   domo.frustumCulled = false;
   scene.add(domo);
 
-  // ---- sol e lua: sprites com disco radial macio (canvas, sem asset) ----
-  function disco(nucleo: string, halo: string): THREE.CanvasTexture {
+  // ---- sol e lua: sprites QUADRADOS pixelados (nada redondo neste jogo) ----
+  // canvas 16×16, NearestFilter → borda dura de pixel-art. Sol = quadrado
+  // amarelo com miolo claro; lua = quadrado marfim com crateras quadradas.
+  function astro(corpo: string, detalhe: string, crateras: boolean): THREE.CanvasTexture {
+    const N = 16;
     const c = document.createElement('canvas');
-    c.width = c.height = 64;
+    c.width = c.height = N;
     const g = c.getContext('2d')!;
-    const grd = g.createRadialGradient(32, 32, 1, 32, 32, 32);
-    grd.addColorStop(0, nucleo);
-    grd.addColorStop(0.4, nucleo);
-    grd.addColorStop(0.62, halo);
-    grd.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = grd;
-    g.fillRect(0, 0, 64, 64);
+    g.fillStyle = corpo;
+    g.fillRect(1, 1, N - 2, N - 2); // quadrado cheio (deixa 1px de folga transparente)
+    g.fillStyle = detalhe;
+    if (crateras) {
+      // lua: quadradinhos de cratera
+      g.fillRect(4, 4, 3, 3);
+      g.fillRect(9, 8, 2, 2);
+      g.fillRect(6, 11, 2, 2);
+    } else {
+      // sol: miolo claro quadrado
+      g.fillRect(4, 4, N - 8, N - 8);
+    }
     const t = new THREE.CanvasTexture(c);
+    t.magFilter = THREE.NearestFilter;
+    t.minFilter = THREE.NearestFilter;
+    t.generateMipmaps = false;
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   }
   const solMat = new THREE.SpriteMaterial({
-    map: disco('rgba(255,248,214,1)', 'rgba(255,209,120,0.55)'),
+    map: astro('#ffe14d', '#fff6c2', false),
     transparent: true, depthWrite: false, fog: false,
   });
   const luaMat = new THREE.SpriteMaterial({
-    map: disco('rgba(247,249,255,1)', 'rgba(196,214,250,0.5)'),
+    map: astro('#e9eef7', '#c2cde4', true),
     transparent: true, depthWrite: false, fog: false,
   });
   const sol = new THREE.Sprite(solMat);

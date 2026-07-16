@@ -10,6 +10,7 @@ import { criarMetas } from './meta';
 import { gerarMundo } from './geracao';
 import { criarMalha } from './malha';
 import { criarCeu } from './ceu';
+import { criarMob } from './mob';
 import { criarFisica } from './fisica';
 import { criarCamera } from './camera';
 import { criarMira } from './mira';
@@ -66,6 +67,7 @@ export function iniciarJogo() {
   const ctx = {
     blocos: dados.blocos,
     itens: dados.itens,
+    materiais: dados.materiais,
     receitas: dados.receitas,
     cfg: dados.config,
     porId: (id: number) => dados.blocos[id],
@@ -88,6 +90,7 @@ export function iniciarJogo() {
   ctx.metas = criarMetas(ctx);
   ctx.malha = criarMalha(ctx);
   ctx.ceu = criarCeu(ctx);
+  ctx.mob = criarMob(ctx);
   ctx.fisica = criarFisica(ctx);
   ctx.camera3 = criarCamera(ctx);
   ctx.mira = criarMira(ctx);
@@ -191,6 +194,7 @@ export function iniciarJogo() {
     ctx.camera3.passo();
     ctx.mira.passo();
     ctx.ceu.passo(dt);
+    ctx.mob.passo(dt, !sync.emSala() || sync.souAnfitriao());
     ctx.malha.reconstruirSujos();
     renderer.render(scene, camera);
   }
@@ -422,6 +426,7 @@ export function iniciarJogo() {
       jogador.yaw = Math.PI * 0.75;
       jogador.pitch = 0;
       ctx.malha.construirTudo();
+      ctx.mob.nascer(estado.seed); // Winpups locais; posições vêm da rede (d.bichos)
       ctx.fisica.assentar();
       fluxo.entrarNoMundo();
       sync.ligarPoll();
@@ -468,6 +473,7 @@ export function iniciarJogo() {
       }
       ctx.malha.construirTudo();
       ctx.edicao.iniciarMudas(); // mudas do save voltam pro relógio
+      ctx.mob.nascer(seed); // Winpups nascem da seed (transiente, não salva)
       if (!carregado) ctx.fisica.assentar();
       fluxo.entrarNoMundo();
       if (!carregado) salvar.salvarAgora('auto'); // mundo novo já nasce salvo
@@ -633,6 +639,7 @@ export function iniciarJogo() {
     bonecos: ctx.bonecos,
     metas: ctx.metas,
     ceu: ctx.ceu,
+    mob: ctx.mob,
     ui: ctx.ui,
     // teste: interage/quebra numa célula exata sem depender da mira
     // (retorna o boolean do interagir: true = colocou bloco)

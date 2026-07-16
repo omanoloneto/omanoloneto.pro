@@ -52,7 +52,8 @@ const SUMIU_S = 120;            // visto há >120s sai da sala sozinho
 const MAX_X = 96;
 const MAX_Y = 40;
 const MAX_Z = 96;
-const MAX_BLOCO = 20;   // maior id da tabela do cliente (ar..placa)
+const MAX_BLOCO = 21;   // maior id da tabela do cliente (ar..placa, lã)
+const MAX_BICHOS = 16;  // teto de Winpups no blackboard (só posição)
 
 function falha(int $code, string $msg, array $extra = []): void {
   http_response_code($code);
@@ -173,6 +174,32 @@ function posLimpa($pos): array {
 // senão o boneco nasce enterrado no canto até o 1º sync do novato
 function posInicial(): array {
   return posLimpa(['x' => MAX_X / 2 + 0.5, 'y' => 30, 'z' => MAX_Z / 2 + 0.5]);
+}
+
+// bichos (Winpup) = blackboard escrito SÓ pelo anfitrião e lido por todos.
+// Só posição/estado, saneado e limitado — nunca afeta o mundo (o drop de lã
+// vem como edição de bloco normal).
+function bichosLimpos($arr): array {
+  if (!is_array($arr)) return [];
+  $arr = array_slice($arr, 0, MAX_BICHOS); // bound: nunca itera além do teto
+  $out = [];
+  $n = function ($v, float $min, float $max): float {
+    $f = is_numeric($v) ? (float)$v : 0.0;
+    if (!is_finite($f)) $f = 0.0;
+    return round(max($min, min($max, $f)), 2);
+  };
+  foreach ($arr as $b) {
+    if (count($out) >= MAX_BICHOS) break;
+    if (!is_array($b)) continue;
+    $out[] = [
+      'i' => (int) max(0, min(255, (int)($b['i'] ?? 0))),
+      'x' => $n($b['x'] ?? 0, -8, MAX_X + 8),
+      'y' => $n($b['y'] ?? 0, -8, MAX_Y + 24),
+      'z' => $n($b['z'] ?? 0, -8, MAX_Z + 8),
+      'yaw' => $n($b['yaw'] ?? 0, -10, 10),
+    ];
+  }
+  return $out;
 }
 
 function agoraMs(): int {
@@ -345,7 +372,8 @@ if ($acao === 'sync') {
   if (!is_array($edicoes) || count($edicoes) > MAX_EDICOES_POR_SYNC) falha(400, 'edições demais num sync só');
   if (!is_array($metasIn) || count($metasIn) > MAX_METAS_POR_SYNC) falha(400, 'metadata demais num sync só');
 
-  $resp = comLock($codigo, function () use ($codigo, $token, $desde, $desdeM, $loteN, $edicoes, $metasIn, $pendAck, $corpo) {
+  $bichosIn = $corpo['bichos'] ?? null; // só o anfitrião escreve (validado no lock)
+  $resp = comLock($codigo, function () use ($codigo, $token, $desde, $desdeM, $loteN, $edicoes, $metasIn, $pendAck, $bichosIn, $corpo) {
     $sala = lerJson(arquivoSala($codigo));
     if ($sala === null) falha(404, 'essa sala não existe (ou já fechou)');
     if (!isset($sala['jogadores'][$token])) falha(403, 'você não está nesta sala');
@@ -406,6 +434,10 @@ if ($acao === 'sync') {
     }
 
     $anfitriao = tokenAnfitriao($sala, $agora) === $token;
+    // blackboard dos Winpups: SÓ o anfitrião escreve (os outros só leem)
+    if ($anfitriao && $bichosIn !== null) {
+      $sala['bichos'] = bichosLimpos($bichosIn);
+    }
     // ack de entrega de logout: remove os pendentes resolvidos. Aceita de
     // QUEM RESERVOU (mesmo que tenha perdido o posto de anfitrião no meio)
     // — senão o depósito ficava feito mas o pendente vivo, e o novo
@@ -455,6 +487,7 @@ if ($acao === 'sync') {
         'anfitriao' => $anfitriao,
         'donoNome' => nomeDoDono($sala),
         'pendentes' => $pendentes,
+        'bichos' => $sala['bichos'] ?? [],
         'cheio' => $cheio,
         'metaCheio' => $metaCheio,
         'diario' => count($sala['edicoes']),
@@ -479,6 +512,7 @@ if ($acao === 'sync') {
       'anfitriao' => $anfitriao,
       'donoNome' => nomeDoDono($sala),
       'pendentes' => $pendentes,
+      'bichos' => $sala['bichos'] ?? [],
       'cheio' => $cheio,
       'metaCheio' => $metaCheio,
       'diario' => count($sala['edicoes']),

@@ -1,7 +1,7 @@
 // Tipos compartilhados do MineBlocks.
 // O Contexto é o único "fio" entre os módulos: main.ts monta e todos leem.
 import type * as THREE from 'three';
-import type { blocos, itens, config, receitas, Bloco } from '../../data/mineblocks';
+import type { blocos, itens, materiais, config, receitas, Bloco } from '../../data/mineblocks';
 
 export type Cfg = typeof config;
 
@@ -103,6 +103,27 @@ export interface Ceu {
   passo(dt: number): void;
   tempo(): number; // segundos dentro do ciclo (0..CICLO)
   definirTempo(s: number): void;
+}
+
+// estado de rede de um Winpup (blackboard do anfitrião → visitantes)
+export interface BichoRede {
+  i: number;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+}
+
+// bichos (Winpup): 1º animal. Flutua, vagueia e solta lã de dia.
+export interface Mob {
+  nascer(seed: number): void; // (re)popula os Winpups do mundo
+  // simular=true (solo/anfitrião): move + solta lã; false (visita): segue a rede.
+  // A coleta de lã (passar por cima) roda pra todo cliente.
+  passo(dt: number, simular: boolean): void;
+  atualizarRede(bichos: BichoRede[]): void; // visita: posições do anfitrião
+  estadoRede(): BichoRede[]; // anfitrião: manda pro blackboard
+  limpar(): void;
+  quantos(): number;
 }
 
 // metadata por posição (não cabe no Uint8Array do mundo)
@@ -240,6 +261,7 @@ export interface Bonecos {
 export interface Contexto {
   blocos: typeof blocos;
   itens: typeof itens;
+  materiais: typeof materiais;
   receitas: typeof receitas;
   cfg: Cfg;
   porId: (id: number) => Bloco;
@@ -262,6 +284,7 @@ export interface Contexto {
   metas: Metas;
   malha: Malha;
   ceu: Ceu;
+  mob: Mob;
   fisica: Fisica;
   camera3: Camera3;
   mira: Mira;

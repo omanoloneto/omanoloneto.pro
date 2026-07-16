@@ -54,11 +54,18 @@ export const blocos: Bloco[] = [
   { id: 19, nome: 'porta aberta', tiles: [23, 23, 23], solido: false, render: 'porta', drop: 18, dureza: 700 },
   // placa: mostra uma mensagem (texto na metadata); só o autor reescreve
   { id: 20, nome: 'placa', tiles: [24, 24, 24], solido: false, render: 'cruz', dureza: 300 },
+  // lã: dropada pelo Winpup no chão (tufo não-sólido). NÃO entra em `itens`
+  // (criança não coloca) — passar por cima coleta como recurso (materiais)
+  { id: 21, nome: 'lã', tiles: [25, 25, 25], solido: false, render: 'cruz', drop: 21, dureza: 200 },
 ];
 
 // tipos de item coletáveis (grade do inventário/E); a hotbar agora é
 // dinâmica: 9 slots vazios que enchem conforme a criança coleta
 export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20];
+
+// materiais = recursos SÓ-coletáveis (não colocáveis): o jogador junta e
+// fabrica coisas depois. Aparecem numa seção própria do inventário.
+export const materiais = [21]; // lã (do Winpup)
 
 // craft simples da sobrevivência: toca na receita e transforma
 // (sem mesa, sem grade — proporcional a criança de 6 anos)
@@ -116,6 +123,20 @@ export const config = {
   // muda plantada vira árvore depois de um tempinho (em tempo de simulação)
   crescimento: { minMs: 20000, maxMs: 40000 },
   hotbarTamanho: 9,
+  // Winpup (1º bicho): flutua, vagueia devagar e solta lã de dia
+  bichos: {
+    quantos: 3, // ~3 por mundo
+    altura: 1.4, // paira esse tanto acima do chão
+    bobAmp: 0.18, // amplitude do balanço vertical
+    bobHz: 0.5, // ciclos por segundo do bob
+    passeio: 1.1, // velocidade do wander (blocos/s)
+    trocaAlvoMin: 3000, // ms: repensa o destino a cada 3-7s
+    trocaAlvoMax: 7000,
+    raioPasseio: 10, // não se afasta muito do ponto de origem
+    larguraDropMin: 22000, // ms entre lãs (de dia): 22-38s
+    larguraDropMax: 38000,
+    maxLaPerto: 5, // não dropa se já tem 5 tufos por perto (raio 6)
+  },
   // folhas órfãs: espera antes de cair (decay em cascata, estilo Minecraft)
   decay: { atrasoMinMs: 400, atrasoMaxMs: 2900, chanceMuda: 0.15, alcanceTronco: 6 },
   salvar: {

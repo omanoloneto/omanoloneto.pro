@@ -254,6 +254,8 @@ export function criarSync(ctx: Contexto): Sync {
         edicoes: loteAtual,
         metas: loteMeta,
         pendentesAck: ackPendentes,
+        // blackboard dos Winpups: só o anfitrião publica (o servidor ignora dos outros)
+        bichos: anfitriao ? ctx.mob.estadoRede() : undefined,
         pos: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +yawN.toFixed(3), pitch: +p.pitch.toFixed(3) },
       });
       if (!pollAtivo || g !== geracao) return;
@@ -349,6 +351,8 @@ export function criarSync(ctx: Contexto): Sync {
       if (anfitriao) resolverPendentes(d.pendentes || []);
 
       tratarJogadores(Array.isArray(d.jogadores) ? d.jogadores : []);
+      // Winpups: quem NÃO é anfitrião segue as posições do blackboard
+      if (!anfitriao && Array.isArray(d.bichos)) ctx.mob.atualizarRede(d.bichos);
 
       // compactação: anfitrião manda foto quando QUALQUER diário engorda —
       // e NA HORA se lotou (destrava a sala; o de metadata não some sozinho)
