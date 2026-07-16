@@ -1,7 +1,7 @@
 // MineBlocks — definições dos blocos e configuração do mundo.
 // Editar aqui muda o jogo sem tocar na engine (src/games/mineblocks/).
 
-export type RenderBloco = 'cubo' | 'cruz' | 'agua' | 'recorte';
+export type RenderBloco = 'cubo' | 'cruz' | 'agua' | 'recorte' | 'porta';
 
 export interface Bloco {
   id: number;
@@ -46,10 +46,12 @@ export const blocos: Bloco[] = [
   { id: 16, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 7, dureza: 300 },
   // baú: guarda itens, pertence a quem colocou (metadata por posição)
   { id: 17, nome: 'baú', tiles: [20, 21, 21], solido: true, render: 'cubo', dureza: 800 },
-  // porta: 2 estados. Fechada = sólida; aberta = atravessável (só no mundo,
-  // fora de `itens`; quebrar qualquer estado devolve a porta fechada)
-  { id: 18, nome: 'porta', tiles: [22, 22, 22], solido: true, render: 'cubo', dureza: 700 },
-  { id: 19, nome: 'porta aberta', tiles: [23, 23, 23], solido: false, render: 'recorte', drop: 18, dureza: 700 },
+  // porta: painel fino de 2 blocos (as 2 metades compartilham o id; a
+  // metade base/topo sai dos vizinhos verticais no render). Fechada =
+  // sólida; aberta = atravessável (só no mundo, fora de `itens`; quebrar
+  // qualquer estado/metade devolve 1 porta fechada)
+  { id: 18, nome: 'porta', tiles: [22, 22, 22], solido: true, render: 'porta', dureza: 700 },
+  { id: 19, nome: 'porta aberta', tiles: [23, 23, 23], solido: false, render: 'porta', drop: 18, dureza: 700 },
   // placa: mostra uma mensagem (texto na metadata); só o autor reescreve
   { id: 20, nome: 'placa', tiles: [24, 24, 24], solido: false, render: 'cruz', dureza: 300 },
 ];

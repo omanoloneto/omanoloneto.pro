@@ -17,6 +17,7 @@ const BAU = 17;
 const PORTA_FECHADA = 18;
 const PORTA_ABERTA = 19;
 const PLACA = 20;
+const ehPorta = (id: number) => id === PORTA_FECHADA || id === PORTA_ABERTA;
 
 export function criarEdicao(ctx: Contexto): Edicao {
   const { mundo, jogador, porId, cfg } = ctx;
@@ -159,6 +160,19 @@ export function criarEdicao(ctx: Contexto): Edicao {
   // ----- quebrar (comum ao golpe e ao backdoor instantâneo) -----
   function removerBloco(a: Alvo): boolean {
     limparMetaAoQuebrar(a.x, a.y, a.z); // ANTES do definir(0) — usa o id ainda
+    // porta ocupa 2 blocos: quebrar qualquer metade some com as duas e
+    // devolve 1 porta só (drop → 18)
+    if (ehPorta(a.id)) {
+      const oy = ehPorta(mundo.obter(a.x, a.y + 1, a.z)) ? a.y + 1
+        : ehPorta(mundo.obter(a.x, a.y - 1, a.z)) ? a.y - 1 : null;
+      mundo.definir(a.x, a.y, a.z, 0);
+      if (oy !== null) mundo.definir(a.x, oy, a.z, 0);
+      ganharItem(a.id);
+      ctx.audio.somQuebrar(a.id);
+      ctx.salvar.agendar();
+      ctx.fluxo.aoPrimeiroInput();
+      return true;
+    }
     mundo.definir(a.x, a.y, a.z, 0);
     ganharItem(a.id);
     // flor/muda em cima perdeu o chão? cai junto (e vai pro bolso)
@@ -266,6 +280,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const ocupante = mundo.obter(cx, cy, cz);
     if (ocupante !== 0 && porId(ocupante).render === 'cubo') return false;
     if (ocupante !== 0 && porId(ocupante).render === 'recorte') return false;
+    if (ocupante !== 0 && porId(ocupante).render === 'porta') return false; // não sobrescreve porta
     if (def.solido && intersectaJogador(cx, cy, cz)) return false;
     if (def.render === 'cruz' && !porId(mundo.obter(cx, cy - 1, cz)).solido) {
       avisar('🌼 Isso precisa de um chão pra plantar!');
@@ -289,6 +304,15 @@ export function criarEdicao(ctx: Contexto): Edicao {
     if (ocupante !== 0 && porId(ocupante).render === 'cruz') {
       ganharItem(ocupante);
       ctx.metas.remover(cx, cy, cz);
+    }
+    // porta ocupa 2 blocos: exige o topo livre e escreve a metade de cima
+    // (a base cai no fluxo comum abaixo — consome 1 item só)
+    if (id === PORTA_FECHADA) {
+      if (cy + 1 > ctx.cfg.mundo.tetoConstrucao || mundo.obter(cx, cy + 1, cz) !== 0) {
+        avisar('🚪 Precisa de 2 blocos de altura livre pra porta!');
+        return false;
+      }
+      mundo.definir(cx, cy + 1, cz, PORTA_FECHADA);
     }
     // o item "folhas" colocado vira FOLHA COLOCADA (nunca decai)
     const idFinal = id === FOLHA_NATURAL ? FOLHA_COLOCADA : id;
@@ -358,7 +382,11 @@ export function criarEdicao(ctx: Contexto): Edicao {
   }
 
   function alternarPorta(a: Alvo, novo: number) {
-    mundo.definir(a.x, a.y, a.z, novo); // qualquer um abre/fecha; o sync leva junto
+    // porta = 2 metades: abre/fecha as duas juntas (qualquer um; o sync leva)
+    const oy = ehPorta(mundo.obter(a.x, a.y + 1, a.z)) ? a.y + 1
+      : ehPorta(mundo.obter(a.x, a.y - 1, a.z)) ? a.y - 1 : null;
+    mundo.definir(a.x, a.y, a.z, novo);
+    if (oy !== null) mundo.definir(a.x, oy, a.z, novo);
     ctx.audio.somUI();
     ctx.fluxo.aoPrimeiroInput();
     ctx.salvar.agendar();

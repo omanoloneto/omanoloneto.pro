@@ -125,6 +125,44 @@ export function criarMalha(ctx: Contexto): Malha {
     }
   }
 
+  // porta = painel chapado (não cubo): 1 quad fino de dois lados, 2 blocos
+  // de altura. As metades compartilham o id (18 fechada / 19 aberta); qual
+  // metade é (base/topo) e a orientação da folha saem dos vizinhos.
+  function empurrarPorta(c: Camada, bx: number, by: number, bz: number, id: number) {
+    const def = porId(id);
+    const [u0, v0, u1, v1] = textura.uv(def.tiles[1]);
+    const ehP = (v: number) => v === 18 || v === 19;
+    const topo = ehP(mundo.obter(bx, by - 1, bz)); // porta embaixo → sou o topo
+    const base = ehP(mundo.obter(bx, by + 1, bz)); // porta em cima → sou a base
+    // UV vertical: base amostra a metade de baixo do tile, topo a de cima;
+    // porta solta (1 bloco, save antigo) usa o tile inteiro
+    const vm = (v0 + v1) / 2;
+    const vLo = topo && !base ? vm : v0;
+    const vHi = base && !topo ? vm : v1;
+    // orientação: parede sólida nos lados define o eixo do batente
+    const parede = (x: number, y: number, z: number) => {
+      const w = mundo.obter(x, y, z);
+      return w !== 0 && porId(w).solido;
+    };
+    const eixoZ = parede(bx, by, bz - 1) && parede(bx, by, bz + 1);
+    const aberta = id === 19;
+    const e = 0.06; // recuo da folha aberta encostada na dobradiça
+    let x0: number, z0: number, x1: number, z1: number;
+    if (!eixoZ) {
+      // batente ao longo de X: fechada = folha no meio (z=0.5); aberta = gira pra x=e
+      if (!aberta) { x0 = 0; z0 = 0.5; x1 = 1; z1 = 0.5; }
+      else { x0 = e; z0 = 0; x1 = e; z1 = 1; }
+    } else {
+      if (!aberta) { x0 = 0.5; z0 = 0; x1 = 0.5; z1 = 1; }
+      else { x0 = 0; z0 = e; x1 = 1; z1 = e; }
+    }
+    const b = c.pos.length / 3;
+    c.pos.push(bx + x0, by, bz + z0, bx + x1, by, bz + z1, bx + x1, by + 1, bz + z1, bx + x0, by + 1, bz + z0);
+    c.uv.push(u0, vLo, u1, vLo, u1, vHi, u0, vHi);
+    for (let i = 0; i < 4; i++) c.cor.push(0.9, 0.9, 0.9);
+    c.idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+  }
+
   function faceVisivel(id: number, vizinho: number): boolean {
     if (vizinho === 0) return true;
     const meu = porId(id).render;
@@ -154,6 +192,10 @@ export function criarMalha(ctx: Contexto): Malha {
           if (!def) continue; // id desconhecido (save de versão futura?): pula
           if (def.render === 'cruz') {
             empurrarCruz(camadas[1], x, y, z, def.tiles[0]);
+            continue;
+          }
+          if (def.render === 'porta') {
+            empurrarPorta(camadas[1], x, y, z, id);
             continue;
           }
           const camada = def.render === 'agua' ? camadas[2] : def.render === 'recorte' ? camadas[1] : camadas[0];
