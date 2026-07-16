@@ -41,7 +41,7 @@ export type Destino = {
 // Os comércios de verdade de Terra de Areia (do Google Maps) + clássicos
 export const destinos: Destino[] = [
   { simbolo: 'p', nome: 'a Padaria Sabor do Céu', rotulo: 'Sabor do Céu', emoji: '🥖', cor: 0xf2c14e },
-  { simbolo: 's', nome: 'o Super da Praia', rotulo: 'Super da Praia', emoji: '🛒', cor: 0x4ea5d9 },
+  { simbolo: 's', nome: 'o Super da Praia', rotulo: 'Super da Praia', emoji: '🛒', cor: 0xb5342c },
   { simbolo: 'z', nome: 'a Pizzaria Skentta', rotulo: 'Skentta', emoji: '🍕', cor: 0xe4572e },
   { simbolo: 'c', nome: 'o Sempre Certo', rotulo: 'Sempre Certo', emoji: '🏪', cor: 0x7bc950 },
   { simbolo: 'e', nome: 'a escola', rotulo: 'Escola', emoji: '🏫', cor: 0xd97757 },

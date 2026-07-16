@@ -147,6 +147,16 @@ export function criarMundo(ctx: Contexto): Mundo {
     return geo.toNonIndexed();
   }
 
+  function disco(raio: number, x: number, y: number, z: number, corHex: number) {
+    const geo = new THREE.CircleGeometry(raio, 20);
+    const cor = new THREE.Color(corHex);
+    const cores: number[] = [];
+    for (let i = 0; i < geo.getAttribute('position').count; i++) cores.push(cor.r, cor.g, cor.b);
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(cores, 3));
+    geo.translate(x, y, z);
+    return geo.toNonIndexed();
+  }
+
   function telhado(w: number, d: number, altura: number, x: number, z: number, yBase: number) {
     const forma = new THREE.Shape();
     forma.moveTo(-w / 2, 0);
@@ -192,9 +202,25 @@ export function criarMundo(ctx: Contexto): Mundo {
       }
       const destino = porSimbolo.get(sim);
       if (destino) {
-        geosConstrucoes.push(caixa(11, 6, 10, cx, cz - 3, destino.cor, { comJanelas: true }));
-        geosConstrucoes.push(caixa(12, 1, 2.4, cx, cz + 2.2, 0xffffff, { topoEscuro: false })); // toldo
-        geosDetalhes.push(porta(cx, cz, cz + 2.01));
+        if (sim === 's') {
+          geosConstrucoes.push(caixa(11, 5.2, 10, cx, cz - 3, 0xf0efe9));
+          geosConstrucoes.push(caixa(11.6, 2.4, 1.2, cx, cz + 1.7, destino.cor, { yBase: 4.4 }));
+          geosConstrucoes.push(caixa(1.2, 2.4, 7, cx + 5.6, cz - 2, destino.cor, { yBase: 4.4 }));
+          geosConstrucoes.push(caixa(12.4, 0.55, 3, cx, cz + 2.6, 0xc9a349, { yBase: 2.7, topoEscuro: false }));
+          geosConstrucoes.push(caixa(9.5, 2.2, 0.3, cx, cz + 2.1, 0x2c3f52, { yBase: 0.25 }));
+          geosConstrucoes.push(caixa(1.6, 6.4, 1, cx + 6.9, cz + 3, destino.cor));
+          geosConstrucoes.push(caixa(0.9, 0.7, 0.8, cx - 5.6, cz - 4, 0xb9bec7, { yBase: 3.4 }));
+          geosConstrucoes.push(caixa(0.9, 0.7, 0.8, cx - 5.6, cz - 6.5, 0xb9bec7, { yBase: 2.6 }));
+          geosDetalhes.push(disco(0.85, cx - 2.6, 5.6, cz + 2.31, 0xffffff));
+          geosDetalhes.push(disco(0.34, cx - 2.6, 5.6, cz + 2.33, 0xc9a349));
+          geosDetalhes.push(disco(0.55, cx + 6.9, 5.2, cz + 3.51, 0xffffff));
+          aabbs.push({ minX: cx + 6.1, maxX: cx + 7.7, minZ: cz + 2.5, maxZ: cz + 3.5 });
+          sombras.push([cx + 6.1, cz + 2.5, 1.6, 1]);
+        } else {
+          geosConstrucoes.push(caixa(11, 6, 10, cx, cz - 3, destino.cor, { comJanelas: true }));
+          geosConstrucoes.push(caixa(12, 1, 2.4, cx, cz + 2.2, 0xffffff, { topoEscuro: false }));
+          geosDetalhes.push(porta(cx, cz, cz + 2.01));
+        }
         aabbs.push({ minX: cx - 6, maxX: cx + 6, minZ: cz - 8, maxZ: cz + 3.4 });
         sombras.push([cx - 6, cz - 8, 12, 11]);
         const zona = { x: cx, z: cz + 14, destino };
