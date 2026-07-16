@@ -13,7 +13,13 @@
 // mundo. O anfitrião também compacta: manda uma foto nova quando o
 // diário engorda, e o servidor poda as edições antigas.
 import { codificarRLE, decodificarRLE } from './salvar';
-import type { Contexto, JogadorRemoto, Sync } from './tipos';
+import type { Contexto, JogadorRemoto, Meta, Sync } from './tipos';
+
+interface FotoSala {
+  seed: number;
+  blocos: string;
+  metas?: Record<string, Meta>;
+}
 
 export function criarSync(ctx: Contexto): Sync {
   const S = ctx.cfg.sala;
@@ -29,6 +35,13 @@ export function criarSync(ctx: Contexto): Sync {
   // servidor não duplica as edições no diário
   let loteAtual: Array<[number, number, number, number]> | null = null;
   let loteN = 0;
+  // metadata (baú/placa): stream próprio. Idempotente (objeto inteiro),
+  // dedup por chave — sem número de lote
+  let metaSeqVisto = 0;
+  let filaMeta = new Map<number, Meta | null>();
+  let loteMeta: Array<[number, Meta | null]> | null = null;
+  let donoNome = '';
+  let ackPendentes: number[] = []; // ids de entregas de logout já resolvidas
   let pollTimer = 0;
   let pollAtivo = false;
   let sincronizando = false;
@@ -37,7 +50,7 @@ export function criarSync(ctx: Contexto): Sync {
   let geracao = 0; // muda a cada sala: resposta em voo da sala velha morre
   let fotoEmVoo = false;
   let ultimaFotoMs = 0;
-  let fotoPendente: { seed: number; blocos: string } | null = null;
+  let fotoPendente: FotoSala | null = null;
   let nomesVistos = new Set<string>();
 
   // ----- gancho de broadcast -----
@@ -46,23 +59,31 @@ export function criarSync(ctx: Contexto): Sync {
     fila.push([x, y, z, id]);
     if (fila.length === 1) pollLogo(S.nudgeMs); // 1ª edição apressa o sync
   }
+  function aoMudarMeta(chave: number, meta: Meta | null) {
+    if (aplicandoRemoto) return;
+    filaMeta.set(chave, meta);
+    pollLogo(S.nudgeMs);
+  }
 
   function instalarGancho() {
     ctx.mundo.aoMudar = aoMudar;
+    ctx.metas.aoMudar = aoMudarMeta;
   }
   function removerGancho() {
     ctx.mundo.aoMudar = undefined;
+    ctx.metas.aoMudar = undefined;
   }
 
   // ----- rede -----
   async function api(corpo: Record<string, unknown>): Promise<{ ok: boolean; status: number; json: any }> {
     const aborto = new AbortController();
     const timer = setTimeout(() => aborto.abort(), 6000);
+    const corpoStr = JSON.stringify(corpo);
     try {
       const r = await fetch(S.api, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(corpo),
+        body: corpoStr,
         signal: aborto.signal,
       });
       const json = await r.json().catch(() => ({}));
@@ -74,17 +95,72 @@ export function criarSync(ctx: Contexto): Sync {
     }
   }
 
-  function fotoAtual(): { seed: number; blocos: string } {
-    return { seed: ctx.estado.seed >>> 0, blocos: codificarRLE(ctx.mundo.dados) };
+  function fotoAtual(): FotoSala {
+    return { seed: ctx.estado.seed >>> 0, blocos: codificarRLE(ctx.mundo.dados), metas: ctx.metas.serializar() };
   }
 
   // ----- aplicar o que veio do servidor -----
-  function aplicarFoto(foto: { seed: number; blocos: string }): boolean {
+  function aplicarFoto(foto: FotoSala): boolean {
     const blocos = decodificarRLE(foto.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
     if (!blocos) return false;
     ctx.mundo.dados.set(blocos);
     ctx.estado.seed = foto.seed >>> 0;
+    ctx.metas.carregar(foto.metas || {});
     return true;
+  }
+
+  // aplica metadata vinda da rede em ordem de mseq. PULA chaves com
+  // escrita local mais nova pendente (filaMeta): o servidor ecoa de volta
+  // o próprio lote que eu mandei, e se eu já cliquei de novo no baú desde
+  // então, aplicar o eco antigo regride o depósito/saque (perde/duplica
+  // item). O metaSeqVisto avança mesmo assim pra não re-receber.
+  function aplicarMetas(metasNovas: Array<[number, number, Meta | null]>) {
+    let mudou = false;
+    for (const m of metasNovas) {
+      if (!Array.isArray(m) || m.length !== 3) continue;
+      const [mseq, chave, meta] = m;
+      if (mseq <= metaSeqVisto) continue;
+      metaSeqVisto = mseq;
+      if (filaMeta.has(chave)) continue; // tenho escrita local mais nova pra essa célula
+      ctx.metas.aplicar(chave, meta);
+      mudou = true;
+    }
+    if (mudou) {
+      ctx.ui.atualizarBau(); // um baú aberto pode ter mudado
+      if (modo === 'dono' && ctx.salvar.temMundo()) ctx.salvar.agendar();
+    }
+  }
+
+  // entrega de logout: deposita os itens do visitante que saiu no baú
+  // dele → baú do dono → inventário do dono. SÓ o anfitrião resolve.
+  function depositarNoBau(chave: number, bau: Meta & { tipo: 'bau' }, itens: number[]) {
+    for (let id = 0; id < itens.length; id++) {
+      const n = itens[id] | 0;
+      if (n > 0) bau.itens[id] = Math.min(999, (bau.itens[id] || 0) + n);
+    }
+    ctx.metas.tocar(chave); // broadcast do baú atualizado
+    ctx.ui.atualizarBau();
+  }
+  function resolverEntrega(nome: string, itens: number[]): boolean {
+    const meu = ctx.metas.acharBau((b) => b.dono === nome);
+    if (meu) { depositarNoBau(meu.chave, meu.bau, itens); return true; }
+    const doDono = ctx.metas.acharBau((b) => b.dono === '' || b.dono === donoNome);
+    if (doDono) { depositarNoBau(doDono.chave, doDono.bau, itens); return true; }
+    // sem baú: só o próprio dono coloca no próprio inventário
+    if (modo === 'dono') {
+      for (let id = 0; id < itens.length; id++) ctx.edicao.ganharItemPublico(id, itens[id] | 0);
+      return true;
+    }
+    return false; // anfitrião promovido sem dono presente: espera o dono voltar
+  }
+  function resolverPendentes(pendentes: any[]) {
+    if (!anfitriao || !Array.isArray(pendentes)) return;
+    for (const p of pendentes) {
+      if (!p || typeof p.id !== 'number' || !Array.isArray(p.itens)) continue;
+      if (ackPendentes.includes(p.id)) continue; // já resolvido, aguardando ack
+      if (resolverEntrega(String(p.nome || ''), p.itens)) ackPendentes.push(p.id);
+      else break; // não deu (sem dono): mantém a ordem, tenta de novo depois
+    }
   }
 
   function aplicarEdicoes(edicoes: Array<[number, number, number, number, number]>) {
@@ -158,6 +234,12 @@ export function criarSync(ctx: Contexto): Sync {
     const g = geracao;
     try {
       if (!loteAtual) loteAtual = fila.splice(0, S.maxEdicoesPorSync);
+      if (!loteMeta) {
+        // respeita o teto do servidor (MAX_METAS_POR_SYNC) — mandar mais
+        // dá 400 e trava a sala; o resto fica na fila pro próximo sync
+        loteMeta = [...filaMeta.entries()].slice(0, S.maxMetasPorSync);
+        for (const [k] of loteMeta) filaMeta.delete(k);
+      }
       const p = ctx.jogador;
       // yaw normalizado pra [-π, π]: ele acumula sem wrap no cliente e o
       // servidor satura — sem isso o boneco congela depois de umas voltas
@@ -167,8 +249,11 @@ export function criarSync(ctx: Contexto): Sync {
         codigo,
         token,
         desde: seqVisto,
+        desdeM: metaSeqVisto,
         lote: loteN,
         edicoes: loteAtual,
+        metas: loteMeta,
+        pendentesAck: ackPendentes,
         pos: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +yawN.toFixed(3), pitch: +p.pitch.toFixed(3) },
       });
       if (!pollAtivo || g !== geracao) return;
@@ -194,6 +279,14 @@ export function criarSync(ctx: Contexto): Sync {
           sairLocal('📡 A sala fechou — você continua no mundo, mas sozinho.');
           return;
         }
+        if (r.status === 400) {
+          // o servidor recusou o corpo: re-enviar o MESMO lote falharia
+          // pra sempre e travaria a sala — descarta e segue (o mundo
+          // local fica na frente; a próxima foto realinha todo mundo)
+          loteAtual = null;
+          loteN++;
+          loteMeta = null;
+        }
         falhas++;
         if (falhas === 3) ctx.ui.mostrarToast('📡 Reconectando…', 'info', 2000);
         agendarPoll();
@@ -202,28 +295,43 @@ export function criarSync(ctx: Contexto): Sync {
 
       falhas = 0;
       const d = r.json;
+      if (typeof d.donoNome === 'string') donoNome = d.donoNome;
       // diário lotado: o lote NÃO entrou — segura pro re-envio
       const aceitou = d.cheio !== true;
       if (aceitou) {
         loteAtual = null;
         loteN++;
       }
+      // metadata: aceita (idempotente) → libera o lote; mas se o diário de
+      // metadata lotou (metaCheio), o lote NÃO entrou — devolve pra fila
+      // pra re-enviar depois que o anfitrião compactar
+      const metaEnviada = loteMeta || [];
+      if (d.metaCheio === true) {
+        // re-agenda só as chaves sem escrita local mais nova pendente
+        for (const [k, m] of metaEnviada) if (!filaMeta.has(k)) filaMeta.set(k, m);
+      }
+      loteMeta = null;
 
       if (d.reset === true && d.foto) {
-        // ficamos pra trás da compactação: reconstrói do snapshot
+        // ficamos pra trás da compactação: reconstrói do snapshot (blocos+metas)
         if (aplicarFoto(d.foto)) {
           seqVisto = typeof d.seq === 'number' ? d.seq : seqVisto;
-          // edições locais ainda não confirmadas voltam por cima (elas
-          // vão pro diário no próximo sync de qualquer jeito)
+          metaSeqVisto = typeof d.metaSeq === 'number' ? d.metaSeq : metaSeqVisto;
+          // edições/metadata locais ainda não confirmadas voltam por cima
           aplicandoRemoto = true;
           for (const [x, y, z, b] of (loteAtual || []).concat(fila)) ctx.mundo.definir(x, y, z, b);
+          for (const [k, m] of metaEnviada) ctx.metas.aplicar(k, m);
+          for (const [k, m] of filaMeta) ctx.metas.aplicar(k, m);
           aplicandoRemoto = false;
           ctx.mundo.sujos.clear();
           ctx.malha.construirTudo();
+          ctx.ui.atualizarBau();
         }
       } else {
         aplicarEdicoes(d.edicoes || []);
         if (typeof d.seq === 'number' && d.seq > seqVisto) seqVisto = d.seq;
+        aplicarMetas(d.metasNovas || []);
+        if (typeof d.metaSeq === 'number' && d.metaSeq > metaSeqVisto) metaSeqVisto = d.metaSeq;
       }
 
       // promoção SÓ depois de aplicar foto/edições: o re-scan das mudas e
@@ -234,17 +342,26 @@ export function criarSync(ctx: Contexto): Sync {
         ctx.edicao.iniciarMudas();
         ultimaFotoMs = performance.now();
       }
+      // NÃO limpo ackPendentes ao perder o posto: se eu resolvi uma
+      // entrega e virei não-anfitrião antes de ackar, preciso seguir
+      // mandando o ack (o servidor aceita de quem reservou) — senão o
+      // novo anfitrião deposita a mesma entrega de novo
+      if (anfitriao) resolverPendentes(d.pendentes || []);
 
       tratarJogadores(Array.isArray(d.jogadores) ? d.jogadores : []);
 
-      // compactação: anfitrião manda foto quando o diário engorda —
-      // e NA HORA se o diário lotou (destrava a sala inteira)
-      if (anfitriao && typeof d.diario === 'number' && !fotoEmVoo) {
+      // compactação: anfitrião manda foto quando QUALQUER diário engorda —
+      // e NA HORA se lotou (destrava a sala; o de metadata não some sozinho)
+      if (anfitriao && !fotoEmVoo) {
         const agora = performance.now();
-        if (d.cheio === true || d.diario >= S.fotoACadaEdicoes || (d.diario >= S.fotoJournalMin && agora - ultimaFotoMs > S.fotoACadaMs)) {
+        const diario = typeof d.diario === 'number' ? d.diario : 0;
+        const metaDiario = typeof d.metaDiario === 'number' ? d.metaDiario : 0;
+        const urgente = d.cheio === true || d.metaCheio === true || diario >= S.fotoACadaEdicoes || metaDiario >= S.fotoMetaMin;
+        const porTempo = (diario >= S.fotoJournalMin || metaDiario >= S.fotoMetaMin) && agora - ultimaFotoMs > S.fotoACadaMs;
+        if (urgente || porTempo) {
           ultimaFotoMs = agora;
           fotoEmVoo = true;
-          api({ acao: 'foto', codigo, token, foto: fotoAtual(), ateSeq: seqVisto }).finally(() => { fotoEmVoo = false; });
+          api({ acao: 'foto', codigo, token, foto: fotoAtual(), ateSeq: seqVisto, ateMetaSeq: metaSeqVisto }).finally(() => { fotoEmVoo = false; });
         }
       }
 
@@ -263,6 +380,11 @@ export function criarSync(ctx: Contexto): Sync {
     fila = [];
     loteAtual = null;
     loteN = 0;
+    filaMeta = new Map();
+    loteMeta = null;
+    metaSeqVisto = 0;
+    donoNome = '';
+    ackPendentes = [];
     fotoPendente = null;
     nomesVistos = new Set();
     modo = '';
@@ -273,11 +395,21 @@ export function criarSync(ctx: Contexto): Sync {
     if (aviso) ctx.ui.mostrarToast(aviso, 'info', 3200);
   }
 
+  // inventário do visitante pra "entregar" ao sair (baú dele → baú do
+  // dono → inventário do dono). Só faz sentido pra visita com itens.
+  function invParaEntrega(): number[] | null {
+    if (modo !== 'visita') return null;
+    const inv = ctx.estado.inventario;
+    if (!inv.some((n) => n > 0)) return null;
+    return inv.map((n) => Math.max(0, Math.min(999, n | 0)));
+  }
+
   const api2: Sync = {
     emSala: () => pollAtivo,
     emVisita: () => pollAtivo && modo === 'visita',
     souAnfitriao: () => anfitriao,
     codigoSala: () => codigo,
+    meuNomeNaSala: () => (pollAtivo ? meuNome : ''),
 
     async criarSala(nomeJogador) {
       if (pollAtivo) return null;
@@ -288,12 +420,17 @@ export function criarSync(ctx: Contexto): Sync {
       codigo = r.json.codigo;
       token = r.json.token;
       meuNome = nomeJogador;
+      donoNome = nomeJogador; // eu sou o dono
       modo = 'dono';
       anfitriao = true;
       seqVisto = 0;
+      metaSeqVisto = 0;
       fila = [];
       loteAtual = null;
       loteN = 0;
+      filaMeta = new Map();
+      loteMeta = null;
+      ackPendentes = [];
       nomesVistos = new Set();
       ultimaFotoMs = performance.now();
       instalarGancho();
@@ -312,12 +449,17 @@ export function criarSync(ctx: Contexto): Sync {
       codigo = cod;
       token = r.json.token;
       meuNome = r.json.nome || nomeJogador;
+      donoNome = typeof r.json.donoNome === 'string' ? r.json.donoNome : '';
       modo = 'visita';
       anfitriao = false;
       seqVisto = typeof r.json.seq === 'number' ? r.json.seq : 0;
+      metaSeqVisto = typeof r.json.metaSeq === 'number' ? r.json.metaSeq : 0;
       fila = [];
       loteAtual = null;
       loteN = 0;
+      filaMeta = new Map();
+      loteMeta = null;
+      ackPendentes = [];
       fotoPendente = r.json.foto;
       // quem já estava não ganha toast de "entrou"
       nomesVistos = new Set((r.json.jogadores || []).map((j: JogadorRemoto) => j.nome));
@@ -343,8 +485,9 @@ export function criarSync(ctx: Contexto): Sync {
     async sairDaSala() {
       if (!pollAtivo) return;
       // beacon e não fetch: o "sair" costuma vir colado numa navegação,
-      // que abortaria o fetch — e o boneco ficaria 2min parado na sala
-      const corpo = JSON.stringify({ acao: 'sair', codigo, token });
+      // que abortaria o fetch — e o boneco ficaria 2min parado na sala.
+      // O visitante manda o inventário: o dono resolve a entrega.
+      const corpo = JSON.stringify({ acao: 'sair', codigo, token, inventario: invParaEntrega() });
       sairLocal();
       if (navigator.sendBeacon) {
         navigator.sendBeacon(S.api, new Blob([corpo], { type: 'application/json' }));
@@ -355,7 +498,7 @@ export function criarSync(ctx: Contexto): Sync {
 
     flushSair() {
       if (!pollAtivo) return;
-      const corpo = JSON.stringify({ acao: 'sair', codigo, token });
+      const corpo = JSON.stringify({ acao: 'sair', codigo, token, inventario: invParaEntrega() });
       if (navigator.sendBeacon) {
         navigator.sendBeacon(S.api, new Blob([corpo], { type: 'application/json' }));
       } else {

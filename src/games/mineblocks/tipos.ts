@@ -97,6 +97,26 @@ export interface Malha {
   reconstruirSujos(): void;
 }
 
+// metadata por posição (não cabe no Uint8Array do mundo)
+export type Meta =
+  | { tipo: 'bau'; dono: string; itens: number[] }
+  | { tipo: 'placa'; autor: string; texto: string };
+
+export interface Metas {
+  aoMudar?: (chave: number, meta: Meta | null) => void;
+  chaveDe(x: number, y: number, z: number): number;
+  obter(x: number, y: number, z: number): Meta | undefined;
+  definir(x: number, y: number, z: number, meta: Meta): void;
+  remover(x: number, y: number, z: number): void;
+  aplicar(chave: number, meta: Meta | null): void; // da rede, sem eco
+  tocar(chave: number): void; // re-emite após mutação no lugar (itens do baú)
+  acharBau(filtro: (bau: Meta & { tipo: 'bau' }, chave: number) => boolean): { chave: number; bau: Meta & { tipo: 'bau' } } | null;
+  serializar(): Record<string, Meta>;
+  carregar(obj: unknown): void;
+  limpar(): void;
+  todos(): Map<number, Meta>;
+}
+
 export interface Fisica {
   passo(dt: number): void;
   assentar(): void; // põe o jogador em pé no chão do spawn
@@ -112,8 +132,8 @@ export interface Mira {
 }
 
 export interface Edicao {
-  quebrar(): boolean; // INSTANTÂNEO — backdoor de teste/depuração
-  colocar(): boolean;
+  quebrar(alvoForcado?: Alvo): boolean; // INSTANTÂNEO — backdoor de teste/depuração
+  colocar(alvoForcado?: Alvo): boolean;
   golpear(dt: number): void; // segurando: acumula progresso até quebrar
   soltarGolpe(): void; // soltou o botão/dedo: progresso zera
   golpeando(): boolean;
@@ -122,10 +142,15 @@ export interface Edicao {
   crescerMudasAgora(): void; // teste: adianta tudo
   decairAgora(): void; // teste: processa todo o decay pendente já
   registrarItemNaHotbar(item: number): boolean; // item novo entra no 1º slot vazio (false = cheia)
+  ganharItemPublico(id: number, n?: number): void; // deposita item no inventário (transferência de logout)
   // multiplayer: SÓ o anfitrião chama, pra edição vinda da rede — os
   // sistemas automáticos precisam saber o que os visitantes fizeram
   // (muda plantada entra no relógio; ar aberto re-checa folhas órfãs)
   aoEdicaoRemota(x: number, y: number, z: number, id: number): void;
+  // clique direito/tap: interage com o alvo (baú/porta/placa) OU coloca.
+  // true só se colocou bloco (o input só repete segurando quando colocou)
+  interagir(alvoForcado?: Alvo): boolean;
+  podeUsar(dono: string): boolean; // dono do baú/autor da placa × quem sou eu
 }
 
 export interface Salvar {
@@ -150,6 +175,15 @@ export interface UI {
   alternarCraft(abrir?: boolean): void; // abre/fecha o painel do inventário
   atualizarModo(): void;
   mostrarSalvando(estado: 'salvando' | 'salvo' | 'erro' | 'nada'): void;
+  // baú: painel de troca de itens (conteúdo ↔ inventário)
+  abrirBau(chave: number, titulo: string, editavel: boolean): void;
+  fecharBau(): void;
+  bauAberto(): number; // -1 = nenhum; senão a chave do baú aberto
+  atualizarBau(): void; // re-renderiza o painel se o baú aberto mudou
+  // placa: form de escrever (na colocação) e leitura
+  pedirTextoPlaca(aoConfirmar: (texto: string | null) => void): void;
+  mostrarPlaca(texto: string, autor: string): void;
+  painelModalAberto(): boolean; // inventário/baú/placa aberto (não pausar no ESC do lock)
 }
 
 export interface Fluxo {
@@ -177,6 +211,7 @@ export interface Sync {
   emVisita(): boolean;
   souAnfitriao(): boolean;
   codigoSala(): string;
+  meuNomeNaSala(): string; // '' quando solo; senão o nome do jogador na sala
   criarSala(nomeJogador: string): Promise<string | null>; // null=ok, string=erro
   entrarSala(codigo: string, nomeJogador: string): Promise<string | null>;
   aplicarFotoInicial(): boolean; // visita: escreve o mundo recebido (sem malha)
@@ -216,6 +251,7 @@ export interface Contexto {
   audio: Audio;
   textura: Textura;
   mundo: Mundo;
+  metas: Metas;
   malha: Malha;
   fisica: Fisica;
   camera3: Camera3;

@@ -50,6 +50,32 @@ const description =
         </div>
       </div>
 
+      <!-- baú: painel de troca de itens (conteúdo ↔ inventário) -->
+      <div class="inv bau" data-bau hidden>
+        <div class="inv__caixa" role="dialog" aria-modal="false" aria-label="Baú">
+          <div class="inv__topo">
+            <span data-bau-titulo>Baú</span>
+            <button class="inv__fechar" type="button" data-bau-fechar aria-label="Fechar o baú">✖</button>
+          </div>
+          <p class="bau__rotulo">📦 Dentro do baú <small>(clique pra pegar)</small></p>
+          <div class="bau__grade" data-bau-conteudo></div>
+          <p class="bau__rotulo">🎒 Seus itens <small>(clique pra guardar)</small></p>
+          <div class="bau__grade" data-bau-inv></div>
+        </div>
+      </div>
+
+      <!-- placa: escrever a mensagem ao colocar -->
+      <div class="inv" data-placa-form hidden>
+        <div class="inv__caixa inv__caixa--mini" role="dialog" aria-modal="true" aria-label="Escrever na placa">
+          <div class="inv__topo"><span>📜 Escreva na placa</span></div>
+          <input class="placa__input" data-placa-input type="text" maxlength="48" autocomplete="off" spellcheck="false" placeholder="ex: Casa do Léo!" />
+          <div class="placa__botoes">
+            <button class="botao botao--go" type="button" data-placa-ok>✅ Pôr a placa</button>
+            <button class="botao botao--sec botao--mini" type="button" data-placa-cancelar>cancelar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- controles touch (aparecem no 1º toque) -->
       <div class="controles" data-controles hidden>
         <button class="ctl ctl--modo" type="button" data-btn-modo aria-label="Modo: quebrar bloco (toque pra trocar)">⛏️</button>
@@ -369,6 +395,51 @@ const description =
     .inv-item.vazio { opacity: 0.45; }
     .inv-item.vazio .inv-item__qtd { color: rgba(255, 255, 255, 0.4); }
     .inv-item.sel { border-color: var(--amarelo); }
+
+    /* baú + placa */
+    .bau__rotulo { margin: 8px 0 6px; font-weight: 800; font-size: 0.9rem; }
+    .bau__rotulo small { font-weight: 400; opacity: 0.75; }
+    .bau__grade {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+      gap: 6px;
+      min-height: 56px;
+      padding: 6px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .bau__vazio { grid-column: 1 / -1; margin: 0; padding: 8px; font-size: 0.82rem; opacity: 0.7; text-align: center; }
+    .bau-item {
+      position: relative;
+      width: 100%; aspect-ratio: 1; padding: 0;
+      border-radius: 8px; cursor: pointer;
+      background: rgba(0, 0, 0, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.14);
+    }
+    .bau-item:hover { border-color: var(--amarelo); }
+    .bau-item .slot__img {
+      position: absolute; inset: 4px;
+      background-size: 400% 800%;
+      image-rendering: pixelated;
+      border-radius: 4px;
+    }
+    .bau-item__q {
+      position: absolute; right: 2px; bottom: 0;
+      font-size: 0.66rem; font-weight: 800; color: #fff;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 3px rgba(0, 0, 0, 0.9);
+    }
+    .inv__caixa--mini { width: min(92vw, 380px); }
+    .placa__input {
+      display: block; width: 100%; margin: 4px 0 12px;
+      padding: 11px 12px; border-radius: 10px;
+      font-family: inherit; font-size: 1.05rem; color: var(--texto);
+      background: rgba(0, 0, 0, 0.35);
+      border: 2px solid rgba(123, 182, 97, 0.4);
+    }
+    .placa__input:focus { outline: none; border-color: var(--verde); }
+    .placa__botoes { display: flex; align-items: center; gap: 10px; }
+    .placa__botoes .botao--go { flex: 1; }
+    .placa__autor { opacity: 0.85; font-weight: 600; }
 
     .craft__lista { display: grid; gap: 6px; }
     .craft__titulo { margin: 0 0 6px; font-weight: 800; font-size: 0.95rem; }

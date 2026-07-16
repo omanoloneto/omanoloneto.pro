@@ -37,6 +37,10 @@ const MAX_JOGADORES = 30;       // turma inteira
 const MAX_FOTO = 700000;        // bytes do JSON da foto (RLE real fica em 15-60KB)
 const MAX_EDICOES_POR_SYNC = 200;
 const MAX_DIARIO = 3000;        // freio de emergência; anfitrião compacta muito antes
+const MAX_METAS_POR_SYNC = 64;  // metadata (baú/placa) muda pouco por sync
+const MAX_META_DIARIO = 2000;
+const MAX_PENDENTES = 40;       // entregas de logout aguardando o dono
+const RESERVA_PENDENTE_MS = 8000; // anfitrião "trava" a entrega enquanto resolve
 const ATIVO_S = 12;             // visto há <12s conta pra eleger anfitrião
 // aba em segundo plano: o Chrome estrangula timers pra ~1/min — a folga
 // tem que ser MAIOR que isso, senão alt-tab de 2min expulsa a criança
@@ -48,7 +52,7 @@ const SUMIU_S = 120;            // visto há >120s sai da sala sozinho
 const MAX_X = 96;
 const MAX_Y = 40;
 const MAX_Z = 96;
-const MAX_BLOCO = 16;
+const MAX_BLOCO = 20;   // maior id da tabela do cliente (ar..placa)
 
 function falha(int $code, string $msg, array $extra = []): void {
   http_response_code($code);
@@ -99,13 +103,54 @@ function validarNome(string $nome): bool {
   return preg_match('/^[A-Z0-9]{2,10}\z/', $nome) === 1;
 }
 
-// foto = {seed:int, blocos:'<RLE base64>'}
+// chave da metadata = índice da célula (x + z*SX + y*SX*SZ)
+function validarChave($k): bool {
+  return is_int($k) && $k >= 0 && $k < MAX_X * MAX_Y * MAX_Z;
+}
+
+// metadata de uma célula: baú {dono, itens[]} | placa {autor, texto}
+function metaLimpa($m) {
+  if (!is_array($m)) return false;
+  $tipo = $m['tipo'] ?? '';
+  if ($tipo === 'bau') {
+    if (!isset($m['dono']) || !is_string($m['dono']) || strlen($m['dono']) > 16) return false;
+    if (!isset($m['itens']) || !is_array($m['itens']) || count($m['itens']) > 64) return false;
+    foreach ($m['itens'] as $n) if (!is_int($n) || $n < 0 || $n > 999) return false;
+    return ['tipo' => 'bau', 'dono' => $m['dono'], 'itens' => array_values($m['itens'])];
+  }
+  if ($tipo === 'placa') {
+    if (!isset($m['autor'], $m['texto']) || !is_string($m['autor']) || !is_string($m['texto'])) return false;
+    if (strlen($m['autor']) > 16 || mb_strlen($m['texto']) > 64) return false;
+    return ['tipo' => 'placa', 'autor' => $m['autor'], 'texto' => $m['texto']];
+  }
+  return false;
+}
+
+// mapa de metadata da foto: {chaveStr: meta}
+function metasLimpas($metas): array {
+  $out = [];
+  if (is_array($metas)) {
+    foreach ($metas as $k => $m) {
+      if (!validarChave((int)$k) || (string)(int)$k !== (string)$k) continue;
+      $lm = metaLimpa($m);
+      if ($lm !== false) $out[(string)(int)$k] = $lm;
+    }
+  }
+  return $out;
+}
+
+// foto = {seed:int, blocos:'<RLE base64>', metas:{chave: meta}}
 function validarFoto($foto): array {
   if (!is_array($foto) || !isset($foto['seed'], $foto['blocos'])) falha(400, 'foto inválida');
   if (!is_int($foto['seed']) || !is_string($foto['blocos'])) falha(400, 'foto inválida');
-  $limpa = ['seed' => $foto['seed'], 'blocos' => $foto['blocos']];
+  $limpa = ['seed' => $foto['seed'], 'blocos' => $foto['blocos'], 'metas' => metasLimpas($foto['metas'] ?? null)];
   if (strlen(json_encode($limpa)) > MAX_FOTO) falha(400, 'mundo grande demais');
   return $limpa;
+}
+
+function nomeDoDono(array $sala): string {
+  $j = $sala['jogadores'][$sala['dono']] ?? null;
+  return $j['nome'] ?? '';
 }
 
 function posLimpa($pos): array {
@@ -226,6 +271,11 @@ if ($acao === 'criar') {
     'snapshotSeq' => 0,
     'proxSeq' => 1,
     'edicoes' => [],
+    'snapshotMetaSeq' => 0,
+    'proxMetaSeq' => 1,
+    'metasDiario' => [],
+    'pendentes' => [], // entregas de logout aguardando o dono resolver
+    'proxPendenteId' => 1,
     'jogadores' => [
       $token => ['nome' => $nome, 'entrouMs' => $agora, 'vistoMs' => $agora, 'loteVisto' => -1] + posInicial(),
     ],
@@ -269,6 +319,8 @@ if ($acao === 'entrar') {
       'nome' => $final,
       'foto' => $foto,
       'seq' => $sala['snapshotSeq'],
+      'metaSeq' => $sala['snapshotMetaSeq'] ?? 0,
+      'donoNome' => nomeDoDono($sala),
       'jogadores' => listaJogadores($sala, $token),
     ];
   });
@@ -283,11 +335,17 @@ if (!is_string($token) || $token === '') falha(400, 'token inválido');
 // ------------------------------------------------------------ sync
 if ($acao === 'sync') {
   $desde = is_int($corpo['desde'] ?? null) ? $corpo['desde'] : 0;
+  $desdeM = is_int($corpo['desdeM'] ?? null) ? $corpo['desdeM'] : 0;
   $loteN = is_int($corpo['lote'] ?? null) ? $corpo['lote'] : -1;
   $edicoes = $corpo['edicoes'] ?? [];
+  $metasIn = $corpo['metas'] ?? [];
+  // entregas de logout que o anfitrião JÁ resolveu (ids) — idempotente:
+  // re-enviar não remove pendentes novos por engano (ao contrário de contar)
+  $pendAck = is_array($corpo['pendentesAck'] ?? null) ? $corpo['pendentesAck'] : [];
   if (!is_array($edicoes) || count($edicoes) > MAX_EDICOES_POR_SYNC) falha(400, 'edições demais num sync só');
+  if (!is_array($metasIn) || count($metasIn) > MAX_METAS_POR_SYNC) falha(400, 'metadata demais num sync só');
 
-  $resp = comLock($codigo, function () use ($codigo, $token, $desde, $loteN, $edicoes, $corpo) {
+  $resp = comLock($codigo, function () use ($codigo, $token, $desde, $desdeM, $loteN, $edicoes, $metasIn, $pendAck, $corpo) {
     $sala = lerJson(arquivoSala($codigo));
     if ($sala === null) falha(404, 'essa sala não existe (ou já fechou)');
     if (!isset($sala['jogadores'][$token])) falha(403, 'você não está nesta sala');
@@ -295,6 +353,10 @@ if ($acao === 'sync') {
     $j = $sala['jogadores'][$token];
     $loteVisto = $j['loteVisto'] ?? -1;
     $cheio = false;
+    $sala['metasDiario'] = $sala['metasDiario'] ?? [];
+    $sala['proxMetaSeq'] = $sala['proxMetaSeq'] ?? 1;
+    $sala['snapshotMetaSeq'] = $sala['snapshotMetaSeq'] ?? 0;
+    $sala['pendentes'] = $sala['pendentes'] ?? [];
 
     // lote já visto = resposta do sync anterior se perdeu no caminho e o
     // cliente re-enviou: as edições JÁ estão no diário, não duplica
@@ -317,6 +379,60 @@ if ($acao === 'sync') {
       }
     }
 
+    // metadata (baú/placa): stream próprio, last-write-wins por chave.
+    // Metadata é idempotente (objeto inteiro) → sem lote; re-envio é
+    // seguro. Item INVÁLIDO é PULADO (não derruba o sync inteiro — um
+    // falha(400) aqui travaria presença + edições da criança pra sempre)
+    $metaCheio = false;
+    if (count($metasIn) > 0) {
+      if (count($sala['metasDiario']) + count($metasIn) > MAX_META_DIARIO) {
+        // diário de metadata lotado: recusa o lote (o cliente segura pro
+        // re-envio) e sinaliza — o anfitrião compacta e destrava a sala
+        $metaCheio = true;
+      } else {
+        foreach ($metasIn as $mm) {
+          if (!is_array($mm) || count($mm) !== 2) continue;
+          [$k, $meta] = array_values($mm);
+          if (!validarChave($k)) continue;
+          if ($meta === null) {
+            $sala['metasDiario'][] = [$sala['proxMetaSeq']++, $k, null];
+          } else {
+            $lm = metaLimpa($meta);
+            if ($lm === false) continue;
+            $sala['metasDiario'][] = [$sala['proxMetaSeq']++, $k, $lm];
+          }
+        }
+      }
+    }
+
+    $anfitriao = tokenAnfitriao($sala, $agora) === $token;
+    // ack de entrega de logout: remove os pendentes resolvidos. Aceita de
+    // QUEM RESERVOU (mesmo que tenha perdido o posto de anfitrião no meio)
+    // — senão o depósito ficava feito mas o pendente vivo, e o novo
+    // anfitrião depositava DE NOVO (item duplicado)
+    if (count($pendAck) > 0) {
+      $ids = array_filter($pendAck, 'is_int');
+      $sala['pendentes'] = array_values(array_filter($sala['pendentes'], function ($p) use ($ids, $token, $anfitriao) {
+        if (!in_array($p['id'] ?? -1, $ids, true)) return true; // não foi ackado
+        return !($anfitriao || ($p['resPor'] ?? '') === $token); // remove se anfitrião ou reservador
+      }));
+    }
+
+    // pendentes entregues SÓ ao anfitrião — e RESERVADOS por ele por um
+    // tempo: se o anfitrião trocar no meio, o novo NÃO recebe o mesmo
+    // pendente enquanto a reserva vale (evita depósito em dobro)
+    $pendentes = [];
+    if ($anfitriao) {
+      foreach ($sala['pendentes'] as &$pp) {
+        $resPor = $pp['resPor'] ?? '';
+        if ($resPor !== '' && $resPor !== $token && $agora < ($pp['resAte'] ?? 0)) continue;
+        $pp['resPor'] = $token;
+        $pp['resAte'] = $agora + RESERVA_PENDENTE_MS;
+        $pendentes[] = ['id' => $pp['id'], 'nome' => $pp['nome'], 'itens' => $pp['itens']];
+      }
+      unset($pp);
+    }
+
     // presença + posição
     $sala['jogadores'][$token] = ['nome' => $j['nome'], 'entrouMs' => $j['entrouMs'], 'vistoMs' => $agora, 'loteVisto' => $loteVisto]
       + posLimpa($corpo['pos'] ?? null);
@@ -324,20 +440,25 @@ if ($acao === 'sync') {
     escreverJson(arquivoSala($codigo), $sala);
 
     $seqAtual = $sala['proxSeq'] - 1;
-    $anfitriao = tokenAnfitriao($sala, $agora) === $token;
+    $metaSeqAtual = $sala['proxMetaSeq'] - 1;
 
     // cliente ficou pra trás da compactação → manda o mundo inteiro de novo
-    if ($desde < $sala['snapshotSeq']) {
+    if ($desde < $sala['snapshotSeq'] || $desdeM < $sala['snapshotMetaSeq']) {
       $foto = lerJson(arquivoFoto($codigo));
       if ($foto === null) falha(500, 'a foto do mundo sumiu — cria outra sala?');
       return [
         'reset' => true,
         'foto' => $foto,
         'seq' => $sala['snapshotSeq'],
+        'metaSeq' => $sala['snapshotMetaSeq'],
         'jogadores' => listaJogadores($sala, $token),
         'anfitriao' => $anfitriao,
+        'donoNome' => nomeDoDono($sala),
+        'pendentes' => $pendentes,
         'cheio' => $cheio,
+        'metaCheio' => $metaCheio,
         'diario' => count($sala['edicoes']),
+        'metaDiario' => count($sala['metasDiario']),
       ];
     }
 
@@ -345,13 +466,23 @@ if ($acao === 'sync') {
     foreach ($sala['edicoes'] as $e) {
       if ($e[0] > $desde) $novas[] = $e;
     }
+    $metasNovas = [];
+    foreach ($sala['metasDiario'] as $me) {
+      if ($me[0] > $desdeM) $metasNovas[] = $me;
+    }
     return [
       'seq' => $seqAtual,
+      'metaSeq' => $metaSeqAtual,
       'edicoes' => $novas,
+      'metasNovas' => $metasNovas,
       'jogadores' => listaJogadores($sala, $token),
       'anfitriao' => $anfitriao,
+      'donoNome' => nomeDoDono($sala),
+      'pendentes' => $pendentes,
       'cheio' => $cheio,
+      'metaCheio' => $metaCheio,
       'diario' => count($sala['edicoes']),
+      'metaDiario' => count($sala['metasDiario']),
     ];
   });
   echo json_encode($resp, JSON_UNESCAPED_UNICODE);
@@ -362,18 +493,26 @@ if ($acao === 'sync') {
 if ($acao === 'foto') {
   $foto = validarFoto($corpo['foto'] ?? null);
   $ateSeq = is_int($corpo['ateSeq'] ?? null) ? $corpo['ateSeq'] : -1;
+  $ateMetaSeq = is_int($corpo['ateMetaSeq'] ?? null) ? $corpo['ateMetaSeq'] : -1;
 
-  comLock($codigo, function () use ($codigo, $token, $foto, $ateSeq) {
+  comLock($codigo, function () use ($codigo, $token, $foto, $ateSeq, $ateMetaSeq) {
     $sala = lerJson(arquivoSala($codigo));
     if ($sala === null) falha(404, 'essa sala não existe (ou já fechou)');
     if (!isset($sala['jogadores'][$token])) falha(403, 'você não está nesta sala');
     $agora = agoraMs();
     if (tokenAnfitriao($sala, $agora) !== $token) falha(403, 'só o anfitrião manda foto');
     if ($ateSeq < $sala['snapshotSeq'] || $ateSeq > $sala['proxSeq'] - 1) falha(400, 'ateSeq inválido');
+    $sala['proxMetaSeq'] = $sala['proxMetaSeq'] ?? 1;
+    $sala['snapshotMetaSeq'] = $sala['snapshotMetaSeq'] ?? 0;
+    $sala['metasDiario'] = $sala['metasDiario'] ?? [];
+    if ($ateMetaSeq < $sala['snapshotMetaSeq'] || $ateMetaSeq > $sala['proxMetaSeq'] - 1) falha(400, 'ateMetaSeq inválido');
 
+    // a foto já traz metas dobradas (o cliente serializou o mapa inteiro)
     escreverJson(arquivoFoto($codigo), $foto);
     $sala['snapshotSeq'] = $ateSeq;
+    $sala['snapshotMetaSeq'] = $ateMetaSeq;
     $sala['edicoes'] = array_values(array_filter($sala['edicoes'], fn($e) => $e[0] > $ateSeq));
+    $sala['metasDiario'] = array_values(array_filter($sala['metasDiario'], fn($e) => $e[0] > $ateMetaSeq));
     escreverJson(arquivoSala($codigo), $sala);
   });
   echo json_encode(['ok' => true]);
@@ -382,10 +521,28 @@ if ($acao === 'foto') {
 
 // ------------------------------------------------------------ sair
 if ($acao === 'sair') {
-  comLock($codigo, function () use ($codigo, $token) {
+  // visitante saindo pode mandar o inventário: vira uma "entrega" que o
+  // dono resolve (baú do visitante → baú do dono → inventário do dono)
+  $inv = $corpo['inventario'] ?? null;
+  $invLimpo = null;
+  if (is_array($inv) && count($inv) <= 64) {
+    $ok = true;
+    foreach ($inv as $n) if (!is_int($n) || $n < 0 || $n > 999) { $ok = false; break; }
+    if ($ok && array_sum($inv) > 0) $invLimpo = array_values($inv);
+  }
+  comLock($codigo, function () use ($codigo, $token, $invLimpo) {
     $sala = lerJson(arquivoSala($codigo));
     if ($sala === null) return;
+    $saindo = $sala['jogadores'][$token] ?? null;
     unset($sala['jogadores'][$token]);
+    // guarda a entrega só se o visitante NÃO for o dono e tiver itens
+    if ($invLimpo !== null && $saindo !== null && $token !== $sala['dono']) {
+      $sala['pendentes'] = $sala['pendentes'] ?? [];
+      $sala['proxPendenteId'] = $sala['proxPendenteId'] ?? 1;
+      if (count($sala['pendentes']) < MAX_PENDENTES) {
+        $sala['pendentes'][] = ['id' => $sala['proxPendenteId']++, 'nome' => $saindo['nome'], 'itens' => $invLimpo];
+      }
+    }
     if (count($sala['jogadores']) === 0) {
       // sala vazia morre na hora (o TTL é só o plano B)
       @unlink(arquivoSala($codigo));

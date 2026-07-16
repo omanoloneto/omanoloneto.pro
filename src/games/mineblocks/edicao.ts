@@ -13,6 +13,10 @@ import type { Alvo, Contexto, Edicao } from './tipos';
 const FOLHA_NATURAL = 7;
 const FOLHA_COLOCADA = 16;
 const TRONCO = 5;
+const BAU = 17;
+const PORTA_FECHADA = 18;
+const PORTA_ABERTA = 19;
+const PLACA = 20;
 
 export function criarEdicao(ctx: Contexto): Edicao {
   const { mundo, jogador, porId, cfg } = ctx;
@@ -98,6 +102,27 @@ export function criarEdicao(ctx: Contexto): Edicao {
     return false; // hotbar cheia: item fica só no inventário (E)
   }
 
+  // ----- dono/permissão (baú e placa) -----
+  function meuNome(): string {
+    return ctx.sync.emSala() ? ctx.sync.meuNomeNaSala() : '';
+  }
+  // dono do baú/autor da placa × quem sou eu agora
+  function podeUsar(dono: string): boolean {
+    if (!ctx.sync.emSala()) return true; // solo: tudo é seu
+    if (ctx.sync.emVisita()) return dono === ctx.sync.meuNomeNaSala();
+    return dono === '' || dono === ctx.sync.meuNomeNaSala(); // dono do mundo
+  }
+
+  // deposita item(ns) direto no inventário (transferência de logout, baú
+  // quebrado): sem drop, sem som repetido
+  function ganharItemPublico(id: number, n = 1) {
+    if (id <= 0 || id >= ctx.blocos.length || n <= 0) return;
+    const inv = ctx.estado.inventario;
+    inv[id] = Math.min(999, (inv[id] || 0) + n);
+    registrarItemNaHotbar(id);
+    ctx.ui.atualizarContagens();
+  }
+
   function ganharItem(idQuebrado: number) {
     const inv = ctx.estado.inventario;
     const def = porId(idQuebrado);
@@ -121,8 +146,19 @@ export function criarEdicao(ctx: Contexto): Edicao {
     }
   }
 
+  // baú/placa quebrado limpa a metadata; baú despeja o conteúdo no dono
+  function limparMetaAoQuebrar(x: number, y: number, z: number) {
+    const m = ctx.metas.obter(x, y, z);
+    if (!m) return;
+    if (m.tipo === 'bau') {
+      for (let id = 0; id < m.itens.length; id++) ganharItemPublico(id, m.itens[id] | 0);
+    }
+    ctx.metas.remover(x, y, z);
+  }
+
   // ----- quebrar (comum ao golpe e ao backdoor instantâneo) -----
   function removerBloco(a: Alvo): boolean {
+    limparMetaAoQuebrar(a.x, a.y, a.z); // ANTES do definir(0) — usa o id ainda
     mundo.definir(a.x, a.y, a.z, 0);
     ganharItem(a.id);
     // flor/muda em cima perdeu o chão? cai junto (e vai pro bolso)
@@ -130,6 +166,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     if (acima !== 0 && porId(acima).render === 'cruz') {
       mundo.definir(a.x, a.y + 1, a.z, 0);
       ganharItem(acima);
+      ctx.metas.remover(a.x, a.y + 1, a.z); // placa derrubada não deixa meta órfã
     }
     // tronco/folha removida: folhas vizinhas podem ter ficado órfãs
     if (a.id === TRONCO || a.id === FOLHA_NATURAL || a.id === FOLHA_COLOCADA) {
@@ -146,13 +183,21 @@ export function criarEdicao(ctx: Contexto): Edicao {
       avisar('🪨 Essa rocha do fundo não quebra!');
       return false;
     }
+    // baú é protegido: só o dono quebra (senão qualquer um roubava o conteúdo)
+    if (a.id === BAU) {
+      const m = ctx.metas.obter(a.x, a.y, a.z);
+      if (m && m.tipo === 'bau' && !podeUsar(m.dono)) {
+        avisar('🔒 Esse baú é do(a) ' + (m.dono || 'dono') + '! Só ele(a) pode quebrar.');
+        return false;
+      }
+    }
     return true;
   }
 
   // backdoor de teste/depuração: quebra na hora, sem golpe
-  function quebrar(): boolean {
+  function quebrar(alvoForcado?: Alvo): boolean {
     if (ctx.estado.fase !== 'jogando') return false;
-    const a = ctx.mira.alvo();
+    const a = alvoForcado || ctx.mira.alvo();
     if (!a) return false;
     if (!podeQuebrar(a)) return false;
     return removerBloco(a);
@@ -197,9 +242,9 @@ export function criarEdicao(ctx: Contexto): Edicao {
   }
 
   // ----- colocar -----
-  function colocar(): boolean {
+  function colocar(alvoForcado?: Alvo): boolean {
     if (ctx.estado.fase !== 'jogando') return false;
-    const a = ctx.mira.alvo();
+    const a = alvoForcado || ctx.mira.alvo();
     if (!a) return false;
     const id = ctx.estado.hotbarSlots[ctx.estado.sel];
     if (!id) {
@@ -234,8 +279,17 @@ export function criarEdicao(ctx: Contexto): Edicao {
         return false;
       }
     }
-    // colocar em cima de flor devolve a flor pro bolso (nada some do nada)
-    if (ocupante !== 0 && porId(ocupante).render === 'cruz') ganharItem(ocupante);
+    // placa: pede a mensagem ANTES de colocar (fluxo assíncrono próprio)
+    if (id === PLACA) {
+      colocarPlaca(cx, cy, cz);
+      return false; // sem repeat: a colocação de verdade vem no callback
+    }
+    // colocar em cima de flor/placa/muda devolve o item pro bolso e limpa
+    // a metadata dela (senão a placa deixa a mensagem órfã na célula)
+    if (ocupante !== 0 && porId(ocupante).render === 'cruz') {
+      ganharItem(ocupante);
+      ctx.metas.remover(cx, cy, cz);
+    }
     // o item "folhas" colocado vira FOLHA COLOCADA (nunca decai)
     const idFinal = id === FOLHA_NATURAL ? FOLHA_COLOCADA : id;
     mundo.definir(cx, cy, cz, idFinal);
@@ -244,11 +298,77 @@ export function criarEdicao(ctx: Contexto): Edicao {
       const C = ctx.cfg.crescimento;
       mudas.push({ x: cx, y: cy, z: cz, quandoMs: tempoMs + C.minMs + Math.random() * (C.maxMs - C.minMs) });
     }
+    // baú nasce vazio e com dono (só ele abre depois)
+    if (idFinal === BAU) ctx.metas.definir(cx, cy, cz, { tipo: 'bau', dono: meuNome(), itens: [] });
     ctx.ui.atualizarContagens();
     ctx.audio.somColocar();
     ctx.salvar.agendar();
     ctx.fluxo.aoPrimeiroInput();
     return true;
+  }
+
+  // placa: abre o form de texto; confirmar coloca o bloco + grava a mensagem
+  function colocarPlaca(cx: number, cy: number, cz: number) {
+    ctx.ui.pedirTextoPlaca((texto) => {
+      if (texto === null) return; // cancelou: nada colocado, item intacto
+      // revalida no confirm (o mundo pode ter mudado enquanto digitava)
+      if ((ctx.estado.inventario[PLACA] || 0) <= 0) return;
+      if (mundo.obter(cx, cy, cz) !== 0) return;
+      if (!porId(mundo.obter(cx, cy - 1, cz)).solido) {
+        avisar('🌼 A placa precisa de um chão embaixo!');
+        return;
+      }
+      mundo.definir(cx, cy, cz, PLACA);
+      ctx.estado.inventario[PLACA]--;
+      ctx.metas.definir(cx, cy, cz, { tipo: 'placa', autor: meuNome(), texto });
+      ctx.ui.atualizarContagens();
+      ctx.audio.somColocar();
+      ctx.salvar.agendar();
+      ctx.fluxo.aoPrimeiroInput();
+    });
+  }
+
+  // ----- interagir (clique direito/tap): baú/porta/placa OU colocar -----
+  // alvoForcado é backdoor de teste (Playwright interage numa célula exata).
+  // Retorna true SÓ se colocou um bloco — o input só repete (segurar)
+  // quando colocou, senão segurar o direito numa placa/porta ficaria
+  // abrindo/fechando ou substituindo o bloco por baixo
+  function interagir(alvoForcado?: Alvo): boolean {
+    if (ctx.estado.fase !== 'jogando') return false;
+    const a = alvoForcado || ctx.mira.alvo();
+    if (!a) return colocar();
+    if (a.id === BAU) { abrirBau(a); return false; }
+    if (a.id === PORTA_FECHADA) { alternarPorta(a, PORTA_ABERTA); return false; }
+    if (a.id === PORTA_ABERTA) { alternarPorta(a, PORTA_FECHADA); return false; }
+    if (a.id === PLACA) { lerPlaca(a); return false; }
+    return colocar();
+  }
+
+  function abrirBau(a: Alvo) {
+    const m = ctx.metas.obter(a.x, a.y, a.z);
+    if (!m || m.tipo !== 'bau') return;
+    if (!podeUsar(m.dono)) {
+      avisar('🔒 Esse baú é do(a) ' + (m.dono || 'dono') + '! Só ele(a) pode abrir.');
+      ctx.audio.somErro();
+      return;
+    }
+    ctx.fluxo.soltarInputs();
+    ctx.ui.abrirBau(ctx.metas.chaveDe(a.x, a.y, a.z), m.dono ? 'Baú de ' + m.dono : 'Seu baú', true);
+    ctx.fluxo.aoPrimeiroInput();
+  }
+
+  function alternarPorta(a: Alvo, novo: number) {
+    mundo.definir(a.x, a.y, a.z, novo); // qualquer um abre/fecha; o sync leva junto
+    ctx.audio.somUI();
+    ctx.fluxo.aoPrimeiroInput();
+    ctx.salvar.agendar();
+  }
+
+  function lerPlaca(a: Alvo) {
+    const m = ctx.metas.obter(a.x, a.y, a.z);
+    if (!m || m.tipo !== 'placa') return;
+    ctx.ui.mostrarPlaca(m.texto, m.autor);
+    ctx.fluxo.aoPrimeiroInput();
   }
 
   // ----- leaf decay: folhas naturais sem tronco conectado caem -----
@@ -418,6 +538,9 @@ export function criarEdicao(ctx: Contexto): Edicao {
     passo,
     iniciarMudas,
     registrarItemNaHotbar,
+    ganharItemPublico,
+    interagir,
+    podeUsar,
     aoEdicaoRemota,
     crescerMudasAgora() {
       for (const m of mudas) m.quandoMs = tempoMs;

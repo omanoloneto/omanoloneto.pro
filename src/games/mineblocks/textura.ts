@@ -155,6 +155,65 @@ export function criarTextura(_ctx: Contexto): Textura {
     px(ox, oy, 7, 4, '#57a24c'); px(ox, oy, 9, 6, '#57a24c');
   }
 
+  // --- 20 baú (topo): tampa de madeira com ferrolho ---
+  {
+    const [ox, oy] = base(20, [150, 104, 58], 0.06);
+    g.fillStyle = '#6e4a24';
+    for (const y of [0, 15]) g.fillRect(ox, oy + y, TILE, 1);
+    for (const x of [0, 15]) g.fillRect(ox + x, oy, 1, TILE);
+    g.fillRect(ox, oy + 7, TILE, 1); // linha da tampa
+    g.fillStyle = '#c9a227'; // ferrolho dourado no meio
+    g.fillRect(ox + 7, oy + 6, 2, 3);
+  }
+  // --- 21 baú (lado): pranchas + tranca ---
+  {
+    const [ox, oy] = base(21, [138, 94, 50], 0.06);
+    g.fillStyle = '#6e4a24';
+    for (const y of [0, 6, 15]) g.fillRect(ox, oy + y, TILE, 1);
+    for (const x of [0, 15]) g.fillRect(ox + x, oy, 1, TILE);
+    g.fillStyle = '#4a3418';
+    g.fillRect(ox + 6, oy + 4, 4, 5); // fechadura
+    g.fillStyle = '#c9a227';
+    g.fillRect(ox + 7, oy + 6, 2, 2); // buraco da chave
+  }
+  // --- 22 porta (fechada): duas folhas com maçaneta ---
+  {
+    const [ox, oy] = base(22, [150, 110, 66], 0.05);
+    g.fillStyle = '#6e4a24';
+    for (const x of [0, 7, 15]) g.fillRect(ox + x, oy, 1, TILE);
+    for (const y of [0, 15]) g.fillRect(ox, oy + y, TILE, 1);
+    g.fillRect(ox, oy + 5, TILE, 1); g.fillRect(ox, oy + 10, TILE, 1);
+    g.fillStyle = '#c9a227';
+    g.fillRect(ox + 5, oy + 8, 2, 2); // maçaneta
+  }
+  // --- 23 porta (aberta): batente com vão transparente ---
+  {
+    const ox = (23 % GRADE) * TILE;
+    const oy = Math.floor(23 / GRADE) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    // só a folha encostada num lado; resto = vão (passa e vê através)
+    g.fillStyle = '#8a6438';
+    g.fillRect(ox, oy, 4, TILE);
+    g.fillStyle = '#6e4a24';
+    g.fillRect(ox, oy, 1, TILE); g.fillRect(ox + 3, oy, 1, TILE);
+    g.fillStyle = '#c9a227';
+    g.fillRect(ox + 1, oy + 8, 1, 2);
+  }
+  // --- 24 placa: prancha em pé com risquinhos de texto ---
+  {
+    const ox = (24 % GRADE) * TILE;
+    const oy = Math.floor(24 / GRADE) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#b98a4e'; // tábua
+    g.fillRect(ox + 2, oy + 2, 12, 9);
+    g.fillStyle = '#7c5a30'; // moldura + poste
+    g.fillRect(ox + 2, oy + 2, 12, 1); g.fillRect(ox + 2, oy + 10, 12, 1);
+    g.fillRect(ox + 2, oy + 2, 1, 9); g.fillRect(ox + 13, oy + 2, 1, 9);
+    g.fillRect(ox + 7, oy + 11, 2, 4); // poste
+    g.fillStyle = '#4a3418'; // linhas de "texto"
+    for (const y of [5, 7]) g.fillRect(ox + 4, oy + y, 8, 1);
+  }
+
   // --- 17/18/19 rachaduras (overlay de quebra, cutout) ---
   {
     const riscos: Array<Array<[number, number, number, number]>> = [

@@ -63,12 +63,13 @@ export function criarSalvar(ctx: Contexto): Salvar {
   function payloadAtual(): string {
     const p = ctx.jogador;
     return JSON.stringify({
-      v: 3, // v3 = hotbar dinâmica; v2/v1 ainda carregam (migração abaixo)
+      v: 4, // v4 = metadata (baús/placas); v3/v2/v1 ainda carregam (migração abaixo)
       seed: ctx.estado.seed,
       jogador: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(3), pitch: +p.pitch.toFixed(3) },
       sel: ctx.estado.sel,
       inv: ctx.estado.inventario,
       slots: ctx.estado.hotbarSlots,
+      metas: ctx.metas.serializar(),
       blocos: codificarRLE(ctx.mundo.dados),
     });
   }
@@ -208,6 +209,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
       conflito = false;
       ctx.mundo.dados.set(blocos);
       ctx.estado.seed = p.seed >>> 0;
+      ctx.metas.carregar(p.metas); // v<4 (sem metas) → mapa vazio
       const NSLOTS = ctx.cfg.hotbarTamanho;
       ctx.estado.sel = Math.max(0, Math.min(NSLOTS - 1, p.sel | 0));
       // inventário: v2+ traz salvo; v1 (criativo antigo) migra vazio —

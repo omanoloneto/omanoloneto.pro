@@ -22,10 +22,17 @@ export function ligarInput(ctx: Contexto) {
   // ----- teclado -----
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
+    // digitando num campo (nome do baú, placa…): não sequestra as teclas
+    // pro jogo (o próprio campo trata Enter/Esc)
+    if ((e.target as HTMLElement).tagName === 'INPUT') return;
     if (e.key === 'Escape') {
       // com pointer lock o browser já solta o lock no ESC e o
       // pointerlockchange pausa; este caminho cobre o touch/sem-lock
       if (estado.fase === 'pausado') { e.preventDefault(); ctx.fluxo.continuarJogo(); }
+      else if (estado.fase === 'jogando' && ctx.ui.bauAberto() >= 0) {
+        e.preventDefault();
+        ctx.ui.fecharBau();
+      }
       else if (estado.fase === 'jogando' && !ctx.ui.els.invPainel.hidden) {
         e.preventDefault();
         alternarInventario();
@@ -60,8 +67,8 @@ export function ligarInput(ctx: Contexto) {
   // ----- hotbar: scroll cicla, clique seleciona -----
   window.addEventListener('wheel', (e) => {
     if (estado.fase !== 'jogando') return;
-    // rolando o inventário aberto (touchpad = wheel) não gira a hotbar
-    if (!ctx.ui.els.invPainel.hidden) return;
+    // rolando um painel aberto (touchpad = wheel) não gira a hotbar
+    if (ctx.ui.painelModalAberto()) return;
     ctx.ui.selecionarSlot(estado.sel + (e.deltaY > 0 ? 1 : -1), false);
   }, { passive: true });
   ctx.ui.els.hotbar.addEventListener('pointerdown', (e) => {
@@ -89,8 +96,8 @@ export function ligarInput(ctx: Contexto) {
     if (!travado) {
       pararRepetir();
       // ESC nativo saiu do lock no meio do jogo → pausa amigável
-      // (menos com o inventário aberto: soltar o mouse ali é de propósito)
-      if (estado.fase === 'jogando' && !modoTouch && ctx.ui.els.invPainel.hidden) ctx.fluxo.pausar();
+      // (menos com um painel aberto: soltar o mouse ali é de propósito)
+      if (estado.fase === 'jogando' && !modoTouch && !ctx.ui.painelModalAberto()) ctx.fluxo.pausar();
     }
   });
 
@@ -132,9 +139,14 @@ export function ligarInput(ctx: Contexto) {
     if (!travado || estado.fase !== 'jogando') return;
     e.preventDefault();
     if (e.button === 2) {
-      ctx.edicao.colocar();
+      // 1º clique interage (abre baú, alterna porta, lê placa) OU coloca;
+      // segurando repete a COLOCAÇÃO — mas SÓ se o 1º clique colocou de
+      // fato (senão segurar o direito numa placa/porta ficaria colocando
+      // bloco por cima dela a cada 240ms)
       pararColocar();
-      colocarTimer = window.setInterval(() => ctx.edicao.colocar(), 240);
+      if (ctx.edicao.interagir()) {
+        colocarTimer = window.setInterval(() => ctx.edicao.colocar(), 240);
+      }
     } else if (e.button === 0) {
       input.golpe = true;
       ctx.fluxo.aoPrimeiroInput();
@@ -230,9 +242,13 @@ export function ligarInput(ctx: Contexto) {
     if (e.pointerId === olharId) {
       olharId = -1;
       input.golpe = false;
-      // tap curto e parado no modo 🧱 coloca (quebrar agora é SEGURAR)
-      if (!tapMoveu && performance.now() - tapT0 < 220 && estado.fase === 'jogando' && estado.modoColocar) {
-        ctx.edicao.colocar();
+      // tap curto e parado: no modo 🧱 interage/coloca (quebrar é
+      // SEGURAR). No modo ⛏️, tap em porta/baú/placa TAMBÉM interage —
+      // senão a criança precisa trocar de modo só pra abrir uma porta
+      if (!tapMoveu && performance.now() - tapT0 < 220 && estado.fase === 'jogando') {
+        const alvo = ctx.mira.alvo();
+        const interativo = alvo && (alvo.id === 17 || alvo.id === 18 || alvo.id === 19 || alvo.id === 20);
+        if (estado.modoColocar || interativo) ctx.edicao.interagir();
       }
     }
   };

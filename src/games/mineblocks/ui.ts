@@ -45,6 +45,17 @@ export function criarUI(ctx: Contexto): UI {
     salvarAgoraBtn: $('[data-salvar-agora]'),
     sairBtn: $('[data-sair]'),
     pausaAviso: $('[data-pausa-aviso]'),
+    // baú (painel de troca de itens)
+    bauPainel: $('[data-bau]'),
+    bauTitulo: $('[data-bau-titulo]'),
+    bauConteudo: $('[data-bau-conteudo]'),
+    bauInventario: $('[data-bau-inv]'),
+    bauFechar: $('[data-bau-fechar]'),
+    // placa: form de escrever na colocação (leitura é via toast)
+    placaForm: $('[data-placa-form]'),
+    placaInput: $('[data-placa-input]'),
+    placaOk: $('[data-placa-ok]'),
+    placaCancelar: $('[data-placa-cancelar]'),
     // multiplayer (sala de amigos)
     formVisitar: $('[data-form-visitar]'),
     salaChip: $('[data-sala-chip]'),
@@ -208,8 +219,135 @@ export function criarUI(ctx: Contexto): UI {
     }
   }
 
+  // ----- baú (painel de troca de itens) + placa (form/leitura) -----
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
+  let bauChave = -1;
+  let placaCb: ((t: string | null) => void) | null = null;
+
+  function soltarLockPainel() {
+    if (!coarse && document.pointerLockElement) document.exitPointerLock();
+  }
+  function reTravarPainel() {
+    if (coarse) return;
+    // requestPointerLock devolve promise que pode REJEITAR (cooldown do
+    // Chrome, doc inválido): engole os dois jeitos — a criança clica na tela
+    try { ((ctx.renderer.domElement as any).requestPointerLock?.() as Promise<void> | undefined)?.catch?.(() => {}); } catch { /* browser antigo */ }
+  }
+  function esc(s: string): string {
+    return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  }
+
+  function botaoBauItem(id: number, n: number, dir: 'dep' | 'ret'): HTMLButtonElement {
+    const b = ctx.porId(id);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bau-item';
+    btn.dataset.id = String(id);
+    btn.dataset.dir = dir;
+    btn.setAttribute('aria-label', (dir === 'dep' ? 'Guardar ' : 'Pegar ') + b.nome + ', você tem ' + n);
+    btn.innerHTML = imgDoBloco(id) + '<span class="bau-item__q">' + n + '</span>';
+    return btn;
+  }
+
+  function renderBau() {
+    const m = ctx.metas.todos().get(bauChave);
+    if (!m || m.tipo !== 'bau') { fecharBau(); return; }
+    els.bauConteudo.innerHTML = '';
+    let vazio = true;
+    for (let id = 0; id < m.itens.length; id++) {
+      const n = m.itens[id] | 0;
+      if (n <= 0) continue;
+      vazio = false;
+      els.bauConteudo.appendChild(botaoBauItem(id, n, 'ret'));
+    }
+    if (vazio) els.bauConteudo.innerHTML = '<p class="bau__vazio">Baú vazio — clique nos seus itens pra guardar aqui! 👇</p>';
+    els.bauInventario.innerHTML = '';
+    let temInv = false;
+    for (const id of ctx.itens) {
+      const n = ctx.estado.inventario[id] | 0;
+      if (n <= 0) continue;
+      temInv = true;
+      els.bauInventario.appendChild(botaoBauItem(id, n, 'dep'));
+    }
+    if (!temInv) els.bauInventario.innerHTML = '<p class="bau__vazio">Você não tem itens pra guardar.</p>';
+  }
+
+  function onBauClick(e: Event) {
+    const btn = (e.target as HTMLElement).closest('.bau-item') as HTMLElement | null;
+    if (!btn || bauChave < 0) return;
+    const m = ctx.metas.todos().get(bauChave);
+    if (!m || m.tipo !== 'bau') return;
+    const id = +btn.dataset.id!;
+    const inv = ctx.estado.inventario;
+    if (btn.dataset.dir === 'dep') {
+      if ((inv[id] || 0) <= 0) return;
+      inv[id]--;
+      m.itens[id] = Math.min(999, (m.itens[id] || 0) + 1);
+    } else {
+      if ((m.itens[id] || 0) <= 0) return;
+      m.itens[id]--;
+      ctx.edicao.ganharItemPublico(id, 1);
+    }
+    ctx.metas.tocar(bauChave); // avisa o sync (o objeto mudou no lugar)
+    ctx.salvar.agendar();
+    renderBau();
+    api.atualizarContagens();
+    ctx.audio.somUI();
+  }
+  els.bauConteudo.addEventListener('click', onBauClick);
+  els.bauInventario.addEventListener('click', onBauClick);
+  els.bauFechar.addEventListener('click', () => fecharBau());
+
+  function fecharBau() {
+    if (bauChave < 0) return;
+    bauChave = -1;
+    els.bauPainel.hidden = true;
+    reTravarPainel();
+  }
+
+  // placa: form de escrever (na colocação)
+  function fecharPlacaForm(texto: string | null) {
+    if (!placaCb) return;
+    const cb = placaCb;
+    placaCb = null;
+    els.placaForm.hidden = true;
+    reTravarPainel();
+    cb(texto);
+  }
+  els.placaOk.addEventListener('click', () => fecharPlacaForm((els.placaInput as HTMLInputElement).value.trim().slice(0, 48)));
+  els.placaCancelar.addEventListener('click', () => fecharPlacaForm(null));
+  els.placaInput.addEventListener('keydown', (e) => {
+    const ev = e as KeyboardEvent;
+    if (ev.key === 'Enter') { e.preventDefault(); fecharPlacaForm((els.placaInput as HTMLInputElement).value.trim().slice(0, 48)); }
+    else if (ev.key === 'Escape') { e.preventDefault(); fecharPlacaForm(null); }
+  });
+
   const api: UI = {
     els,
+    abrirBau(chave, titulo) {
+      api.alternarCraft(false); // fecha o inventário se estava aberto
+      bauChave = chave;
+      els.bauTitulo.textContent = titulo;
+      els.bauPainel.hidden = false;
+      renderBau();
+      soltarLockPainel();
+      ctx.audio.somUI();
+      api.anunciar(titulo + ' aberto.');
+    },
+    fecharBau,
+    bauAberto: () => bauChave,
+    atualizarBau() { if (bauChave >= 0) renderBau(); },
+    pedirTextoPlaca(cb) {
+      placaCb = cb;
+      (els.placaInput as HTMLInputElement).value = '';
+      els.placaForm.hidden = false;
+      soltarLockPainel();
+      setTimeout(() => els.placaInput.focus(), 30);
+    },
+    mostrarPlaca(texto, autor) {
+      api.mostrarToast('📜 <b>' + esc(texto || '(placa em branco)') + '</b>' + (autor ? ' <span class="placa__autor">— ' + esc(autor) + '</span>' : ''), 'info', 4200);
+    },
+    painelModalAberto: () => !els.invPainel.hidden || !els.bauPainel.hidden || !els.placaForm.hidden,
     anunciar(msg) {
       // rate-limit: leitor de tela não pode virar metralhadora
       const agora = performance.now();

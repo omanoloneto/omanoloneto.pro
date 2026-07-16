@@ -44,11 +44,19 @@ export const blocos: Bloco[] = [
   // folhas COLOCADAS pela criança: mesma cara, mas nunca decaem e devolvem
   // o item ao quebrar (sem sorte de muda — anti-farm infinita)
   { id: 16, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 7, dureza: 300 },
+  // baú: guarda itens, pertence a quem colocou (metadata por posição)
+  { id: 17, nome: 'baú', tiles: [20, 21, 21], solido: true, render: 'cubo', dureza: 800 },
+  // porta: 2 estados. Fechada = sólida; aberta = atravessável (só no mundo,
+  // fora de `itens`; quebrar qualquer estado devolve a porta fechada)
+  { id: 18, nome: 'porta', tiles: [22, 22, 22], solido: true, render: 'cubo', dureza: 700 },
+  { id: 19, nome: 'porta aberta', tiles: [23, 23, 23], solido: false, render: 'recorte', drop: 18, dureza: 700 },
+  // placa: mostra uma mensagem (texto na metadata); só o autor reescreve
+  { id: 20, nome: 'placa', tiles: [24, 24, 24], solido: false, render: 'cruz', dureza: 300 },
 ];
 
 // tipos de item coletáveis (grade do inventário/E); a hotbar agora é
 // dinâmica: 9 slots vazios que enchem conforme a criança coleta
-export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15];
+export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20];
 
 // craft simples da sobrevivência: toca na receita e transforma
 // (sem mesa, sem grade — proporcional a criança de 6 anos)
@@ -64,6 +72,9 @@ export const receitas: Receita[] = [
   { de: 10, qtd: 2, para: 9, ganha: 1 }, // 2 pedregulhos → 1 tijolos
   { de: 10, qtd: 1, para: 3, ganha: 1 }, // 1 pedregulho → 1 pedra (a "fornalha")
   { de: 2, qtd: 1, para: 1, ganha: 1 }, // 1 terra → 1 grama (plantou, cresceu!)
+  { de: 6, qtd: 2, para: 17, ganha: 1 }, // 2 tábuas → 1 baú
+  { de: 6, qtd: 2, para: 18, ganha: 1 }, // 2 tábuas → 1 porta
+  { de: 6, qtd: 1, para: 20, ganha: 1 }, // 1 tábua → 1 placa
 ];
 
 export const config = {
@@ -119,9 +130,11 @@ export const config = {
     jitterMs: 200, // dessincroniza a turma (ninguém bate no servidor junto)
     nudgeMs: 250, // 1ª edição na fila apressa o próximo sync
     maxEdicoesPorSync: 200,
+    maxMetasPorSync: 64, // teto do servidor (MAX_METAS_POR_SYNC) — não estourar
     // compactação: o anfitrião manda uma foto nova quando o diário engorda
     fotoACadaEdicoes: 400,
     fotoJournalMin: 200,
+    fotoMetaMin: 300, // ou quando o diário de metadata (baú/placa) engorda
     fotoACadaMs: 90000,
     nomeMin: 2,
     nomeMax: 10,

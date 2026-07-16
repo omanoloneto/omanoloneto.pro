@@ -6,6 +6,7 @@ import { criarUI } from './ui';
 import { criarAudio } from './audio';
 import { criarTextura } from './textura';
 import { criarMundo } from './mundo';
+import { criarMetas } from './meta';
 import { gerarMundo } from './geracao';
 import { criarMalha } from './malha';
 import { criarCeu } from './ceu';
@@ -84,6 +85,7 @@ export function iniciarJogo() {
   ctx.audio.bindMute(ctx.ui.els.muteBtn, ctx.ui.els.muteIcon);
   ctx.textura = criarTextura(ctx);
   ctx.mundo = criarMundo(ctx);
+  ctx.metas = criarMetas(ctx);
   ctx.malha = criarMalha(ctx);
   const ceu = criarCeu(ctx);
   ctx.fisica = criarFisica(ctx);
@@ -456,6 +458,7 @@ export function iniciarJogo() {
       if (!carregado) {
         estado.inventario.fill(0);
         estado.hotbarSlots.fill(0);
+        ctx.metas.limpar(); // mundo novo não herda baús/placas do anterior
         gerarMundo(ctx, seed);
         jogador.x = ctx.cfg.mundo.SX / 2 + 0.5;
         jogador.z = ctx.cfg.mundo.SZ / 2 + 0.5;
@@ -627,6 +630,18 @@ export function iniciarJogo() {
     salvarAgora: () => salvar.salvarAgora('manual'),
     sync,
     bonecos: ctx.bonecos,
+    metas: ctx.metas,
+    ui: ctx.ui,
+    // teste: interage/quebra numa célula exata sem depender da mira
+    // (retorna o boolean do interagir: true = colocou bloco)
+    usar: (x: number, y: number, z: number) =>
+      ctx.edicao.interagir({ x, y, z, nx: 0, ny: 1, nz: 0, id: ctx.mundo.obter(x, y, z) }),
+    quebrarEm: (x: number, y: number, z: number) =>
+      ctx.edicao.quebrar({ x, y, z, nx: 0, ny: 1, nz: 0, id: ctx.mundo.obter(x, y, z) }),
+    // coloca mirando a célula (x,y,z) com normal (nx,ny,nz): a colocação
+    // cai em (x+nx, y+ny, z+nz) pra bloco sólido, ou no lugar se cruz
+    colocarEm: (x: number, y: number, z: number, nx: number, ny: number, nz: number) =>
+      ctx.edicao.colocar({ x, y, z, nx, ny, nz, id: ctx.mundo.obter(x, y, z) }),
     renderer, camera, scene,
     render: () => renderer.render(scene, camera),
   };
