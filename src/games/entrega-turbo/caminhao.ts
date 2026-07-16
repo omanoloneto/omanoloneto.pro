@@ -3,14 +3,16 @@
 // grandão, baú branco mais alto que a cabine com faixas refletivas na
 // traseira, rodas com calota prateada. Tudo primitiva/Shape, zero .glb.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Caminhao, Contexto } from './tipos';
+import { criarTexturaTema } from './skins-tema';
 
 export function criarCaminhao(ctx: Contexto): Caminhao {
   const { scene, skins } = ctx;
   const grupo = new THREE.Group();
 
-  const cabMat = new THREE.MeshLambertMaterial({ color: skins[0][0] });
-  const bauMat = new THREE.MeshLambertMaterial({ color: skins[0][1] });
+  const cabMat = new THREE.MeshLambertMaterial({ color: skins[0].cabine });
+  const bauMat = new THREE.MeshLambertMaterial({ color: skins[0].bau });
   const escuroMat = new THREE.MeshLambertMaterial({ color: 0x2a2e38 });
   const cinzaMat = new THREE.MeshLambertMaterial({ color: 0x8a8f99 });
   const vidroMat = new THREE.MeshBasicMaterial({ color: 0x2c3f52 });
@@ -112,16 +114,90 @@ export function criarCaminhao(ctx: Contexto): Caminhao {
   chassi.position.set(0, 0.38, 0);
   grupo.add(chassi);
 
-  // ----- rodas com calota: cilindro com material por grupo (lateral/tampas) -----
-  const rodaGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.42, 12);
-  rodaGeo.rotateZ(Math.PI / 2); // eixo pra x — tampas viram as laterais externas
+  // giroflex no teto: só aparece nas skins de bombeiro/polícia
+  const giroflex = new THREE.Group();
+  giroflex.add(new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.24), escuroMat));
+  ([[-1, 0xff3b30], [1, 0x2f7dff]] as const).forEach(([lado, cor]) => {
+    const luz = new THREE.Mesh(
+      new THREE.BoxGeometry(0.38, 0.16, 0.2),
+      new THREE.MeshBasicMaterial({ color: cor })
+    );
+    luz.position.set(lado * 0.24, 0.11, 0);
+    giroflex.add(luz);
+  });
+  giroflex.position.set(0, 2.5, 1.5);
+  giroflex.visible = false;
+  grupo.add(giroflex);
+
+  // ----- rodas: pneu torneado + calota de verdade só na face de fora -----
+  // Monta tudo com o eixo em +Y (natural pro Lathe/Cylinder), funde numa
+  // geometria só com 2 grupos de material e no fim gira o eixo pra X.
+  // Fundir mantém 1 mesh por roda: o giro (rotation.x) e os pivôs de
+  // esterço seguem valendo, e as porcas giram junto de graça.
   const pneuMat = new THREE.MeshLambertMaterial({ color: 0x23262e });
-  const calotaMat = new THREE.MeshLambertMaterial({ color: 0xc7cdd6 });
-  const rodaMats = [pneuMat, calotaMat, calotaMat];
+  const calotaMat = new THREE.MeshLambertMaterial({ color: skins[0].calota });
+
+  const R = 0.5;      // raio externo do pneu (mantém o caminhão na mesma altura)
+  const MEIA = 0.21;  // meia-largura
+
+  // pneu: perfil com ombro chanfrado — cilindro reto não tem ombro
+  const perfilPneu = [
+    new THREE.Vector2(0.3, -MEIA),
+    new THREE.Vector2(0.44, -MEIA),
+    new THREE.Vector2(R, -MEIA + 0.06),
+    new THREE.Vector2(R, MEIA - 0.06),
+    new THREE.Vector2(0.44, MEIA),
+    new THREE.Vector2(0.3, MEIA),
+  ];
+  const pneuGeo = new THREE.LatheGeometry(perfilPneu, 20);
+  // tampa escura do lado de DENTRO (antes as duas tampas eram prateadas —
+  // o caminhão tinha calota virada pro chassi, que não existe em carro nenhum)
+  const tampaInterna = new THREE.CircleGeometry(0.3, 20);
+  tampaInterna.rotateX(Math.PI / 2); // normal pra -y
+  tampaInterna.translate(0, -MEIA, 0);
+
+  // calota: aba → cone → miolo abaulado, só na face externa (+y).
+  // Perfil na mesma ordem do pneu (y crescendo), senão a normal inverte
+  // e o Lathe sai preto.
+  const perfilCalota = [
+    new THREE.Vector2(0.33, MEIA - 0.03),
+    new THREE.Vector2(0.28, MEIA + 0.005),
+    new THREE.Vector2(0.2, MEIA + 0.045),
+    new THREE.Vector2(0.1, MEIA + 0.07),
+    new THREE.Vector2(0, MEIA + 0.075),
+  ];
+  const calotaGeo = new THREE.LatheGeometry(perfilCalota, 20);
+  // aro cromado na junção pneu/calota
+  const aroGeo = new THREE.TorusGeometry(0.34, 0.035, 6, 20);
+  aroGeo.rotateX(Math.PI / 2);
+  aroGeo.translate(0, MEIA - 0.02, 0);
+  // 5 porcas em volta do miolo
+  const porcas: THREE.BufferGeometry[] = [];
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    const p = new THREE.CylinderGeometry(0.032, 0.032, 0.03, 6);
+    p.translate(Math.cos(a) * 0.19, MEIA + 0.05, Math.sin(a) * 0.19);
+    porcas.push(p);
+  }
+
+  const parteEscura = mergeGeometries([pneuGeo, tampaInterna]);
+  const parteCromada = mergeGeometries([calotaGeo, aroGeo, ...porcas]);
+  if (!parteEscura || !parteCromada) throw new Error('roda: mergeGeometries falhou (atributos incompatíveis)');
+  // useGroups: grupo 0 → pneuMat, grupo 1 → calotaMat
+  const rodaBase = mergeGeometries([parteEscura, parteCromada], true)!;
+  rodaBase.rotateZ(Math.PI / 2); // eixo pra x (convenção do resto do caminhão)
+
+  // rotateZ manda +y → -x, então a calota nasce sempre em -x: certa na roda
+  // esquerda, errada na direita. Espelhar com scale.x = -1 inverteria o
+  // winding (iluminação quebra) e girar o mesh em Y brigaria com o pivô de
+  // esterço — então assa duas geometrias, uma girada de fábrica.
+  const rodaGeoEsq = rodaBase;
+  const rodaGeoDir = rodaBase.clone().rotateY(Math.PI);
+  const rodaMats = [pneuMat, calotaMat];
   const rodas: THREE.Mesh[] = [];
   const pivosDianteiros: THREE.Group[] = [];
   ([[-1.05, 2.05, true], [1.05, 2.05, true], [-1.05, -1.9, false], [1.05, -1.9, false]] as const).forEach(([x, z, frente]) => {
-    const roda = new THREE.Mesh(rodaGeo, rodaMats);
+    const roda = new THREE.Mesh(x < 0 ? rodaGeoEsq : rodaGeoDir, rodaMats);
     rodas.push(roda);
     if (frente) {
       const pivo = new THREE.Group();
@@ -180,10 +256,23 @@ export function criarCaminhao(ctx: Contexto): Caminhao {
       caixaMesh.instanceMatrix.needsUpdate = true;
       ctx.ui.popHud('[data-caixas]', n);
     },
-    aplicarSkin(nivel) {
-      const idx = Math.min(Math.floor((nivel - 1) / 2), skins.length - 1);
-      cabMat.color.setHex(skins[idx][0]);
-      bauMat.color.setHex(skins[idx][1]);
+    aplicarSkin(id) {
+      const skin = ctx.porSkinId.get(id) || skins[0];
+      // map indo de null ↔ textura recompila o shader: sem needsUpdate a
+      // textura não aparece (ou fica grudada ao voltar pra skin de cor).
+      // Sai barato porque skin só troca na Garagem/no boot, nunca no loop.
+      const vestir = (mat: THREE.MeshLambertMaterial, cor: number, repetir: number) => {
+        const tex = skin.tema ? criarTexturaTema(skin.tema, repetir) : null;
+        if (!!mat.map !== !!tex) mat.needsUpdate = true;
+        mat.map = tex;
+        // map multiplica com color: temática precisa de branco pra textura
+        // sair na cor de verdade
+        mat.color.setHex(tex ? 0xffffff : cor);
+      };
+      vestir(cabMat, skin.cabine, 0.5);
+      vestir(bauMat, skin.bau, 0.35);
+      calotaMat.color.setHex(skin.calota); // compartilhado pelas 4 rodas
+      giroflex.visible = skin.tema === 'bombeiro' || skin.tema === 'policia';
     },
     atualizarVisual(dt, steer) {
       const { truck } = ctx;

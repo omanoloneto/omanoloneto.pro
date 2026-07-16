@@ -108,7 +108,7 @@ export function criarPedidos(ctx: Contexto): Pedidos {
   }
 
   function entregar(sim: string) {
-    const { estado, cfg, ui, audio, guia, caminhao, porSimbolo } = ctx;
+    const { estado, cfg, ui, audio, guia, caminhao, porSimbolo, garagem } = ctx;
     const p = estado.pedido!;
     const idx = p.caixas.indexOf(sim);
     if (idx === -1) return;
@@ -116,9 +116,8 @@ export function criarPedidos(ctx: Contexto): Pedidos {
     caminhao.atualizarCaixasVisiveis(p.caixas.length);
     const destino = porSimbolo.get(sim)!;
     const zona = zonaDe(sim);
-    estado.pontos += cfg.pontosPorCaixa;
+    garagem.ganharPontos(cfg.pontosPorCaixa); // placar da partida + cofre da garagem
     estado.entregasTotais++;
-    ui.popHud('[data-pontos]', estado.pontos);
     audio.somEntrega();
     ui.confete();
     guia.mostrarMorador(zona.x + 2, zona.z - 3);
@@ -132,7 +131,7 @@ export function criarPedidos(ctx: Contexto): Pedidos {
   }
 
   function concluirPedido() {
-    const { estado, cfg, ui, audio, guia, caminhao } = ctx;
+    const { estado, cfg, ui, audio, guia, garagem } = ctx;
     const p = estado.pedido!;
     let extra = 0;
     const restMs = prazoRestanteMs();
@@ -150,8 +149,7 @@ export function criarPedidos(ctx: Contexto): Pedidos {
     if (!p.bateu) extra += cfg.bonusLimpa;
     extra += (p.total - 1) * cfg.bonusCaixaExtra;
     if (extra > 0) {
-      estado.pontos += extra;
-      ui.popHud('[data-pontos]', estado.pontos);
+      garagem.ganharPontos(extra);
       ui.mostrarToast('⭐ Bônus +' + extra + '!', 'ok', 1600);
     }
     estado.pedido = null;
@@ -173,9 +171,13 @@ export function criarPedidos(ctx: Contexto): Pedidos {
     if (estado.pedidosCompletos % cfg.pedidosPorNivel === 0 && estado.nivel < cfg.nivelMax) {
       estado.nivel++;
       ui.popHud('[data-nivel]', estado.nivel);
-      caminhao.aplicarSkin(estado.nivel);
       audio.somNivel();
-      ui.mostrarBanner('Nível ' + estado.nivel + '! 🎉', estado.nivel % 2 === 1 ? 'Caminhão novo na garagem! 🚚' : '');
+      // subtítulo só quando o nível REALMENTE muda alguma coisa (a skin não
+      // troca mais por nível — quem manda é a Garagem)
+      const sub = estado.nivel === cfg.caixas2APartirDoNivel ? 'Agora são 2 caixas por pedido! 📦'
+        : estado.nivel === cfg.caixas3APartirDoNivel ? 'Agora são 3 caixas por pedido! 📦'
+        : '';
+      ui.mostrarBanner('Nível ' + estado.nivel + '! 🎉', sub);
       ui.anunciar('Nível ' + estado.nivel + '!');
     }
     agendarRespiro(cfg.respiroEntrePedidosMs);

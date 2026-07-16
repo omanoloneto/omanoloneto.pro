@@ -14,6 +14,7 @@ export function criarUI(ctx: Contexto): UI {
     fimModal: $('[data-fim]'),
     entradaModal: $('[data-entrada]'),
     recordesModal: $('[data-recordes]'),
+    garagemModal: $('[data-garagem]'),
     vidasWrap: $('[data-vidas-wrap]'),
     vidas: $('[data-vidas]'),
     prazoWrap: $('[data-prazo-wrap]'),

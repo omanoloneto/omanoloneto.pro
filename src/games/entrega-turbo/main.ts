@@ -7,6 +7,7 @@ import { criarAudio } from './audio';
 import { criarUI } from './ui';
 import { criarMundo } from './mundo';
 import { criarCaminhao } from './caminhao';
+import { criarGaragem } from './garagem';
 import { criarFisica } from './fisica';
 import { criarCamera } from './camera';
 import { criarGuia } from './guia';
@@ -65,6 +66,7 @@ export function iniciarJogo() {
     destinos: dados.destinos,
     cfg: dados.config,
     skins: dados.skins,
+    porSkinId: new Map(dados.skins.map((s: { id: string }) => [s.id, s])),
     porSimbolo: new Map(dados.destinos.map((d: { simbolo: string }) => [d.simbolo, d])),
     avenida: dados.avenida,
     motionReduzido: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -82,6 +84,8 @@ export function iniciarJogo() {
   ctx.audio.bindMute(ctx.ui.els.muteBtn, ctx.ui.els.muteIcon);
   ctx.mundo = criarMundo(ctx);
   ctx.caminhao = criarCaminhao(ctx);
+  ctx.garagem = criarGaragem(ctx);
+  ctx.caminhao.aplicarSkin(ctx.garagem.escolhida()); // já nasce com a skin comprada
   ctx.fisica = criarFisica(ctx);
   ctx.camera3 = criarCamera(ctx);
   ctx.guia = criarGuia(ctx);
@@ -223,7 +227,7 @@ export function iniciarJogo() {
       ui.popHud('[data-pontos]', 0);
       ui.popHud('[data-nivel]', 1);
       caminhao.atualizarCaixasVisiveis(0);
-      caminhao.aplicarSkin(1);
+      caminhao.aplicarSkin(ctx.garagem.escolhida());
       // nasce uma rua (célula) ao sul do depósito, já olhando pra ele
       const dep = mundo.zonas.get('D')!;
       truck.x = dep.x;
@@ -293,7 +297,7 @@ export function iniciarJogo() {
       fluxo.soltarInputs();
       pararLoop();
       audio.suspender();
-      [ui.els.pausaModal, ui.els.fimModal, ui.els.entradaModal, ui.els.recordesModal].forEach((m) => { m.hidden = true; });
+      [ui.els.pausaModal, ui.els.fimModal, ui.els.entradaModal, ui.els.recordesModal, ui.els.garagemModal].forEach((m) => { m.hidden = true; });
       ui.els.controles.hidden = true;
       ui.els.fantasma.hidden = true;
       ui.els.pauseBtn.hidden = true;
@@ -331,6 +335,11 @@ export function iniciarJogo() {
     btn.addEventListener('click', () => fluxo.comecar(btn.dataset.modo as Modo));
   });
   (document.querySelector('[data-replay]') as HTMLElement).addEventListener('click', () => fluxo.reiniciar());
+  // Garagem: da intro e do fim de turno (o fim é a hora certa — a criança
+  // acabou de ganhar as moedas)
+  document.querySelectorAll<HTMLElement>('[data-abrir-garagem]').forEach((btn) => {
+    btn.addEventListener('click', () => ctx.garagem.abrir(btn.dataset.abrirGaragem as 'inicio' | 'fim'));
+  });
   ui.els.pauseBtn.addEventListener('click', () => fluxo.pausar());
   (document.querySelector('[data-continuar]') as HTMLElement).addEventListener('click', () => fluxo.continuarJogo());
   (document.querySelector('[data-encerrar]') as HTMLElement).addEventListener('click', () => {
@@ -368,6 +377,7 @@ export function iniciarJogo() {
   (window as any).__et = {
     truck, estado, input, zonas: mundo.zonas, renderer, scene, camera,
     trafego: ctx.trafego, avenidaInfo: mundo.avenidaInfo,
+    garagem: ctx.garagem, caminhao, cfg,
     render: () => renderer.render(scene, camera),
   };
 }

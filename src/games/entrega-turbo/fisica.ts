@@ -23,7 +23,7 @@ export function criarFisica(ctx: Contexto) {
         truck.heading +=
           steer * cfg.esterco *
           Math.min(1, Math.abs(truck.v) / 3) *
-          (1 / (1 + 0.06 * Math.abs(truck.v))) *
+          (1 / (1 + cfg.estercoAmortece * Math.abs(truck.v))) *
           Math.sign(truck.v) * dt;
       }
       truck.x += Math.sin(truck.heading) * truck.v * dt;

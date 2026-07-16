@@ -4,6 +4,8 @@ import { mapa, destinos, config, skins, avenida } from '../../../data/entrega-tu
 
 const dadosJson = JSON.stringify({ mapa, destinos, config, skins, avenida });
 const letrasNome = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+// hex do three (0xf7cf3d) → css (#f7cf3d), pra amostra da skin na loja
+const css = (n: number) => '#' + n.toString(16).padStart(6, '0');
 
 const title = 'Entrega Turbo — dirija o caminhão e entregue as caixas! | Manolo Neto';
 const description =
@@ -27,6 +29,10 @@ const description =
       <div class="hud__bloco">
         <span class="hud__label">⭐</span>
         <strong data-pontos>0</strong>
+      </div>
+      <div class="hud__bloco" aria-label="Moedas guardadas na garagem">
+        <span class="hud__label">💰</span>
+        <strong data-moedas>0</strong>
       </div>
       <div class="hud__bloco">
         <span class="hud__label">Nível</span>
@@ -99,7 +105,30 @@ const description =
               <small>Você pisa no pedal e corre contra o tempo. Vale ranking!</small>
             </button>
           </div>
-          <button class="recordes-btn" type="button" data-ver-recordes>🏆 Recordes</button>
+          <div class="intro-extras">
+            <button class="recordes-btn" type="button" data-ver-recordes>🏆 Recordes</button>
+            <button class="recordes-btn recordes-btn--garagem" type="button" data-abrir-garagem="inicio">🔧 Garagem</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: garagem (loja de skins — os pontos são as moedas) -->
+    <div class="modal" data-garagem hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="garagem-title">
+        <div class="placa__topo" id="garagem-title">🔧 Garagem — 💰 <span data-garagem-saldo>0</span></div>
+        <div class="placa__corpo center">
+          <p class="aviso">Cada ponto que você faz entregando vira uma moeda. Escolha seu caminhão!</p>
+          <div class="garagem__grade" role="group" aria-label="Skins do caminhão">
+            {skins.map((s) => (
+              <button class="skin" type="button" data-skin={s.id} data-preco={s.preco} aria-pressed="false">
+                <span class="skin__amostra" style={`--cabine:${css(s.cabine)};--bau:${css(s.bau)}`}></span>
+                <span class="skin__nome">{s.emoji} {s.nome}</span>
+                <span class="skin__preco">{s.preco === 0 ? '✓ no caminhão' : '💰 ' + s.preco}</span>
+              </button>
+            ))}
+          </div>
+          <button class="botao botao--sec botao--mini" type="button" data-garagem-voltar>← Voltar</button>
         </div>
       </div>
     </div>
@@ -129,6 +158,7 @@ const description =
           <p class="aviso" data-fim-detalhe></p>
           <div class="fim-acoes">
             <button class="botao botao--go" type="button" data-gravar-nome hidden>🏆 Gravar meu nome</button>
+            <button class="botao botao--sec" type="button" data-abrir-garagem="fim">🔧 Garagem</button>
             <button class="botao botao--sec" type="button" data-replay>Dirigir de novo</button>
           </div>
         </div>
@@ -430,13 +460,47 @@ const description =
       background: linear-gradient(135deg, rgba(255, 210, 63, 0.16), rgba(255, 92, 57, 0.1));
       border-color: rgba(255, 210, 63, 0.6);
     }
+    .intro-extras { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
     .recordes-btn {
-      display: block; margin: 14px auto 0;
       font-family: inherit; cursor: pointer; font-weight: 800;
       padding: 8px 18px; border-radius: 10px; font-size: 0.92rem;
       color: #ffe9a8; background: rgba(10, 22, 44, 0.7);
       border: 2px solid rgba(255, 210, 63, 0.6);
+      touch-action: manipulation;
     }
+    .recordes-btn--garagem { color: #bfe9ff; border-color: rgba(34, 224, 255, 0.6); }
+
+    /* ===== Garagem (loja de skins) ===== */
+    /* minmax(0,1fr): sem o 0 a grade estoura a placa no 360px */
+    .garagem__grade {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+      gap: 8px; margin-bottom: 14px;
+    }
+    .skin {
+      display: grid; gap: 5px; justify-items: center;
+      padding: 8px 5px; border-radius: 12px;
+      font-family: inherit; cursor: pointer;
+      color: var(--texto); background: rgba(10, 22, 44, 0.85);
+      border: 2px solid rgba(34, 224, 255, 0.25);
+      opacity: 0.5; /* cara demais: só olhando */
+      transition: transform 0.12s ease, opacity 0.15s ease, border-color 0.15s ease;
+      touch-action: manipulation;
+    }
+    .skin.pode, .skin.skin--tem { opacity: 1; }
+    .skin.pode { border-color: rgba(110, 231, 160, 0.7); }
+    .skin.pode:hover, .skin.skin--tem:hover { transform: translateY(-2px); }
+    .skin.sel { border-color: var(--amarelo); box-shadow: 0 0 0 3px rgba(255, 210, 63, 0.3); }
+    .skin:focus-visible { outline: 3px solid var(--ciano); outline-offset: 2px; }
+    /* amostra: cabine em cima, carroceria embaixo — as duas cores da skin */
+    .skin__amostra {
+      width: 100%; max-width: 54px; aspect-ratio: 3 / 2; border-radius: 7px;
+      border: 2px solid rgba(0, 0, 0, 0.35);
+      background: linear-gradient(160deg, var(--cabine) 0 55%, var(--bau) 55% 100%);
+    }
+    .skin__nome { font-size: 0.76rem; font-weight: 800; line-height: 1.15; }
+    .skin__preco { font-size: 0.72rem; color: rgba(191, 233, 255, 0.8); }
+    .skin.sel .skin__preco { color: var(--amarelo); font-weight: 800; }
+    .skin.pode .skin__preco { color: #6ee7a0; font-weight: 800; }
 
     .nome-slots {
       font-size: 2rem; font-weight: 800; letter-spacing: 8px;

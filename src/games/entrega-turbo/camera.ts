@@ -46,7 +46,9 @@ export function criarCamera(ctx: Contexto) {
         const k = 1 - (flyoverAte - agora) / 2000;
         camera.position.lerpVectors(vistaAerea, camAlvo, k * k);
       } else {
-        camera.position.lerp(camAlvo, 1 - Math.exp(-4 * dt));
+        // k=6: o atraso em regime é v/k, então 15 m/s aqui dá os mesmos
+        // 2,5m de folga que 10 m/s dava com k=4 — a câmera não descola
+        camera.position.lerp(camAlvo, 1 - Math.exp(-6 * dt));
       }
       camera.lookAt(camOlhar);
     },

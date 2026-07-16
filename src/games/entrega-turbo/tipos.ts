@@ -2,11 +2,11 @@
 // O Contexto é o único "fio" entre os módulos: main.ts monta e todos leem.
 import type * as THREE from 'three';
 import type { config, destinos, skins, mapa, avenida } from '../../data/entrega-turbo';
-import type { Destino } from '../../data/entrega-turbo';
+import type { Destino, Skin } from '../../data/entrega-turbo';
 
 export type Cfg = typeof config;
 
-export type Fase = 'inicio' | 'jogando' | 'pausado' | 'fim' | 'entrada' | 'recordes';
+export type Fase = 'inicio' | 'jogando' | 'pausado' | 'fim' | 'entrada' | 'recordes' | 'garagem';
 export type Modo = 'facil' | 'normal';
 
 export interface Estado {
@@ -97,8 +97,16 @@ export interface Mundo {
 export interface Caminhao {
   grupo: THREE.Group;
   atualizarCaixasVisiveis(n: number): void;
-  aplicarSkin(nivel: number): void;
+  aplicarSkin(id: string): void;
   atualizarVisual(dt: number, steer: number): void;
+}
+
+export interface Garagem {
+  /** único ponto de crédito: soma no placar da partida E no cofre */
+  ganharPontos(n: number): void;
+  escolhida(): string;
+  abrir(voltarPara: 'inicio' | 'fim'): void;
+  fechar(): void;
 }
 
 export interface Guia {
@@ -167,6 +175,7 @@ export interface Contexto {
   destinos: typeof destinos;
   cfg: Cfg;
   skins: typeof skins;
+  porSkinId: Map<string, Skin>;
   avenida: typeof avenida;
   porSimbolo: Map<string, Destino>;
   motionReduzido: boolean;
@@ -184,6 +193,7 @@ export interface Contexto {
   ui: UI;
   mundo: Mundo;
   caminhao: Caminhao;
+  garagem: Garagem;
   guia: Guia;
   pedidos: Pedidos;
   trafego: Trafego;

@@ -54,19 +54,23 @@ export const config = {
   celulaM: 28,           // passo da grade (lote 20 + rua 8)
   loteM: 20,
   // ----- física arcade -----
-  vmaxFacil: 7,          // m/s (Fácil auto-acelera)
-  vmaxNormal: 10,
+  vmaxFacil: 10.5,       // m/s (Fácil auto-acelera)
+  vmaxNormal: 15,
   vmaxRe: 4,
-  aceleracao: 8,         // m/s²
-  freio: 14,
+  aceleracao: 12,        // m/s² — 12 mantém a arrancada em ~1,25s mesmo com vmax 15
+  freio: 20,             // de 15 m/s a parada dá 5,6m (com 14 daria 8m e passava da vaga)
   arrasto: 2.0,          // v -= v*arrasto*dt sem input
-  esterco: 2.2,          // rad/s base (escala com velocidade)
+  esterco: 2.4,          // rad/s base (escala com velocidade)
+  // amortece o esterço em alta: rad/s *= 1/(1 + estercoAmortece*|v|).
+  // Raio de curva = v/rad/s, e as ruas têm 8m — a 15 m/s com 0.06 dava
+  // 12,9m e o caminhão não fazia a curva. 0.035 traz pra 9,5m.
+  estercoAmortece: 0.035,
   raioColisao: 1.2,      // círculo do caminhão
   batidaFreio: 0.6,      // v *= isso ao bater
   batidaCooldownMs: 300,
   // ----- coleta/entrega -----
   raioZona: 4,           // m
-  vMaxColeta: 2.5,       // precisa estar devagar pra coletar/entregar
+  vMaxColeta: 3.0,       // precisa estar devagar pra coletar/entregar
   imaRaio: 2,            // ímã de zona (Fácil usa imaRaioFacil)
   imaRaioFacil: 2.5,
   respiroEntrePedidosMs: 1500,
@@ -76,7 +80,7 @@ export const config = {
   caixas2APartirDoNivel: 3,
   caixas3APartirDoNivel: 6,
   // ----- prazo (só Normal) -----
-  prazoVelRef: 6,        // prazo = dist/6 * fator
+  prazoVelRef: 8,        // prazo = dist/8 * fator (subiu junto com a vmax)
   prazoFatorBase: 2.0,   // fator = max(1.4, 2.0 - 0.06*(nivel-1))
   prazoFatorMin: 1.4,
   prazoQuedaPorNivel: 0.06,
@@ -106,11 +110,38 @@ export const config = {
   },
 } as const;
 
-// Skins do caminhão (cabine, baú) — troca a cada 2 níveis
-export const skins: Array<[number, number]> = [
-  [0xf7cf3d, 0xf0efe8], // amarelo com baú branco (o da foto!)
-  [0x3d7dd8, 0xf0efe8], // azul
-  [0xd94f3d, 0xf2e8d5], // vermelho clássico
-  [0x7bc950, 0xf2e8d5], // verde
-  [0x9b6dd6, 0xffd1ec], // roxo/rosa
+// ============================================================
+//  Skins do caminhão — compradas na Garagem com os pontos ganhos.
+//  O nível NÃO troca mais de skin: quem manda é a escolha da criança.
+//  `id` é o que vai pro localStorage — nunca renomeie um id existente
+//  (quem já comprou perderia a skin). Preço 0 = já vem na garagem.
+//  `tema` liga uma textura procedural (canvas, sem asset novo).
+// ============================================================
+export type Tema = 'bombeiro' | 'policia' | 'arcoiris' | 'oncinha';
+
+export type Skin = {
+  id: string;
+  nome: string;
+  emoji: string;
+  preco: number;
+  cabine: number;   // hex three.js
+  bau: number;      // plataforma + guardas da carroceria
+  calota: number;   // a calota faz parte da skin
+  tema?: Tema;
+};
+
+// Escada de preço: ~100 pts/caixa + bônus ⇒ ~250/pedido, ~800/nível.
+// A 1ª compra cai já na 1ª partida; a coleção toda leva várias.
+export const skins: Skin[] = [
+  { id: 'amarelo',  nome: 'Amarelinho', emoji: '🟡', preco: 0,    cabine: 0xf7cf3d, bau: 0xf0efe8, calota: 0xc7cdd6 }, // o da foto!
+  { id: 'azul',     nome: 'Azulão',     emoji: '🔵', preco: 300,  cabine: 0x3d7dd8, bau: 0xf0efe8, calota: 0xc7cdd6 },
+  { id: 'vermelho', nome: 'Vermelhão',  emoji: '🔴', preco: 300,  cabine: 0xd94f3d, bau: 0xf2e8d5, calota: 0xc7cdd6 },
+  { id: 'verde',    nome: 'Verdinho',   emoji: '🟢', preco: 600,  cabine: 0x7bc950, bau: 0xf2e8d5, calota: 0xc7cdd6 },
+  { id: 'roxo',     nome: 'Uva',        emoji: '🟣', preco: 600,  cabine: 0x9b6dd6, bau: 0xffd1ec, calota: 0xe6d5f5 },
+  { id: 'bombeiro', nome: 'Bombeiro',   emoji: '🚒', preco: 1200, cabine: 0xd42a1e, bau: 0xf5f5f5, calota: 0xe8e8e8, tema: 'bombeiro' },
+  { id: 'policia',  nome: 'Polícia',    emoji: '🚓', preco: 1200, cabine: 0x1e2a4a, bau: 0xf5f5f5, calota: 0x9aa3b0, tema: 'policia' },
+  { id: 'arcoiris', nome: 'Arco-Íris',  emoji: '🌈', preco: 2000, cabine: 0xffffff, bau: 0xfff4d6, calota: 0xffd23f, tema: 'arcoiris' },
+  { id: 'oncinha',  nome: 'Oncinha',    emoji: '🐆', preco: 2500, cabine: 0xe8a33d, bau: 0xf5deb3, calota: 0x6b4a22, tema: 'oncinha' },
 ];
+
+export const skinGratis = skins[0].id;

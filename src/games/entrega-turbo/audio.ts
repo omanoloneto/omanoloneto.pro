@@ -67,7 +67,9 @@ export function criarAudio(ctx: Contexto): Audio {
       if (!motorGain || !actx || !motorOsc) return;
       const alvoGain = ctx.estado.mudo || ctx.estado.fase !== 'jogando' ? 0 : 0.028;
       motorGain.gain.setTargetAtTime(alvoGain, actx.currentTime, 0.08);
-      motorOsc.frequency.setTargetAtTime(70 + Math.abs(ctx.truck.v) * 16, actx.currentTime, 0.05);
+      // ×11 (não ×16): com vmax 15 o ×16 levava a serra a 310Hz — um berro.
+      // Assim o pico fica nos ~235Hz de sempre.
+      motorOsc.frequency.setTargetAtTime(70 + Math.abs(ctx.truck.v) * 11, actx.currentTime, 0.05);
     },
     silenciarMotor() {
       if (motorGain && actx) motorGain.gain.setTargetAtTime(0, actx.currentTime, 0.05);
