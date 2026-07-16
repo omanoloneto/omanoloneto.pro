@@ -1,0 +1,15 @@
+# Cache do site estático (LiteSpeed/Apache lê mod_headers).
+# Regra: HTML nunca serve velho; assets com hash no nome cacheiam pra sempre.
+<IfModule mod_headers.c>
+  # HTML e JSON: revalida sempre. Como já vai ETag/Last-Modified, quando
+  # nada mudou o servidor responde 304 (barato); quando muda, vem fresco.
+  <FilesMatch "\.(html|json)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+
+  # JS/CSS/fontes: o Astro põe hash no nome (_astro/…​.HASH.js) → o conteúdo
+  # nunca muda pra um mesmo nome, então pode cachear 1 ano imutável.
+  <FilesMatch "\.(js|css|woff2?)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+</IfModule>
