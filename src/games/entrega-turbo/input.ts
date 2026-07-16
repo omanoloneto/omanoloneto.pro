@@ -18,6 +18,8 @@ export function ligarInput(ctx: Contexto) {
     if (e.key === 'Escape') {
       if (estado.fase === 'jogando') { e.preventDefault(); fluxo.pausar(); }
       else if (estado.fase === 'pausado') { e.preventDefault(); fluxo.continuarJogo(); }
+      // Esc na loja volta pra de onde ela foi aberta (pausa, intro ou fim)
+      else if (estado.fase === 'garagem') { e.preventDefault(); ctx.garagem.fechar(); }
       return;
     }
     if (estado.fase === 'entrada') {

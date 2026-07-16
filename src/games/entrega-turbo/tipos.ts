@@ -101,11 +101,14 @@ export interface Caminhao {
   atualizarVisual(dt: number, steer: number): void;
 }
 
+/** de onde a Garagem foi aberta — é pra onde o "Voltar" devolve */
+export type VoltarPara = 'inicio' | 'fim' | 'pausado';
+
 export interface Garagem {
   /** único ponto de crédito: soma no placar da partida E no cofre */
   ganharPontos(n: number): void;
   escolhida(): string;
-  abrir(voltarPara: 'inicio' | 'fim'): void;
+  abrir(voltarPara: VoltarPara): void;
   fechar(): void;
 }
 

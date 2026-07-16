@@ -117,7 +117,7 @@ export const config = {
 //  (quem já comprou perderia a skin). Preço 0 = já vem na garagem.
 //  `tema` liga uma textura procedural (canvas, sem asset novo).
 // ============================================================
-export type Tema = 'bombeiro' | 'policia' | 'arcoiris' | 'oncinha';
+export type Tema = 'bombeiro' | 'policia' | 'arcoiris' | 'oncinha' | 'bobesponja' | 'patrick';
 
 export type Skin = {
   id: string;
@@ -142,6 +142,11 @@ export const skins: Skin[] = [
   { id: 'policia',  nome: 'Polícia',    emoji: '🚓', preco: 1200, cabine: 0x1e2a4a, bau: 0xf5f5f5, calota: 0x9aa3b0, tema: 'policia' },
   { id: 'arcoiris', nome: 'Arco-Íris',  emoji: '🌈', preco: 2000, cabine: 0xffffff, bau: 0xfff4d6, calota: 0xffd23f, tema: 'arcoiris' },
   { id: 'oncinha',  nome: 'Oncinha',    emoji: '🐆', preco: 2500, cabine: 0xe8a33d, bau: 0xf5deb3, calota: 0x6b4a22, tema: 'oncinha' },
+  // os dois têm rosto no para-brisa (ver criarTexturaRosto). Emoji 🍍/🌟 são
+  // de 2010: 🧽 é de 2018 (quadradinho em Chromebook velho) e ⭐ já é o
+  // ícone dos pontos no HUD.
+  { id: 'bobesponja', nome: 'Bob Esponja', emoji: '🍍', preco: 3000, cabine: 0xf5e94e, bau: 0x8b6d3f, calota: 0xf5f5f5, tema: 'bobesponja' },
+  { id: 'patrick',    nome: 'Patrick',     emoji: '🌟', preco: 3000, cabine: 0xf2a3c7, bau: 0x6fbf5e, calota: 0x7cc36a, tema: 'patrick' },
 ];
 
 export const skinGratis = skins[0].id;

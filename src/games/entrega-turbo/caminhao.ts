@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Caminhao, Contexto } from './tipos';
-import { criarTexturaTema } from './skins-tema';
+import { criarTexturaTema, criarTexturaRosto } from './skins-tema';
 
 export function criarCaminhao(ctx: Contexto): Caminhao {
   const { scene, skins } = ctx;
@@ -42,6 +42,17 @@ export function criarCaminhao(ctx: Contexto): Caminhao {
   paraBrisa.position.set(0, 2.17, 2.47);
   paraBrisa.rotation.x = -0.97; // acompanha a rampa (2.72,1.95)→(2.12,2.36)
   grupo.add(paraBrisa);
+  // rosto (só Bob/Patrick): plano transparente colado no para-brisa — o
+  // vidro aparece em volta dos olhos. Desloca 2cm pela NORMAL do vidro
+  // (não pelo z), senão z-fighta: (0,0,1) girada -0.97 em x → (0,.825,.565)
+  const rosto = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.9, 0.78),
+    new THREE.MeshBasicMaterial({ map: criarTexturaRosto('bobesponja'), transparent: true })
+  );
+  rosto.position.set(0, 2.17 + 0.0165, 2.47 + 0.0113);
+  rosto.rotation.x = -0.97;
+  rosto.visible = false;
+  grupo.add(rosto);
   // janelas laterais
   ([-1, 1] as const).forEach((lado) => {
     const jan = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.6), vidroMat);
@@ -261,18 +272,23 @@ export function criarCaminhao(ctx: Contexto): Caminhao {
       // map indo de null ↔ textura recompila o shader: sem needsUpdate a
       // textura não aparece (ou fica grudada ao voltar pra skin de cor).
       // Sai barato porque skin só troca na Garagem/no boot, nunca no loop.
-      const vestir = (mat: THREE.MeshLambertMaterial, cor: number, repetir: number) => {
-        const tex = skin.tema ? criarTexturaTema(skin.tema, repetir) : null;
+      const vestir = (mat: THREE.MeshLambertMaterial, cor: number, repetir: number, parte: 'cabine' | 'bau') => {
+        const tex = skin.tema ? criarTexturaTema(skin.tema, repetir, parte) : null;
         if (!!mat.map !== !!tex) mat.needsUpdate = true;
         mat.map = tex;
         // map multiplica com color: temática precisa de branco pra textura
         // sair na cor de verdade
         mat.color.setHex(tex ? 0xffffff : cor);
       };
-      vestir(cabMat, skin.cabine, 0.5);
-      vestir(bauMat, skin.bau, 0.35);
+      vestir(cabMat, skin.cabine, 0.5, 'cabine');
+      vestir(bauMat, skin.bau, 0.35, 'bau');
       calotaMat.color.setHex(skin.calota); // compartilhado pelas 4 rodas
       giroflex.visible = skin.tema === 'bombeiro' || skin.tema === 'policia';
+      // rosto: só troca textura↔textura (o material já nasce com map), então
+      // não recompila shader — a pegadinha do needsUpdate não vale aqui
+      const cara = criarTexturaRosto(skin.tema);
+      rosto.visible = !!cara;
+      if (cara) (rosto.material as THREE.MeshBasicMaterial).map = cara;
     },
     atualizarVisual(dt, steer) {
       const { truck } = ctx;

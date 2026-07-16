@@ -2,7 +2,7 @@
 // roda o loop rAF e cuida do fluxo (começar/pausar/fim/reiniciar).
 // Cada sistema vive no seu módulo; este arquivo só rege a banda.
 import * as THREE from 'three';
-import type { Contexto, Estado, Input, Modo, Truck } from './tipos';
+import type { Contexto, Estado, Input, Modo, Truck, VoltarPara } from './tipos';
 import { criarAudio } from './audio';
 import { criarUI } from './ui';
 import { criarMundo } from './mundo';
@@ -338,7 +338,7 @@ export function iniciarJogo() {
   // Garagem: da intro e do fim de turno (o fim é a hora certa — a criança
   // acabou de ganhar as moedas)
   document.querySelectorAll<HTMLElement>('[data-abrir-garagem]').forEach((btn) => {
-    btn.addEventListener('click', () => ctx.garagem.abrir(btn.dataset.abrirGaragem as 'inicio' | 'fim'));
+    btn.addEventListener('click', () => ctx.garagem.abrir(btn.dataset.abrirGaragem as VoltarPara));
   });
   ui.els.pauseBtn.addEventListener('click', () => fluxo.pausar());
   (document.querySelector('[data-continuar]') as HTMLElement).addEventListener('click', () => fluxo.continuarJogo());

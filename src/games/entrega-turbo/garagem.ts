@@ -7,7 +7,7 @@
 //
 // Crédito é AO VIVO, não no fim do turno: criança fecha a aba no meio
 // da partida e não pode perder o que ganhou.
-import type { Contexto, Garagem } from './tipos';
+import type { Contexto, Fase, Garagem, VoltarPara } from './tipos';
 
 const CHAVE = 'entrega-turbo:garagem';
 const VERSAO = 1;
@@ -83,7 +83,15 @@ export function criarGaragem(ctx: Contexto): Garagem {
   const modal = $('[data-garagem]');
   const saldoEl = $('[data-garagem-saldo]');
   const cards = Array.from(document.querySelectorAll<HTMLElement>('[data-skin]'));
-  let voltarPara: 'inicio' | 'fim' = 'inicio';
+  let voltarPara: VoltarPara = 'inicio';
+
+  // de onde a loja abre → pra onde o "Voltar" devolve. Abrir esconde todos
+  // os três; fechar reabre só o de origem.
+  const DESTINOS: Array<{ de: VoltarPara; fase: Fase; modal: string; foco: string }> = [
+    { de: 'inicio', fase: 'inicio', modal: 'introModal', foco: '[data-modo="facil"]' },
+    { de: 'fim', fase: 'fim', modal: 'fimModal', foco: '[data-replay]' },
+    { de: 'pausado', fase: 'pausado', modal: 'pausaModal', foco: '[data-continuar]' },
+  ];
 
   function pintarSaldo() {
     saldoEl.textContent = String(save.saldo);
@@ -160,8 +168,7 @@ export function criarGaragem(ctx: Contexto): Garagem {
     abrir(volta) {
       voltarPara = volta;
       ctx.estado.fase = 'garagem';
-      ctx.ui.els.introModal.hidden = true;
-      ctx.ui.els.fimModal.hidden = true;
+      DESTINOS.forEach((d) => { ctx.ui.els[d.modal].hidden = true; });
       pintarSaldo();
       pintarCards();
       modal.hidden = false;
@@ -171,15 +178,10 @@ export function criarGaragem(ctx: Contexto): Garagem {
     },
     fechar() {
       modal.hidden = true;
-      const volta = voltarPara === 'fim' ? '[data-replay]' : '[data-modo="facil"]';
-      if (voltarPara === 'fim') {
-        ctx.estado.fase = 'fim';
-        ctx.ui.els.fimModal.hidden = false;
-      } else {
-        ctx.estado.fase = 'inicio';
-        ctx.ui.els.introModal.hidden = false;
-      }
-      setTimeout(() => $(volta).focus(), 60);
+      const d = DESTINOS.find((x) => x.de === voltarPara)!;
+      ctx.estado.fase = d.fase;
+      ctx.ui.els[d.modal].hidden = false;
+      setTimeout(() => $(d.foco).focus(), 60);
     },
   };
 
