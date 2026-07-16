@@ -24,6 +24,7 @@ export function criarUI(ctx: Contexto): UI {
     fantasma: $('[data-fantasma]'),
     fantasmaTxt: $('[data-fantasma-txt]'),
     banner: $('[data-banner-nivel]'),
+    danoFlash: $('[data-dano-flash]'),
     resgate: $('[data-resgate]'),
     destinoAtual: $('[data-destino-atual]'),
     pauseBtn: $('[data-pause]'),
@@ -75,6 +76,11 @@ export function criarUI(ctx: Contexto): UI {
       els.banner.classList.add('show');
       clearTimeout(bannerTimer);
       bannerTimer = window.setTimeout(() => { els.banner.hidden = true; }, 2200);
+    },
+    flashDano() {
+      els.danoFlash.classList.remove('show');
+      void els.danoFlash.offsetWidth;
+      els.danoFlash.classList.add('show');
     },
     confete() {
       if (ctx.motionReduzido) return;

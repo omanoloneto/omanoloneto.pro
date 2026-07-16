@@ -101,20 +101,22 @@ export const config = {
   // ----- tráfego -----
   trafego: {
     carrosBR: 5,        // decorativos, em cima da rodovia
-    velBRMin: 8,
-    velBRMax: 12,
+    velBRMin: 10,
+    velBRMax: 14,
     carrosCidade: 4,
     carrosCidadePorNivel: 1,
     carrosCidadeMax: 12,
-    velCidade: 4.5,
+    velCidade: 5.5,
     raioCarro: 1.1,
     invencivelMs: 2000, // sem dano duplo logo após uma batida
     pedestres: 2,
     pedestresACada: 2,
     pedestresMax: 8,
-    velPedestre: 1.1,
+    velPedestre: 1.6,
     raioPedestre: 0.9,
     pedestreOffset: 3.4,
+    cruzaBaseMs: 7000,
+    cruzaVarMs: 9000,
   },
 } as const;
 

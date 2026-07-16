@@ -227,6 +227,7 @@ export function criarPedidos(ctx: Contexto): Pedidos {
     audio.somBatida();
     estado.vidas--;
     ui.atualizarVidas(false);
+    ui.flashDano();
     ui.mostrarToast(toast, 'info', 2200);
     ui.anunciar(anuncio + ' Vidas: ' + estado.vidas + '.');
     if (estado.vidas <= 0) {

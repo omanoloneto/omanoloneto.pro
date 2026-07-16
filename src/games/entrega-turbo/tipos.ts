@@ -151,6 +151,7 @@ export interface UI {
   popHud(sel: string, valor: number | string): void;
   atualizarVidas(pop: boolean): void;
   mostrarBanner(titulo: string, sub?: string): void;
+  flashDano(): void;
   confete(): void;
   elogio(): string;
 }

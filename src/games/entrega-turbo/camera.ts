@@ -50,7 +50,18 @@ export function criarCamera(ctx: Contexto) {
         // 2,5m de folga que 10 m/s dava com k=4 — a câmera não descola
         camera.position.lerp(camAlvo, 1 - Math.exp(-6 * dt));
       }
+      if (!ctx.motionReduzido && agora < truck.squashAte) {
+        camera.position.x += (Math.random() - 0.5) * 0.24;
+        camera.position.y += (Math.random() - 0.5) * 0.24;
+        camera.position.z += (Math.random() - 0.5) * 0.24;
+      }
       camera.lookAt(camOlhar);
+      const fovAlvo = ctx.motionReduzido ? 55 : 55 + 8 * Math.min(1, Math.abs(truck.v) / ctx.cfg.vmaxNormal);
+      const fovNovo = camera.fov + (fovAlvo - camera.fov) * (1 - Math.exp(-4 * dt));
+      if (Math.abs(fovNovo - camera.fov) > 0.01) {
+        camera.fov = fovNovo;
+        camera.updateProjectionMatrix();
+      }
     },
   };
 }

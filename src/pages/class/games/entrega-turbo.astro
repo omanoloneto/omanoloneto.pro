@@ -73,6 +73,7 @@ const description =
         <span data-fantasma-txt>◀ ▶ pra virar</span>
       </div>
 
+      <div class="dano-flash" data-dano-flash aria-hidden="true"></div>
       <div class="toast" data-toast aria-live="polite" hidden></div>
       <div class="banner-nivel" data-banner-nivel aria-hidden="true" hidden>
         <strong data-banner-titulo></strong>
@@ -343,6 +344,17 @@ const description =
       position: absolute; right: 12px; top: 12px; z-index: 40;
     }
     .resgate[hidden] { display: none; }
+
+    .dano-flash {
+      position: absolute; inset: 0; z-index: 42;
+      pointer-events: none; opacity: 0;
+      box-shadow: inset 0 0 90px 24px rgba(255, 45, 45, 0.75);
+    }
+    .dano-flash.show { animation: dano-pisca 0.35s ease-out; }
+    @keyframes dano-pisca {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
 
     /* ===== Toast / banner ===== */
     .toast {

@@ -10,6 +10,10 @@ import { criarTexturaTema, criarTexturaRosto } from './skins-tema';
 export function criarCaminhao(ctx: Contexto): Caminhao {
   const { scene, skins } = ctx;
   const grupo = new THREE.Group();
+  grupo.rotation.order = 'YXZ';
+  let rollAtual = 0;
+  let pitchAtual = 0;
+  let vAnterior = 0;
 
   const cabMat = new THREE.MeshLambertMaterial({ color: skins[0].cabine });
   const bauMat = new THREE.MeshLambertMaterial({ color: skins[0].bau });
@@ -294,6 +298,15 @@ export function criarCaminhao(ctx: Contexto): Caminhao {
       const { truck } = ctx;
       grupo.position.set(truck.x, 0, truck.z);
       grupo.rotation.y = truck.heading;
+      const suave = 1 - Math.exp(-8 * dt);
+      const rollAlvo = ctx.motionReduzido ? 0 : -steer * Math.min(1, Math.abs(truck.v) / 6) * 0.06;
+      rollAtual += (rollAlvo - rollAtual) * suave;
+      grupo.rotation.z = rollAtual;
+      const acc = dt > 0 ? (truck.v - vAnterior) / dt : 0;
+      vAnterior = truck.v;
+      const pitchAlvo = ctx.motionReduzido ? 0 : Math.max(-0.05, Math.min(0.05, -acc * 0.004));
+      pitchAtual += (pitchAlvo - pitchAtual) * suave;
+      grupo.rotation.x = pitchAtual;
       const squash = performance.now() < truck.squashAte && !ctx.motionReduzido ? 0.92 : 1;
       grupo.scale.set(1, squash, 1);
       const giro = (truck.v * dt) / 0.5;

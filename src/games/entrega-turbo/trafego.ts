@@ -12,7 +12,18 @@ type Carro =
   | { tipo: 'br'; t: number; vel: number; mao: 1 | -1 }
   | { tipo: 'rua'; x: number; z: number; dir: 1 | -1; vel: number; velAtual: number };
 
-type Pedestre = { x: number; z: number; dir: 1 | -1; vel: number; velAtual: number };
+type Pedestre = {
+  x: number;
+  z: number;
+  dir: 1 | -1;
+  vel: number;
+  velAtual: number;
+  ruaZ: number;
+  lado: 1 | -1;
+  fase: 'beirada' | 'cruzando';
+  alvoZ: number;
+  proximoCruzeMs: number;
+};
 
 export function criarTrafego(ctx: Contexto) {
   const { scene, cfg } = ctx;
@@ -108,7 +119,9 @@ export function criarTrafego(ctx: Contexto) {
     pedCabeca.count = pedestres.length;
     pedestres.forEach((p, i) => {
       const bob = ctx.motionReduzido ? 0 : Math.sin(tempoMs / 125 + i * 1.7) * 0.06;
-      const ang = p.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      const ang = p.fase === 'cruzando'
+        ? (p.alvoZ > p.z ? 0 : Math.PI)
+        : (p.dir > 0 ? Math.PI / 2 : -Math.PI / 2);
       q.setFromAxisAngle(eixoY, ang);
       posV.set(p.x, 0.85 + bob, p.z);
       m.compose(posV, q, um);
@@ -153,6 +166,11 @@ export function criarTrafego(ctx: Contexto) {
       dir: i % 3 === 0 ? -1 : 1,
       vel: TC.velPedestre * (0.8 + ((i * 5) % 5) * 0.1),
       velAtual: TC.velPedestre,
+      ruaZ: laneBase,
+      lado,
+      fase: 'beirada',
+      alvoZ: 0,
+      proximoCruzeMs: tempoMs + 3000 + ((i * 2500) % 8000),
     };
   }
 
@@ -244,11 +262,29 @@ export function criarTrafego(ctx: Contexto) {
       const dxT = truck.x - p.x;
       const dzT = truck.z - p.z;
       const dT = Math.hypot(dxT, dzT);
-      const velAlvo = dT < 5 ? 0 : p.vel;
-      p.velAtual += (velAlvo - p.velAtual) * Math.min(1, 4 * dt);
-      p.x += p.velAtual * p.dir * dt;
-      if (p.x > LIM) p.x = Math.abs(truck.x + LIM) > 35 ? -LIM : LIM;
-      if (p.x < -LIM) p.x = Math.abs(truck.x - LIM) > 35 ? LIM : -LIM;
+      if (p.fase === 'cruzando') {
+        p.velAtual += (p.vel - p.velAtual) * Math.min(1, 4 * dt);
+        const passoZ = p.velAtual * dt;
+        const falta = p.alvoZ - p.z;
+        if (Math.abs(falta) <= passoZ) {
+          p.z = p.alvoZ;
+          p.lado = -p.lado as 1 | -1;
+          p.fase = 'beirada';
+          p.proximoCruzeMs = tempoMs + TC.cruzaBaseMs + ((pedestres.indexOf(p) * 3777) % TC.cruzaVarMs);
+        } else {
+          p.z += Math.sign(falta) * passoZ;
+        }
+      } else {
+        const velAlvo = dT < 5 ? 0 : p.vel;
+        p.velAtual += (velAlvo - p.velAtual) * Math.min(1, 4 * dt);
+        p.x += p.velAtual * p.dir * dt;
+        if (p.x > LIM) p.x = Math.abs(truck.x + LIM) > 35 ? -LIM : LIM;
+        if (p.x < -LIM) p.x = Math.abs(truck.x - LIM) > 35 ? LIM : -LIM;
+        if (tempoMs > p.proximoCruzeMs && dT > 12) {
+          p.fase = 'cruzando';
+          p.alvoZ = p.ruaZ - p.lado * TC.pedestreOffset;
+        }
+      }
       const alcance = TC.raioPedestre + ctx.cfg.raioColisao;
       if (dT < alcance) {
         const dn = dT || 0.001;
@@ -259,6 +295,9 @@ export function criarTrafego(ctx: Contexto) {
           truck.squashAte = performance.now() + 120;
           truck.v *= 0.4;
           p.x = (truck.x > 0 ? -1 : 1) * LIM;
+          p.z = p.ruaZ + p.lado * TC.pedestreOffset;
+          p.fase = 'beirada';
+          p.proximoCruzeMs = tempoMs + TC.cruzaBaseMs;
           ctx.pedidos.bateuEmPedestre();
         }
       }
