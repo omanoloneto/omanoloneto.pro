@@ -34,6 +34,13 @@ export const config = {
   // pontos = sílabas da palavra × este valor (palavra maior vale mais)
   pontosPorSilaba: 10,
   somLigadoInicial: true,
+  // ---- Modo Fácil (vagão = 1 letra; arcade com vidas + ranking próprio) ----
+  vidasFacil: 5,            // corações; cada Partir errado tira 1
+  distratoresLetrasFacil: 4, // letras extras (que não servem) no pátio
+  // ---- Ranking arcade (nome de 2 a 6 letras A–Z) ----
+  rankingMax: 10,
+  nomeMin: 2,
+  nomeMax: 6,
 } as const;
 
 // Rampa dupla: quantidade de palavras E tamanho crescem juntos.

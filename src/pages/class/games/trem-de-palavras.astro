@@ -4,6 +4,9 @@ import { palavras, palavrasExtras, niveis, distratores, config } from '../../../
 
 const dadosJson = JSON.stringify({ palavras, palavrasExtras, niveis, distratores, config });
 
+// Letras da grade do ranking (nome arcade).
+const letrasNome = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
 const title = 'Trem de Palavras — monte palavras com sílabas | Manolo Neto';
 const description =
   'Jogo educativo para crianças montarem palavras: arraste os vagões-sílaba para o trilho e faça o trem partir. Níveis de 2, 3 e 4 sílabas, em português.';
@@ -13,6 +16,13 @@ const description =
   <script type="application/json" data-dados set:html={dadosJson}></script>
 
   <main id="conteudo" class="tp" data-game role="application" aria-label="Jogo: monte palavras com os vagões de sílabas">
+    <!-- sprite do coração (modo fácil) -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <symbol id="coracao" viewBox="0 0 32 32">
+        <path d="M16 29 C8 22 2 16.5 2 10.5 C2 6 5.5 3 9.5 3 C12.3 3 14.8 4.6 16 7 C17.2 4.6 19.7 3 22.5 3 C26.5 3 30 6 30 10.5 C30 16.5 24 22 16 29 Z" fill="#ff5b7f" stroke="#c22c53" stroke-width="1.5"/>
+      </symbol>
+    </svg>
+
     <!-- Cenário -->
     <div class="ceu" aria-hidden="true">
       <span class="sol"></span>
@@ -27,10 +37,14 @@ const description =
         <span class="hud__label">Pontos</span>
         <strong data-pontos>0</strong>
       </div>
-      <div class="hud__bloco">
+      <div class="hud__bloco" data-nivel-wrap>
         <span class="hud__label">Nível</span>
         <strong data-nivel>1</strong>
         <span class="hud__sub" data-nivel-total>de 3</span>
+      </div>
+      <div class="hud__bloco hud__bloco--vidas" data-vidas-wrap hidden>
+        <span class="hud__label">Vidas</span>
+        <span class="vidas" data-vidas></span>
       </div>
       <div class="hud__bloco hud__bloco--nome" data-nivel-nome aria-hidden="true"></div>
       <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
@@ -85,14 +99,18 @@ const description =
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
         <div class="placa__topo" id="intro-title">🚂 Trem de Palavras</div>
         <div class="placa__corpo">
-          <ol class="regras">
-            <li>Olhe as <b>figuras</b> das cargas esperando na estação. 📦</li>
-            <li><b>Toque ou arraste</b> os vagões-sílaba para o trilho e forme o nome da carga.</li>
-            <li>Aperte <b>Partir!</b> — se a palavra estiver certa, o trem leva a carga e você ganha pontos! 🎉</li>
-            <li>Cada viagem leva <b>mais cargas</b>, e palavra maior vale <b>mais pontos</b>.</li>
-            <li>No fim, a <b>Estação Livre</b>: invente suas palavras — vale qualquer palavra de verdade! ✨</li>
-          </ol>
-          <button class="botao botao--go" type="button" data-comecar>Tudo a bordo!</button>
+          <p class="escolha__titulo">Como você quer jogar?</p>
+          <div class="escolha" role="group" aria-label="Escolha o modo de jogo">
+            <button class="botao-modo botao-modo--facil" type="button" data-modo="facil">
+              <span class="botao-modo__titulo">🚂 Fácil — uma letra por vez</span>
+              <small>A palavra vem quase pronta; você monta só o final com as letras. <b>5 vidas</b> e vale <b>ranking</b>! 🏆</small>
+            </button>
+            <button class="botao-modo botao-modo--aventura" type="button" data-modo="aventura">
+              <span class="botao-modo__titulo">🧩 Aventura — sílabas</span>
+              <small>Monte palavras com os vagões-sílaba pelos níveis, até a <b>Estação Livre</b>. ✨</small>
+            </button>
+          </div>
+          <button class="botao botao--sec" type="button" data-ver-recordes>🏆 Recordes do Fácil</button>
         </div>
       </div>
     </div>
@@ -119,6 +137,55 @@ const description =
           <p class="placar">Sua pontuação: <strong data-final-score>0</strong></p>
           <p class="aviso" data-final-msg></p>
           <button class="botao botao--go" type="button" data-replay>Jogar de novo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: fim de jogo (modo fácil, acabaram as vidas) -->
+    <div class="modal" data-fim hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="fim-title">
+        <div class="placa__topo" id="fim-title">Fim da viagem! 🚂</div>
+        <div class="placa__corpo center">
+          <p class="grande" data-fim-msg></p>
+          <p class="placar">Seus pontos: <strong data-fim-score>0</strong></p>
+          <p class="aviso">Grave seu nome no ranking e tente bater o recorde da turma!</p>
+          <div class="recordes-acoes">
+            <button class="botao botao--go" type="button" data-gravar-nome hidden>🏆 Gravar meu nome</button>
+            <button class="botao botao--sec" type="button" data-fim-replay>Jogar de novo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: nome (arcade) -->
+    <div class="modal" data-nome hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="nome-title">
+        <div class="placa__topo" id="nome-title">Digite seu nome, maquinista!</div>
+        <div class="placa__corpo center">
+          <p class="nome-slots" data-nome-slots aria-live="polite">_ _ _</p>
+          <div class="grade-letras" role="group" aria-label="Letras para o nome">
+            {letrasNome.map((l) => (
+              <button class="letra" type="button" data-tecla-nome={l}>{l}</button>
+            ))}
+            <button class="letra letra--apagar" type="button" data-nome-apagar aria-label="Apagar letra">⌫</button>
+            <button class="letra letra--ok" type="button" data-nome-ok aria-label="Confirmar nome">✓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: recordes -->
+    <div class="modal" data-recordes hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="recordes-title">
+        <div class="placa__topo" id="recordes-title">🏆 Recordes do Fácil</div>
+        <div class="placa__corpo center">
+          <ol class="tabela" data-tabela></ol>
+          <p class="aviso" data-recordes-vazio hidden>Ninguém gravou o nome ainda. Seja o primeiro! 🚂</p>
+          <p class="aviso aviso--fonte" data-recordes-fonte></p>
+          <div class="recordes-acoes">
+            <button class="botao botao--go" type="button" data-recordes-replay>Jogar de novo</button>
+            <button class="botao botao--sec" type="button" data-voltar-intro hidden>Voltar</button>
+          </div>
         </div>
       </div>
     </div>
@@ -415,6 +482,94 @@ const description =
     .botao:active { transform: translateY(3px); box-shadow: 0 1px 0 #1d5619; }
     .botao:focus-visible { outline: 3px solid #2e8a28; outline-offset: 2px; }
 
+    /* ===== Vidas (modo fácil) ===== */
+    /* [hidden] precisa vencer o display:flex de autor do .hud__bloco */
+    .hud__bloco[hidden] { display: none; }
+    .hud__bloco--vidas { align-items: center; }
+    .vidas { display: inline-flex; gap: 4px; }
+    .vida { width: 24px; height: 24px; transition: opacity 0.25s ease, filter 0.25s ease; }
+    .vida--vazia { opacity: 0.22; filter: grayscale(1); }
+    .vida--pop { animation: vida-pop 0.45s ease; }
+    @keyframes vida-pop {
+      0% { transform: scale(0.4); } 55% { transform: scale(1.5); } 100% { transform: scale(1); }
+    }
+
+    /* ===== Escolha de modo (intro) ===== */
+    .escolha__titulo { font-weight: 800; font-size: 1.05rem; margin-bottom: 12px; text-align: center; }
+    .escolha { display: grid; gap: 12px; margin-bottom: 16px; }
+    .botao-modo {
+      font-family: inherit; cursor: pointer; text-align: left;
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 14px 16px; border-radius: 14px;
+      border: 3px solid transparent;
+      transition: transform 0.12s ease, filter 0.15s ease;
+    }
+    .botao-modo:hover { transform: translateY(-2px); filter: brightness(1.04); }
+    .botao-modo:focus-visible { outline: 3px solid #2e8a28; outline-offset: 2px; }
+    .botao-modo__titulo { font-size: 1.1rem; font-weight: 800; color: #3a2c1e; }
+    .botao-modo small { font-size: 0.85rem; line-height: 1.4; color: #5b4a37; }
+    .botao-modo--facil { background: linear-gradient(135deg, #fff2cf, #ffe4a3); border-color: #d9a13c; }
+    .botao-modo--aventura { background: linear-gradient(135deg, #dff2d6, #c6ebb6); border-color: #4caf2f; }
+
+    /* Botão secundário (recordes / voltar) */
+    .botao--sec {
+      display: block; width: 100%;
+      font-family: inherit; cursor: pointer; font-weight: 800;
+      padding: 10px 20px; border-radius: 12px; font-size: 0.98rem;
+      color: #6b4a1e; background: #fff3d6; border: 3px solid #d9a13c;
+      box-shadow: 0 4px 0 #b6801f;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+    .botao--sec:active { transform: translateY(3px); box-shadow: 0 1px 0 #b6801f; }
+    .botao--sec:focus-visible { outline: 3px solid #d9a13c; outline-offset: 2px; }
+    .botao--sec[hidden] { display: none; } /* vence o display:block de autor */
+
+    /* Vagão travado (letras já montadas do modo fácil) */
+    .vagao--travado {
+      cursor: default; opacity: 0.9;
+      background: #8a7a63; border-color: rgba(0, 0, 0, 0.28);
+      box-shadow: inset 0 3px 0 rgba(255, 255, 255, 0.25), 0 4px 8px rgba(0, 0, 0, 0.28);
+    }
+    .vagao--travado:hover { transform: none; }
+
+    /* ===== Nome arcade + tabela de recordes ===== */
+    .nome-slots {
+      font-size: 2rem; font-weight: 800; letter-spacing: 8px;
+      color: #2e8a28; margin-bottom: 12px; min-height: 1.3em;
+    }
+    .grade-letras {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px;
+    }
+    .letra {
+      height: 44px;
+      font-family: inherit; font-size: 1.1rem; font-weight: 800;
+      color: #3a2c1e; background: #fff9ea;
+      border: 2px solid #d9a13c; border-radius: 8px;
+      box-shadow: 0 2px 0 #b6801f;
+      cursor: pointer; touch-action: manipulation;
+    }
+    .letra:active { transform: translateY(2px); box-shadow: none; }
+    .letra:focus-visible { outline: 3px solid #2e8a28; outline-offset: 1px; }
+    .letra--apagar { border-color: #e08a8a; color: #b23; }
+    .letra--ok { border-color: #4caf2f; color: #2e8a28; }
+    .tabela {
+      margin: 0 0 12px; padding: 0; list-style: none;
+      display: grid; gap: 4px; font-size: 0.95rem; text-align: left;
+    }
+    .tabela li {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px;
+      background: #fff7e0; border: 1px solid #e4cf9a; border-radius: 8px;
+    }
+    .tabela li.novo { background: #fff0bf; border-color: #d9a13c; box-shadow: 0 0 10px rgba(217, 161, 60, 0.5); }
+    .tabela .pos { font-weight: 800; width: 30px; color: #c0862e; }
+    .tabela .nome { font-weight: 800; flex: 1; letter-spacing: 2px; color: #3a2c1e; }
+    .tabela .det { font-size: 0.78rem; color: #7a6a52; }
+    .tabela .pts { font-weight: 800; color: #2e8a28; }
+    .aviso--fonte { font-size: 0.82rem; margin-bottom: 12px; min-height: 1em; }
+    .recordes-acoes { display: flex; flex-direction: column; gap: 10px; }
+    .recordes-acoes .botao, .recordes-acoes .botao--sec { width: 100%; }
+
     /* ===== Responsivo (Chromebook / telas baixas) ===== */
     @media (max-height: 760px) {
       .carga { min-width: 78px; padding: 5px 9px; }
@@ -460,6 +615,12 @@ const description =
     const introModal = $('[data-intro]');
     const nivelDoneModal = $('[data-nivel-done]');
     const winModal = $('[data-win]');
+    const fimModal = $('[data-fim]');
+    const nomeModal = $('[data-nome]');
+    const recordesModal = $('[data-recordes]');
+    const vidasWrapEl = $('[data-vidas-wrap]');
+    const vidasEl = $('[data-vidas]');
+    const nivelWrapEl = $('[data-nivel-wrap]');
 
     const CORES = ['#e05a4e', '#3f8fd2', '#5aa838', '#c9862e', '#8a5fc0', '#2fa3a0'];
 
@@ -471,6 +632,12 @@ const description =
       mudo: false,
       iniciado: false,
       animando: false, // trava o Partir durante a animação
+      modo: null,      // 'facil' (letras) | 'aventura' (sílabas)
+      fase: 'inicio',  // 'inicio' | 'jogando' | 'nome' | 'recordes' | 'fim'
+      vidas: 0,        // fácil: corações restantes
+      entreguesFacil: 0, // fácil: produtos entregues (= "nível" do ranking)
+      produtoFacil: null, // fácil: {palavra, silabas, emoji, el}
+      nome: '',        // ranking: nome sendo digitado
     };
 
     // ===== Áudio (Web Audio, sem arquivos) =====
@@ -552,6 +719,143 @@ const description =
       el.textContent = String(estado.pontos);
       el.classList.add('pop');
       setTimeout(() => el.classList.remove('pop'), 200);
+    }
+
+    // ===== Modo Fácil: 1 produto por vez, vagão = 1 letra, com vidas =====
+    // Letras comuns pra semear distratores no pátio.
+    const LETRAS_COMUNS = 'AEIOURSTLMNPBCDGVFJ'.split('');
+
+    function atualizarVidas(pop) {
+      let html = '';
+      for (let i = 0; i < CFG.vidasFacil; i++) {
+        const cheio = i < estado.vidas;
+        const classes = 'vida' + (cheio ? '' : ' vida--vazia') + (pop && i === estado.vidas ? ' vida--pop' : '');
+        html += '<svg class="' + classes + '" viewBox="0 0 32 32" aria-hidden="true"><use href="#coracao"></use></svg>';
+      }
+      vidasEl.innerHTML = html;
+      vidasWrapEl.setAttribute('aria-label', 'Vidas: ' + estado.vidas + ' de ' + CFG.vidasFacil);
+    }
+
+    // Vagão de letra travado (prefixo já montado — não move, não arrasta).
+    function criarVagaoTravado(letra) {
+      const el = document.createElement('div');
+      el.className = 'vagao vagao--travado';
+      el.dataset.silaba = letra;
+      el.textContent = letra;
+      el.setAttribute('aria-label', 'Letra ' + letra + ', já montada');
+      return el;
+    }
+
+    // Sorteia um produto e monta o trilho meio-pronto (tudo menos a última sílaba).
+    function carregarProduto() {
+      const p = POOL[Math.floor(Math.random() * POOL.length)];
+      const prefixo = p.silabas.slice(0, -1).join('');
+      const faltam = p.silabas[p.silabas.length - 1].split('');
+
+      cargasEl.innerHTML = '';
+      tremEl.innerHTML = '';
+      patioEl.innerHTML = '';
+
+      // produto na estação: só a figura (a criança descobre a palavra pelo prefixo)
+      const div = document.createElement('div');
+      div.className = 'carga';
+      div.dataset.palavra = p.palavra;
+      div.setAttribute('role', 'img');
+      div.setAttribute('aria-label', 'Produto pra montar: ' + p.palavra.toLowerCase());
+      div.innerHTML =
+        '<span class="carga__emoji">' + p.emoji + '</span>' +
+        '<span class="carga__palavra"></span>';
+      cargasEl.appendChild(div);
+
+      // prefixo já montado (letras travadas no trilho)
+      for (const l of prefixo.split('')) tremEl.appendChild(criarVagaoTravado(l));
+
+      // pátio: letras que faltam + distratores (letras que não fazem parte da resposta)
+      const usadas = new Set(faltam);
+      const extras = [];
+      for (const l of embaralhar(LETRAS_COMUNS)) {
+        if (extras.length >= CFG.distratoresLetrasFacil) break;
+        if (usadas.has(l)) continue;
+        usadas.add(l);
+        extras.push(l);
+      }
+      for (const l of embaralhar([...faltam, ...extras])) patioEl.appendChild(criarVagao(l));
+
+      estado.produtoFacil = Object.assign({}, p, { el: div });
+      anunciar('Novo produto! Complete o final da palavra com as letras do pátio.');
+    }
+
+    function partirFacil(vagoes) {
+      const livres = vagoes.filter((v) => !v.classList.contains('vagao--travado'));
+      if (!livres.length) {
+        mostrarToast('🚃 Arraste as letras que faltam pro trilho!', 'info', 1800);
+        return;
+      }
+      const palavra = palavraDoTrem();
+      const alvo = estado.produtoFacil;
+      if (palavra === alvo.palavra) {
+        const ganhos = alvo.silabas.length * CFG.pontosPorSilaba;
+        estado.pontos += ganhos;
+        estado.entreguesFacil++;
+        atualizarPlacar();
+        somApito();
+        mostrarToast('✓ <b>' + alvo.palavra + '</b> entregue! +' + ganhos + ' pontos 🎉', 'ok', 2000);
+        anunciar('Muito bem! ' + alvo.palavra + ' entregue. Mais ' + ganhos + ' pontos.');
+        if (alvo.el) {
+          alvo.el.classList.add('carga--ok');
+          alvo.el.querySelector('.carga__palavra').textContent = alvo.palavra;
+        }
+        animarPartida(() => {
+          tremEl.innerHTML = '';
+          carregarProduto();
+        });
+      } else {
+        estado.vidas--;
+        atualizarVidas(true);
+        somErr();
+        tremeErro();
+        if (estado.vidas <= 0) {
+          mostrarToast('✗ Não era <b>' + palavra + '</b>…', 'err', 1500);
+          fimDeJogoFacil();
+        } else {
+          mostrarToast('✗ Quase! Confira as letras. Você tem ' + estado.vidas +
+            (estado.vidas === 1 ? ' vida.' : ' vidas.'), 'err', 2000);
+          anunciar('Ainda não. Você tem ' + estado.vidas + ' vidas. Ajuste as letras e tente de novo.');
+        }
+      }
+    }
+
+    function fimDeJogoFacil() {
+      estado.fase = 'fim';
+      estado.iniciado = false;
+      somNivel();
+      $('[data-fim-msg]').textContent =
+        'Você entregou ' + estado.entreguesFacil +
+        (estado.entreguesFacil === 1 ? ' produto' : ' produtos') + '!';
+      $('[data-fim-score]').textContent = String(estado.pontos);
+      $('[data-gravar-nome]').hidden = estado.entreguesFacil < 1;
+      fimModal.hidden = false;
+      setTimeout(() => {
+        (estado.entreguesFacil >= 1 ? $('[data-gravar-nome]') : $('[data-fim-replay]')).focus();
+      }, 60);
+      anunciar('Fim de jogo! Você fez ' + estado.pontos + ' pontos.');
+    }
+
+    // Volta pra tela de escolha de modo (reset geral).
+    function voltarIntro() {
+      [winModal, nivelDoneModal, fimModal, nomeModal, recordesModal].forEach((m) => { m.hidden = true; });
+      estado.fase = 'inicio';
+      estado.iniciado = false;
+      estado.modo = null;
+      estado.pontos = 0;
+      cargasEl.innerHTML = '';
+      tremEl.innerHTML = '';
+      patioEl.innerHTML = '';
+      vidasWrapEl.hidden = true;
+      nivelWrapEl.hidden = false;
+      $('[data-nivel-nome]').textContent = '';
+      introModal.hidden = false;
+      setTimeout(() => $('[data-modo="facil"]').focus(), 60);
     }
 
     // ===== Montar nível =====
@@ -649,11 +953,14 @@ const description =
     // ===== Mover vagões (tap + drag) =====
     function indiceInsercao(x) {
       const filhos = [...tremEl.children];
-      for (let i = 0; i < filhos.length; i++) {
+      let i = 0;
+      for (; i < filhos.length; i++) {
         const r = filhos[i].getBoundingClientRect();
-        if (x < r.left + r.width / 2) return i;
+        if (x < r.left + r.width / 2) break;
       }
-      return filhos.length;
+      // No fácil, nunca inserir antes das letras travadas (o prefixo fica fixo).
+      const minIdx = estado.modo === 'facil' ? tremEl.querySelectorAll('.vagao--travado').length : 0;
+      return Math.max(i, minIdx);
     }
 
     function limparEstilos(el) {
@@ -787,6 +1094,8 @@ const description =
     partirBtn.addEventListener('click', () => {
       if (!estado.iniciado || estado.animando) return;
       const vagoes = [...tremEl.children];
+      // ------- Modo Fácil: monta o final da palavra letra por letra -------
+      if (estado.modo === 'facil') { partirFacil(vagoes); return; }
       if (!vagoes.length) {
         mostrarToast('🚃 Coloque vagões no trilho primeiro!', 'info', 1800);
         return;
@@ -891,27 +1200,215 @@ const description =
     }
 
     // ===== Fluxo =====
-    function comecar() {
+    function comecar(modo) {
       initAudio();
       if (actx && actx.state === 'suspended') actx.resume();
+      estado.modo = modo;
       estado.iniciado = true;
+      estado.fase = 'jogando';
       introModal.hidden = true;
+      if (modo === 'facil') {
+        estado.pontos = 0;
+        estado.vidas = CFG.vidasFacil;
+        estado.entreguesFacil = 0;
+        vidasWrapEl.hidden = false;
+        nivelWrapEl.hidden = true;
+        atualizarPlacar();
+        atualizarVidas(false);
+        $('[data-estacao-titulo]').textContent = '🚂 Produto pra montar:';
+        $('[data-nivel-nome]').textContent = 'Modo Fácil — uma letra por vez!';
+        carregarProduto();
+      } else {
+        estado.pontos = 0;
+        vidasWrapEl.hidden = true;
+        nivelWrapEl.hidden = false;
+        montarNivel(0);
+      }
     }
-    $('[data-comecar]').addEventListener('click', comecar);
+    document.querySelectorAll('[data-modo]').forEach((btn) => {
+      btn.addEventListener('click', () => comecar(btn.dataset.modo));
+    });
     $('[data-next-nivel]').addEventListener('click', () => {
       nivelDoneModal.hidden = true;
       montarNivel(estado.nivelIdx + 1);
     });
-    $('[data-replay]').addEventListener('click', () => {
-      winModal.hidden = true;
-      estado.pontos = 0;
-      montarNivel(0);
+    $('[data-replay]').addEventListener('click', voltarIntro);
+    $('[data-fim-replay]').addEventListener('click', voltarIntro);
+
+    // ===== Ranking arcade (online via PHP + cache/fallback localStorage) =====
+    const API_RANKING = '/class/api/ranking.php';
+    const JOGO_ID = 'trem-de-palavras-facil';
+    const RANKING_KEY = 'trem-de-palavras-facil:ranking';
+
+    function lerRanking() {
+      try { return JSON.parse(localStorage.getItem(RANKING_KEY) || '[]'); }
+      catch (_) { return []; }
+    }
+    function salvarRanking(lista) {
+      try { localStorage.setItem(RANKING_KEY, JSON.stringify(lista)); } catch (_) {}
+    }
+    // Devolve a lista do servidor ou null (falhou/timeout → cai pro local)
+    function fetchRanking(opts) {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 4000);
+      const url = opts ? API_RANKING : API_RANKING + '?jogo=' + JOGO_ID;
+      return fetch(url, Object.assign({ signal: ctl.signal }, opts || {}))
+        .then((r) => (r.ok ? r.json() : null))
+        .then((lista) => (Array.isArray(lista) ? lista : null))
+        .catch(() => null)
+        .finally(() => clearTimeout(timer));
+    }
+    function enviarRankingOnline(entrada) {
+      return fetchRanking({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jogo: JOGO_ID, nome: entrada.nome, pontos: entrada.pontos, nivel: entrada.nivel }),
+      });
+    }
+    function indiceDe(lista, entrada) {
+      return lista.findIndex((r) => r.nome === entrada.nome && r.pontos === entrada.pontos && r.data === entrada.data);
+    }
+
+    function atualizarSlots() {
+      const slots = [];
+      for (let i = 0; i < CFG.nomeMax; i++) slots.push(estado.nome[i] || '_');
+      $('[data-nome-slots]').textContent = slots.join(' ');
+    }
+    function abrirNome() {
+      fimModal.hidden = true;
+      estado.fase = 'nome';
+      estado.nome = '';
+      atualizarSlots();
+      nomeModal.hidden = false;
+      setTimeout(() => $('[data-tecla-nome="A"]').focus(), 60);
+      anunciar('Digite seu nome usando as letras da tela. De ' + CFG.nomeMin + ' a ' + CFG.nomeMax + ' letras. Depois aperte confirmar.');
+    }
+    document.querySelectorAll('[data-gravar-nome]').forEach((btn) => btn.addEventListener('click', abrirNome));
+
+    function digitarLetra(l) {
+      if (estado.fase !== 'nome') return;
+      if (estado.nome.length >= CFG.nomeMax) return;
+      estado.nome += l;
+      somClique();
+      atualizarSlots();
+    }
+    function apagarLetra() {
+      if (estado.fase !== 'nome' || !estado.nome) return;
+      estado.nome = estado.nome.slice(0, -1);
+      somErr();
+      atualizarSlots();
+    }
+    function confirmarNome() {
+      if (estado.fase !== 'nome') return;
+      if (estado.nome.length < CFG.nomeMin) {
+        mostrarToast('Escreva pelo menos ' + CFG.nomeMin + ' letras!', 'info', 1800);
+        return;
+      }
+      const entrada = {
+        nome: estado.nome.toUpperCase(),
+        pontos: estado.pontos,
+        nivel: Math.max(1, estado.entreguesFacil),
+        data: new Date().toISOString().slice(0, 10),
+      };
+      // grava local sempre — funciona offline e serve de cache
+      const local = lerRanking();
+      local.push(entrada);
+      local.sort((a, b) => b.pontos - a.pontos);
+      salvarRanking(local.slice(0, CFG.rankingMax));
+      nomeModal.hidden = true;
+      somNivel();
+      abrirRecordes(false, entrada);
+    }
+    document.querySelectorAll('[data-tecla-nome]').forEach((btn) => {
+      btn.addEventListener('click', () => digitarLetra(btn.dataset.teclaNome));
+    });
+    $('[data-nome-apagar]').addEventListener('click', apagarLetra);
+    $('[data-nome-ok]').addEventListener('click', confirmarNome);
+
+    function renderRecordes(lista, destaque, consulta, fonte) {
+      const tabela = $('[data-tabela]');
+      tabela.innerHTML = '';
+      $('[data-recordes-vazio]').hidden = lista.length > 0;
+      lista.forEach((r, i) => {
+        const li = document.createElement('li');
+        if (i === destaque) li.className = 'novo';
+        li.innerHTML =
+          '<span class="pos">' + (i + 1) + 'º</span>' +
+          '<span class="nome">' + r.nome + '</span>' +
+          '<span class="det">📦 ' + r.nivel + '</span>' +
+          '<span class="pts">' + r.pontos + '</span>';
+        tabela.appendChild(li);
+      });
+      const fonteEl = $('[data-recordes-fonte]');
+      if (fonte === 'online') fonteEl.textContent = '🌐 Ranking online — vale pra turma toda!';
+      else if (fonte === 'offline') fonteEl.textContent = '📴 Sem internet agora: mostrando o ranking deste aparelho.';
+      else fonteEl.textContent = 'Buscando o ranking online…';
+      $('[data-voltar-intro]').hidden = !consulta;
+      $('[data-recordes-replay]').hidden = consulta;
+    }
+    // entrada != null → acabou de salvar (envia pro servidor e destaca a linha).
+    function abrirRecordes(consulta, entrada) {
+      estado.fase = 'recordes';
+      const local = lerRanking();
+      const idxLocal = entrada ? indiceDe(local, entrada) : -1;
+      renderRecordes(local, idxLocal, consulta, 'buscando');
+      recordesModal.hidden = false;
+      setTimeout(() => (consulta ? $('[data-voltar-intro]') : $('[data-recordes-replay]')).focus(), 60);
+      const pedido = entrada ? enviarRankingOnline(entrada) : fetchRanking(null);
+      pedido.then((listaOnline) => {
+        if (estado.fase !== 'recordes') return; // já saiu da tela
+        if (listaOnline) {
+          salvarRanking(listaOnline);
+          renderRecordes(listaOnline, entrada ? indiceDe(listaOnline, entrada) : -1, consulta, 'online');
+        } else {
+          renderRecordes(local, idxLocal, consulta, 'offline');
+        }
+      });
+    }
+    $('[data-ver-recordes]').addEventListener('click', () => {
+      introModal.hidden = true;
+      abrirRecordes(true, null);
+    });
+    $('[data-voltar-intro]').addEventListener('click', voltarIntro);
+    $('[data-recordes-replay]').addEventListener('click', voltarIntro);
+
+    // Teclado físico durante a digitação do nome (com strip de acento).
+    window.addEventListener('keydown', (e) => {
+      if (estado.fase !== 'nome') return;
+      if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+      const l = e.key.length === 1 ? e.key.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') : '';
+      if (/^[A-Z]$/.test(l)) { e.preventDefault(); digitarLetra(l); }
+      else if (e.key === 'Backspace') { e.preventDefault(); apagarLetra(); }
+      else if (e.key === 'Enter') {
+        if (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.teclaNome) return;
+        e.preventDefault();
+        confirmarNome();
+      }
     });
 
     // ===== Boot =====
     document.body.classList.add('is-game');
     introModal.hidden = false;
-    montarNivel(0);
-    setTimeout(() => $('[data-comecar]').focus(), 60);
+    setTimeout(() => $('[data-modo="facil"]').focus(), 60);
+
+    // Handle de teste/depuração (usado na verificação headless).
+    window.__tp = {
+      estado,
+      produto: () => estado.produtoFacil,
+      patio: () => [...patioEl.children].map((v) => v.dataset.silaba),
+      // completa o final da palavra atual movendo as letras certas pro trilho
+      resolverFacil() {
+        const alvo = estado.produtoFacil;
+        if (!alvo) return false;
+        const faltam = alvo.silabas[alvo.silabas.length - 1].split('');
+        for (const l of faltam) {
+          const v = [...patioEl.children].find((c) => c.dataset.silaba === l);
+          if (!v) return false;
+          limparEstilos(v);
+          tremEl.appendChild(v);
+        }
+        return true;
+      },
+    };
   </script>
 </Layout>

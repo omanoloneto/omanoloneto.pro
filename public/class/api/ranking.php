@@ -24,6 +24,8 @@ const JOGOS = [
   'letras-espaciais' => [20000, 30],
   'caca-bandeiras' => [12000, 10],
   'entrega-turbo' => [60000, 20],
+  // Trem de Palavras — modo Fácil (arcade endless). nivel = produtos entregues.
+  'trem-de-palavras-facil' => [99999, 999],
 ];
 const MAX_ENTRADAS = 10;
 
