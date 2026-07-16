@@ -239,7 +239,7 @@ export function iniciarJogo() {
       ui.els.controles.hidden = false;
       ui.els.fantasma.hidden = false;
       ui.els.fantasmaTxt.textContent = '▲ acelera · ◀ ▶ vira';
-      trafego.reset(modo === 'normal'); // carros na cidade só no Normal
+      trafego.reset(modo === 'normal', 1);
       medir();
       ctx.camera3.iniciarFlyover();
       pedidos.novoPedido();

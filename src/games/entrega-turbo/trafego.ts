@@ -12,10 +12,12 @@ type Carro =
   | { tipo: 'br'; t: number; vel: number; mao: 1 | -1 }
   | { tipo: 'rua'; x: number; z: number; dir: 1 | -1; vel: number; velAtual: number };
 
+type Pedestre = { x: number; z: number; dir: 1 | -1; vel: number; velAtual: number };
+
 export function criarTrafego(ctx: Contexto) {
   const { scene, cfg } = ctx;
   const TC = cfg.trafego;
-  const MAXC = TC.carrosBR + TC.carrosCidade;
+  const MAXC = TC.carrosBR + TC.carrosCidadeMax;
 
   const corpo = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1.7, 0.6, 3.4),
@@ -37,7 +39,27 @@ export function criarTrafego(ctx: Contexto) {
   if (corpo.instanceColor) corpo.instanceColor.needsUpdate = true;
   scene.add(corpo, cabine);
 
+  const pedCorpo = new THREE.InstancedMesh(
+    new THREE.CapsuleGeometry(0.32, 0.7, 3, 8),
+    new THREE.MeshLambertMaterial({ color: 0xffffff }),
+    TC.pedestresMax
+  );
+  const pedCabeca = new THREE.InstancedMesh(
+    new THREE.SphereGeometry(0.28, 10, 8),
+    new THREE.MeshLambertMaterial({ color: 0xf2c9a0 }),
+    TC.pedestresMax
+  );
+  pedCorpo.frustumCulled = false;
+  pedCabeca.frustumCulled = false;
+  for (let i = 0; i < TC.pedestresMax; i++) {
+    corTmp.setHex(CORES_CARROS[(i * 3 + 1) % CORES_CARROS.length]);
+    pedCorpo.setColorAt(i, corTmp);
+  }
+  if (pedCorpo.instanceColor) pedCorpo.instanceColor.needsUpdate = true;
+  scene.add(pedCorpo, pedCabeca);
+
   const carros: Carro[] = [];
+  const pedestres: Pedestre[] = [];
   // invencibilidade em TEMPO DE SIMULAÇÃO (mesmo motivo do prazo do pedido:
   // pausar não pode consumir o escudo enquanto o mundo está congelado)
   let tempoMs = 0;
@@ -81,14 +103,68 @@ export function criarTrafego(ctx: Contexto) {
     });
     corpo.instanceMatrix.needsUpdate = true;
     cabine.instanceMatrix.needsUpdate = true;
+
+    pedCorpo.count = pedestres.length;
+    pedCabeca.count = pedestres.length;
+    pedestres.forEach((p, i) => {
+      const bob = ctx.motionReduzido ? 0 : Math.sin(tempoMs / 125 + i * 1.7) * 0.06;
+      const ang = p.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      q.setFromAxisAngle(eixoY, ang);
+      posV.set(p.x, 0.85 + bob, p.z);
+      m.compose(posV, q, um);
+      pedCorpo.setMatrixAt(i, m);
+      posV.set(p.x, 1.62 + bob, p.z);
+      m.compose(posV, q, um);
+      pedCabeca.setMatrixAt(i, m);
+    });
+    pedCorpo.instanceMatrix.needsUpdate = true;
+    pedCabeca.instanceMatrix.needsUpdate = true;
   }
 
-  function reset(comCidade: boolean) {
-    const av = ctx.mundo.avenidaInfo;
+  function contagemCarros(nivel: number) {
+    return Math.min(TC.carrosCidadeMax, TC.carrosCidade + (nivel - 1) * TC.carrosCidadePorNivel);
+  }
+
+  function contagemPedestres(nivel: number) {
+    return Math.min(TC.pedestresMax, TC.pedestres + Math.floor((nivel - 1) / TC.pedestresACada));
+  }
+
+  function novoCarroRua(i: number, xInicial?: number): Carro {
     const { mundo } = ctx;
+    const laneBase = mundo.ruaCentro(1 + ((i * 2 + 1) % (mundo.N - 1)));
+    const dir: 1 | -1 = i % 2 === 0 ? 1 : -1;
+    return {
+      tipo: 'rua',
+      x: xInicial ?? -mundo.MEIO + ((i * 53 + 20) % (2 * mundo.MEIO)),
+      z: laneBase + dir * 2.6,
+      dir,
+      vel: TC.velCidade * (0.85 + ((i * 3) % 4) * 0.1),
+      velAtual: TC.velCidade,
+    };
+  }
+
+  function novoPedestre(i: number, xInicial?: number): Pedestre {
+    const { mundo } = ctx;
+    const laneBase = mundo.ruaCentro(1 + ((i * 3 + 2) % (mundo.N - 1)));
+    const lado: 1 | -1 = i % 2 === 0 ? 1 : -1;
+    return {
+      x: xInicial ?? -mundo.MEIO + ((i * 41 + 33) % (2 * mundo.MEIO)),
+      z: laneBase + lado * TC.pedestreOffset,
+      dir: i % 3 === 0 ? -1 : 1,
+      vel: TC.velPedestre * (0.8 + ((i * 5) % 5) * 0.1),
+      velAtual: TC.velPedestre,
+    };
+  }
+
+  let cidadeAtiva = false;
+
+  function reset(comCidade: boolean, nivel = 1) {
+    const av = ctx.mundo.avenidaInfo;
     carros.length = 0;
+    pedestres.length = 0;
     tempoMs = 0;
     invencivelAte = 0;
+    cidadeAtiva = comCidade;
     for (let i = 0; i < TC.carrosBR; i++) {
       carros.push({
         tipo: 'br',
@@ -98,19 +174,23 @@ export function criarTrafego(ctx: Contexto) {
       });
     }
     if (comCidade) {
-      for (let i = 0; i < TC.carrosCidade; i++) {
-        // uma rua leste-oeste diferente pra cada carro (pula as bordas)
-        const laneBase = mundo.ruaCentro(1 + ((i * 2 + 1) % (mundo.N - 1)));
-        const dir: 1 | -1 = i % 2 === 0 ? 1 : -1;
-        carros.push({
-          tipo: 'rua',
-          x: -mundo.MEIO + ((i * 53 + 20) % (2 * mundo.MEIO)),
-          z: laneBase + dir * 2.6, // mão da direção
-          dir,
-          vel: TC.velCidade * (0.85 + ((i * 3) % 4) * 0.1),
-          velAtual: TC.velCidade,
-        });
-      }
+      for (let i = 0; i < contagemCarros(nivel); i++) carros.push(novoCarroRua(i));
+      for (let i = 0; i < contagemPedestres(nivel); i++) pedestres.push(novoPedestre(i));
+    }
+    atualizarMatrizes();
+  }
+
+  function atualizarNivel(nivel: number) {
+    if (!cidadeAtiva) return;
+    const { truck, mundo } = ctx;
+    const bordaLonge = (truck.x > 0 ? -1 : 1) * (mundo.MEIO + 5);
+    let naCidade = 0;
+    for (const c of carros) if (c.tipo === 'rua') naCidade++;
+    for (let i = naCidade; i < contagemCarros(nivel); i++) {
+      carros.push(novoCarroRua(i, bordaLonge));
+    }
+    for (let i = pedestres.length; i < contagemPedestres(nivel); i++) {
+      pedestres.push(novoPedestre(i, bordaLonge));
     }
     atualizarMatrizes();
   }
@@ -159,8 +239,32 @@ export function criarTrafego(ctx: Contexto) {
         }
       }
     }
+    const LIM = mundo.MEIO + 5;
+    for (const p of pedestres) {
+      const dxT = truck.x - p.x;
+      const dzT = truck.z - p.z;
+      const dT = Math.hypot(dxT, dzT);
+      const velAlvo = dT < 5 ? 0 : p.vel;
+      p.velAtual += (velAlvo - p.velAtual) * Math.min(1, 4 * dt);
+      p.x += p.velAtual * p.dir * dt;
+      if (p.x > LIM) p.x = Math.abs(truck.x + LIM) > 35 ? -LIM : LIM;
+      if (p.x < -LIM) p.x = Math.abs(truck.x - LIM) > 35 ? LIM : -LIM;
+      const alcance = TC.raioPedestre + ctx.cfg.raioColisao;
+      if (dT < alcance) {
+        const dn = dT || 0.001;
+        truck.x += (dxT / dn) * (alcance - dn);
+        truck.z += (dzT / dn) * (alcance - dn);
+        if (tempoMs > invencivelAte && Math.abs(truck.v) > 1.5) {
+          invencivelAte = tempoMs + TC.invencivelMs;
+          truck.squashAte = performance.now() + 120;
+          truck.v *= 0.4;
+          p.x = (truck.x > 0 ? -1 : 1) * LIM;
+          ctx.pedidos.bateuEmPedestre();
+        }
+      }
+    }
     atualizarMatrizes();
   }
 
-  return { passo, reset, carros };
+  return { passo, reset, atualizarNivel, carros, pedestres };
 }

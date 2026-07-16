@@ -133,12 +133,15 @@ export interface Pedidos {
   limparTimers(): void;
   agendarRespiro(ms: number): void;
   bateuEmCarro(): void;
+  bateuEmPedestre(): void;
 }
 
 export interface Trafego {
   passo(dt: number): void;
-  reset(comCidade: boolean): void;
+  reset(comCidade: boolean, nivel?: number): void;
+  atualizarNivel(nivel: number): void;
   carros: unknown[];
+  pedestres: unknown[];
 }
 
 export interface UI {

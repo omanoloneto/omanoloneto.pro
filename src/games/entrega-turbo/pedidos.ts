@@ -172,10 +172,10 @@ export function criarPedidos(ctx: Contexto): Pedidos {
       estado.nivel++;
       ui.popHud('[data-nivel]', estado.nivel);
       audio.somNivel();
-      // subtítulo só quando o nível REALMENTE muda alguma coisa (a skin não
-      // troca mais por nível — quem manda é a Garagem)
+      if (estado.modo === 'normal') ctx.trafego.atualizarNivel(estado.nivel);
       const sub = estado.nivel === cfg.caixas2APartirDoNivel ? 'Agora são 2 caixas por pedido! 📦'
         : estado.nivel === cfg.caixas3APartirDoNivel ? 'Agora são 3 caixas por pedido! 📦'
+        : estado.modo === 'normal' ? 'Mais movimento na cidade! 🚗'
         : '';
       ui.mostrarBanner('Nível ' + estado.nivel + '! 🎉', sub);
       ui.anunciar('Nível ' + estado.nivel + '!');
@@ -220,16 +220,15 @@ export function criarPedidos(ctx: Contexto): Pedidos {
     }
   }
 
-  function bateuEmCarro() {
+  function perderCoracao(toast: string, anuncio: string) {
     const { estado, ui, audio } = ctx;
-    // vidas <= 0: fim já agendado, nada de dano extra na janela pós-morte
     if (estado.modo !== 'normal' || estado.fase !== 'jogando' || estado.vidas <= 0) return;
     if (estado.pedido) estado.pedido.bateu = true;
     audio.somBatida();
     estado.vidas--;
     ui.atualizarVidas(false);
-    ui.mostrarToast('💥 Bateu no carro! Cuidado no trânsito!', 'info', 2200);
-    ui.anunciar('Você bateu num carro e perdeu um coração! Vidas: ' + estado.vidas + '.');
+    ui.mostrarToast(toast, 'info', 2200);
+    ui.anunciar(anuncio + ' Vidas: ' + estado.vidas + '.');
     if (estado.vidas <= 0) {
       clearTimeout(respiroTimer);
       clearTimeout(fimTimer);
@@ -241,6 +240,14 @@ export function criarPedidos(ctx: Contexto): Pedidos {
     }
   }
 
+  function bateuEmCarro() {
+    perderCoracao('💥 Bateu no carro! Cuidado no trânsito!', 'Você bateu num carro e perdeu um coração!');
+  }
+
+  function bateuEmPedestre() {
+    perderCoracao('😱 Quase atropelou! Cuidado com os pedestres!', 'Você quase atropelou um pedestre e perdeu um coração!');
+  }
+
   return {
     novoPedido,
     tentarZona,
@@ -248,6 +255,7 @@ export function criarPedidos(ctx: Contexto): Pedidos {
     prazoRestanteMs,
     agendarRespiro,
     bateuEmCarro,
+    bateuEmPedestre,
     limparTimers() {
       clearTimeout(fimTimer);
       clearTimeout(respiroTimer);
