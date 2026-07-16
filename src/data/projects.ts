@@ -19,25 +19,25 @@ export type Projeto = {
 
 export const projetos: Projeto[] = [
   {
-    titulo: 'VMonsters: World Button Clash',
+    titulo: 'V-Monsters: World Button Clash',
     resumo:
-      'Jogo mobile de futebol de botão com temática VMonsters, para Android e iOS. Física de botão, progressão de monstros e integração Firebase.',
+      'Jogo mobile de futebol de botão com temática V-Monsters, para Android e iOS. Física de botão, progressão de monstros e integração Firebase.',
     tags: ['Unity', 'C#', 'Android', 'iOS', 'Firebase'],
     status: 'Em desenvolvimento',
     destaque: true,
     urlLabel: 'Ver projeto',
   },
   {
-    titulo: 'VMonsters: Digital Farm',
+    titulo: 'V-Monsters: Digital Farm',
     resumo:
-      'Cozy island life game em Godot 4.6. O jogador naufraga numa ilha e constrói uma fazenda enquanto faz amizade com VMonsters — criaturas companheiras que ajudam no trabalho e na exploração.',
+      'Cozy island life game em Godot 4.6. O jogador naufraga numa ilha e constrói uma fazenda enquanto faz amizade com V-Monsters — criaturas companheiras que ajudam no trabalho e na exploração.',
     tags: ['Godot 4.6', 'GDScript', 'Game Design'],
     status: 'Em desenvolvimento',
     destaque: true,
     urlLabel: 'Ver projeto',
   },
   {
-    titulo: 'VMonsters: Collect Monsters',
+    titulo: 'V-Monsters: Collect Monsters',
     resumo:
       'App/jogo de coleção de monstros em Flutter com backend Firebase (Firestore, regras de segurança). Multiplataforma.',
     tags: ['Flutter', 'Dart', 'Firebase'],
@@ -45,9 +45,9 @@ export const projetos: Projeto[] = [
     urlLabel: 'Ver projeto',
   },
   {
-    titulo: 'VMonsters: Night Shift',
+    titulo: 'V-Monsters: Night Shift',
     resumo:
-      'Jogo em Godot ambientado no universo VMonsters, com mecânica de turno noturno e atmosfera de tensão.',
+      'Jogo em Godot ambientado no universo V-Monsters, com mecânica de turno noturno e atmosfera de tensão.',
     tags: ['Godot', 'GDScript'],
     status: 'Em desenvolvimento',
     urlLabel: 'Ver projeto',
