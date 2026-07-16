@@ -63,8 +63,9 @@ export function criarSalvar(ctx: Contexto): Salvar {
   function payloadAtual(): string {
     const p = ctx.jogador;
     return JSON.stringify({
-      v: 4, // v4 = metadata (baús/placas); v3/v2/v1 ainda carregam (migração abaixo)
+      v: 5, // v5 = hora do dia; v4 = metadata (baús/placas); v3-v1 ainda carregam
       seed: ctx.estado.seed,
+      tempoDia: Math.round(ctx.ceu.tempo()),
       jogador: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(3), pitch: +p.pitch.toFixed(3) },
       sel: ctx.estado.sel,
       inv: ctx.estado.inventario,
@@ -209,6 +210,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
       conflito = false;
       ctx.mundo.dados.set(blocos);
       ctx.estado.seed = p.seed >>> 0;
+      if (typeof p.tempoDia === 'number') ctx.ceu.definirTempo(p.tempoDia); // v<5 → fica de manhã
       ctx.metas.carregar(p.metas); // v<4 (sem metas) → mapa vazio
       const NSLOTS = ctx.cfg.hotbarTamanho;
       ctx.estado.sel = Math.max(0, Math.min(NSLOTS - 1, p.sel | 0));

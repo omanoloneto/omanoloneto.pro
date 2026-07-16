@@ -248,5 +248,12 @@ export function criarMalha(ctx: Contexto): Malha {
       for (const ci of mundo.sujos) reconstruirChunk(ci);
       mundo.sujos.clear();
     },
+    // tint dia/noite: MeshBasicMaterial.color multiplica map × vertexColor,
+    // então uma cor por material escurece/tinge o mundo inteiro de graça
+    tingir(cor: THREE.Color) {
+      matOpaca.color.copy(cor);
+      matRecorte.color.copy(cor);
+      matAgua.color.copy(cor);
+    },
   };
 }

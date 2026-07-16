@@ -95,6 +95,14 @@ export interface Mundo {
 export interface Malha {
   construirTudo(): void;
   reconstruirSujos(): void;
+  tingir(cor: THREE.Color): void; // tint dia/noite: multiplica os materiais do mundo
+}
+
+// ciclo dia/noite: céu com gradiente + sol/lua cruzando + tint do mundo
+export interface Ceu {
+  passo(dt: number): void;
+  tempo(): number; // segundos dentro do ciclo (0..CICLO)
+  definirTempo(s: number): void;
 }
 
 // metadata por posição (não cabe no Uint8Array do mundo)
@@ -253,6 +261,7 @@ export interface Contexto {
   mundo: Mundo;
   metas: Metas;
   malha: Malha;
+  ceu: Ceu;
   fisica: Fisica;
   camera3: Camera3;
   mira: Mira;

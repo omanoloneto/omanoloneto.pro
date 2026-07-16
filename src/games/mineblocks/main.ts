@@ -87,7 +87,7 @@ export function iniciarJogo() {
   ctx.mundo = criarMundo(ctx);
   ctx.metas = criarMetas(ctx);
   ctx.malha = criarMalha(ctx);
-  const ceu = criarCeu(ctx);
+  ctx.ceu = criarCeu(ctx);
   ctx.fisica = criarFisica(ctx);
   ctx.camera3 = criarCamera(ctx);
   ctx.mira = criarMira(ctx);
@@ -190,7 +190,7 @@ export function iniciarJogo() {
     ctx.bonecos.passo(dt); // colegas da sala perseguem o alvo do poll
     ctx.camera3.passo();
     ctx.mira.passo();
-    ceu.passo(dt);
+    ctx.ceu.passo(dt);
     ctx.malha.reconstruirSujos();
     renderer.render(scene, camera);
   }
@@ -464,6 +464,7 @@ export function iniciarJogo() {
         jogador.z = ctx.cfg.mundo.SZ / 2 + 0.5;
         jogador.yaw = Math.PI * 0.75;
         jogador.pitch = 0;
+        ctx.ceu.definirTempo(120); // mundo novo começa de manhã
       }
       ctx.malha.construirTudo();
       ctx.edicao.iniciarMudas(); // mudas do save voltam pro relógio
@@ -631,6 +632,7 @@ export function iniciarJogo() {
     sync,
     bonecos: ctx.bonecos,
     metas: ctx.metas,
+    ceu: ctx.ceu,
     ui: ctx.ui,
     // teste: interage/quebra numa célula exata sem depender da mira
     // (retorna o boolean do interagir: true = colocou bloco)
