@@ -147,12 +147,13 @@ export function criarMundo(ctx: Contexto): Mundo {
     return geo.toNonIndexed();
   }
 
-  function disco(raio: number, x: number, y: number, z: number, corHex: number) {
+  function disco(raio: number, x: number, y: number, z: number, corHex: number, rotY = 0) {
     const geo = new THREE.CircleGeometry(raio, 20);
     const cor = new THREE.Color(corHex);
     const cores: number[] = [];
     for (let i = 0; i < geo.getAttribute('position').count; i++) cores.push(cor.r, cor.g, cor.b);
     geo.setAttribute('color', new THREE.Float32BufferAttribute(cores, 3));
+    if (rotY) geo.rotateY(rotY);
     geo.translate(x, y, z);
     return geo.toNonIndexed();
   }
@@ -203,27 +204,40 @@ export function criarMundo(ctx: Contexto): Mundo {
       const destino = porSimbolo.get(sim);
       if (destino) {
         if (sim === 's') {
-          geosConstrucoes.push(caixa(11, 5.2, 10, cx, cz - 3, 0xf0efe9));
-          geosConstrucoes.push(caixa(11.6, 2.4, 1.2, cx, cz + 1.7, destino.cor, { yBase: 4.4 }));
-          geosConstrucoes.push(caixa(1.2, 2.4, 7, cx + 5.6, cz - 2, destino.cor, { yBase: 4.4 }));
-          geosConstrucoes.push(caixa(12.4, 0.55, 3, cx, cz + 2.6, 0xc9a349, { yBase: 2.7, topoEscuro: false }));
-          geosConstrucoes.push(caixa(9.5, 2.2, 0.3, cx, cz + 2.1, 0x2c3f52, { yBase: 0.25 }));
-          geosConstrucoes.push(caixa(1.6, 6.4, 1, cx + 6.9, cz + 3, destino.cor));
-          geosConstrucoes.push(caixa(0.9, 0.7, 0.8, cx - 5.6, cz - 4, 0xb9bec7, { yBase: 3.4 }));
-          geosConstrucoes.push(caixa(0.9, 0.7, 0.8, cx - 5.6, cz - 6.5, 0xb9bec7, { yBase: 2.6 }));
-          geosDetalhes.push(disco(0.85, cx - 2.6, 5.6, cz + 2.31, 0xffffff));
-          geosDetalhes.push(disco(0.34, cx - 2.6, 5.6, cz + 2.33, 0xc9a349));
-          geosDetalhes.push(disco(0.55, cx + 6.9, 5.2, cz + 3.51, 0xffffff));
-          aabbs.push({ minX: cx + 6.1, maxX: cx + 7.7, minZ: cz + 2.5, maxZ: cz + 3.5 });
-          sombras.push([cx + 6.1, cz + 2.5, 1.6, 1]);
+          const cxa = (w: number, h: number, d: number, dx: number, dz: number, cor: number, opts?: { comJanelas?: boolean; topoEscuro?: boolean; yBase?: number }) =>
+            caixa(d, h, w, cx + dz, cz - dx, cor, opts);
+          geosConstrucoes.push(cxa(11, 5.2, 10, 0, -3, 0xf0efe9));
+          geosConstrucoes.push(cxa(11.6, 2.4, 1.2, 0, 1.7, destino.cor, { yBase: 4.4 }));
+          geosConstrucoes.push(cxa(11.6, 0.2, 1.3, 0, 1.7, 0xf5f5f5, { yBase: 6.8, topoEscuro: false }));
+          geosConstrucoes.push(cxa(1.2, 2.4, 7, 5.6, -2, destino.cor, { yBase: 4.4 }));
+          geosConstrucoes.push(cxa(1.3, 0.2, 7, 5.6, -2, 0xf5f5f5, { yBase: 6.8, topoEscuro: false }));
+          geosConstrucoes.push(cxa(12.4, 0.55, 3, 0, 2.6, 0xc9a349, { yBase: 2.7, topoEscuro: false }));
+          geosConstrucoes.push(cxa(9.5, 2.2, 0.3, 0, 2.1, 0x2c3f52, { yBase: 0.25 }));
+          geosConstrucoes.push(cxa(2.6, 2.1, 0.14, 0.6, 2.3, 0x7fb8d8, { yBase: 0.3, topoEscuro: false }));
+          geosConstrucoes.push(cxa(13.6, 0.14, 7.4, 0, 5.9, 0xb8b4a8, { topoEscuro: false }));
+          [-4.5, -1.5, 1.5, 4.5].forEach((dx) => {
+            geosConstrucoes.push(cxa(0.18, 0.03, 2.6, dx, 8.2, 0xf5f5f5, { yBase: 0.16, topoEscuro: false }));
+          });
+          geosConstrucoes.push(cxa(1.6, 6.4, 1, 5.8, 3, destino.cor));
+          geosConstrucoes.push(cxa(2.2, 1, 1.8, -2.5, -5, 0xb9bec7, { yBase: 5.2 }));
+          geosConstrucoes.push(cxa(0.9, 0.7, 0.8, -5.6, -4, 0xb9bec7, { yBase: 3.4 }));
+          geosConstrucoes.push(cxa(0.9, 0.7, 0.8, -5.6, -1.5, 0xb9bec7, { yBase: 3 }));
+          geosConstrucoes.push(cxa(0.9, 0.7, 0.8, -5.6, -6.5, 0xb9bec7, { yBase: 2.6 }));
+          geosDetalhes.push(disco(0.85, cx + 2.31, 5.6, cz + 2.6, 0xffffff, Math.PI / 2));
+          geosDetalhes.push(disco(0.34, cx + 2.33, 5.6, cz + 2.6, 0xc9a349, Math.PI / 2));
+          geosDetalhes.push(disco(0.55, cx + 3.51, 5.2, cz - 5.8, 0xffffff, Math.PI / 2));
+          aabbs.push({ minX: cx - 8, maxX: cx + 3.4, minZ: cz - 6, maxZ: cz + 6 });
+          aabbs.push({ minX: cx + 2.5, maxX: cx + 3.5, minZ: cz - 6.6, maxZ: cz - 5 });
+          sombras.push([cx - 8, cz - 6, 11.4, 12]);
+          sombras.push([cx + 2.5, cz - 6.6, 1, 1.6]);
         } else {
           geosConstrucoes.push(caixa(11, 6, 10, cx, cz - 3, destino.cor, { comJanelas: true }));
           geosConstrucoes.push(caixa(12, 1, 2.4, cx, cz + 2.2, 0xffffff, { topoEscuro: false }));
           geosDetalhes.push(porta(cx, cz, cz + 2.01));
+          aabbs.push({ minX: cx - 6, maxX: cx + 6, minZ: cz - 8, maxZ: cz + 3.4 });
+          sombras.push([cx - 6, cz - 8, 12, 11]);
         }
-        aabbs.push({ minX: cx - 6, maxX: cx + 6, minZ: cz - 8, maxZ: cz + 3.4 });
-        sombras.push([cx - 6, cz - 8, 12, 11]);
-        const zona = { x: cx, z: cz + 14, destino };
+        const zona = sim === 's' ? { x: cx + 14, z: cz, destino } : { x: cx, z: cz + 14, destino };
         zonas.set(sim, zona);
         if (distAvenida(zona.x, zona.z) < TALUDE_BASE + 1 && !pertoDeVao(projAvenida(zona.x, zona.z), 0)) {
           console.warn('[entrega-turbo] zona de "' + destino.rotulo + '" colada no aterro da BR — ajuste o mapa');
@@ -454,7 +468,8 @@ export function criarMundo(ctx: Contexto): Mundo {
   }
   zonas.forEach((z, sim) => {
     const sp = sim === 'D' ? fazerPlaca('Depósito', '📦') : fazerPlaca(z.destino!.rotulo, z.destino!.emoji);
-    sp.position.set(z.x, sim === 'D' ? 9.5 : 8, z.z - (sim === 'D' ? 16 : 14));
+    if (sim === 's') sp.position.set(z.x - 14, 8, z.z);
+    else sp.position.set(z.x, sim === 'D' ? 9.5 : 8, z.z - (sim === 'D' ? 16 : 14));
     scene.add(sp);
   });
 
