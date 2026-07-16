@@ -47,7 +47,8 @@ const description =
     <section class="alvo" data-alvo hidden aria-label="Bandeira da vez">
       <img class="alvo__bandeira" data-bandeira src="" alt="Bandeira misteriosa — que país é esse?" />
       <div class="alvo__info">
-        <p class="alvo__pergunta">Que país é esse?</p>
+        <p class="alvo__pergunta" data-alvo-pergunta>Que país é esse?</p>
+        <p class="alvo__nome" data-alvo-nome hidden></p>
         <div class="tempo" data-tempo-wrap hidden><div class="tempo__fill" data-tempo-fill></div></div>
         <p class="alvo__status" data-alvo-status></p>
       </div>
@@ -116,7 +117,7 @@ const description =
           <div class="escolha">
             <button class="botao-modo botao-modo--tranquilo" type="button" data-modo="facil">
               <span class="botao-modo__titulo">😌 Fácil</span>
-              <small>Sem pressa e sem perder vida — o mapa ajuda focando no continente certo.</small>
+              <small>O nome do país aparece ao lado da bandeira. Sem pressa e sem perder vida — o mapa ainda ajuda focando no continente certo.</small>
             </button>
             <button class="botao-modo botao-modo--vidas" type="button" data-modo="normal">
               <span class="botao-modo__titulo">🎯 Normal</span>
@@ -339,6 +340,7 @@ const description =
       --ciano: #22e0ff;
       --magenta: #ff3d81;
       --verde: #2ee08a;
+      --amarelo: #ffd84d;
       --texto: #eaf6ff;
       background: var(--oceano);
     }
@@ -392,6 +394,12 @@ const description =
     }
     .alvo__info { display: grid; gap: 4px; min-width: 150px; }
     .alvo__pergunta { font-weight: 800; font-size: 1.1rem; text-shadow: 0 0 10px rgba(34, 224, 255, 0.5); }
+    .alvo__nome {
+      font-weight: 900; font-size: 1.35rem; line-height: 1.15;
+      color: var(--amarelo);
+      text-shadow: 0 0 12px rgba(255, 216, 77, 0.45);
+    }
+    .alvo__nome[hidden] { display: none; }
     .alvo__status { font-size: 0.85rem; opacity: 0.85; min-height: 1.1em; }
     .tempo {
       width: 100%; max-width: 220px; height: 10px; border-radius: 999px;
@@ -774,6 +782,7 @@ const description =
     .cb--telao .alvo { padding: 18px; }
     .cb--telao .alvo__bandeira { height: min(38svh, 300px); max-width: min(72vw, 560px); }
     .cb--telao .alvo__pergunta { font-size: clamp(1.4rem, 4vw, 2.2rem); }
+    .cb--telao .alvo__nome { font-size: clamp(1.8rem, 5vw, 3rem); }
     .cb--telao .alvo__status { font-size: clamp(1rem, 3vw, 1.5rem); }
     .cb--telao .tempo { max-width: 480px; height: 16px; }
     .cb--telao .painel-rev { width: min(94%, 560px); bottom: 8svh; }
@@ -787,6 +796,7 @@ const description =
       .hud__mute { width: 36px; height: 36px; font-size: 1rem; }
       .alvo__bandeira { height: 56px; max-width: 110px; }
       .alvo__pergunta { font-size: 0.95rem; }
+      .alvo__nome { font-size: 1.1rem; }
       .cartucho { bottom: 8px; padding: 8px 12px; gap: 8px; }
       .cartucho__txt { font-size: 0.9rem; }
     }
@@ -818,6 +828,8 @@ const description =
     const svgMapa = mapaWrap.querySelector('svg');
     const alvoEl = $('[data-alvo]');
     const bandeiraEl = $('[data-bandeira]');
+    const perguntaEl = $('[data-alvo-pergunta]');
+    const nomeAlvoEl = $('[data-alvo-nome]');
     const cartuchoEl = $('[data-cartucho]');
     const cartuchoTxtEl = $('[data-cartucho-txt]');
     const confirmarBtn = $('[data-confirmar]');
@@ -1139,8 +1151,17 @@ const description =
     }
 
     // ===== Bandeira da vez =====
+    // No modo Fácil o nome do país fica ao lado da bandeira: a criança
+    // só precisa achar no mapa, sem ter que reconhecer a bandeira antes.
     function setBandeira(iso) {
+      const pais = POR_ISO.get(iso);
+      const comNome = estado.modo === 'facil' && !!pais;
       bandeiraEl.src = flagUrl(iso);
+      bandeiraEl.alt = comNome ? 'Bandeira ' + (pais.artigo ? 'd' + pais.artigo + ' ' : 'de ') + pais.nome
+                               : 'Bandeira misteriosa — que país é esse?';
+      perguntaEl.textContent = comNome ? 'Ache no mapa:' : 'Que país é esse?';
+      nomeAlvoEl.textContent = comNome ? pais.nome : '';
+      nomeAlvoEl.hidden = !comNome;
       alvoEl.hidden = false;
     }
 
@@ -1200,7 +1221,9 @@ const description =
       irParaNome(nivel.zoomAjuda && estado.modo !== 'dificil' ? estado.alvo.continente : 'mundo');
       // pré-carrega a próxima bandeira
       if (estado.fila[0]) { const img = new Image(); img.src = flagUrl(estado.fila[0].iso); }
-      anunciar('Nova bandeira! Encontre o país no mapa.');
+      anunciar(estado.modo === 'facil'
+        ? 'Nova bandeira: ' + estado.alvo.nome + '. Encontre no mapa.'
+        : 'Nova bandeira! Encontre o país no mapa.');
     }
 
     function resolverTreino(iso) {
