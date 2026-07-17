@@ -18,13 +18,16 @@ export interface Bloco {
   dropSorte?: { id: number; chance: number };
   // quanto tempo segurando pra quebrar (ms); ausente = não quebra (rocha-mãe, água)
   dureza?: number;
+  durezaPicareta?: number;
+  precisaPicareta?: boolean;
+  ferramenta?: boolean;
 }
 
 export const blocos: Bloco[] = [
   { id: 0, nome: 'ar', tiles: [0, 0, 0], solido: false, render: 'cubo' },
   { id: 1, nome: 'grama', tiles: [0, 1, 2], solido: true, render: 'cubo', drop: 2, dureza: 550 },
   { id: 2, nome: 'terra', tiles: [2, 2, 2], solido: true, render: 'cubo', dureza: 500 },
-  { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo', drop: 10, dureza: 1300 },
+  { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo', drop: 10, dureza: 1300, durezaPicareta: 400 },
   { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo', dureza: 450 },
   { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo', dureza: 800 },
   { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo', dureza: 800 },
@@ -32,8 +35,8 @@ export const blocos: Bloco[] = [
   // Naturais (id 7): dropam folhas E às vezes uma muda; DECAEM sem tronco conectado.
   { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', dropSorte: { id: 15, chance: 0.3 }, dureza: 300 },
   { id: 8, nome: 'vidro', tiles: [9, 9, 9], solido: true, render: 'recorte', dureza: 350 },
-  { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo', dureza: 1400 },
-  { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo', dureza: 1100 },
+  { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450 },
+  { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo', dureza: 1100, durezaPicareta: 350 },
   { id: 11, nome: 'flor amarela', tiles: [12, 12, 12], solido: false, render: 'cruz', dureza: 350 },
   { id: 12, nome: 'flor vermelha', tiles: [13, 13, 13], solido: false, render: 'cruz', dureza: 350 },
   // água só existe no mundo (não colocável no v1 — física de água espalhando é armadilha)
@@ -57,15 +60,18 @@ export const blocos: Bloco[] = [
   // lã: dropada pelo Winpup no chão (tufo não-sólido). NÃO entra em `itens`
   // (criança não coloca) — passar por cima coleta como recurso (materiais)
   { id: 21, nome: 'lã', tiles: [25, 25, 25], solido: false, render: 'cruz', drop: 21, dureza: 200 },
+  { id: 22, nome: 'carvão', tiles: [26, 26, 26], solido: true, render: 'cubo', drop: 23, dureza: 600, precisaPicareta: true },
+  { id: 23, nome: 'carvão', tiles: [27, 27, 27], solido: false, render: 'cruz' },
+  { id: 24, nome: 'picareta de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true },
 ];
 
 // tipos de item coletáveis (grade do inventário/E); a hotbar agora é
 // dinâmica: 9 slots vazios que enchem conforme a criança coleta
-export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20];
+export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24];
 
 // materiais = recursos SÓ-coletáveis (não colocáveis): o jogador junta e
 // fabrica coisas depois. Aparecem numa seção própria do inventário.
-export const materiais = [21]; // lã (do Winpup)
+export const materiais = [21, 23];
 
 // craft simples da sobrevivência: toca na receita e transforma
 // (sem mesa, sem grade — proporcional a criança de 6 anos)
@@ -84,12 +90,13 @@ export const receitas: Receita[] = [
   { de: 6, qtd: 2, para: 17, ganha: 1 }, // 2 tábuas → 1 baú
   { de: 6, qtd: 2, para: 18, ganha: 1 }, // 2 tábuas → 1 porta
   { de: 6, qtd: 1, para: 20, ganha: 1 }, // 1 tábua → 1 placa
+  { de: 6, qtd: 3, para: 24, ganha: 1 },
 ];
 
 export const config = {
   mundo: {
-    SX: 96,
-    SZ: 96,
+    SX: 192,
+    SZ: 192,
     SY: 40,
     CHUNK: 16, // 6×6 chunks de coluna inteira
     nivelAgua: 10,
@@ -102,8 +109,9 @@ export const config = {
     // ilha: o terreno afunda do raio de início até a borda
     ilhaInicioR: 0.68, // fração da meia-largura onde começa a cair
     ilhaQueda: 11, // quantos blocos afunda até a borda
-    arvores: 55, // tentativas (nem toda posição serve)
-    flores: 150,
+    arvores: 220, // tentativas (nem toda posição serve)
+    flores: 600,
+    dungeon: { salas: 7, carvaoPorSala: 10 },
   },
   fisica: {
     gravidade: 25,
@@ -125,7 +133,7 @@ export const config = {
   hotbarTamanho: 9,
   // Winpup (1º bicho): flutua, vagueia devagar e solta lã de dia
   bichos: {
-    quantos: 3, // ~3 por mundo
+    quantos: 8,
     altura: 1.4, // paira esse tanto acima do chão
     bobAmp: 0.18, // amplitude do balanço vertical
     bobHz: 0.5, // ciclos por segundo do bob
@@ -141,9 +149,9 @@ export const config = {
   decay: { atrasoMinMs: 400, atrasoMaxMs: 2900, chanceMuda: 0.15, alcanceTronco: 6 },
   salvar: {
     api: '/class/api/mundos.php',
-    debounceMs: 20000, // auto-save 20s após o último bloco editado
+    debounceMs: 12000, // auto-save após o último bloco editado
     minEntreSavesMs: 5000,
-    maxPayload: 700000,
+    maxPayload: 2000000,
   },
   // multiplayer por sala (mb-salas.php): snapshot + diário de edições,
   // polling puro — funciona de qualquer casa, sem rede local

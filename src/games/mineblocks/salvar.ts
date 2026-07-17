@@ -7,7 +7,12 @@
 // salvoEm que o cliente conhece (base); se o servidor tem um save MAIS
 // NOVO (outra aba/outro colega), devolve conflito — o auto-save para e
 // só o save manual, com confirmação da criança, passa por cima.
+import { gerarMundo } from './geracao';
 import type { Contexto, Salvar } from './tipos';
+
+const LEGACY_SX = 96;
+const LEGACY_SZ = 96;
+const LEGACY_SY = 40;
 
 export function codificarRLE(dados: Uint8Array): string {
   const bytes: number[] = [];
@@ -59,10 +64,42 @@ export function criarSalvar(ctx: Contexto): Salvar {
   let debounce = 0;
   let ultimoSaveMs = -Infinity; // nunca salvou: o 1º auto-save passa na hora
 
+  function expandLegacyWorld(legacy: Uint8Array, seed: number): Uint8Array {
+    const { SX, SZ } = ctx.cfg.mundo;
+    const offX = (SX - LEGACY_SX) / 2;
+    const offZ = (SZ - LEGACY_SZ) / 2;
+    gerarMundo(ctx, seed);
+    const out = new Uint8Array(ctx.mundo.dados);
+    for (let y = 0; y < LEGACY_SY; y++) {
+      for (let z = 0; z < LEGACY_SZ; z++) {
+        const src = z * LEGACY_SX + y * LEGACY_SX * LEGACY_SZ;
+        out.set(legacy.subarray(src, src + LEGACY_SX), (offX) + (z + offZ) * SX + y * SX * SZ);
+      }
+    }
+    return out;
+  }
+
+  function remapLegacyMetas(metas: unknown): unknown {
+    if (!metas || typeof metas !== 'object') return metas;
+    const { SX, SZ } = ctx.cfg.mundo;
+    const offX = (SX - LEGACY_SX) / 2;
+    const offZ = (SZ - LEGACY_SZ) / 2;
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(metas as Record<string, unknown>)) {
+      const n = +k;
+      if (!Number.isInteger(n) || n < 0 || n >= LEGACY_SX * LEGACY_SZ * LEGACY_SY) continue;
+      const x = n % LEGACY_SX;
+      const z = Math.floor(n / LEGACY_SX) % LEGACY_SZ;
+      const y = Math.floor(n / (LEGACY_SX * LEGACY_SZ));
+      out[(x + offX) + (z + offZ) * SX + y * SX * SZ] = (metas as Record<string, unknown>)[k];
+    }
+    return out;
+  }
+
   function payloadAtual(): string {
     const p = ctx.jogador;
     return JSON.stringify({
-      v: 5, // v5 = hora do dia; v4 = metadata (baús/placas); v3-v1 ainda carregam
+      v: 6, // v6 = mundo 192×192 (saves 96×96 migram no load); v5 = hora do dia; v4 = metadata; v3-v1 ainda carregam
       seed: ctx.estado.seed,
       tempoDia: Math.round(ctx.ceu.tempo()),
       jogador: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(3), pitch: +p.pitch.toFixed(3) },
@@ -199,7 +236,15 @@ export function criarSalvar(ctx: Contexto): Salvar {
         sujoDesdeUltimoSave = true;
         return '__NOVO__';
       }
-      const blocos = decodificarRLE(p.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
+      let migrado = false;
+      let blocos = decodificarRLE(p.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
+      if (!blocos) {
+        const legado = decodificarRLE(p.blocos, LEGACY_SX * LEGACY_SZ * LEGACY_SY, ctx.blocos.length - 1);
+        if (legado) {
+          blocos = expandLegacyWorld(legado, p.seed >>> 0);
+          migrado = true;
+        }
+      }
       if (!blocos) return 'Esse mundo está vazio ou quebrado. 😢';
       codigo = cod;
       baseSalvoEm = r.json.salvoEm || 0;
@@ -208,7 +253,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
       ctx.mundo.dados.set(blocos);
       ctx.estado.seed = p.seed >>> 0;
       if (typeof p.tempoDia === 'number') ctx.ceu.definirTempo(p.tempoDia); // v<5 → fica de manhã
-      ctx.metas.carregar(p.metas); // v<4 (sem metas) → mapa vazio
+      ctx.metas.carregar(migrado ? remapLegacyMetas(p.metas) : p.metas); // v<4 (sem metas) → mapa vazio
       const NSLOTS = ctx.cfg.hotbarTamanho;
       ctx.estado.sel = Math.max(0, Math.min(NSLOTS - 1, p.sel | 0));
       // inventário: v2+ traz salvo; v1 (criativo antigo) migra vazio —
@@ -238,12 +283,18 @@ export function criarSalvar(ctx: Contexto): Salvar {
       }
       ctx.estado.hotbarSlots = slots;
       const j = p.jogador || {};
-      ctx.jogador.x = typeof j.x === 'number' ? j.x : ctx.cfg.mundo.SX / 2;
+      const offX = migrado ? (ctx.cfg.mundo.SX - LEGACY_SX) / 2 : 0;
+      const offZ = migrado ? (ctx.cfg.mundo.SZ - LEGACY_SZ) / 2 : 0;
+      ctx.jogador.x = typeof j.x === 'number' ? j.x + offX : ctx.cfg.mundo.SX / 2;
       ctx.jogador.y = typeof j.y === 'number' ? j.y : ctx.cfg.mundo.SY;
-      ctx.jogador.z = typeof j.z === 'number' ? j.z : ctx.cfg.mundo.SZ / 2;
+      ctx.jogador.z = typeof j.z === 'number' ? j.z + offZ : ctx.cfg.mundo.SZ / 2;
       ctx.jogador.yaw = typeof j.yaw === 'number' ? j.yaw : 0;
       ctx.jogador.pitch = typeof j.pitch === 'number' ? j.pitch : 0;
-      sujoDesdeUltimoSave = false;
+      sujoDesdeUltimoSave = migrado;
+      if (migrado) {
+        agendar();
+        ctx.ui.mostrarToast('🗺️ Seu mundo cresceu! Tem terras novas (e uma dungeon…) além das bordas antigas.', 'ok', 4200);
+      }
       return null;
     },
     adotarMundo(cod) {

@@ -64,6 +64,137 @@ export function brotarArvore(ctx: Contexto, x: number, h: number, z: number, rng
   }
 }
 
+function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: number) => number) {
+  const { mundo, cfg } = ctx;
+  const { SX, SZ } = cfg.mundo;
+  const D = cfg.geracao.dungeon;
+  const midX = SX / 2;
+  const midZ = SZ / 2;
+  const FLOOR_Y = 2;
+  const ROOM_TOP = 6;
+  const HALL_TOP = 5;
+  const KEEP_OUT = SX / 4 + 3;
+
+  function areaOk(x0: number, x1: number, z0: number, z1: number): boolean {
+    if (x0 < 3 || z0 < 3 || x1 >= SX - 3 || z1 >= SZ - 3) return false;
+    for (let z = z0; z <= z1; z++) {
+      for (let x = x0; x <= x1; x++) {
+        if (heightAt(x, z) < 10) return false;
+      }
+    }
+    return true;
+  }
+
+  function setCell(x: number, y: number, z: number, id: number) {
+    mundo.dados[x + z * SX + y * SX * SZ] = id;
+  }
+
+  function carveBox(x0: number, x1: number, z0: number, z1: number, yTop: number) {
+    for (let z = z0; z <= z1; z++) {
+      for (let x = x0; x <= x1; x++) {
+        setCell(x, FLOOR_Y, z, 10);
+        for (let y = FLOOR_Y + 1; y <= yTop; y++) setCell(x, y, z, 0);
+      }
+    }
+  }
+
+  type Room = { x: number; z: number; w: number; d: number };
+  const rooms: Room[] = [];
+  const baseAngle = rng() * Math.PI * 2;
+  const spin = rng() < 0.5 ? 1 : -1;
+  for (let i = 0; i < D.salas; i++) {
+    for (let t = 0; t < 60; t++) {
+      const ang = baseAngle + spin * i * 0.22 + (rng() - 0.5) * 0.12;
+      const need = KEEP_OUT / Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)));
+      const dist = need + 3 + rng() * 8;
+      const cx = Math.round(midX + Math.cos(ang) * dist);
+      const cz = Math.round(midZ + Math.sin(ang) * dist);
+      const w = 7 + 2 * Math.floor(rng() * 3);
+      const d = 7 + 2 * Math.floor(rng() * 2);
+      const x0 = cx - (w >> 1);
+      const z0 = cz - (d >> 1);
+      if (Math.max(Math.abs(cx - midX), Math.abs(cz - midZ)) <= KEEP_OUT) continue;
+      if (!areaOk(x0 - 1, x0 + w, z0 - 1, z0 + d)) continue;
+      if (rooms.some((r) => Math.abs(r.x - cx) < (r.w + w) / 2 + 3 && Math.abs(r.z - cz) < (r.d + d) / 2 + 3)) continue;
+      rooms.push({ x: cx, z: cz, w, d });
+      break;
+    }
+  }
+  if (!rooms.length) return;
+
+  for (let i = 1; i < rooms.length; i++) {
+    const a = rooms[i - 1];
+    const b = rooms[i];
+    const xLo = Math.min(a.x, b.x);
+    const xHi = Math.max(a.x, b.x);
+    const zLo = Math.min(a.z, b.z);
+    const zHi = Math.max(a.z, b.z);
+    if (areaOk(xLo, xHi + 1, a.z, a.z + 1) && areaOk(b.x, b.x + 1, zLo, zHi + 1)) {
+      carveBox(xLo, xHi + 1, a.z, a.z + 1, HALL_TOP);
+      carveBox(b.x, b.x + 1, zLo, zHi + 1, HALL_TOP);
+    } else if (areaOk(a.x, a.x + 1, zLo, zHi + 1) && areaOk(xLo, xHi + 1, b.z, b.z + 1)) {
+      carveBox(a.x, a.x + 1, zLo, zHi + 1, HALL_TOP);
+      carveBox(xLo, xHi + 1, b.z, b.z + 1, HALL_TOP);
+    }
+  }
+
+  for (const r of rooms) {
+    const x0 = r.x - (r.w >> 1);
+    const z0 = r.z - (r.d >> 1);
+    const x1 = x0 + r.w - 1;
+    const z1 = z0 + r.d - 1;
+    carveBox(x0, x1, z0, z1, ROOM_TOP);
+    let placedCoal = 0;
+    for (let t = 0; t < D.carvaoPorSala * 5 && placedCoal < D.carvaoPorSala; t++) {
+      const face = Math.floor(rng() * 5);
+      let x = x0 + Math.floor(rng() * r.w);
+      let z = z0 + Math.floor(rng() * r.d);
+      let y = FLOOR_Y + 1 + Math.floor(rng() * 4);
+      if (face === 0) x = x0 - 1;
+      else if (face === 1) x = x1 + 1;
+      else if (face === 2) z = z0 - 1;
+      else if (face === 3) z = z1 + 1;
+      else y = ROOM_TOP + 1;
+      if (mundo.obter(x, y, z) === 3) {
+        setCell(x, y, z, 22);
+        placedCoal++;
+      }
+    }
+  }
+
+  const first = rooms[0];
+  const stepX = Math.abs(first.x - midX) >= Math.abs(first.z - midZ) ? Math.sign(first.x - midX) : 0;
+  const stepZ = stepX === 0 ? Math.sign(first.z - midZ) : 0;
+  let sx = first.x + stepX * ((first.w >> 1) + 1);
+  let sz = first.z + stepZ * ((first.d >> 1) + 1);
+  let floorY = FLOOR_Y;
+  for (let i = 0; i < 30; i++) {
+    if (sx < 2 || sx >= SX - 2 || sz < 2 || sz >= SZ - 2) return;
+    const h = heightAt(sx, sz);
+    if (h < 10) return;
+    setCell(sx, floorY, sz, 10);
+    const emerged = floorY + 3 >= h;
+    const topo = emerged ? h + 1 : floorY + 3;
+    for (let y = floorY + 1; y <= topo; y++) setCell(sx, y, sz, 0);
+    if (floorY >= h) {
+      const px = stepZ;
+      const pz = stepX;
+      for (const s of [-1, 1]) {
+        const bx = sx + px * s;
+        const bz = sz + pz * s;
+        if (bx < 1 || bx >= SX - 1 || bz < 1 || bz >= SZ - 1) continue;
+        const hh = heightAt(bx, bz);
+        setCell(bx, hh + 1, bz, 10);
+        setCell(bx, hh + 2, bz, 10);
+      }
+      return;
+    }
+    floorY++;
+    sx += stepX;
+    sz += stepZ;
+  }
+}
+
 export function gerarMundo(ctx: Contexto, seed: number) {
   const { mundo, cfg } = ctx;
   const { SX, SZ, SY, nivelAgua } = cfg.mundo;
@@ -107,6 +238,8 @@ export function gerarMundo(ctx: Contexto, seed: number) {
   const alturaEm = (x: number, z: number) => alturas[x + z * SX];
   const ehGrama = (x: number, z: number) =>
     mundo.obter(x, alturaEm(x, z), z) === 1;
+
+  digDungeon(ctx, rng, alturaEm);
 
   // ----- árvores (tronco 4-5 + copa) -----
   const copas: Array<[number, number]> = [];

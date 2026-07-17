@@ -34,7 +34,7 @@ const LETRAS_CODIGO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const TTL_S = 10800;            // sala parada há 3h é limpa na criação de outra
 const MAX_SALAS = 30;
 const MAX_JOGADORES = 30;       // turma inteira
-const MAX_FOTO = 700000;        // bytes do JSON da foto (RLE real fica em 15-60KB)
+const MAX_FOTO = 2000000;        // bytes do JSON da foto (RLE real fica em 15-60KB)
 const MAX_EDICOES_POR_SYNC = 200;
 const MAX_DIARIO = 3000;        // freio de emergência; anfitrião compacta muito antes
 const MAX_METAS_POR_SYNC = 64;  // metadata (baú/placa) muda pouco por sync
@@ -46,13 +46,13 @@ const ATIVO_S = 12;             // visto há <12s conta pra eleger anfitrião
 // tem que ser MAIOR que isso, senão alt-tab de 2min expulsa a criança
 const SUMIU_S = 120;            // visto há >120s sai da sala sozinho
 
-// mundo 96×96×40; MAX_BLOCO tem que casar com a tabela do cliente
+// mundo 192×192×40; MAX_BLOCO tem que casar com a tabela do cliente
 // (id acima da tabela envenena o save do dono: o decodificarRLE recusa
 // o mundo inteiro no próximo carregar)
-const MAX_X = 96;
+const MAX_X = 192;
 const MAX_Y = 40;
-const MAX_Z = 96;
-const MAX_BLOCO = 21;   // maior id da tabela do cliente (ar..placa, lã)
+const MAX_Z = 192;
+const MAX_BLOCO = 24;   // maior id da tabela do cliente (ar..picareta)
 const MAX_BICHOS = 16;  // teto de Winpups no blackboard (só posição)
 
 function falha(int $code, string $msg, array $extra = []): void {

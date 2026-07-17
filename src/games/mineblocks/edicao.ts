@@ -17,6 +17,7 @@ const BAU = 17;
 const PORTA_FECHADA = 18;
 const PORTA_ABERTA = 19;
 const PLACA = 20;
+const PICKAXE = 24;
 const ehPorta = (id: number) => id === PORTA_FECHADA || id === PORTA_ABERTA;
 
 export function criarEdicao(ctx: Contexto): Edicao {
@@ -195,9 +196,17 @@ export function criarEdicao(ctx: Contexto): Edicao {
     return true;
   }
 
+  function heldItem(): number {
+    return ctx.estado.hotbarSlots[ctx.estado.sel] || 0;
+  }
+
   function podeQuebrar(a: Alvo): boolean {
     if (a.id === 14 || porId(a.id).dureza === undefined) {
       avisar('🪨 Essa rocha do fundo não quebra!');
+      return false;
+    }
+    if (porId(a.id).precisaPicareta && heldItem() !== PICKAXE) {
+      avisar('⛏ O carvão é duro demais pra mão! Fabrique uma picareta de madeira (3 tábuas).');
       return false;
     }
     // baú é protegido: só o dono quebra (senão qualquer um roubava o conteúdo)
@@ -234,7 +243,8 @@ export function criarEdicao(ctx: Contexto): Edicao {
       ultimoToc = tempoMs;
     }
     progresso += dt * 1000;
-    const dureza = porId(a.id).dureza!;
+    const defAlvo = porId(a.id);
+    const dureza = heldItem() === PICKAXE && defAlvo.durezaPicareta !== undefined ? defAlvo.durezaPicareta : defAlvo.dureza!;
     if (progresso >= dureza) {
       removerBloco(a); // o som cheio vem daqui — sem toc empilhado
       esconderRachadura();
@@ -269,6 +279,10 @@ export function criarEdicao(ctx: Contexto): Edicao {
       return false;
     }
     const def = porId(id);
+    if (def.ferramenta) {
+      if (avisar('⛏ A picareta é ferramenta! Segure ela e bata na pedra pra minerar rapidinho.')) ctx.audio.somErro();
+      return false;
+    }
     if ((ctx.estado.inventario[id] || 0) <= 0) {
       if (avisar('🎒 Você não tem ' + def.nome + '! Quebre blocos pra ganhar.')) ctx.audio.somErro();
       return false;

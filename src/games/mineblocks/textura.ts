@@ -231,6 +231,43 @@ export function criarTextura(_ctx: Contexto): Textura {
     for (const [x, y] of [[3, 11], [12, 10], [6, 12], [9, 12]] as const) g.fillRect(ox + x, oy + y, 2, 1);
   }
 
+  {
+    const [ox, oy] = base(26, [138, 138, 142], 0.08);
+    g.fillStyle = '#1c1c20';
+    for (const [x, y, w, h] of [[2, 3, 3, 2], [9, 2, 3, 3], [4, 8, 3, 3], [11, 9, 3, 2], [7, 12, 3, 2], [2, 12, 2, 2]] as const) g.fillRect(ox + x, oy + y, w, h);
+    g.fillStyle = '#3a3a42';
+    for (const [x, y] of [[3, 3], [10, 2], [5, 8], [12, 9], [8, 12]] as const) g.fillRect(ox + x, oy + y, 1, 1);
+  }
+  {
+    const ox = (27 % GRADE) * TILE;
+    const oy = Math.floor(27 / GRADE) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#1c1c20';
+    g.fillRect(ox + 4, oy + 6, 8, 6);
+    g.fillRect(ox + 6, oy + 4, 5, 3);
+    g.fillRect(ox + 3, oy + 8, 2, 3);
+    g.fillStyle = '#3a3a42';
+    for (const [x, y] of [[5, 7], [8, 5], [10, 8], [6, 10], [9, 11]] as const) g.fillRect(ox + x, oy + y, 2, 1);
+    g.fillStyle = '#55555f';
+    px(ox, oy, 7, 5, '#55555f'); px(ox, oy, 5, 9, '#55555f'); px(ox, oy, 10, 7, '#55555f');
+  }
+  {
+    const ox = (28 % GRADE) * TILE;
+    const oy = Math.floor(28 / GRADE) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#8a6a3c';
+    for (let i = 0; i < 9; i++) g.fillRect(ox + 3 + i, oy + 12 - i, 2, 2);
+    g.fillStyle = '#b98a4e';
+    g.fillRect(ox + 7, oy + 2, 6, 2);
+    g.fillRect(ox + 5, oy + 3, 3, 2);
+    g.fillRect(ox + 12, oy + 4, 2, 3);
+    g.fillRect(ox + 3, oy + 4, 2, 2);
+    g.fillRect(ox + 13, oy + 6, 1, 2);
+    g.fillStyle = '#7c5a30';
+    g.fillRect(ox + 7, oy + 2, 6, 1);
+    px(ox, oy, 3, 4, '#7c5a30'); px(ox, oy, 13, 7, '#7c5a30');
+  }
+
   // --- 17/18/19 rachaduras (overlay de quebra, cutout) ---
   {
     const riscos: Array<Array<[number, number, number, number]>> = [
