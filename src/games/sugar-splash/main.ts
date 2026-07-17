@@ -141,6 +141,7 @@ export function iniciarJogo() {
   const fluxo = {
     comecar() {
       audio.retomar();
+      jog.pedirFullscreen();
       clearTimeout(respiroTimer);
       respiroTimer = 0;
       clearTimeout(fimTimer);

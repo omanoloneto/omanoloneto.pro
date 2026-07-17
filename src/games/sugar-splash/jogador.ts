@@ -5,6 +5,23 @@ export function criarJogador(ctx: Contexto) {
   let ultimoTiroMs = 0;
   let travado = false;
   let modoTouch = false;
+  const telaTouch = window.matchMedia('(pointer: coarse)').matches;
+
+  function pedirFullscreen() {
+    if (!telaTouch || document.fullscreenElement) return;
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
+    try {
+      const pr = el.requestFullscreen
+        ? el.requestFullscreen({ navigationUI: 'hide' } as FullscreenOptions)
+        : (el.webkitRequestFullscreen && el.webkitRequestFullscreen(), undefined);
+      if (pr && typeof pr.then === 'function') {
+        pr.then(() => {
+          const o = screen.orientation as ScreenOrientation & { lock?: (m: string) => Promise<void> };
+          if (o && typeof o.lock === 'function') o.lock('landscape').catch(() => {});
+        }).catch(() => {});
+      }
+    } catch { }
+  }
 
   function passo(dt: number, ts: number) {
     const J = cfg.jogador;
@@ -149,12 +166,15 @@ export function criarJogador(ctx: Contexto) {
     const joyPino = document.querySelector('[data-joy-pino]') as HTMLElement;
     let joyId = -1;
     joy.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
       modoTouch = true;
+      pedirFullscreen();
       joyId = e.pointerId;
       joy.setPointerCapture(e.pointerId);
     });
     joy.addEventListener('pointermove', (e) => {
       if (e.pointerId !== joyId) return;
+      e.preventDefault();
       const r = joy.getBoundingClientRect();
       const dx = (e.clientX - r.left - r.width / 2) / (r.width / 2);
       const dy = (e.clientY - r.top - r.height / 2) / (r.height / 2);
@@ -179,14 +199,18 @@ export function criarJogador(ctx: Contexto) {
     let olharY = 0;
     cenaEl.addEventListener('pointerdown', (e) => {
       if (e.pointerType !== 'touch') return;
+      e.preventDefault();
       modoTouch = true;
+      pedirFullscreen();
       if (olharId !== -1) return;
       olharId = e.pointerId;
       olharX = e.clientX;
       olharY = e.clientY;
+      cenaEl.setPointerCapture && cenaEl.setPointerCapture(e.pointerId);
     });
     cenaEl.addEventListener('pointermove', (e) => {
       if (e.pointerId !== olharId || estado.fase !== 'jogando') return;
+      e.preventDefault();
       j.yaw -= (e.clientX - olharX) * 0.005;
       j.pitch = Math.max(-1.4, Math.min(1.4, j.pitch - (e.clientY - olharY) * 0.005));
       olharX = e.clientX;
@@ -197,11 +221,13 @@ export function criarJogador(ctx: Contexto) {
     };
     cenaEl.addEventListener('pointerup', soltaOlhar);
     cenaEl.addEventListener('pointercancel', soltaOlhar);
+    cenaEl.addEventListener('lostpointercapture', soltaOlhar);
 
     const btnAtira = document.querySelector('[data-atirar]') as HTMLElement;
     btnAtira.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       modoTouch = true;
+      pedirFullscreen();
       btnAtira.setPointerCapture(e.pointerId);
       input.atirando = true;
       btnAtira.classList.add('on');
@@ -241,5 +267,5 @@ export function criarJogador(ctx: Contexto) {
     return modoTouch;
   }
 
-  return { passo, ligarInput, pedirLock, soltarLock, emModoTouch };
+  return { passo, ligarInput, pedirLock, soltarLock, emModoTouch, pedirFullscreen };
 }
