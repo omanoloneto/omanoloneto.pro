@@ -7,6 +7,8 @@ const MAX_BOTS = 12;
 type Bot = {
   ativo: boolean;
   derretendo: number;
+  respawnRestante: number;
+  hitPulse: number;
   x: number;
   y: number;
   z: number;
@@ -14,7 +16,6 @@ type Bot = {
   hpMax: number;
   vel: number;
   proxTiroMs: number;
-  team: 0 | 1;
   grupo: THREE.Group;
   armL: THREE.Group;
   armR: THREE.Group;
@@ -41,8 +42,8 @@ export function criarBots(ctx: Contexto): Bots {
     poca.visible = false;
     scene.add(poca);
     return {
-      ativo: false, derretendo: 0, x: 0, y: 0, z: 0, hp: 0, hpMax: 0, vel: 0, proxTiroMs: 0,
-      team: 0 as 0 | 1, grupo: rig.group, armL: rig.armL, armR: rig.armR, legL: rig.legL, legR: rig.legR,
+      ativo: false, derretendo: 0, respawnRestante: 0, hitPulse: 0, x: 0, y: 0, z: 0, hp: 0, hpMax: 0, vel: 0, proxTiroMs: 0,
+      grupo: rig.group, armL: rig.armL, armR: rig.armR, legL: rig.legL, legR: rig.legR,
       teamMeshes: rig.teamMeshes, poca,
     };
   });
@@ -54,58 +55,71 @@ export function criarBots(ctx: Contexto): Bots {
     b.legR.rotation.x = 0;
   }
 
-  function spawnOnda(onda: number) {
-    const n = Math.min(cfg.ondas.botsMax, cfg.ondas.botsBase + (onda - 1) * cfg.ondas.botsPorOnda);
-    const vel = Math.min(B.velMax, B.velBase + (onda - 1) * B.velPorOnda);
-    const hp = B.hpBase + (onda - 1) * B.hpPorOnda;
-    let feitos = 0;
-    for (const b of bots) {
-      if (feitos >= n) break;
-      if (b.ativo) continue;
-      const [sx, sz] = ctx.spawnsBots[feitos % ctx.spawnsBots.length];
-      b.ativo = true;
-      b.derretendo = 0;
-      b.x = sx + (Math.random() - 0.5) * 2;
-      b.z = sz + (Math.random() - 0.5) * 2;
-      b.y = ctx.arena.chaoEm(b.x, b.z);
-      b.hp = hp;
-      b.hpMax = hp;
-      b.vel = vel * (0.85 + Math.random() * 0.3);
-      b.proxTiroMs = performance.now() + 800 + Math.random() * 1200;
-      b.team = sx < 0 ? 0 : 1;
-      const teamMat = b.team === 0 ? mats.trunksBlue : mats.trunksRed;
-      for (const mesh of b.teamMeshes) mesh.material = teamMat;
-      resetLimbs(b);
-      b.grupo.visible = true;
-      b.grupo.scale.set(1, 1, 1);
-      b.grupo.position.set(b.x, b.y, b.z);
-      b.poca.visible = false;
-      feitos++;
-    }
+  let spawnIndex = 0;
+
+  function enemySpawns(): Array<[number, number]> {
+    const ladoInimigo = ctx.estado.team === 0 ? 1 : -1;
+    return ctx.spawnsBots.filter(([x]) => Math.sign(x) === ladoInimigo);
+  }
+
+  function reviver(b: Bot) {
+    const pontos = enemySpawns();
+    const [sx, sz] = pontos[spawnIndex++ % pontos.length];
+    b.ativo = true;
+    b.derretendo = 0;
+    b.respawnRestante = 0;
+    b.hitPulse = 0;
+    b.x = sx + (Math.random() - 0.5) * 2;
+    b.z = sz + (Math.random() - 0.5) * 2;
+    b.y = ctx.arena.chaoEm(b.x, b.z);
+    b.hp = B.hp;
+    b.hpMax = B.hp;
+    b.vel = B.vel * (0.85 + Math.random() * 0.3);
+    b.proxTiroMs = performance.now() + 800 + Math.random() * 1200;
+    const teamMat = ctx.estado.team === 0 ? mats.trunksRed : mats.trunksBlue;
+    for (const mesh of b.teamMeshes) mesh.material = teamMat;
+    resetLimbs(b);
+    b.grupo.visible = true;
+    b.grupo.scale.set(1, 1, 1);
+    b.grupo.position.set(b.x, b.y, b.z);
+    b.poca.visible = false;
+  }
+
+  function spawnInicial() {
+    limpar();
+    spawnIndex = 0;
+    for (let i = 0; i < cfg.partida.inimigos && i < bots.length; i++) reviver(bots[i]);
   }
 
   function passo(dt: number, ts: number) {
     const j = ctx.jogador;
     for (const b of bots) {
-      if (!b.ativo) continue;
+      if (!b.ativo) {
+        if (b.respawnRestante > 0 && ctx.estado.fase === 'jogando') {
+          b.respawnRestante -= dt;
+          if (b.respawnRestante <= 0) reviver(b);
+        }
+        continue;
+      }
       if (b.derretendo > 0) {
         b.derretendo += dt;
-        const t = Math.min(1, b.derretendo / 0.9);
+        const t = Math.min(1, b.derretendo / 0.45);
         b.grupo.scale.set(1 + t * 0.4, Math.max(0.02, 1 - t), 1 + t * 0.4);
         b.poca.visible = true;
         b.poca.scale.setScalar(0.3 + t * 0.9);
         b.poca.position.set(b.x, b.y + 0.02, b.z);
-        if (b.derretendo > 2.2) {
+        if (b.derretendo > 1.2) {
           b.ativo = false;
           b.grupo.visible = false;
           b.poca.visible = false;
+          b.respawnRestante = Math.max(0.5, cfg.partida.respawnS - 1.2);
         }
         continue;
       }
       const dx = j.x - b.x;
       const dz = j.z - b.z;
       const dist = Math.hypot(dx, dz);
-      const walking = dist < B.alcanceVisao && dist > B.alcanceTiro * 0.55;
+      const walking = dist > B.alcanceTiro * 0.55;
       if (walking) {
         const passoX = (dx / dist) * b.vel * dt;
         const passoZ = (dz / dist) * b.vel * dt;
@@ -135,7 +149,10 @@ export function criarBots(ctx: Contexto): Bots {
       b.legL.rotation.x = swing;
       b.legR.rotation.x = -swing;
       b.armL.rotation.x = -swing;
-      b.armR.rotation.x = dist < B.alcanceVisao ? -1.25 : swing;
+      b.armR.rotation.x = dist < B.alcanceTiro * 1.4 ? -1.25 : swing;
+      const pulse = ctx.motionReduzido ? 0 : b.hitPulse;
+      b.grupo.scale.set(1 + pulse * 0.12, 1 - pulse * 0.18, 1 + pulse * 0.12);
+      b.hitPulse = Math.max(0, b.hitPulse - dt * 8);
       if (!ctx.motionReduzido) {
         b.grupo.position.y = b.y + Math.abs(Math.sin(ts / 180 + b.x)) * 0.06;
       }
@@ -159,9 +176,14 @@ export function criarBots(ctx: Contexto): Bots {
     if (b.hp <= 0) {
       b.derretendo = 0.001;
       resetLimbs(b);
+      ctx.estado.kills++;
       ctx.estado.pontos += B.pontosPorBot;
+      ctx.ui.mostrarPontos('+' + B.pontosPorBot, { x: b.x, y: b.y, z: b.z });
       ctx.audio.somDerreter();
       ctx.ui.atualizarHud();
+    } else {
+      b.hitPulse = 1;
+      ctx.audio.somHit();
     }
   }
 
@@ -184,6 +206,8 @@ export function criarBots(ctx: Contexto): Bots {
   function limpar() {
     for (const b of bots) {
       b.ativo = false;
+      b.respawnRestante = 0;
+      b.hitPulse = 0;
       b.grupo.visible = false;
       b.poca.visible = false;
     }
@@ -193,5 +217,5 @@ export function criarBots(ctx: Contexto): Bots {
     return bots.filter((b) => b.ativo).map((b) => ({ x: b.x, y: b.y, z: b.z, hp: b.hp }));
   }
 
-  return { vivos, spawnOnda, passo, atingir, colideJato, limpar, posicoes };
+  return { vivos, spawnInicial, passo, atingir, colideJato, limpar, posicoes };
 }

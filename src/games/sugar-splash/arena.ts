@@ -34,6 +34,31 @@ function texAzulejo(base: string, rejunte: string, faixa?: string): THREE.Canvas
   return t;
 }
 
+function waterTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#50b8e8';
+  g.fillRect(0, 0, 64, 64);
+  g.lineWidth = 2;
+  for (let i = 0; i < 4; i++) {
+    const y0 = 8 + i * 16;
+    g.strokeStyle = i % 2 === 0 ? 'rgba(220,245,255,0.5)' : 'rgba(150,215,245,0.6)';
+    g.beginPath();
+    g.moveTo(0, y0);
+    g.bezierCurveTo(16, y0 - 6, 32, y0 + 6, 48, y0 - 4);
+    g.bezierCurveTo(56, y0 - 5, 60, y0, 64, y0);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.NearestFilter;
+  return t;
+}
+
 function lockerTexture(accent: string): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 32;
@@ -93,14 +118,19 @@ export function criarArena(ctx: Contexto): Arena {
 
   const aabbs: Arena['aabbs'] = [];
 
-  const tDeck = texAzulejo('#e8e4da', '#b8b4aa');
-  tDeck.repeat.set(A.larg / 2, A.prof / 2);
-  const chao = new THREE.Mesh(
-    new THREE.PlaneGeometry(A.larg, A.prof),
-    new THREE.MeshLambertMaterial({ map: tDeck })
-  );
-  chao.rotation.x = -Math.PI / 2;
-  scene.add(chao);
+  for (const [sx2, sz2, w, d] of [
+    [0, (P.z0 - meiaP) / 2, A.larg, meiaP + P.z0],
+    [0, (P.z1 + meiaP) / 2, A.larg, meiaP - P.z1],
+    [(P.x0 - meiaL) / 2, 0, meiaL + P.x0, P.z1 - P.z0],
+    [(P.x1 + meiaL) / 2, 0, meiaL - P.x1, P.z1 - P.z0],
+  ] as Array<[number, number, number, number]>) {
+    const tex = texAzulejo('#e8e4da', '#b8b4aa');
+    tex.repeat.set(w / 2, d / 2);
+    const strip = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshLambertMaterial({ map: tex }));
+    strip.rotation.x = -Math.PI / 2;
+    strip.position.set(sx2, 0, sz2);
+    scene.add(strip);
+  }
 
   const tParede = texAzulejo('#dce8ec', '#a8b8c0', '#3878c0');
   tParede.repeat.set(10, 1.6);
@@ -147,13 +177,27 @@ export function criarArena(ctx: Contexto): Arena {
     scene.add(lat);
   }
 
+  const aguaTex = waterTexture();
+  aguaTex.repeat.set(6, 4);
   const agua = new THREE.Mesh(
     new THREE.PlaneGeometry(pw, pd),
-    new THREE.MeshLambertMaterial({ color: 0x50b8e8, transparent: true, opacity: 0.55 })
+    new THREE.MeshLambertMaterial({ map: aguaTex, transparent: true, opacity: 0.7 })
   );
   agua.rotation.x = -Math.PI / 2;
-  agua.position.set((P.x0 + P.x1) / 2, -0.35, (P.z0 + P.z1) / 2);
+  agua.position.set((P.x0 + P.x1) / 2, -0.12, (P.z0 + P.z1) / 2);
   scene.add(agua);
+
+  const copingMat = new THREE.MeshLambertMaterial({ color: 0xf5f2ea });
+  for (const [bx, bz, bw, bd] of [
+    [0, P.z0 - 0.2, pw + 0.8, 0.4],
+    [0, P.z1 + 0.2, pw + 0.8, 0.4],
+    [P.x0 - 0.2, 0, 0.4, pd],
+    [P.x1 + 0.2, 0, 0.4, pd],
+  ] as Array<[number, number, number, number]>) {
+    const coping = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.08, bd), copingMat);
+    coping.position.set(bx, 0.04, bz);
+    scene.add(coping);
+  }
 
   const tCaixote = texCaixote();
   const caixoteMat = new THREE.MeshLambertMaterial({ map: tCaixote });
@@ -167,6 +211,8 @@ export function criarArena(ctx: Contexto): Arena {
 
   const LR = A.lockerRoom;
   const benchMat = new THREE.MeshLambertMaterial({ color: 0xb98a56 });
+  const porcelainMat = new THREE.MeshLambertMaterial({ color: 0xf8f8f2 });
+  const knobMat = new THREE.MeshLambertMaterial({ color: 0x8a9098 });
   function buildLockerRoom(side: number, theme: { tile: [string, string, string]; floor: [string, string]; accent: string }) {
     const wallTex = texAzulejo(theme.tile[0], theme.tile[1], theme.tile[2]);
     wallTex.repeat.set(5, 1.4);
@@ -216,33 +262,67 @@ export function criarArena(ctx: Contexto): Arena {
       aabbs.push({ minX: side * LR.innerX - 0.3, maxX: side * LR.innerX + 0.3, minZ: s.z - s.len / 2, maxZ: s.z + s.len / 2, alt: LR.wallH });
     }
 
-    for (const pz of [-8, -6.4, -4.8, -3.2, -1.6, 0]) {
-      const partition = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.12), stallMat);
-      partition.position.set(side * 26.95, 1.1, pz);
+    for (const pz of [-9.5, -7.5, -5.5, -3.5, -1.5, 0.5]) {
+      const partition = new THREE.Mesh(new THREE.BoxGeometry(1.7, 1.8, 0.1), stallMat);
+      partition.position.set(side * 26.85, 1.15, pz);
       scene.add(partition);
-      aabbs.push({ minX: side * 26.95 - 0.75, maxX: side * 26.95 + 0.75, minZ: pz - 0.06, maxZ: pz + 0.06, alt: 2.2 });
+      for (const fx of [-0.75, 0.75]) {
+        const foot = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.08), knobMat);
+        foot.position.set(side * 26.85 + fx, 0.125, pz);
+        scene.add(foot);
+      }
+      aabbs.push({ minX: side * 26.85 - 0.85, maxX: side * 26.85 + 0.85, minZ: pz - 0.05, maxZ: pz + 0.05, alt: 2.05 });
     }
 
-    for (const dz of [-6.9, -5.3, -2.1, -0.5]) {
-      const door = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.8, 1.0), stallMat);
-      door.position.set(side * 26.2, 1.2, dz);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.15, 10.4), stallMat);
+    rail.position.set(side * 26.0, 2.0, -4.5);
+    scene.add(rail);
+
+    const doorAngles = [1.15, 0.85, 1.35, 0.95, 1.2];
+    for (let i = 0; i < 5; i++) {
+      const hz = -9.45 + i * 2;
+      const ang = doorAngles[i];
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.6, 1.0), stallMat);
+      door.position.set(side * (26.0 - Math.sin(ang) * 0.5), 1.05, hz + Math.cos(ang) * 0.5);
+      door.rotation.y = -side * ang;
+      const knob = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.06), knobMat);
+      knob.position.set(0.08, 0, 0.4);
+      door.add(knob);
       scene.add(door);
-      aabbs.push({ minX: side * 26.2 - 0.06, maxX: side * 26.2 + 0.06, minZ: dz - 0.5, maxZ: dz + 0.5, alt: 2.1 });
     }
-    const openDoor = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.8, 0.12), stallMat);
-    openDoor.position.set(side * 25.64, 1.2, -4.74);
-    scene.add(openDoor);
-    aabbs.push({ minX: side * 25.64 - 0.5, maxX: side * 25.64 + 0.5, minZ: -4.8, maxZ: -4.68, alt: 2.1 });
+
+    for (let i = 0; i < 5; i++) {
+      const zc = -8.5 + i * 2;
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.13, 0.3, 8), porcelainMat);
+      bowl.position.set(side * 27.25, 0.15, zc);
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.05, 0.42), porcelainMat);
+      seat.position.set(side * 27.25, 0.33, zc);
+      const tank = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.45, 0.4), porcelainMat);
+      tank.position.set(side * 27.6, 0.55, zc);
+      scene.add(bowl, seat, tank);
+    }
 
     const lockers = new THREE.Mesh(new THREE.BoxGeometry(0.55, 2.1, 6.0), lockerMat);
     lockers.position.set(side * 27.42, 1.05, 5.0);
     scene.add(lockers);
     aabbs.push({ minX: side * 27.42 - 0.275, maxX: side * 27.42 + 0.275, minZ: 2, maxZ: 8, alt: 2.1 });
 
-    const bench = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 4.0), benchMat);
-    bench.position.set(side * 24.5, 0.45, -4);
-    scene.add(bench);
-    aabbs.push({ minX: side * 24.5 - 0.25, maxX: side * 24.5 + 0.25, minZ: -6, maxZ: -2, alt: 0.9 });
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 4), benchMat);
+    plank.position.set(side * 25.6, 0.48, 5);
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.06, 3.6), benchMat);
+    shelf.position.set(side * 25.6, 0.16, 5);
+    scene.add(plank, shelf);
+    for (const lz of [3.4, 6.6]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.46, 0.12), benchMat);
+      leg.position.set(side * 25.6, 0.23, lz);
+      scene.add(leg);
+    }
+    aabbs.push({ minX: side * 25.6 - 0.25, maxX: side * 25.6 + 0.25, minZ: 3, maxZ: 7, alt: 0.52 });
+
+    const roofMat = new THREE.MeshLambertMaterial({ color: new THREE.Color(theme.accent) });
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.25, A.prof), roofMat);
+    roof.position.set(side * 24.55, LR.wallH + 0.12, 0);
+    scene.add(roof);
   }
 
   buildLockerRoom(-1, { tile: ['#d8e6f4', '#a0b8cc', '#3878c0'], floor: ['#cfe0f0', '#9ab4c8'], accent: '#3878c0' });
@@ -285,5 +365,11 @@ export function criarArena(ctx: Contexto): Arena {
     return alt;
   }
 
-  return { aabbs, chaoEm, dentroPiscina };
+  function passo(ts: number) {
+    aguaTex.offset.x = (ts / 14000) % 1;
+    aguaTex.offset.y = (ts / 23000) % 1;
+    if (!ctx.motionReduzido) agua.position.y = -0.12 + Math.sin(ts / 700) * 0.02;
+  }
+
+  return { aabbs, chaoEm, dentroPiscina, passo };
 }

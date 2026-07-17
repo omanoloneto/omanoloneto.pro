@@ -8,9 +8,14 @@ export const config = {
     pulo: 5.2,
     gravidade: 14,
     solidezMax: 100,
-    vidas: 3,
     regenPorS: 4,
     regenAposS: 3,
+  },
+  partida: {
+    duracaoS: 300,
+    respawnS: 5,
+    inimigos: 4,
+    bonusVitoria: 500,
   },
   bisnaga: {
     cadenciaMs: 140,
@@ -25,24 +30,13 @@ export const config = {
   bots: {
     raio: 0.55,
     altura: 1.8,
-    velBase: 2.2,
-    velPorOnda: 0.25,
-    velMax: 4.6,
-    hpBase: 30,
-    hpPorOnda: 8,
+    vel: 3.2,
+    hp: 30,
     dano: 9,
     cadenciaMs: 1100,
     alcanceTiro: 12,
-    alcanceVisao: 34,
     velJato: 14,
     pontosPorBot: 100,
-    bonusOndaLimpa: 150,
-  },
-  ondas: {
-    botsBase: 3,
-    botsPorOnda: 1,
-    botsMax: 10,
-    respiroMs: 3500,
   },
   arena: {
     larg: 56,
@@ -80,4 +74,7 @@ export const spawnsBots: Array<[number, number]> = [
   [-21, -6], [21, -6], [-21, 6], [21, 6], [-12, -13], [12, 13], [-12, 13], [12, -13],
 ];
 
-export const spawnJogador = { x: 0, z: 10, yaw: 0 };
+export const spawnsTime: Array<{ x: number; z: number; yaw: number }> = [
+  { x: -24.5, z: 12, yaw: -0.53 },
+  { x: 24.5, z: 12, yaw: 0.53 },
+];

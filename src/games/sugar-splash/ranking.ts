@@ -40,7 +40,7 @@ export function criarRanking(ctx: Contexto): Ranking {
       const li = document.createElement('li');
       if (destaque && e.nome === destaque.nome && e.pontos === destaque.pontos) li.className = 'novo';
       li.innerHTML = '<span class="pos">' + (i + 1) + 'º</span><span class="nome">' + e.nome + '</span>' +
-        '<span class="det">onda ' + e.nivel + '</span><span class="pts">' + e.pontos + '</span>';
+        '<span class="det">' + e.nivel + ' derretidos</span><span class="pts">' + e.pontos + '</span>';
       tabela.appendChild(li);
     });
   }
@@ -52,7 +52,7 @@ export function criarRanking(ctx: Contexto): Ranking {
   return {
     abrirEntrada() {
       ctx.estado.fase = 'entrada';
-      nome = '';
+      nome = (ctx.estado.nome || '').slice(0, R.nomeMax);
       atualizarSlots();
       ctx.ui.els.fimModal.hidden = true;
       ctx.ui.els.entradaModal.hidden = false;
@@ -89,7 +89,7 @@ export function criarRanking(ctx: Contexto): Ranking {
     },
     async confirmarEntrada() {
       if (nome.length < R.nomeMin) return;
-      const entrada: Entrada = { nome, pontos: ctx.estado.pontos, nivel: ctx.estado.onda, data: new Date().toISOString().slice(0, 10) };
+      const entrada: Entrada = { nome, pontos: ctx.estado.pontos, nivel: ctx.estado.kills, data: new Date().toISOString().slice(0, 10) };
       const online = await fetchRanking({ nome: entrada.nome, pontos: entrada.pontos, nivel: entrada.nivel });
       let lista: Entrada[];
       if (online) {

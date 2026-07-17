@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import type { Contexto, UI } from './tipos';
 
 export function criarUI(ctx: Contexto): UI {
@@ -14,10 +15,13 @@ export function criarUI(ctx: Contexto): UI {
     banner: $('[data-banner]'),
     danoFlash: $('[data-dano-flash]'),
     hudPontos: $('[data-pontos]'),
-    hudOnda: $('[data-onda]'),
-    hudVidas: $('[data-vidas]'),
+    hudTempo: $('[data-tempo]'),
+    hudPlacar: $('[data-placar]'),
     solidezFill: $('[data-solidez-fill]'),
     tanqueFill: $('[data-tanque-fill]'),
+    respawnOverlay: $('[data-respawn]'),
+    aguaTint: $('[data-agua-tint]'),
+    erroIntro: $('[data-erro-intro]'),
     controles: $('[data-controles]'),
     pauseBtn: $('[data-pause]'),
     muteBtn: $('[data-mute]'),
@@ -27,8 +31,10 @@ export function criarUI(ctx: Contexto): UI {
   let toastTimer = 0;
   let bannerTimer = 0;
   let pontosAntes = -1;
-  let ondaAntes = -1;
-  let vidasAntes = -1;
+  let tempoAntes = -1;
+  let placarAntes = '';
+  let respawnAntes = -1;
+  const vetorProj = new THREE.Vector3();
 
   return {
     els,
@@ -53,20 +59,43 @@ export function criarUI(ctx: Contexto): UI {
         pontosAntes = e.pontos;
         els.hudPontos.textContent = String(e.pontos);
       }
-      if (e.onda !== ondaAntes) {
-        ondaAntes = e.onda;
-        els.hudOnda.textContent = String(e.onda);
+      const seg = Math.max(0, Math.ceil(e.tempoRestanteS));
+      if (seg !== tempoAntes) {
+        tempoAntes = seg;
+        els.hudTempo.textContent = Math.floor(seg / 60) + ':' + String(seg % 60).padStart(2, '0');
       }
-      if (e.vidas !== vidasAntes) {
-        vidasAntes = e.vidas;
-        let html = '';
-        for (let i = 0; i < ctx.cfg.jogador.vidas; i++) html += i < e.vidas ? '🧊' : '💧';
-        els.hudVidas.innerHTML = html;
+      const azul = e.team === 0 ? e.kills : e.mortes;
+      const vermelho = e.team === 0 ? e.mortes : e.kills;
+      const placar = '🔵 ' + azul + ' × ' + vermelho + ' 🔴';
+      if (placar !== placarAntes) {
+        placarAntes = placar;
+        els.hudPlacar.textContent = placar;
       }
       const sol = Math.max(0, e.solidez) / ctx.cfg.jogador.solidezMax;
       els.solidezFill.style.width = sol * 100 + '%';
       els.solidezFill.style.background = sol > 0.5 ? '#f5f2ea' : sol > 0.25 ? '#ffd23f' : '#ff5c39';
       els.tanqueFill.style.width = (e.tanque / ctx.cfg.bisnaga.tanqueMax) * 100 + '%';
+    },
+    mostrarPontos(texto, pos) {
+      vetorProj.set(pos.x, pos.y + 1.6, pos.z).project(ctx.camera);
+      if (vetorProj.z > 1 || vetorProj.z < -1) return;
+      const el = document.createElement('span');
+      el.className = 'pontos-voa';
+      el.textContent = texto;
+      el.style.left = ((vetorProj.x + 1) / 2) * 100 + '%';
+      el.style.top = ((1 - (vetorProj.y + 1) / 2) * 100) + '%';
+      els.cena.appendChild(el);
+      setTimeout(() => el.remove(), 950);
+    },
+    mostrarRespawn(seg) {
+      if (seg === respawnAntes && !els.respawnOverlay.hidden) return;
+      respawnAntes = seg;
+      els.respawnOverlay.textContent = '💧 Derreteu! Voltando em ' + seg + '…';
+      els.respawnOverlay.hidden = false;
+    },
+    esconderRespawn() {
+      respawnAntes = -1;
+      els.respawnOverlay.hidden = true;
     },
     mostrarBanner(titulo, sub) {
       ($('[data-banner-titulo]')).textContent = titulo;

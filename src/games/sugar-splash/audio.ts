@@ -47,6 +47,7 @@ export function criarAudio(ctx: Contexto): Audio {
   }
 
   let ultimoJato = 0;
+  let ultimoHit = 0;
 
   return {
     retomar() {
@@ -77,6 +78,12 @@ export function criarAudio(ctx: Contexto): Audio {
       ruido(0.09, 0.1, 2400);
     },
     somSplash() { ruido(0.18, 0.16, 900); },
+    somHit() {
+      const agora = performance.now();
+      if (agora - ultimoHit < 60) return;
+      ultimoHit = agora;
+      tom(880, 0, 0.06, 'square', 0.08, 1240);
+    },
     somDerreter() {
       tom(520, 0, 0.5, 'sine', 0.16, 120);
       ruido(0.4, 0.12, 600);

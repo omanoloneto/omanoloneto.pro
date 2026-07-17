@@ -12,12 +12,13 @@ export function iniciarJogo() {
   const dados = JSON.parse(document.querySelector('[data-dados]')!.textContent!);
 
   const estado: Estado = {
-    fase: 'inicio', pontos: 0, onda: 0, vidas: 0,
+    fase: 'inicio', nome: '', team: 0, pontos: 0, kills: 0, mortes: 0,
+    tempoRestanteS: 0, respawnRestanteS: 0,
     solidez: dados.config.jogador.solidezMax,
     tanque: dados.config.bisnaga.tanqueMax,
     mudo: false, ultimoDanoMs: 0, derretendo: false,
   };
-  const jogador: Jogador = { x: dados.spawnJogador.x, y: 0, z: dados.spawnJogador.z, vy: 0, yaw: dados.spawnJogador.yaw, pitch: 0, noChao: true, naPiscina: false };
+  const jogador: Jogador = { x: 0, y: 0, z: 10, vy: 0, yaw: 0, pitch: 0, noChao: true, naPiscina: false, shake: 0 };
   const input: Input = { frente: false, tras: false, esq: false, dir: false, pulo: false, atirando: false, joyX: 0, joyY: 0 };
 
   const cenaEl = document.querySelector('[data-cena]') as HTMLElement;
@@ -34,7 +35,7 @@ export function iniciarJogo() {
     cfg: dados.config,
     caixotes: dados.caixotes,
     spawnsBots: dados.spawnsBots,
-    spawnJogador: dados.spawnJogador,
+    spawnsTime: dados.spawnsTime,
     motionReduzido: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     scene, camera, renderer, cenaEl,
     estado, jogador, input,
@@ -61,8 +62,6 @@ export function iniciarJogo() {
 
   let rafId = 0;
   let ultimoTs = 0;
-  let respiroTimer = 0;
-  let fimTimer = 0;
 
   function retomarLoop() {
     if (!rafId) {
@@ -75,38 +74,31 @@ export function iniciarJogo() {
     rafId = 0;
   }
 
-  function proximaOnda() {
-    estado.onda++;
-    ctx.bots.spawnOnda(estado.onda);
-    audio.somOnda();
-    ui.mostrarBanner('Onda ' + estado.onda + '! 🌊', estado.onda === 1 ? 'Derreta os bonecos de açúcar!' : '');
-    ui.anunciar('Onda ' + estado.onda + '!');
+  function respawnJogador() {
+    const sp = ctx.spawnsTime[estado.team];
+    jogador.x = sp.x;
+    jogador.z = sp.z;
+    jogador.y = 0;
+    jogador.vy = 0;
+    jogador.yaw = sp.yaw;
+    jogador.pitch = 0;
+    estado.solidez = cfg.jogador.solidezMax;
+    estado.tanque = cfg.bisnaga.tanqueMax;
+    estado.derretendo = false;
+    estado.respawnRestanteS = 0;
+    ui.esconderRespawn();
     ui.atualizarHud();
   }
 
   function derreterJogador() {
     if (estado.derretendo) return;
     estado.derretendo = true;
-    estado.vidas--;
+    estado.mortes++;
+    estado.respawnRestanteS = cfg.partida.respawnS;
     ui.atualizarHud();
     audio.somDerreter();
-    ui.mostrarToast('💧 Você derreteu! ' + (estado.vidas > 0 ? 'Se reconstituindo…' : ''), 'info', 2200);
-    ui.anunciar(estado.vidas > 0 ? 'Você derreteu! Voltando pra base.' : 'Você derreteu de vez!');
-    if (estado.vidas <= 0) {
-      clearTimeout(fimTimer);
-      fimTimer = window.setTimeout(() => fluxo.fimDeJogo(), 1200);
-      return;
-    }
-    setTimeout(() => {
-      jogador.x = ctx.spawnJogador.x;
-      jogador.z = ctx.spawnJogador.z;
-      jogador.y = 0;
-      jogador.yaw = ctx.spawnJogador.yaw;
-      estado.solidez = cfg.jogador.solidezMax;
-      estado.tanque = cfg.bisnaga.tanqueMax;
-      estado.derretendo = false;
-      ui.atualizarHud();
-    }, 1400);
+    ui.mostrarRespawn(cfg.partida.respawnS);
+    ui.anunciar('Você derreteu! Voltando pro vestiário em ' + cfg.partida.respawnS + ' segundos.');
   }
 
   function loop(ts: number) {
@@ -119,21 +111,24 @@ export function iniciarJogo() {
     if (!estado.derretendo) jog.passo(dt, ts);
     ctx.bots.passo(dt, ts);
     ctx.agua.passo(dt);
+    ctx.arena.passo(ts);
 
     if (estado.solidez <= 0 && !estado.derretendo) derreterJogador();
 
     if (estado.derretendo) {
       camera.position.y = Math.max(0.3, camera.position.y - dt * 1.2);
+      estado.respawnRestanteS -= dt;
+      ui.mostrarRespawn(Math.max(1, Math.ceil(estado.respawnRestanteS)));
+      if (estado.respawnRestanteS <= 0) respawnJogador();
     }
 
-    if (ctx.bots.vivos() === 0 && !respiroTimer && estado.vidas > 0) {
-      estado.pontos += cfg.bots.bonusOndaLimpa;
-      ui.atualizarHud();
-      if (estado.onda > 0) ui.mostrarToast('🎉 Onda limpa! +' + cfg.bots.bonusOndaLimpa, 'ok', 2000);
-      respiroTimer = window.setTimeout(() => {
-        respiroTimer = 0;
-        if (estado.fase === 'jogando') proximaOnda();
-      }, cfg.ondas.respiroMs);
+    estado.tempoRestanteS -= dt;
+    ui.atualizarHud();
+    if (estado.tempoRestanteS <= 0) {
+      estado.tempoRestanteS = 0;
+      renderer.render(scene, camera);
+      fluxo.fimDeJogo();
+      return;
     }
 
     renderer.render(scene, camera);
@@ -141,36 +136,52 @@ export function iniciarJogo() {
 
   const fluxo = {
     comecar() {
+      const nome = nomeLimpo(campoNome.value);
+      if (nome.length < cfg.ranking.nomeMin) {
+        ui.els.erroIntro.textContent = 'Escreve teu nome primeiro (só letras e números)!';
+        ui.els.erroIntro.hidden = false;
+        campoNome.focus();
+        return;
+      }
+      ui.els.erroIntro.hidden = true;
+      estado.nome = nome;
+      try { localStorage.setItem('sugar-splash:nome', nome); } catch { }
       audio.retomar();
       jog.pedirFullscreen();
-      clearTimeout(respiroTimer);
-      respiroTimer = 0;
-      clearTimeout(fimTimer);
       fluxo.soltarInputs();
       estado.fase = 'jogando';
       estado.pontos = 0;
-      estado.onda = 0;
-      estado.vidas = cfg.jogador.vidas;
+      estado.kills = 0;
+      estado.mortes = 0;
+      estado.team = Math.random() < 0.5 ? 0 : 1;
+      estado.tempoRestanteS = cfg.partida.duracaoS;
+      estado.respawnRestanteS = 0;
       estado.solidez = cfg.jogador.solidezMax;
       estado.tanque = cfg.bisnaga.tanqueMax;
       estado.derretendo = false;
-      jogador.x = ctx.spawnJogador.x;
-      jogador.z = ctx.spawnJogador.z;
+      jog.definirTime(estado.team);
+      const sp = ctx.spawnsTime[estado.team];
+      jogador.x = sp.x;
+      jogador.z = sp.z;
       jogador.y = 0;
       jogador.vy = 0;
-      jogador.yaw = ctx.spawnJogador.yaw;
+      jogador.yaw = sp.yaw;
       jogador.pitch = 0;
-      ctx.bots.limpar();
+      jogador.shake = 0;
+      ctx.bots.spawnInicial();
       ctx.agua.limpar();
       ui.els.introModal.hidden = true;
       ui.els.controles.hidden = false;
       ui.els.pauseBtn.hidden = false;
+      ui.esconderRespawn();
       medir();
       ui.atualizarHud();
-      proximaOnda();
+      audio.somOnda();
+      const meuTime = estado.team === 0 ? 'AZUL! 🔵' : 'VERMELHO! 🔴';
+      ui.mostrarBanner('Você caiu no time ' + meuTime, 'Derreta o time ' + (estado.team === 0 ? 'vermelho' : 'azul') + '!');
       retomarLoop();
       if (!jog.emModoTouch()) jog.pedirLock();
-      ui.anunciar('Valendo! Ande com W A S D, mire com o mouse e segure o clique pra atirar água. Mergulhe na piscina pra recarregar!');
+      ui.anunciar('Valendo! Partida de 5 minutos. Você é do time ' + (estado.team === 0 ? 'azul' : 'vermelho') + '. Saia do vestiário e derreta o outro time!');
     },
     pausar() {
       if (estado.fase !== 'jogando') return;
@@ -197,27 +208,36 @@ export function iniciarJogo() {
       fluxo.soltarInputs();
       jog.soltarLock();
       pararLoop();
+      ui.esconderRespawn();
       audio.somFim();
       audio.suspender();
+      const meuTime = estado.team === 0 ? 'AZUL 🔵' : 'VERMELHO 🔴';
+      const timeInimigo = estado.team === 0 ? 'VERMELHO 🔴' : 'AZUL 🔵';
+      let msg: string;
+      if (estado.kills > estado.mortes) {
+        estado.pontos += cfg.partida.bonusVitoria;
+        msg = 'Time ' + meuTime + ' venceu por ' + estado.kills + ' × ' + estado.mortes + '! 🏆';
+      } else if (estado.kills === estado.mortes) {
+        msg = 'Empate suado: ' + estado.kills + ' × ' + estado.mortes + '! 🤝';
+      } else {
+        msg = 'Time ' + timeInimigo + ' venceu por ' + estado.mortes + ' × ' + estado.kills + '. Na próxima! 💪';
+      }
       const fim = ui.els.fimModal;
-      (fim.querySelector('[data-fim-msg]') as HTMLElement).textContent =
-        'Você derreteu na onda ' + estado.onda + '! A piscina agradece a doçura. 🍬';
+      (fim.querySelector('[data-fim-msg]') as HTMLElement).textContent = msg;
       (fim.querySelector('[data-fim-score]') as HTMLElement).textContent = String(estado.pontos);
       const gravar = fim.querySelector('[data-gravar-nome]') as HTMLElement;
       gravar.hidden = estado.pontos <= 0;
       fim.hidden = false;
       setTimeout(() => (gravar.hidden ? (document.querySelector('[data-replay]') as HTMLElement) : gravar).focus(), 60);
-      ui.anunciar('Fim de jogo! Você fez ' + estado.pontos + ' pontos e chegou na onda ' + estado.onda + '.');
+      ui.anunciar('Fim de jogo! ' + msg + ' Você fez ' + estado.pontos + ' pontos.');
     },
     reiniciar() {
       estado.fase = 'inicio';
-      clearTimeout(respiroTimer);
-      respiroTimer = 0;
-      clearTimeout(fimTimer);
       fluxo.soltarInputs();
       jog.soltarLock();
       pararLoop();
       audio.suspender();
+      ui.esconderRespawn();
       ctx.bots.limpar();
       ctx.agua.limpar();
       [ui.els.pausaModal, ui.els.fimModal, ui.els.entradaModal, ui.els.recordesModal].forEach((m) => { m.hidden = true; });
@@ -236,6 +256,22 @@ export function iniciarJogo() {
   ctx.fluxo = fluxo;
   ctx.ranking = criarRanking(ctx);
   jog.ligarInput();
+
+  function nomeLimpo(bruto: string): string {
+    return bruto.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, cfg.ranking.nomeMax);
+  }
+  const campoNome = document.querySelector('[data-campo-nome]') as HTMLInputElement;
+  try { campoNome.value = localStorage.getItem('sugar-splash:nome') || ''; } catch { }
+  campoNome.addEventListener('input', () => {
+    const limpo = nomeLimpo(campoNome.value);
+    if (campoNome.value !== limpo) campoNome.value = limpo;
+  });
+  campoNome.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      fluxo.comecar();
+    }
+  });
 
   (document.querySelector('[data-comecar]') as HTMLElement).addEventListener('click', () => fluxo.comecar());
   (document.querySelector('[data-replay]') as HTMLElement).addEventListener('click', () => fluxo.reiniciar());
@@ -269,7 +305,7 @@ export function iniciarJogo() {
   document.body.classList.add('is-game');
   medir();
   renderer.render(scene, camera);
-  setTimeout(() => (document.querySelector('[data-comecar]') as HTMLElement).focus(), 60);
+  setTimeout(() => (campoNome.value ? (document.querySelector('[data-comecar]') as HTMLElement) : campoNome).focus(), 60);
 
   (window as any).__ss = {
     estado, jogador, input, cfg,

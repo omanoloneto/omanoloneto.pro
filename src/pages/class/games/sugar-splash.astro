@@ -1,13 +1,13 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { config, caixotes, spawnsBots, spawnJogador } from '../../../data/sugar-splash';
+import { config, caixotes, spawnsBots, spawnsTime } from '../../../data/sugar-splash';
 
-const dadosJson = JSON.stringify({ config, caixotes, spawnsBots, spawnJogador });
+const dadosJson = JSON.stringify({ config, caixotes, spawnsBots, spawnsTime });
 const letrasNome = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-const title = 'Sugar Splash — derreta os bonecos de açúcar com água! | Manolo Neto';
+const title = 'Sugar Splash — guerra d\'água entre times de açúcar! | Manolo Neto';
 const description =
-  'Jogo de bisnaga d\'água para crianças: você é feito de açúcar numa arena de piscina, derreta os bonecos rivais antes que eles derretam você! Ondas cada vez mais difíceis, recarregue mergulhando na piscina. Em português.';
+  'Jogo de bisnaga d\'água para crianças: partida de 5 minutos entre time azul e vermelho num clube com piscina e vestiários. Derreta o time inimigo, esconda-se nas cabines e recarregue mergulhando na piscina. Em português.';
 ---
 
 <Layout title={title} description={description}>
@@ -16,8 +16,8 @@ const description =
   <main id="conteudo" class="ss" data-game role="application" aria-label="Sugar Splash: derreta os bonecos de açúcar com sua bisnaga d'água">
     <header class="hud">
       <div class="hud__bloco"><span class="hud__label">⭐</span><strong data-pontos>0</strong></div>
-      <div class="hud__bloco"><span class="hud__label">Onda</span><strong data-onda>0</strong></div>
-      <div class="hud__bloco"><span class="hud__vidas" data-vidas></span></div>
+      <div class="hud__bloco"><span class="hud__label">⏱</span><strong data-tempo>5:00</strong></div>
+      <div class="hud__bloco"><span class="hud__placar" data-placar>🔵 0 × 0 🔴</span></div>
       <div class="hud__bloco hud__bloco--barra" aria-label="Solidez do boneco">
         <span class="hud__label">🍬</span>
         <div class="barra"><div class="barra__fill" data-solidez-fill></div></div>
@@ -35,6 +35,8 @@ const description =
     <div class="cena" data-cena>
       <div class="mira" aria-hidden="true">+</div>
       <div class="dano-flash" data-dano-flash aria-hidden="true"></div>
+      <div class="agua-tint" data-agua-tint aria-hidden="true"></div>
+      <div class="respawn" data-respawn aria-hidden="true" hidden></div>
       <div class="toast" data-toast aria-live="polite" hidden></div>
       <div class="banner" data-banner aria-hidden="true" hidden>
         <strong data-banner-titulo></strong>
@@ -59,12 +61,16 @@ const description =
         <div class="placa__topo" id="intro-title">🔫💦 Sugar Splash</div>
         <div class="placa__corpo">
           <ol class="regras">
-            <li>Você é um boneco de <b>açúcar</b> numa arena de piscina! 🍬</li>
-            <li>Derreta os bonecos rivais com sua <b>bisnaga d'água</b>. 💦</li>
-            <li>Cuidado: eles também atiram — <b>você derrete</b> também!</li>
-            <li>Acabou a água? <b>Mergulhe na piscina</b> pra recarregar rapidinho. 🏊</li>
+            <li>Partida de <b>5 minutos</b>: time azul contra time vermelho! 🔵🔴</li>
+            <li>Derreta os bonecos do outro time com sua <b>bisnaga d'água</b>. 💦</li>
+            <li>Derreteu? Sem drama: volta em <b>5 segundos</b> no seu vestiário.</li>
+            <li>Sem água? <b>Mergulhe na piscina</b>. Quer se esconder? Usa as <b>cabines</b>! 🚽</li>
           </ol>
           <p class="controles-dica">🖱 mouse mira · clique atira · <b>W A S D</b> anda · <b>espaço</b> pula<br />📱 no touch: alavanca anda, arrastar mira, 💦 atira</p>
+          <label class="campo"><span>Seu nome</span>
+            <input data-campo-nome type="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ex: LEO" />
+          </label>
+          <p class="erro" data-erro-intro hidden></p>
           <button class="botao botao--go" type="button" data-comecar>▶ Jogar!</button>
           <button class="recordes-btn" type="button" data-ver-recordes>🏆 Recordes</button>
           <a class="voltar" href="/class/games/">← voltar pros jogos</a>
@@ -87,7 +93,7 @@ const description =
 
     <div class="modal" data-fim hidden>
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="fim-title">
-        <div class="placa__topo" id="fim-title">Derreteu! 💧</div>
+        <div class="placa__topo" id="fim-title">⏱ Fim de jogo!</div>
         <div class="placa__corpo center">
           <p class="grande" data-fim-msg></p>
           <p class="placar">Sua pontuação: <strong data-fim-score>0</strong></p>
@@ -170,7 +176,7 @@ const description =
     .hud__bloco { display: flex; align-items: center; gap: 6px; }
     .hud__label { font-size: 0.9rem; opacity: 0.85; }
     .hud__bloco strong { font-size: 1.15rem; font-weight: 800; }
-    .hud__vidas { font-size: 1rem; letter-spacing: 2px; }
+    .hud__placar { font-size: 1.02rem; font-weight: 800; letter-spacing: 1px; white-space: nowrap; }
     .hud__bloco--barra { flex: 1; max-width: 180px; }
     .barra {
       flex: 1; height: 12px; border-radius: 999px;
@@ -207,6 +213,37 @@ const description =
     }
     .dano-flash.show { animation: dano-pisca 0.35s ease-out; }
     @keyframes dano-pisca { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+    .agua-tint {
+      position: absolute; inset: 0; z-index: 21;
+      pointer-events: none;
+      background: rgba(48, 150, 210, 0.28);
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+    .agua-tint.show { opacity: 1; }
+
+    .respawn {
+      position: absolute; left: 50%; top: 42%;
+      transform: translate(-50%, -50%);
+      z-index: 26; pointer-events: none; text-align: center;
+      font-size: clamp(1.2rem, 4vw, 1.7rem); font-weight: 800; color: #fff;
+      text-shadow: 0 2px 10px rgba(8, 48, 63, 0.85);
+      white-space: nowrap;
+    }
+    .respawn[hidden] { display: none; }
+
+    .pontos-voa {
+      position: absolute; z-index: 23;
+      transform: translate(-50%, -50%);
+      font-weight: 800; font-size: 1.3rem; color: #ffd23f;
+      text-shadow: 0 2px 6px rgba(8, 48, 63, 0.9);
+      pointer-events: none;
+      animation: pontos-sobe 0.9s ease-out forwards;
+    }
+    @keyframes pontos-sobe {
+      from { opacity: 1; margin-top: 0; }
+      to { opacity: 0; margin-top: -46px; }
+    }
 
     .toast {
       position: absolute; left: 50%; top: 14px;
@@ -339,6 +376,19 @@ const description =
     }
     .voltar { display: block; text-align: center; margin-top: 12px; color: #3a6a7d; font-size: 0.85rem; }
 
+    .campo { display: grid; gap: 6px; margin-bottom: 10px; text-align: left; font-weight: 700; font-size: 0.92rem; }
+    .campo input {
+      font-family: inherit; font-size: 1.2rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 2px;
+      padding: 10px 12px; border-radius: 10px;
+      border: 2px solid rgba(32, 152, 216, 0.5);
+      background: #fff; color: #08303f;
+      width: 100%; box-sizing: border-box;
+    }
+    .campo input:focus { outline: none; border-color: #187048; }
+    .erro { color: #b04030; font-weight: 700; font-size: 0.9rem; margin: 0 0 10px; }
+    .erro[hidden] { display: none; }
+
     .nome-slots {
       font-size: 2rem; font-weight: 800; letter-spacing: 8px;
       color: var(--azul); margin-bottom: 12px; min-height: 1.3em;
@@ -383,8 +433,8 @@ const description =
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .placa, .banner.show, .dano-flash.show { animation: none !important; }
-      .toast, .barra__fill { transition: none !important; }
+      .placa, .banner.show, .dano-flash.show, .pontos-voa { animation: none !important; }
+      .toast, .barra__fill, .agua-tint { transition: none !important; }
     }
   </style>
 

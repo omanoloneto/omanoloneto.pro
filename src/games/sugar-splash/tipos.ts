@@ -1,14 +1,18 @@
 import type * as THREE from 'three';
-import type { config, caixotes, spawnsBots, spawnJogador } from '../../data/sugar-splash';
+import type { config, caixotes, spawnsBots, spawnsTime } from '../../data/sugar-splash';
 
 export type Cfg = typeof config;
 export type Fase = 'inicio' | 'jogando' | 'pausado' | 'fim' | 'entrada' | 'recordes';
 
 export interface Estado {
   fase: Fase;
+  nome: string;
+  team: 0 | 1;
   pontos: number;
-  onda: number;
-  vidas: number;
+  kills: number;
+  mortes: number;
+  tempoRestanteS: number;
+  respawnRestanteS: number;
   solidez: number;
   tanque: number;
   mudo: boolean;
@@ -25,6 +29,7 @@ export interface Jogador {
   pitch: number;
   noChao: boolean;
   naPiscina: boolean;
+  shake: number;
 }
 
 export interface Input {
@@ -42,11 +47,12 @@ export interface Arena {
   aabbs: Array<{ minX: number; maxX: number; minZ: number; maxZ: number; alt: number }>;
   chaoEm(x: number, z: number): number;
   dentroPiscina(x: number, z: number): boolean;
+  passo(ts: number): void;
 }
 
 export interface Bots {
   vivos(): number;
-  spawnOnda(onda: number): void;
+  spawnInicial(): void;
   passo(dt: number, ts: number): void;
   atingir(idx: number, dano: number): void;
   colideJato(px: number, py: number, pz: number): number;
@@ -68,6 +74,9 @@ export interface UI {
   atualizarHud(): void;
   mostrarBanner(titulo: string, sub?: string): void;
   flashDano(): void;
+  mostrarPontos(texto: string, pos: { x: number; y: number; z: number }): void;
+  mostrarRespawn(seg: number): void;
+  esconderRespawn(): void;
 }
 
 export interface Audio {
@@ -76,6 +85,7 @@ export interface Audio {
   bindMute(btn: HTMLElement, icone: HTMLElement): void;
   somJato(): void;
   somSplash(): void;
+  somHit(): void;
   somDerreter(): void;
   somDano(): void;
   somOnda(): void;
@@ -105,7 +115,7 @@ export interface Contexto {
   cfg: Cfg;
   caixotes: typeof caixotes;
   spawnsBots: typeof spawnsBots;
-  spawnJogador: typeof spawnJogador;
+  spawnsTime: typeof spawnsTime;
   motionReduzido: boolean;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;

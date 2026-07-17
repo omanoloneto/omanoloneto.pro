@@ -121,6 +121,7 @@ export function criarAgua(ctx: Contexto): Agua {
           const dy = g.y - (j.y + 1);
           if (dx * dx + dz * dz < rj * rj * 1.4 && dy > -1.2 && dy < 0.9) {
             ctx.fluxo && ctx.ui.flashDano();
+            j.shake = 1;
             ctx.estado.solidez -= cfg.bots.dano;
             ctx.estado.ultimoDanoMs = performance.now();
             ctx.audio.somDano();

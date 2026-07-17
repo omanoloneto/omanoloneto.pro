@@ -7,10 +7,17 @@ export function criarJogador(ctx: Contexto) {
   let travado = false;
   let recoil = 0;
   let bobPhase = 0;
-  const viewmodel = createViewmodel(createCharacterMaterials());
+  let fovKick = 0;
+  let estavaNaPiscina = false;
+  const viewmodelMats = createCharacterMaterials();
+  const viewmodel = createViewmodel(viewmodelMats);
   viewmodel.position.set(0.3, -0.32, -0.5);
   viewmodel.rotation.y = -0.08;
   ctx.camera.add(viewmodel);
+
+  function definirTime(team: 0 | 1) {
+    viewmodelMats.gunBody.color.set(team === 0 ? 0x3878c0 : 0xd04838);
+  }
   const telaTouch = window.matchMedia('(pointer: coarse)').matches;
   let modoTouch = telaTouch;
 
@@ -28,6 +35,14 @@ export function criarJogador(ctx: Contexto) {
   function passo(dt: number, ts: number) {
     const J = cfg.jogador;
     j.naPiscina = ctx.arena.dentroPiscina(j.x, j.z) && j.y < -0.2;
+    if (j.naPiscina !== estavaNaPiscina) {
+      estavaNaPiscina = j.naPiscina;
+      ctx.ui.els.aguaTint.classList.toggle('show', j.naPiscina);
+      if (j.naPiscina) {
+        ctx.audio.somSplash();
+        ctx.agua.splash(j.x, -0.05, j.z, true);
+      }
+    }
     const vel = j.naPiscina ? J.velAgua : J.vel;
 
     let mx = input.joyX;
@@ -99,7 +114,17 @@ export function criarJogador(ctx: Contexto) {
       ctx.agua.atirar(j.x + dx * 0.5, j.y + alt - 0.25, j.z + dz * 0.5, dx, dy, dz, true);
       ctx.audio.somJato();
       recoil = 1;
+      fovKick = 1;
     }
+
+    if (!ctx.motionReduzido) {
+      const fovAlvo = 70 + fovKick * 2.2;
+      if (Math.abs(ctx.camera.fov - fovAlvo) > 0.01) {
+        ctx.camera.fov = fovAlvo;
+        ctx.camera.updateProjectionMatrix();
+      }
+    }
+    fovKick = Math.max(0, fovKick - dt * 7);
 
     recoil = Math.max(0, recoil - dt * 6);
     viewmodel.position.x = Math.min(0.3, 0.12 + ctx.camera.aspect * 0.11);
@@ -116,6 +141,11 @@ export function criarJogador(ctx: Contexto) {
 
     const alt = j.naPiscina ? cfg.jogador.alturaAgua : cfg.jogador.altura;
     ctx.camera.position.set(j.x, j.y + alt, j.z);
+    if (!ctx.motionReduzido && j.shake > 0) {
+      ctx.camera.position.x += (Math.random() - 0.5) * 0.09 * j.shake;
+      ctx.camera.position.y += (Math.random() - 0.5) * 0.09 * j.shake;
+    }
+    j.shake = Math.max(0, j.shake - dt * 5);
     ctx.camera.rotation.order = 'YXZ';
     ctx.camera.rotation.y = j.yaw;
     ctx.camera.rotation.x = j.pitch;
@@ -281,5 +311,5 @@ export function criarJogador(ctx: Contexto) {
     return modoTouch;
   }
 
-  return { passo, ligarInput, pedirLock, soltarLock, emModoTouch, pedirFullscreen };
+  return { passo, ligarInput, pedirLock, soltarLock, emModoTouch, pedirFullscreen, definirTime };
 }
