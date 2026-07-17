@@ -1,0 +1,289 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { config, especies, mapaVila, npcs, tiles } from '../../../data/wildmon';
+
+const dadosJson = JSON.stringify({ config, especies, mapa: mapaVila, npcs, tiles });
+
+const title = 'Wildmon — explore a vila e encontre os amigos! | Manolo Neto';
+const description =
+  'Jogo estilo RPG de bichinhos para crianças: escolha seu companheiro (Dog ou Cat!), explore a vila e veja os amigos andando no mesmo mundo, em tempo real. Os bichos têm nome em inglês. Em português.';
+---
+
+<Layout title={title} description={description}>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="wm" data-game role="application" aria-label="Wildmon: explore a vila com seu bichinho">
+    <header class="hud">
+      <span class="hud__titulo">🐾 Wildmon</span>
+      <strong class="hud__online" data-online>👥 1</strong>
+      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <span data-mute-icon>🔊</span>
+      </button>
+    </header>
+
+    <div class="palco" data-palco>
+      <canvas class="tela" data-canvas aria-hidden="true"></canvas>
+      <div class="dialogo" data-dialogo hidden>
+        <p data-dialogo-texto></p>
+        <span class="dialogo__seta" data-dialogo-seta hidden>▼</span>
+      </div>
+      <div class="toast" data-toast hidden></div>
+    </div>
+
+    <div class="controles" data-controles hidden>
+      <div class="dpad">
+        <button class="ctl ctl--cima" type="button" data-dpad="0,-1" aria-label="Andar pra cima">▲</button>
+        <button class="ctl ctl--esq" type="button" data-dpad="-1,0" aria-label="Andar pra esquerda">◀</button>
+        <button class="ctl ctl--dir" type="button" data-dpad="1,0" aria-label="Andar pra direita">▶</button>
+        <button class="ctl ctl--baixo" type="button" data-dpad="0,1" aria-label="Andar pra baixo">▼</button>
+      </div>
+      <button class="ctl ctl--a" type="button" data-botao-a aria-label="Falar ou confirmar">A</button>
+    </div>
+
+    <p class="sr-only" data-anuncio aria-live="assertive"></p>
+
+    <div class="modal" data-intro>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="placa__topo" id="intro-title">🐾 Wildmon</div>
+        <div class="placa__corpo">
+          <p class="sub">Explore a vila com seu bichinho — seus amigos aparecem andando no mesmo mundo!</p>
+          <form data-form-intro>
+            <label class="campo">
+              <span>Seu nome</span>
+              <input data-campo-nome type="text" maxlength="10" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ex: LEO" required />
+            </label>
+            <p class="escolha__titulo">Escolha seu companheiro:</p>
+            <div class="starters">
+              <button class="starter" type="button" data-starter="dog">
+                <span class="starter__retrato" data-retrato="Dog"></span>
+                <span class="starter__nome">DOG</span>
+                <span class="starter__trad">cachorro</span>
+              </button>
+              <button class="starter" type="button" data-starter="cat">
+                <span class="starter__retrato" data-retrato="Cat"></span>
+                <span class="starter__nome">CAT</span>
+                <span class="starter__trad">gato</span>
+              </button>
+            </div>
+            <p class="aviso">O nome do bichinho é em inglês — e é o nome dele mesmo, não dá pra trocar. 😉</p>
+            <button class="botao botao--go" type="submit">▶ Começar a explorar!</button>
+          </form>
+          <p class="erro" data-erro-intro role="alert" hidden></p>
+          <a class="voltar" href="/class/games/">← voltar pros jogos</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <style is:global>
+    @font-face {
+      font-family: 'Oxanium';
+      src: url('/class/fonts/oxanium/Oxanium-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Oxanium';
+      src: url('/class/fonts/oxanium/Oxanium-ExtraBold.ttf') format('truetype');
+      font-weight: 800;
+      font-display: swap;
+    }
+
+    body.is-game { background: #1c2f1e; overflow: hidden; }
+    body.is-game::before { display: none !important; }
+
+    .wm {
+      position: fixed; inset: 0; overflow: clip;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Oxanium', Verdana, sans-serif;
+      color: #eaf6ff; user-select: none;
+      --verde: #6abe4f; --amarelo: #ffd23f;
+    }
+
+    .hud {
+      width: 100%; display: flex; align-items: center; gap: 14px;
+      padding: 8px 14px;
+      background: rgba(10, 25, 12, 0.9);
+    }
+    .hud__titulo { font-weight: 800; font-size: 1.05rem; }
+    .hud__online { margin-left: auto; font-size: 1rem; }
+    .hud__mute {
+      width: 38px; height: 38px; border-radius: 10px; cursor: pointer;
+      background: rgba(106, 190, 79, 0.15); border: 1px solid rgba(106, 190, 79, 0.5);
+      font-size: 1.05rem;
+    }
+
+    .palco {
+      position: relative;
+      width: min(96vw, calc((100svh - 170px) * 1.5));
+      aspect-ratio: 3 / 2;
+      margin-top: 10px;
+      border: 3px solid rgba(106, 190, 79, 0.6);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #000;
+    }
+    .tela {
+      width: 100%; height: 100%; display: block;
+      image-rendering: pixelated;
+    }
+
+    .dialogo {
+      position: absolute; left: 3%; right: 3%; bottom: 4%;
+      background: rgba(10, 25, 12, 0.94);
+      border: 2px solid var(--verde);
+      border-radius: 10px;
+      padding: 10px 14px;
+      min-height: 3.2em;
+      font-size: clamp(0.85rem, 2.6vw, 1.05rem);
+      line-height: 1.45;
+    }
+    .dialogo[hidden] { display: none; }
+    .dialogo__seta {
+      position: absolute; right: 10px; bottom: 4px;
+      color: var(--amarelo);
+      animation: seta-pisca 0.8s infinite;
+    }
+    @keyframes seta-pisca { 50% { opacity: 0.2; } }
+
+    .toast {
+      position: absolute; left: 50%; top: 8px;
+      transform: translateX(-50%);
+      background: rgba(10, 25, 12, 0.92);
+      border: 1px solid rgba(106, 190, 79, 0.6);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      opacity: 0; transition: opacity 0.25s ease;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+    .toast[hidden] { display: none; }
+
+    .controles {
+      display: flex; align-items: center; justify-content: space-between;
+      width: min(96vw, 560px);
+      padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
+    }
+    .controles[hidden] { display: none; }
+    .dpad {
+      display: grid;
+      grid-template-areas: '. cima .' 'esq . dir' '. baixo .';
+      gap: 4px;
+    }
+    .ctl {
+      width: 52px; height: 52px; border-radius: 12px; cursor: pointer;
+      background: rgba(106, 190, 79, 0.18);
+      border: 2px solid rgba(106, 190, 79, 0.55);
+      color: #eaf6ff; font-size: 1.15rem; font-family: inherit; font-weight: 800;
+      touch-action: manipulation;
+    }
+    .ctl.on, .ctl:active { background: rgba(106, 190, 79, 0.45); }
+    .ctl--cima { grid-area: cima; }
+    .ctl--esq { grid-area: esq; }
+    .ctl--dir { grid-area: dir; }
+    .ctl--baixo { grid-area: baixo; }
+    .ctl--a {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: rgba(255, 210, 63, 0.2);
+      border-color: rgba(255, 210, 63, 0.65);
+      font-size: 1.4rem;
+    }
+
+    .modal {
+      position: absolute; inset: 0; z-index: 70;
+      display: grid; place-items: center; padding: 20px;
+      background: rgba(6, 14, 8, 0.75);
+    }
+    .modal[hidden] { display: none; }
+    .placa {
+      width: min(94vw, 420px);
+      max-height: 92svh; overflow: auto;
+      background: rgba(16, 34, 18, 0.96);
+      border: 2px solid rgba(106, 190, 79, 0.6);
+      border-radius: 16px;
+      animation: placa-pop 0.25s ease;
+    }
+    @keyframes placa-pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .placa__topo {
+      padding: 12px 18px;
+      background: linear-gradient(90deg, rgba(106, 190, 79, 0.35), rgba(255, 210, 63, 0.2));
+      font-size: 1.15rem; font-weight: 800;
+      border-bottom: 1px solid rgba(106, 190, 79, 0.4);
+    }
+    .placa__corpo { padding: 16px 20px 20px; }
+    .sub { font-size: 0.92rem; line-height: 1.45; margin-bottom: 14px; color: rgba(220, 245, 225, 0.85); }
+
+    .campo { display: block; margin-bottom: 14px; }
+    .campo span { display: block; font-size: 0.88rem; font-weight: 800; margin-bottom: 5px; }
+    .campo input {
+      width: 100%; padding: 10px 12px;
+      font-family: inherit; font-size: 1.05rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 2px;
+      background: rgba(6, 14, 8, 0.8); color: #eaf6ff;
+      border: 2px solid rgba(106, 190, 79, 0.4); border-radius: 10px;
+    }
+    .campo input:focus { outline: none; border-color: var(--verde); }
+
+    .escolha__titulo { font-weight: 800; font-size: 0.95rem; margin-bottom: 8px; }
+    .starters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .starter {
+      display: grid; justify-items: center; gap: 4px;
+      padding: 12px 8px; border-radius: 14px; cursor: pointer;
+      font-family: inherit; color: #eaf6ff;
+      background: rgba(6, 14, 8, 0.7);
+      border: 3px solid rgba(106, 190, 79, 0.35);
+      touch-action: manipulation;
+      transition: transform 0.12s ease, border-color 0.15s ease;
+    }
+    .starter:hover { transform: translateY(-2px); }
+    .starter.sel { border-color: var(--amarelo); box-shadow: 0 0 0 3px rgba(255, 210, 63, 0.3); }
+    .starter__retrato canvas { width: 64px; height: 64px; image-rendering: pixelated; display: block; }
+    .starter__nome { font-weight: 800; font-size: 1.1rem; letter-spacing: 2px; }
+    .starter__trad { font-size: 0.8rem; color: rgba(220, 245, 225, 0.7); }
+
+    .aviso { font-size: 0.82rem; color: rgba(220, 245, 225, 0.7); margin-bottom: 12px; line-height: 1.4; }
+    .erro { color: #ffb59f; font-size: 0.9rem; margin-top: 10px; }
+    .erro[hidden] { display: none; }
+
+    .botao {
+      display: block; width: 100%; text-align: center; cursor: pointer;
+      font-family: inherit; font-weight: 800; font-size: 1.05rem;
+      padding: 12px; border-radius: 12px;
+      touch-action: manipulation;
+    }
+    .botao--go {
+      color: #06210c;
+      background: linear-gradient(180deg, #9ade7f 0%, #6abe4f 55%, #4d9a37 100%);
+      border: 2px solid rgba(106, 190, 79, 0.8);
+      box-shadow: 0 4px 0 #2f6b26;
+    }
+    .botao--go:active { transform: translateY(3px); box-shadow: 0 1px 0 #2f6b26; }
+    .botao:focus-visible, .starter:focus-visible, .ctl:focus-visible { outline: 3px solid var(--amarelo); outline-offset: 2px; }
+
+    .voltar { display: block; text-align: center; margin-top: 14px; color: rgba(220, 245, 225, 0.6); font-size: 0.85rem; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      margin: -1px; padding: 0; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    @media (min-width: 700px) {
+      .controles { display: none; }
+      .controles[hidden] { display: none; }
+      .palco { width: min(92vw, calc((100svh - 90px) * 1.5)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .placa, .dialogo__seta { animation: none !important; }
+      .toast, .starter { transition: none !important; }
+    }
+  </style>
+
+  <script>
+    import { iniciarJogo } from '../../../games/wildmon/main';
+    iniciarJogo();
+  </script>
+</Layout>
