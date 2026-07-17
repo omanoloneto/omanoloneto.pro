@@ -28,7 +28,7 @@ const description =
           <span data-mute-icon>🔊</span>
         </button>
       </div>
-      <div class="fps-vida" data-vida-box aria-label="Solidez do boneco">🍬 <strong data-solidez-num>100</strong></div>
+      <div class="fps-vida" data-vida-box aria-label="Solidez do boneco">❤️ <strong data-solidez-num>100</strong></div>
       <div class="fps-agua" data-agua-box aria-label="Água na bisnaga">💧 <strong data-tanque-num>40</strong></div>
       <div class="dano-flash" data-dano-flash aria-hidden="true"></div>
       <div class="agua-tint" data-agua-tint aria-hidden="true"></div>
@@ -183,33 +183,33 @@ const description =
     }
 
     .fps-topo {
-      position: absolute; top: 10px; left: 50%;
+      position: absolute; top: 12px; left: 50%;
       transform: translateX(-50%);
       z-index: 24; pointer-events: none;
-      display: flex; align-items: center; gap: 10px;
-      padding: 6px 18px; border-radius: 999px;
+      display: flex; align-items: center; gap: 14px;
+      padding: 9px 26px; border-radius: 999px;
       background: rgba(8, 48, 63, 0.55);
-      color: #fff; font-weight: 800; font-size: 1.05rem;
+      color: #fff; font-weight: 800; font-size: clamp(1.2rem, 2.4vw, 1.6rem);
       white-space: nowrap;
     }
     .fps-sep { opacity: 0.5; }
     .fps-pontos {
-      position: absolute; top: 14px; left: 14px;
+      position: absolute; top: 18px; left: 16px;
       z-index: 24; pointer-events: none;
-      color: #fff; font-weight: 800; font-size: 1.05rem;
+      color: #fff; font-weight: 800; font-size: clamp(1.2rem, 2.4vw, 1.6rem);
       text-shadow: 0 2px 6px rgba(8, 48, 63, 0.85);
     }
     .fps-botoes {
-      position: absolute; top: 10px; right: 10px;
-      z-index: 26; display: flex; gap: 8px;
+      position: absolute; top: 12px; right: 12px;
+      z-index: 26; display: flex; gap: 10px;
     }
     .fps-vida, .fps-agua {
-      position: absolute; bottom: 16px;
+      position: absolute; bottom: 20px;
       z-index: 24; pointer-events: none;
-      display: flex; align-items: center; gap: 8px;
-      font-weight: 800; font-size: clamp(1.7rem, 4.5vw, 2.5rem);
+      display: flex; align-items: center; gap: 12px;
+      font-weight: 800; font-size: clamp(2.5rem, 6.8vw, 3.8rem);
       color: #fff;
-      text-shadow: 0 2px 10px rgba(8, 48, 63, 0.9), 0 0 22px rgba(8, 48, 63, 0.5);
+      text-shadow: 0 3px 14px rgba(8, 48, 63, 0.9), 0 0 30px rgba(8, 48, 63, 0.5);
     }
     .fps-vida { left: 18px; }
     .fps-agua { right: 18px; }
@@ -222,12 +222,17 @@ const description =
     .fps-agua.low strong { color: #ff5c39; animation: agua-pisca 0.7s steps(2) infinite; }
     @keyframes agua-pisca { 50% { opacity: 0.35; } }
     @media (hover: none) {
-      .fps-vida, .fps-agua { bottom: calc(120px + env(safe-area-inset-bottom)); }
+      .fps-vida, .fps-agua { bottom: calc(126px + env(safe-area-inset-bottom)); }
+    }
+    @media (max-width: 700px) {
+      .fps-topo { left: 10px; transform: none; font-size: 1.05rem; gap: 8px; padding: 7px 14px; }
+      .fps-pontos { top: 64px; left: 12px; }
+      .hud__mute { width: 46px; height: 46px; font-size: 1.25rem; }
     }
     .hud__mute {
-      width: 38px; height: 38px; border-radius: 10px; cursor: pointer;
+      width: 54px; height: 54px; border-radius: 14px; cursor: pointer;
       background: rgba(8, 48, 63, 0.5); border: 1px solid rgba(122, 216, 245, 0.45);
-      color: #eaf6ff; font-size: 1.05rem;
+      color: #eaf6ff; font-size: 1.5rem;
     }
     .hud__mute[hidden] { display: none; }
 
