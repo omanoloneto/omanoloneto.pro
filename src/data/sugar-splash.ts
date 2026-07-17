@@ -8,8 +8,6 @@ export const config = {
     pulo: 5.2,
     gravidade: 14,
     solidezMax: 100,
-    regenPorS: 4,
-    regenAposS: 3,
   },
   partida: {
     duracaoS: 300,
@@ -22,7 +20,6 @@ export const config = {
     velJato: 38,
     dano: 12,
     tanqueMax: 40,
-    recargaPorS: 3,
     recargaPiscinaPorS: 30,
     dropletGravity: 4,
     dropletLifeS: 2,

@@ -17,8 +17,10 @@ export function criarUI(ctx: Contexto): UI {
     hudPontos: $('[data-pontos]'),
     hudTempo: $('[data-tempo]'),
     hudPlacar: $('[data-placar]'),
-    solidezFill: $('[data-solidez-fill]'),
-    tanqueFill: $('[data-tanque-fill]'),
+    vidaBox: $('[data-vida-box]'),
+    aguaBox: $('[data-agua-box]'),
+    solidezNum: $('[data-solidez-num]'),
+    tanqueNum: $('[data-tanque-num]'),
     respawnOverlay: $('[data-respawn]'),
     aguaTint: $('[data-agua-tint]'),
     erroIntro: $('[data-erro-intro]'),
@@ -41,6 +43,8 @@ export function criarUI(ctx: Contexto): UI {
   let tempoAntes = -1;
   let placarAntes = '';
   let respawnAntes = -1;
+  let solidezAntes = -1;
+  let tanqueAntes = -1;
   const vetorProj = new THREE.Vector3();
 
   return {
@@ -78,10 +82,26 @@ export function criarUI(ctx: Contexto): UI {
         placarAntes = placar;
         els.hudPlacar.textContent = placar;
       }
-      const sol = Math.max(0, e.solidez) / ctx.cfg.jogador.solidezMax;
-      els.solidezFill.style.width = sol * 100 + '%';
-      els.solidezFill.style.background = sol > 0.5 ? '#f5f2ea' : sol > 0.25 ? '#ffd23f' : '#ff5c39';
-      els.tanqueFill.style.width = (e.tanque / ctx.cfg.bisnaga.tanqueMax) * 100 + '%';
+      const sol = Math.max(0, Math.ceil(e.solidez));
+      if (sol !== solidezAntes) {
+        const caiu = solidezAntes >= 0 && sol < solidezAntes;
+        solidezAntes = sol;
+        els.solidezNum.textContent = String(sol);
+        const frac = sol / ctx.cfg.jogador.solidezMax;
+        els.vidaBox.classList.toggle('media', frac <= 0.5 && frac > 0.25);
+        els.vidaBox.classList.toggle('baixa', frac <= 0.25);
+        if (caiu) {
+          els.vidaBox.classList.remove('hit');
+          void els.vidaBox.offsetWidth;
+          els.vidaBox.classList.add('hit');
+        }
+      }
+      const tq = Math.floor(e.tanque);
+      if (tq !== tanqueAntes) {
+        tanqueAntes = tq;
+        els.tanqueNum.textContent = String(tq);
+        els.aguaBox.classList.toggle('low', tq <= 5);
+      }
     },
     mostrarPontos(texto, pos) {
       vetorProj.set(pos.x, pos.y + 1.6, pos.z).project(ctx.camera);

@@ -14,26 +14,22 @@ const description =
   <script type="application/json" data-dados set:html={dadosJson}></script>
 
   <main id="conteudo" class="ss" data-game role="application" aria-label="Sugar Splash: derreta os bonecos de açúcar com sua bisnaga d'água">
-    <header class="hud">
-      <div class="hud__bloco"><span class="hud__label">⭐</span><strong data-pontos>0</strong></div>
-      <div class="hud__bloco"><span class="hud__label">⏱</span><strong data-tempo>5:00</strong></div>
-      <div class="hud__bloco"><span class="hud__placar" data-placar>🔵 0 × 0 🔴</span></div>
-      <div class="hud__bloco hud__bloco--barra" aria-label="Solidez do boneco">
-        <span class="hud__label">🍬</span>
-        <div class="barra"><div class="barra__fill" data-solidez-fill></div></div>
-      </div>
-      <div class="hud__bloco hud__bloco--barra" aria-label="Água na bisnaga">
-        <span class="hud__label">💧</span>
-        <div class="barra barra--agua"><div class="barra__fill barra__fill--agua" data-tanque-fill></div></div>
-      </div>
-      <button class="hud__mute" type="button" data-pause aria-label="Pausar o jogo" hidden>⏸</button>
-      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
-        <span data-mute-icon>🔊</span>
-      </button>
-    </header>
-
     <div class="cena" data-cena>
       <div class="mira" aria-hidden="true">+</div>
+      <div class="fps-topo" aria-hidden="true">
+        <span>⏱ <strong data-tempo>5:00</strong></span>
+        <span class="fps-sep">·</span>
+        <strong data-placar>🔵 0 × 0 🔴</strong>
+      </div>
+      <div class="fps-pontos" aria-hidden="true">⭐ <strong data-pontos>0</strong></div>
+      <div class="fps-botoes">
+        <button class="hud__mute" type="button" data-pause aria-label="Pausar o jogo" hidden>⏸</button>
+        <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+          <span data-mute-icon>🔊</span>
+        </button>
+      </div>
+      <div class="fps-vida" data-vida-box aria-label="Solidez do boneco">🍬 <strong data-solidez-num>100</strong></div>
+      <div class="fps-agua" data-agua-box aria-label="Água na bisnaga">💧 <strong data-tanque-num>40</strong></div>
       <div class="dano-flash" data-dano-flash aria-hidden="true"></div>
       <div class="agua-tint" data-agua-tint aria-hidden="true"></div>
       <div class="respawn" data-respawn aria-hidden="true" hidden></div>
@@ -186,34 +182,54 @@ const description =
       --branco: #f5f2ea;
     }
 
-    .hud {
-      display: flex; align-items: center; gap: 14px;
-      padding: 7px 12px;
-      background: rgba(8, 48, 63, 0.85);
-      color: #eaf6ff;
-      z-index: 30;
+    .fps-topo {
+      position: absolute; top: 10px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 24; pointer-events: none;
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 18px; border-radius: 999px;
+      background: rgba(8, 48, 63, 0.55);
+      color: #fff; font-weight: 800; font-size: 1.05rem;
+      white-space: nowrap;
     }
-    .hud__bloco { display: flex; align-items: center; gap: 6px; }
-    .hud__label { font-size: 0.9rem; opacity: 0.85; }
-    .hud__bloco strong { font-size: 1.15rem; font-weight: 800; }
-    .hud__placar { font-size: 1.02rem; font-weight: 800; letter-spacing: 1px; white-space: nowrap; }
-    .hud__bloco--barra { flex: 1; max-width: 180px; }
-    .barra {
-      flex: 1; height: 12px; border-radius: 999px;
-      background: rgba(6, 22, 30, 0.8);
-      border: 1px solid rgba(122, 216, 245, 0.45);
-      overflow: hidden;
+    .fps-sep { opacity: 0.5; }
+    .fps-pontos {
+      position: absolute; top: 14px; left: 14px;
+      z-index: 24; pointer-events: none;
+      color: #fff; font-weight: 800; font-size: 1.05rem;
+      text-shadow: 0 2px 6px rgba(8, 48, 63, 0.85);
     }
-    .barra__fill { height: 100%; width: 100%; background: var(--branco); transition: width 0.15s linear; }
-    .barra__fill--agua { background: linear-gradient(90deg, #58c8f0, #2098d8); }
+    .fps-botoes {
+      position: absolute; top: 10px; right: 10px;
+      z-index: 26; display: flex; gap: 8px;
+    }
+    .fps-vida, .fps-agua {
+      position: absolute; bottom: 16px;
+      z-index: 24; pointer-events: none;
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 800; font-size: clamp(1.7rem, 4.5vw, 2.5rem);
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(8, 48, 63, 0.9), 0 0 22px rgba(8, 48, 63, 0.5);
+    }
+    .fps-vida { left: 18px; }
+    .fps-agua { right: 18px; }
+    .fps-vida strong, .fps-agua strong { display: inline-block; }
+    .fps-agua strong { color: #6cd2ff; }
+    .fps-vida.media strong { color: #ffd23f; }
+    .fps-vida.baixa strong { color: #ff5c39; }
+    .fps-vida.hit strong { animation: vida-pulso 0.3s ease-out; }
+    @keyframes vida-pulso { 0% { transform: scale(1.4); } 100% { transform: scale(1); } }
+    .fps-agua.low strong { color: #ff5c39; animation: agua-pisca 0.7s steps(2) infinite; }
+    @keyframes agua-pisca { 50% { opacity: 0.35; } }
+    @media (hover: none) {
+      .fps-vida, .fps-agua { bottom: calc(120px + env(safe-area-inset-bottom)); }
+    }
     .hud__mute {
-      margin-left: auto;
       width: 38px; height: 38px; border-radius: 10px; cursor: pointer;
-      background: rgba(122, 216, 245, 0.12); border: 1px solid rgba(122, 216, 245, 0.45);
+      background: rgba(8, 48, 63, 0.5); border: 1px solid rgba(122, 216, 245, 0.45);
       color: #eaf6ff; font-size: 1.05rem;
     }
     .hud__mute[hidden] { display: none; }
-    .hud__mute + .hud__mute { margin-left: 0; }
 
     .cena { position: relative; flex: 1; touch-action: none; }
     .cena canvas { display: block; width: 100%; height: 100%; touch-action: none; }
@@ -472,14 +488,10 @@ const description =
       clip: rect(0 0 0 0); white-space: nowrap; border: 0;
     }
 
-    @media (max-width: 700px) {
-      .hud { flex-wrap: wrap; gap: 6px 10px; }
-      .hud__bloco--barra { max-width: 120px; }
-    }
-
     @media (prefers-reduced-motion: reduce) {
       .placa, .banner.show, .dano-flash.show, .pontos-voa { animation: none !important; }
-      .toast, .barra__fill, .agua-tint { transition: none !important; }
+      .fps-vida.hit strong, .fps-agua.low strong { animation: none !important; }
+      .toast, .agua-tint { transition: none !important; }
     }
   </style>
 

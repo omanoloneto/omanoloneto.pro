@@ -9,6 +9,7 @@ export function criarJogador(ctx: Contexto) {
   let bobPhase = 0;
   let fovKick = 0;
   let estavaNaPiscina = false;
+  let avisoSemAgua = false;
   const viewmodelMats = createCharacterMaterials();
   const viewmodel = createViewmodel(viewmodelMats);
   viewmodel.position.set(0.3, -0.32, -0.5);
@@ -99,8 +100,7 @@ export function criarJogador(ctx: Contexto) {
       const antes = estado.tanque;
       estado.tanque = Math.min(R.tanqueMax, estado.tanque + R.recargaPiscinaPorS * dt);
       if (antes < R.tanqueMax && estado.tanque >= R.tanqueMax) ctx.audio.somRecarga();
-    } else {
-      estado.tanque = Math.min(R.tanqueMax, estado.tanque + R.recargaPorS * dt);
+      if (estado.tanque > 1) avisoSemAgua = false;
     }
 
     if (input.atirando && estado.fase === 'jogando' && !estado.derretendo && !estado.emContagem && ts - ultimoTiroMs >= R.cadenciaMs && estado.tanque >= 1) {
@@ -115,6 +115,10 @@ export function criarJogador(ctx: Contexto) {
       ctx.audio.somJato();
       recoil = 1;
       fovKick = 1;
+      if (estado.tanque < 1 && !avisoSemAgua) {
+        avisoSemAgua = true;
+        ctx.ui.mostrarToast('💧 Sem água! Mergulha na piscina pra recarregar!', 'info', 3000);
+      }
     }
 
     if (!ctx.motionReduzido) {
@@ -133,10 +137,6 @@ export function criarJogador(ctx: Contexto) {
     if (!ctx.motionReduzido) {
       bobPhase += dt * (mag > 0.1 ? 9 : 2);
       viewmodel.position.y = -0.32 + Math.sin(bobPhase) * 0.012;
-    }
-
-    if (estado.solidez < cfg.jogador.solidezMax && performance.now() - estado.ultimoDanoMs > cfg.jogador.regenAposS * 1000) {
-      estado.solidez = Math.min(cfg.jogador.solidezMax, estado.solidez + cfg.jogador.regenPorS * dt);
     }
 
     const alt = j.naPiscina ? cfg.jogador.alturaAgua : cfg.jogador.altura;
