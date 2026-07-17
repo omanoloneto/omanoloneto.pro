@@ -73,9 +73,23 @@ export function criarOverworld(ctx: Contexto): Overworld {
     return progresso < 0.5 ? 1 : 0;
   }
 
-  function desenharSprite(nome: string, px: number, py: number, camX: number, camY: number) {
+  function desenharSprite(nome: string, px: number, py: number, camX: number, camY: number, sombra = false) {
     const sp = ctx.sprites[nome];
-    if (sp && !Array.isArray(sp)) g.drawImage(sp, Math.round(px * T - camX), Math.round(py * T - camY));
+    if (!sp || Array.isArray(sp)) return;
+    const dx = Math.round(px * T - camX);
+    const dy = Math.round(py * T - camY);
+    if (sombra) {
+      g.fillStyle = 'rgba(20, 40, 24, 0.28)';
+      g.beginPath();
+      g.ellipse(dx + 8, dy + 14.5, 5, 2, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.drawImage(sp, dx, dy);
+  }
+
+  function ehTelhado(x: number, y: number): boolean {
+    const t = tileEm(x, y);
+    return !!t && t.sprite.startsWith('telhado');
   }
 
   function desenhar(ts: number) {
@@ -92,19 +106,46 @@ export function criarOverworld(ctx: Contexto): Overworld {
       for (let x = x0; x <= Math.min(LARGO - 1, x0 + cfg.viewW / T + 1); x++) {
         const t = tileEm(x, y);
         if (!t) continue;
-        const sp = ctx.sprites[t.sprite];
+        let nome = t.sprite;
+        if (nome === 'fonte') {
+          const esq = tileEm(x - 1, y)?.sprite !== 'fonte';
+          const topo = tileEm(x, y - 1)?.sprite !== 'fonte';
+          nome = 'fonte' + (topo ? (esq ? 0 : 1) : esq ? 2 : 3);
+        }
+        const sp = ctx.sprites[nome];
         const img = Array.isArray(sp) ? sp[frameAgua] : sp;
-        if (img) g.drawImage(img, x * T - camX, y * T - camY);
+        if (!img) continue;
+        const dx = x * T - camX;
+        const dy = y * T - camY;
+        g.drawImage(img, dx, dy);
+        if (t.sprite.startsWith('telhado')) {
+          if (!ehTelhado(x, y - 1)) {
+            g.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            g.fillRect(dx, dy, T, 2);
+          }
+          if (!ehTelhado(x, y + 1)) {
+            g.fillStyle = 'rgba(30, 20, 10, 0.3)';
+            g.fillRect(dx, dy + T - 3, T, 3);
+          }
+          if (!ehTelhado(x - 1, y)) {
+            g.fillStyle = 'rgba(30, 20, 10, 0.22)';
+            g.fillRect(dx, dy, 2, T);
+          }
+          if (!ehTelhado(x + 1, y)) {
+            g.fillStyle = 'rgba(30, 20, 10, 0.22)';
+            g.fillRect(dx + T - 2, dy, 2, T);
+          }
+        }
       }
     }
 
-    for (const n of npcs) desenharSprite('npc-' + n.sprite, n.x, n.y, camX, camY);
+    for (const n of npcs) desenharSprite('npc-' + n.sprite, n.x, n.y, camX, camY, n.sprite !== 'placa');
 
     const nomesPraDesenhar: Array<[string, number, number]> = [];
     for (const r of ctx.rede.remotos()) {
       const f = frameAnda((ts / 250) % 1, r.andando);
-      desenharSprite(r.skin + '-' + r.dir + '-' + f, r.x - DX[r.dir], r.y - DY[r.dir], camX, camY);
-      desenharSprite('heroi' + ordenarCamisa(r.nome) + '-' + r.dir + '-' + f, r.x, r.y, camX, camY);
+      desenharSprite(r.skin + '-' + r.dir + '-' + f, r.x - DX[r.dir], r.y - DY[r.dir], camX, camY, true);
+      desenharSprite('heroi' + ordenarCamisa(r.nome) + '-' + r.dir + '-' + f, r.x, r.y, camX, camY, true);
       nomesPraDesenhar.push([r.nome, r.x, r.y]);
     }
 
@@ -118,11 +159,11 @@ export function criarOverworld(ctx: Contexto): Overworld {
         bx = origemSeg.x + (alvoSeg.x - origemSeg.x) * j.progresso;
         by = origemSeg.y + (alvoSeg.y - origemSeg.y) * j.progresso;
       }
-      desenharSprite(ctx.estado.starter + '-' + alvoSeg.dir + '-' + f, bx, by, camX, camY);
+      desenharSprite(ctx.estado.starter + '-' + alvoSeg.dir + '-' + f, bx, by, camX, camY, true);
     }
 
     const fj = frameAnda(j.progresso, j.andando);
-    desenharSprite('heroi' + ordenarCamisa(ctx.estado.nome) + '-' + j.dir + '-' + fj, j.px, j.py, camX, camY);
+    desenharSprite('heroi' + ordenarCamisa(ctx.estado.nome) + '-' + j.dir + '-' + fj, j.px, j.py, camX, camY, true);
 
     g.font = '7px monospace';
     g.textAlign = 'center';
