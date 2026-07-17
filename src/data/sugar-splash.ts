@@ -52,6 +52,13 @@ export const config = {
     nomeMin: 2,
     nomeMax: 6,
   },
+  sala: {
+    api: '/class/api/ss-salas.php',
+    pollMs: 900,
+    pollLobbyMs: 1500,
+    jitterMs: 200,
+    maxJogadores: 12,
+  },
   somLigadoInicial: true,
 } as const;
 

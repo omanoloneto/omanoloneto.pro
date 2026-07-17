@@ -4,7 +4,7 @@ import type { Agua, Contexto } from './tipos';
 const MAX_GOTAS = 120;
 const MAX_PARTICULAS = 160;
 
-type Gota = { ativa: boolean; x: number; y: number; z: number; vx: number; vy: number; vz: number; doJogador: boolean; vida: number };
+type Gota = { ativa: boolean; x: number; y: number; z: number; vx: number; vy: number; vz: number; doJogador: boolean; cosmetica: boolean; vida: number };
 type Part = { ativa: boolean; x: number; y: number; z: number; vx: number; vy: number; vz: number; vida: number };
 
 export function criarAgua(ctx: Contexto): Agua {
@@ -26,7 +26,7 @@ export function criarAgua(ctx: Contexto): Agua {
   partMesh.frustumCulled = false;
   scene.add(partMesh);
 
-  const gotas: Gota[] = Array.from({ length: MAX_GOTAS }, () => ({ ativa: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, doJogador: false, vida: 0 }));
+  const gotas: Gota[] = Array.from({ length: MAX_GOTAS }, () => ({ ativa: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, doJogador: false, cosmetica: false, vida: 0 }));
   const parts: Part[] = Array.from({ length: MAX_PARTICULAS }, () => ({ ativa: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, vida: 0 }));
   const m = new THREE.Matrix4();
   const zero = new THREE.Matrix4().makeScale(0, 0, 0);
@@ -52,7 +52,7 @@ export function criarAgua(ctx: Contexto): Agua {
     }
   }
 
-  function atirar(x: number, y: number, z: number, dx: number, dy: number, dz: number, doJogador: boolean) {
+  function lancar(x: number, y: number, z: number, dx: number, dy: number, dz: number, doJogador: boolean, cosmetica: boolean) {
     for (const g of gotas) {
       if (g.ativa) continue;
       g.ativa = true;
@@ -65,9 +65,18 @@ export function criarAgua(ctx: Contexto): Agua {
       g.vy = (dy + (Math.random() - 0.5) * esp) * vel;
       g.vz = (dz + (Math.random() - 0.5) * esp) * vel;
       g.doJogador = doJogador;
-      g.vida = cfg.bisnaga.dropletLifeS;
+      g.cosmetica = cosmetica;
+      g.vida = cosmetica ? 1.2 : cfg.bisnaga.dropletLifeS;
       return;
     }
+  }
+
+  function atirar(x: number, y: number, z: number, dx: number, dy: number, dz: number, doJogador: boolean) {
+    lancar(x, y, z, dx, dy, dz, doJogador, false);
+  }
+
+  function atirarCosmetico(x: number, y: number, z: number, dx: number, dy: number, dz: number) {
+    lancar(x, y, z, dx, dy, dz, true, true);
   }
 
   function hitsSolid(x: number, y: number, z: number): boolean {
@@ -107,11 +116,20 @@ export function criarAgua(ctx: Contexto): Agua {
           g.ativa = false;
           break;
         }
+        if (g.cosmetica) continue;
         if (g.doJogador) {
           const idx = ctx.bots.colideJato(g.x, g.y, g.z);
           if (idx >= 0) {
             ctx.bots.atingir(idx, cfg.bisnaga.dano);
             splash(g.x, g.y, g.z, true);
+            g.ativa = false;
+            break;
+          }
+          const alvo = ctx.remotos.hitTest(g.x, g.y, g.z);
+          if (alvo) {
+            ctx.net.queueEvent(['hit', alvo, cfg.bisnaga.dano]);
+            splash(g.x, g.y, g.z, true);
+            ctx.audio.somHit();
             g.ativa = false;
             break;
           }
@@ -167,5 +185,5 @@ export function criarAgua(ctx: Contexto): Agua {
     for (const p of parts) p.ativa = false;
   }
 
-  return { atirar, passo, splash, limpar };
+  return { atirar, atirarCosmetico, passo, splash, limpar };
 }

@@ -6,6 +6,7 @@ export type Fase = 'inicio' | 'jogando' | 'pausado' | 'fim' | 'entrada' | 'recor
 
 export interface Estado {
   fase: Fase;
+  modo: 'solo' | 'multi';
   nome: string;
   team: 0 | 1;
   pontos: number;
@@ -13,6 +14,9 @@ export interface Estado {
   mortes: number;
   tempoRestanteS: number;
   respawnRestanteS: number;
+  emContagem: boolean;
+  placarAzul: number;
+  placarVermelho: number;
   solidez: number;
   tanque: number;
   mudo: boolean;
@@ -62,9 +66,53 @@ export interface Bots {
 
 export interface Agua {
   atirar(x: number, y: number, z: number, dx: number, dy: number, dz: number, doJogador: boolean): void;
+  atirarCosmetico(x: number, y: number, z: number, dx: number, dy: number, dz: number): void;
   passo(dt: number): void;
   splash(x: number, y: number, z: number, grande: boolean): void;
   limpar(): void;
+}
+
+export type RoomEvent = Array<string | number>;
+
+export interface RoomPlayer {
+  nome: string;
+  team: 0 | 1;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  atirando: boolean;
+  derretido: boolean;
+  kills: number;
+  mortes: number;
+}
+
+export interface SyncPayload {
+  fase: 'lobby' | 'contagem' | 'jogando' | 'fim';
+  restanteMs: number;
+  souHost: boolean;
+  jogadores: RoomPlayer[];
+  eventos: Array<Array<string | number>>;
+  placar: { azul: number; vermelho: number };
+}
+
+export interface Net {
+  createRoom(nome: string): Promise<{ codigo: string; nome: string; team: 0 | 1 } | { erro: string }>;
+  joinRoom(codigo: string, nome: string): Promise<{ codigo: string; nome: string; team: 0 | 1 } | { erro: string }>;
+  startMatch(): void;
+  queueEvent(ev: RoomEvent): void;
+  leave(): void;
+  bind(handlers: { onSync: (r: SyncPayload) => void; onDrop: () => void }): void;
+  active(): boolean;
+  code(): string;
+}
+
+export interface RemotePlayers {
+  update(lista: RoomPlayer[]): void;
+  passo(dt: number, ts: number): void;
+  hitTest(x: number, y: number, z: number): string | null;
+  positionOf(nome: string): { x: number; y: number; z: number } | null;
+  clear(): void;
 }
 
 export interface UI {
@@ -127,6 +175,8 @@ export interface Contexto {
   arena: Arena;
   bots: Bots;
   agua: Agua;
+  net: Net;
+  remotos: RemotePlayers;
   ui: UI;
   audio: Audio;
   ranking: Ranking;

@@ -103,7 +103,7 @@ export function criarJogador(ctx: Contexto) {
       estado.tanque = Math.min(R.tanqueMax, estado.tanque + R.recargaPorS * dt);
     }
 
-    if (input.atirando && estado.fase === 'jogando' && !estado.derretendo && ts - ultimoTiroMs >= R.cadenciaMs && estado.tanque >= 1) {
+    if (input.atirando && estado.fase === 'jogando' && !estado.derretendo && !estado.emContagem && ts - ultimoTiroMs >= R.cadenciaMs && estado.tanque >= 1) {
       ultimoTiroMs = ts;
       estado.tanque -= 1;
       const cp = Math.cos(j.pitch);

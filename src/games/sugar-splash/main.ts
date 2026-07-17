@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Contexto, Estado, Input, Jogador } from './tipos';
+import type { Contexto, Estado, Input, Jogador, SyncPayload } from './tipos';
 import { criarArena } from './arena';
 import { criarAgua } from './agua';
 import { criarBots } from './bots';
@@ -7,13 +7,16 @@ import { criarJogador } from './jogador';
 import { criarUI } from './ui';
 import { criarAudio } from './audio';
 import { criarRanking } from './ranking';
+import { createNet } from './net';
+import { createRemotePlayers } from './remotePlayers';
 
 export function iniciarJogo() {
   const dados = JSON.parse(document.querySelector('[data-dados]')!.textContent!);
 
   const estado: Estado = {
-    fase: 'inicio', nome: '', team: 0, pontos: 0, kills: 0, mortes: 0,
+    fase: 'inicio', modo: 'solo', nome: '', team: 0, pontos: 0, kills: 0, mortes: 0,
     tempoRestanteS: 0, respawnRestanteS: 0,
+    emContagem: false, placarAzul: 0, placarVermelho: 0,
     solidez: dados.config.jogador.solidezMax,
     tanque: dados.config.bisnaga.tanqueMax,
     mudo: false, ultimoDanoMs: 0, derretendo: false,
@@ -47,6 +50,8 @@ export function iniciarJogo() {
   ctx.arena = criarArena(ctx);
   ctx.agua = criarAgua(ctx);
   ctx.bots = criarBots(ctx);
+  ctx.remotos = createRemotePlayers(ctx);
+  ctx.net = createNet(ctx);
   const jog = criarJogador(ctx);
   const { ui, audio, cfg } = ctx;
 
@@ -90,11 +95,14 @@ export function iniciarJogo() {
     ui.atualizarHud();
   }
 
+  let lastAttacker = '';
+
   function derreterJogador() {
     if (estado.derretendo) return;
     estado.derretendo = true;
     estado.mortes++;
     estado.respawnRestanteS = cfg.partida.respawnS;
+    if (estado.modo === 'multi') ctx.net.queueEvent(['morri', lastAttacker]);
     ui.atualizarHud();
     audio.somDerreter();
     ui.mostrarRespawn(cfg.partida.respawnS);
@@ -109,7 +117,8 @@ export function iniciarJogo() {
     if (estado.fase !== 'jogando') return;
 
     if (!estado.derretendo) jog.passo(dt, ts);
-    ctx.bots.passo(dt, ts);
+    if (estado.modo === 'solo') ctx.bots.passo(dt, ts);
+    ctx.remotos.passo(dt, ts);
     ctx.agua.passo(dt);
     ctx.arena.passo(ts);
 
@@ -122,10 +131,9 @@ export function iniciarJogo() {
       if (estado.respawnRestanteS <= 0) respawnJogador();
     }
 
-    estado.tempoRestanteS -= dt;
+    if (!estado.emContagem) estado.tempoRestanteS = Math.max(0, estado.tempoRestanteS - dt);
     ui.atualizarHud();
-    if (estado.tempoRestanteS <= 0) {
-      estado.tempoRestanteS = 0;
+    if (estado.modo === 'solo' && estado.tempoRestanteS <= 0) {
       renderer.render(scene, camera);
       fluxo.fimDeJogo();
       return;
@@ -149,6 +157,8 @@ export function iniciarJogo() {
       audio.retomar();
       jog.pedirFullscreen();
       fluxo.soltarInputs();
+      estado.modo = 'solo';
+      estado.emContagem = false;
       estado.fase = 'jogando';
       estado.pontos = 0;
       estado.kills = 0;
@@ -223,6 +233,7 @@ export function iniciarJogo() {
         msg = 'Time ' + timeInimigo + ' venceu por ' + estado.mortes + ' × ' + estado.kills + '. Na próxima! 💪';
       }
       const fim = ui.els.fimModal;
+      ui.els.fimTabela.hidden = true;
       (fim.querySelector('[data-fim-msg]') as HTMLElement).textContent = msg;
       (fim.querySelector('[data-fim-score]') as HTMLElement).textContent = String(estado.pontos);
       const gravar = fim.querySelector('[data-gravar-nome]') as HTMLElement;
@@ -233,6 +244,10 @@ export function iniciarJogo() {
     },
     reiniciar() {
       estado.fase = 'inicio';
+      ctx.net.leave();
+      ctx.remotos.clear();
+      estado.modo = 'solo';
+      estado.emContagem = false;
       fluxo.soltarInputs();
       jog.soltarLock();
       pararLoop();
@@ -240,7 +255,7 @@ export function iniciarJogo() {
       ui.esconderRespawn();
       ctx.bots.limpar();
       ctx.agua.limpar();
-      [ui.els.pausaModal, ui.els.fimModal, ui.els.entradaModal, ui.els.recordesModal].forEach((m) => { m.hidden = true; });
+      [ui.els.pausaModal, ui.els.fimModal, ui.els.entradaModal, ui.els.recordesModal, ui.els.lobbyModal].forEach((m) => { m.hidden = true; });
       ui.els.controles.hidden = true;
       ui.els.pauseBtn.hidden = true;
       ui.els.introModal.hidden = false;
@@ -272,6 +287,215 @@ export function iniciarJogo() {
       fluxo.comecar();
     }
   });
+
+  const campoCodigo = document.querySelector('[data-campo-codigo]') as HTMLInputElement;
+  campoCodigo.addEventListener('input', () => {
+    const limpo = campoCodigo.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+    if (campoCodigo.value !== limpo) campoCodigo.value = limpo;
+  });
+
+  function renderLobbySozinho() {
+    ui.els.lobbyLista.innerHTML = '<li>' + (estado.team === 0 ? '🔵' : '🔴') + ' ' + estado.nome + ' (você)</li>';
+  }
+
+  function renderLobby(r: SyncPayload) {
+    ui.els.introModal.hidden = true;
+    ui.els.lobbyModal.hidden = false;
+    ui.els.lobbyCodigo.textContent = ctx.net.code();
+    const linhas = ['<li>' + (estado.team === 0 ? '🔵' : '🔴') + ' ' + estado.nome + ' (você)</li>'];
+    for (const j of r.jogadores) linhas.push('<li>' + (j.team === 0 ? '🔵' : '🔴') + ' ' + j.nome + '</li>');
+    ui.els.lobbyLista.innerHTML = linhas.join('');
+    ui.els.lobbyComecar.hidden = !r.souHost;
+    ui.els.lobbyStatus.textContent = r.souHost
+      ? (r.jogadores.length === 0 ? 'Passa o código pros amigos entrarem!' : 'Todo mundo pronto? Aperta começar!')
+      : 'Esperando quem criou a sala começar…';
+  }
+
+  function iniciarPartidaMulti() {
+    audio.retomar();
+    fluxo.soltarInputs();
+    estado.fase = 'jogando';
+    estado.pontos = 0;
+    estado.kills = 0;
+    estado.mortes = 0;
+    estado.respawnRestanteS = 0;
+    estado.tempoRestanteS = cfg.partida.duracaoS;
+    estado.solidez = cfg.jogador.solidezMax;
+    estado.tanque = cfg.bisnaga.tanqueMax;
+    estado.derretendo = false;
+    lastAttacker = '';
+    const sp = ctx.spawnsTime[estado.team];
+    jogador.x = sp.x;
+    jogador.z = sp.z;
+    jogador.y = 0;
+    jogador.vy = 0;
+    jogador.yaw = sp.yaw;
+    jogador.pitch = 0;
+    jogador.shake = 0;
+    ctx.bots.limpar();
+    ctx.agua.limpar();
+    ui.els.lobbyModal.hidden = true;
+    ui.els.controles.hidden = false;
+    ui.els.pauseBtn.hidden = false;
+    ui.esconderRespawn();
+    medir();
+    ui.atualizarHud();
+    audio.somOnda();
+    const meuTime = estado.team === 0 ? 'AZUL! 🔵' : 'VERMELHO! 🔴';
+    ui.mostrarBanner('Valendo! Time ' + meuTime, 'Derreta o outro time!');
+    retomarLoop();
+    ui.anunciar('A partida vai começar! Você é do time ' + (estado.team === 0 ? 'azul' : 'vermelho') + '.');
+  }
+
+  function processarEventos(eventos: SyncPayload['eventos']) {
+    for (const ev of eventos) {
+      const tipo = ev[2];
+      if (tipo === 'hit') {
+        const alvo = ev[3] as string;
+        const dano = ev[4] as number;
+        const autor = ev[5] as string;
+        if (alvo === estado.nome && estado.fase === 'jogando' && !estado.derretendo && !estado.emContagem) {
+          lastAttacker = autor;
+          estado.solidez -= dano;
+          estado.ultimoDanoMs = performance.now();
+          jogador.shake = 1;
+          ui.flashDano();
+          audio.somDano();
+          ui.atualizarHud();
+        }
+      } else if (tipo === 'morreu') {
+        const vitima = ev[3] as string;
+        const autor = ev[4] as string;
+        if (autor === estado.nome) {
+          estado.kills++;
+          estado.pontos += cfg.bots.pontosPorBot;
+          const pos = ctx.remotos.positionOf(vitima);
+          if (pos) ui.mostrarPontos('+' + cfg.bots.pontosPorBot, pos);
+          audio.somDerreter();
+          ui.atualizarHud();
+        }
+      }
+    }
+  }
+
+  function fimMulti(r: SyncPayload) {
+    estado.fase = 'fim';
+    estado.emContagem = false;
+    fluxo.soltarInputs();
+    jog.soltarLock();
+    pararLoop();
+    ui.esconderRespawn();
+    audio.somFim();
+    audio.suspender();
+    const meu = estado.team === 0 ? r.placar.azul : r.placar.vermelho;
+    const outro = estado.team === 0 ? r.placar.vermelho : r.placar.azul;
+    if (meu > outro) estado.pontos += cfg.partida.bonusVitoria;
+    const msg = meu > outro
+      ? 'Seu time venceu por ' + meu + ' × ' + outro + '! 🏆'
+      : meu === outro
+        ? 'Empate suado: ' + meu + ' × ' + outro + '! 🤝'
+        : 'O outro time venceu por ' + outro + ' × ' + meu + '. Na próxima! 💪';
+    const fim = ui.els.fimModal;
+    (fim.querySelector('[data-fim-msg]') as HTMLElement).textContent = msg;
+    (fim.querySelector('[data-fim-score]') as HTMLElement).textContent = String(estado.pontos);
+    const linhas = [{ nome: estado.nome, team: estado.team, kills: estado.kills, mortes: estado.mortes }]
+      .concat(r.jogadores.map((j) => ({ nome: j.nome, team: j.team, kills: j.kills, mortes: j.mortes })))
+      .sort((a, b) => b.kills - a.kills);
+    ui.els.fimTabela.innerHTML = linhas
+      .map((l) => '<li><span class="pos">' + (l.team === 0 ? '🔵' : '🔴') + '</span><span class="nome">' + l.nome + '</span><span class="det">' + l.mortes + ' quedas</span><span class="pts">' + l.kills + '</span></li>')
+      .join('');
+    ui.els.fimTabela.hidden = false;
+    const gravar = fim.querySelector('[data-gravar-nome]') as HTMLElement;
+    gravar.hidden = estado.pontos <= 0;
+    fim.hidden = false;
+    setTimeout(() => (gravar.hidden ? (document.querySelector('[data-replay]') as HTMLElement) : gravar).focus(), 60);
+    ui.anunciar('Fim de jogo! ' + msg);
+  }
+
+  function onSync(r: SyncPayload) {
+    if (estado.modo !== 'multi') return;
+    estado.placarAzul = r.placar.azul;
+    estado.placarVermelho = r.placar.vermelho;
+    ctx.remotos.update(r.jogadores);
+    if (r.fase === 'lobby') {
+      renderLobby(r);
+      return;
+    }
+    if (r.fase === 'fim') {
+      if (estado.fase !== 'fim') fimMulti(r);
+      return;
+    }
+    if (estado.fase !== 'jogando') iniciarPartidaMulti();
+    estado.emContagem = r.fase === 'contagem';
+    if (r.fase === 'jogando') estado.tempoRestanteS = r.restanteMs / 1000;
+    processarEventos(r.eventos);
+    ui.atualizarHud();
+  }
+
+  ctx.net.bind({
+    onSync,
+    onDrop() {
+      if (estado.modo === 'multi' && estado.fase !== 'fim') fluxo.reiniciar();
+    },
+  });
+
+  async function entrarModoMulti(criar: boolean) {
+    const nome = nomeLimpo(campoNome.value);
+    if (nome.length < cfg.ranking.nomeMin) {
+      ui.els.erroIntro.textContent = 'Escreve teu nome primeiro (só letras e números)!';
+      ui.els.erroIntro.hidden = false;
+      campoNome.focus();
+      return;
+    }
+    if (!criar && campoCodigo.value.length !== 5) {
+      ui.els.erroIntro.textContent = 'O código da sala tem 5 letras!';
+      ui.els.erroIntro.hidden = false;
+      campoCodigo.focus();
+      return;
+    }
+    ui.els.erroIntro.hidden = true;
+    try { localStorage.setItem('sugar-splash:nome', nome); } catch { }
+    audio.retomar();
+    jog.pedirFullscreen();
+    const r = criar ? await ctx.net.createRoom(nome) : await ctx.net.joinRoom(campoCodigo.value, nome);
+    if ('erro' in r) {
+      ui.els.erroIntro.textContent = '😵 ' + r.erro;
+      ui.els.erroIntro.hidden = false;
+      return;
+    }
+    estado.modo = 'multi';
+    estado.nome = r.nome;
+    estado.team = r.team;
+    estado.placarAzul = 0;
+    estado.placarVermelho = 0;
+    jog.definirTime(estado.team);
+    const sp = ctx.spawnsTime[estado.team];
+    jogador.x = sp.x;
+    jogador.z = sp.z;
+    jogador.y = 0;
+    jogador.yaw = sp.yaw;
+    ui.els.introModal.hidden = true;
+    ui.els.lobbyModal.hidden = false;
+    ui.els.lobbyCodigo.textContent = r.codigo;
+    ui.els.lobbyComecar.hidden = !criar;
+    ui.els.lobbyStatus.textContent = criar ? 'Passa o código pros amigos entrarem!' : 'Esperando quem criou a sala começar…';
+    renderLobbySozinho();
+  }
+
+  (document.querySelector('[data-criar-sala]') as HTMLElement).addEventListener('click', () => entrarModoMulti(true));
+  (document.querySelector('[data-entrar-sala]') as HTMLElement).addEventListener('click', () => entrarModoMulti(false));
+  campoCodigo.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      entrarModoMulti(false);
+    }
+  });
+  (ui.els.lobbyComecar as HTMLElement).addEventListener('click', () => {
+    ui.els.lobbyStatus.textContent = 'Começando…';
+    ctx.net.startMatch();
+  });
+  (ui.els.lobbySair as HTMLElement).addEventListener('click', () => fluxo.reiniciar());
+  window.addEventListener('pagehide', () => ctx.net.leave());
 
   (document.querySelector('[data-comecar]') as HTMLElement).addEventListener('click', () => fluxo.comecar());
   (document.querySelector('[data-replay]') as HTMLElement).addEventListener('click', () => fluxo.reiniciar());
@@ -312,6 +536,8 @@ export function iniciarJogo() {
     bots: ctx.bots,
     agua: ctx.agua,
     arena: ctx.arena,
+    net: ctx.net,
+    remotos: ctx.remotos,
     fluxo,
     camera, renderer, scene,
     render: () => renderer.render(scene, camera),

@@ -22,6 +22,13 @@ export function criarUI(ctx: Contexto): UI {
     respawnOverlay: $('[data-respawn]'),
     aguaTint: $('[data-agua-tint]'),
     erroIntro: $('[data-erro-intro]'),
+    lobbyModal: $('[data-lobby]'),
+    lobbyCodigo: $('[data-lobby-codigo]'),
+    lobbyLista: $('[data-lobby-lista]'),
+    lobbyComecar: $('[data-lobby-comecar]'),
+    lobbyStatus: $('[data-lobby-status]'),
+    lobbySair: $('[data-lobby-sair]'),
+    fimTabela: $('[data-fim-tabela]'),
     controles: $('[data-controles]'),
     pauseBtn: $('[data-pause]'),
     muteBtn: $('[data-mute]'),
@@ -64,8 +71,8 @@ export function criarUI(ctx: Contexto): UI {
         tempoAntes = seg;
         els.hudTempo.textContent = Math.floor(seg / 60) + ':' + String(seg % 60).padStart(2, '0');
       }
-      const azul = e.team === 0 ? e.kills : e.mortes;
-      const vermelho = e.team === 0 ? e.mortes : e.kills;
+      const azul = e.modo === 'multi' ? e.placarAzul : e.team === 0 ? e.kills : e.mortes;
+      const vermelho = e.modo === 'multi' ? e.placarVermelho : e.team === 0 ? e.mortes : e.kills;
       const placar = '🔵 ' + azul + ' × ' + vermelho + ' 🔴';
       if (placar !== placarAntes) {
         placarAntes = placar;
