@@ -138,7 +138,8 @@ export function criarUI(ctx: Contexto): UI {
     // receitas acendem/apagam conforme o material disponível
     els.craftPainel.querySelectorAll<HTMLElement>('.receita').forEach((r, i) => {
       const rec = ctx.receitas[i];
-      r.classList.toggle('pode', (inv[rec.de] || 0) >= rec.qtd);
+      const tem = (inv[rec.de] || 0) >= rec.qtd && (!rec.de2 || (inv[rec.de2] || 0) >= (rec.qtd2 || 1));
+      r.classList.toggle('pode', tem);
     });
   }
 
@@ -200,10 +201,12 @@ export function criarUI(ctx: Contexto): UI {
       btn.type = 'button';
       btn.className = 'receita';
       btn.dataset.receita = String(i);
-      btn.setAttribute('aria-label', 'Fabricar: ' + rec.qtd + ' ' + de.nome + ' vira ' + rec.ganha + ' ' + para.nome);
+      const extras = (rec.de2 ? ' e ' + (rec.qtd2 || 1) + ' ' + ctx.porId(rec.de2).nome : '') + (rec.fornalha ? ' (perto de uma fornalha)' : '');
+      btn.setAttribute('aria-label', 'Fabricar: ' + rec.qtd + ' ' + de.nome + extras + ' vira ' + rec.ganha + ' ' + para.nome);
       btn.innerHTML =
-        '<span class="receita__lado">' + rec.qtd + '× ' + imgDoBloco(rec.de) + '</span>' +
-        '<span class="receita__seta">→</span>' +
+        '<span class="receita__lado">' + rec.qtd + '× ' + imgDoBloco(rec.de) +
+        (rec.de2 ? ' + ' + (rec.qtd2 || 1) + '× ' + imgDoBloco(rec.de2) : '') + '</span>' +
+        '<span class="receita__seta">' + (rec.fornalha ? '🔥' : '→') + '</span>' +
         '<span class="receita__lado">' + rec.ganha + '× ' + imgDoBloco(rec.para) + '</span>';
       els.craftPainel.appendChild(btn);
     });

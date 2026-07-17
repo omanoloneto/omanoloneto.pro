@@ -18,6 +18,7 @@ const PORTA_FECHADA = 18;
 const PORTA_ABERTA = 19;
 const PLACA = 20;
 const PICKAXE = 24;
+const IRON_PICKAXE = 28;
 const ehPorta = (id: number) => id === PORTA_FECHADA || id === PORTA_ABERTA;
 
 export function criarEdicao(ctx: Contexto): Edicao {
@@ -113,6 +114,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
   }
   // dono do baú/autor da placa × quem sou eu agora
   function podeUsar(dono: string): boolean {
+    if (dono === '*') return true;
     if (!ctx.sync.emSala()) return true; // solo: tudo é seu
     if (ctx.sync.emVisita()) return dono === ctx.sync.meuNomeNaSala();
     return dono === '' || dono === ctx.sync.meuNomeNaSala(); // dono do mundo
@@ -200,13 +202,18 @@ export function criarEdicao(ctx: Contexto): Edicao {
     return ctx.estado.hotbarSlots[ctx.estado.sel] || 0;
   }
 
+  function holdingPickaxe(): boolean {
+    const h = heldItem();
+    return h === PICKAXE || h === IRON_PICKAXE;
+  }
+
   function podeQuebrar(a: Alvo): boolean {
     if (a.id === 14 || porId(a.id).dureza === undefined) {
       avisar('🪨 Essa rocha do fundo não quebra!');
       return false;
     }
-    if (porId(a.id).precisaPicareta && heldItem() !== PICKAXE) {
-      avisar('⛏ O carvão é duro demais pra mão! Fabrique uma picareta de madeira (3 tábuas).');
+    if (porId(a.id).precisaPicareta && !holdingPickaxe()) {
+      avisar('⛏ ' + porId(a.id).nome + ' é duro demais pra mão! Segure uma picareta.');
       return false;
     }
     // baú é protegido: só o dono quebra (senão qualquer um roubava o conteúdo)
@@ -244,7 +251,10 @@ export function criarEdicao(ctx: Contexto): Edicao {
     }
     progresso += dt * 1000;
     const defAlvo = porId(a.id);
-    const dureza = heldItem() === PICKAXE && defAlvo.durezaPicareta !== undefined ? defAlvo.durezaPicareta : defAlvo.dureza!;
+    const tool = heldItem();
+    const dureza = tool === IRON_PICKAXE && defAlvo.durezaFerro !== undefined ? defAlvo.durezaFerro
+      : holdingPickaxe() && defAlvo.durezaPicareta !== undefined ? defAlvo.durezaPicareta
+        : defAlvo.dureza!;
     if (progresso >= dureza) {
       removerBloco(a); // o som cheio vem daqui — sem toc empilhado
       esconderRachadura();
@@ -394,7 +404,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
       return;
     }
     ctx.fluxo.soltarInputs();
-    ctx.ui.abrirBau(ctx.metas.chaveDe(a.x, a.y, a.z), m.dono ? 'Baú de ' + m.dono : 'Seu baú', true);
+    ctx.ui.abrirBau(ctx.metas.chaveDe(a.x, a.y, a.z), m.dono === '*' ? '💎 Baú do tesouro!' : m.dono ? 'Baú de ' + m.dono : 'Seu baú', true);
     ctx.fluxo.aoPrimeiroInput();
   }
 

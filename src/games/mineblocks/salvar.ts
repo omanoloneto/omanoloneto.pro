@@ -237,11 +237,13 @@ export function criarSalvar(ctx: Contexto): Salvar {
         return '__NOVO__';
       }
       let migrado = false;
+      let genMetas: Record<string, unknown> = {};
       let blocos = decodificarRLE(p.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
       if (!blocos) {
         const legado = decodificarRLE(p.blocos, LEGACY_SX * LEGACY_SZ * LEGACY_SY, ctx.blocos.length - 1);
         if (legado) {
           blocos = expandLegacyWorld(legado, p.seed >>> 0);
+          genMetas = ctx.metas.serializar() as Record<string, unknown>;
           migrado = true;
         }
       }
@@ -253,7 +255,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
       ctx.mundo.dados.set(blocos);
       ctx.estado.seed = p.seed >>> 0;
       if (typeof p.tempoDia === 'number') ctx.ceu.definirTempo(p.tempoDia); // v<5 → fica de manhã
-      ctx.metas.carregar(migrado ? remapLegacyMetas(p.metas) : p.metas); // v<4 (sem metas) → mapa vazio
+      ctx.metas.carregar(migrado ? Object.assign(genMetas, remapLegacyMetas(p.metas)) : p.metas); // v<4 (sem metas) → mapa vazio
       const NSLOTS = ctx.cfg.hotbarTamanho;
       ctx.estado.sel = Math.max(0, Math.min(NSLOTS - 1, p.sel | 0));
       // inventário: v2+ traz salvo; v1 (criativo antigo) migra vazio —

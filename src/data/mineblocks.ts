@@ -19,6 +19,7 @@ export interface Bloco {
   // quanto tempo segurando pra quebrar (ms); ausente = não quebra (rocha-mãe, água)
   dureza?: number;
   durezaPicareta?: number;
+  durezaFerro?: number;
   precisaPicareta?: boolean;
   ferramenta?: boolean;
 }
@@ -27,7 +28,7 @@ export const blocos: Bloco[] = [
   { id: 0, nome: 'ar', tiles: [0, 0, 0], solido: false, render: 'cubo' },
   { id: 1, nome: 'grama', tiles: [0, 1, 2], solido: true, render: 'cubo', drop: 2, dureza: 550 },
   { id: 2, nome: 'terra', tiles: [2, 2, 2], solido: true, render: 'cubo', dureza: 500 },
-  { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo', drop: 10, dureza: 1300, durezaPicareta: 400 },
+  { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo', drop: 10, dureza: 1300, durezaPicareta: 400, durezaFerro: 150 },
   { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo', dureza: 450 },
   { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo', dureza: 800 },
   { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo', dureza: 800 },
@@ -35,8 +36,8 @@ export const blocos: Bloco[] = [
   // Naturais (id 7): dropam folhas E às vezes uma muda; DECAEM sem tronco conectado.
   { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', dropSorte: { id: 15, chance: 0.3 }, dureza: 300 },
   { id: 8, nome: 'vidro', tiles: [9, 9, 9], solido: true, render: 'recorte', dureza: 350 },
-  { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450 },
-  { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo', dureza: 1100, durezaPicareta: 350 },
+  { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
+  { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo', dureza: 1100, durezaPicareta: 350, durezaFerro: 150 },
   { id: 11, nome: 'flor amarela', tiles: [12, 12, 12], solido: false, render: 'cruz', dureza: 350 },
   { id: 12, nome: 'flor vermelha', tiles: [13, 13, 13], solido: false, render: 'cruz', dureza: 350 },
   // água só existe no mundo (não colocável no v1 — física de água espalhando é armadilha)
@@ -60,18 +61,22 @@ export const blocos: Bloco[] = [
   // lã: dropada pelo Winpup no chão (tufo não-sólido). NÃO entra em `itens`
   // (criança não coloca) — passar por cima coleta como recurso (materiais)
   { id: 21, nome: 'lã', tiles: [25, 25, 25], solido: false, render: 'cruz', drop: 21, dureza: 200 },
-  { id: 22, nome: 'carvão', tiles: [26, 26, 26], solido: true, render: 'cubo', drop: 23, dureza: 600, precisaPicareta: true },
+  { id: 22, nome: 'carvão', tiles: [26, 26, 26], solido: true, render: 'cubo', drop: 23, dureza: 600, durezaFerro: 250, precisaPicareta: true },
   { id: 23, nome: 'carvão', tiles: [27, 27, 27], solido: false, render: 'cruz' },
   { id: 24, nome: 'picareta de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true },
+  { id: 25, nome: 'minério de ferro', tiles: [29, 29, 29], solido: true, render: 'cubo', dureza: 900, durezaFerro: 350, precisaPicareta: true },
+  { id: 26, nome: 'barra de ferro', tiles: [30, 30, 30], solido: false, render: 'cruz' },
+  { id: 27, nome: 'fornalha', tiles: [3, 31, 3], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
+  { id: 28, nome: 'picareta de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true },
 ];
 
 // tipos de item coletáveis (grade do inventário/E); a hotbar agora é
 // dinâmica: 9 slots vazios que enchem conforme a criança coleta
-export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24];
+export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28];
 
 // materiais = recursos SÓ-coletáveis (não colocáveis): o jogador junta e
 // fabrica coisas depois. Aparecem numa seção própria do inventário.
-export const materiais = [21, 23];
+export const materiais = [21, 23, 25, 26];
 
 // craft simples da sobrevivência: toca na receita e transforma
 // (sem mesa, sem grade — proporcional a criança de 6 anos)
@@ -80,17 +85,23 @@ export interface Receita {
   qtd: number; // quantos consome
   para: number; // id do resultado
   ganha: number; // quantos entrega
+  de2?: number;
+  qtd2?: number;
+  fornalha?: boolean;
 }
 export const receitas: Receita[] = [
   { de: 5, qtd: 1, para: 6, ganha: 4 }, // 1 tronco → 4 tábuas
-  { de: 4, qtd: 1, para: 8, ganha: 1 }, // 1 areia → 1 vidro
   { de: 10, qtd: 2, para: 9, ganha: 1 }, // 2 pedregulhos → 1 tijolos
-  { de: 10, qtd: 1, para: 3, ganha: 1 }, // 1 pedregulho → 1 pedra (a "fornalha")
   { de: 2, qtd: 1, para: 1, ganha: 1 }, // 1 terra → 1 grama (plantou, cresceu!)
   { de: 6, qtd: 2, para: 17, ganha: 1 }, // 2 tábuas → 1 baú
   { de: 6, qtd: 2, para: 18, ganha: 1 }, // 2 tábuas → 1 porta
   { de: 6, qtd: 1, para: 20, ganha: 1 }, // 1 tábua → 1 placa
   { de: 6, qtd: 3, para: 24, ganha: 1 },
+  { de: 10, qtd: 8, para: 27, ganha: 1 },
+  { de: 4, qtd: 1, para: 8, ganha: 1, fornalha: true }, // 1 areia → 1 vidro
+  { de: 10, qtd: 1, para: 3, ganha: 1, fornalha: true }, // 1 pedregulho → 1 pedra
+  { de: 25, qtd: 1, de2: 23, qtd2: 1, para: 26, ganha: 1, fornalha: true },
+  { de: 26, qtd: 3, de2: 6, qtd2: 2, para: 28, ganha: 1, fornalha: true },
 ];
 
 export const config = {
@@ -111,7 +122,7 @@ export const config = {
     ilhaQueda: 11, // quantos blocos afunda até a borda
     arvores: 220, // tentativas (nem toda posição serve)
     flores: 600,
-    dungeon: { salas: 7, carvaoPorSala: 10 },
+    dungeon: { salas: 7, carvaoPorSala: 10, ferroPorSala: 5 },
   },
   fisica: {
     gravidade: 25,

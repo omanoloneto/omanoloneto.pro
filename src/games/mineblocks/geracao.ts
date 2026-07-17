@@ -138,14 +138,14 @@ function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: n
     }
   }
 
-  for (const r of rooms) {
+  function seedOre(roomIndex: number, oreId: number, quota: number) {
+    const r = rooms[roomIndex];
     const x0 = r.x - (r.w >> 1);
     const z0 = r.z - (r.d >> 1);
     const x1 = x0 + r.w - 1;
     const z1 = z0 + r.d - 1;
-    carveBox(x0, x1, z0, z1, ROOM_TOP);
-    let placedCoal = 0;
-    for (let t = 0; t < D.carvaoPorSala * 5 && placedCoal < D.carvaoPorSala; t++) {
+    let placed = 0;
+    for (let t = 0; t < quota * 5 && placed < quota; t++) {
       const face = Math.floor(rng() * 5);
       let x = x0 + Math.floor(rng() * r.w);
       let z = z0 + Math.floor(rng() * r.d);
@@ -156,11 +156,32 @@ function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: n
       else if (face === 3) z = z1 + 1;
       else y = ROOM_TOP + 1;
       if (mundo.obter(x, y, z) === 3) {
-        setCell(x, y, z, 22);
-        placedCoal++;
+        setCell(x, y, z, oreId);
+        placed++;
       }
     }
   }
+
+  for (let i = 0; i < rooms.length; i++) {
+    const r = rooms[i];
+    const x0 = r.x - (r.w >> 1);
+    const z0 = r.z - (r.d >> 1);
+    carveBox(x0, x0 + r.w - 1, z0, z0 + r.d - 1, ROOM_TOP);
+  }
+  for (let i = 0; i < rooms.length; i++) {
+    seedOre(i, 22, D.carvaoPorSala);
+    if (i >= 2) seedOre(i, 25, D.ferroPorSala);
+  }
+
+  const last = rooms[rooms.length - 1];
+  setCell(last.x, FLOOR_Y + 1, last.z, 17);
+  const loot = new Array(ctx.blocos.length).fill(0);
+  loot[6] = 8;
+  loot[8] = 4;
+  loot[9] = 6;
+  loot[23] = 6;
+  loot[26] = 2;
+  ctx.metas.definir(last.x, FLOOR_Y + 1, last.z, { tipo: 'bau', dono: '*', itens: loot });
 
   const first = rooms[0];
   const stepX = Math.abs(first.x - midX) >= Math.abs(first.z - midZ) ? Math.sign(first.x - midX) : 0;

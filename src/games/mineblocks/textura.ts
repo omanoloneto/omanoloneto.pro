@@ -5,7 +5,7 @@ import type { Contexto, Textura } from './tipos';
 
 const TILE = 16;
 const GRADE = 4;      // colunas
-const LINHAS = 8;     // linhas (com folga pra novos tiles)
+const LINHAS = 10;     // linhas (com folga pra novos tiles)
 const LADO = TILE * GRADE; // 64
 const ALTO = TILE * LINHAS; // 128
 
@@ -266,6 +266,55 @@ export function criarTextura(_ctx: Contexto): Textura {
     g.fillStyle = '#7c5a30';
     g.fillRect(ox + 7, oy + 2, 6, 1);
     px(ox, oy, 3, 4, '#7c5a30'); px(ox, oy, 13, 7, '#7c5a30');
+  }
+  {
+    const [ox, oy] = base(29, [138, 138, 142], 0.08);
+    g.fillStyle = '#c98a5a';
+    for (const [x, y, w, h] of [[3, 2, 3, 2], [10, 3, 3, 3], [2, 8, 3, 3], [11, 10, 3, 2], [6, 11, 3, 2], [7, 6, 2, 2]] as const) g.fillRect(ox + x, oy + y, w, h);
+    g.fillStyle = '#e8b088';
+    for (const [x, y] of [[4, 2], [11, 4], [3, 9], [12, 10], [7, 12]] as const) g.fillRect(ox + x, oy + y, 1, 1);
+  }
+  {
+    const ox = (30 % GRADE) * TILE;
+    const oy = Math.floor(30 / GRADE) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#c9ccd4';
+    g.fillRect(ox + 3, oy + 6, 10, 5);
+    g.fillRect(ox + 2, oy + 7, 12, 3);
+    g.fillStyle = '#eef1f6';
+    g.fillRect(ox + 3, oy + 6, 10, 1);
+    g.fillRect(ox + 4, oy + 7, 3, 1);
+    g.fillStyle = '#8e929c';
+    g.fillRect(ox + 3, oy + 10, 10, 1);
+    g.fillRect(ox + 12, oy + 7, 2, 3);
+  }
+  {
+    const [ox, oy] = base(31, [122, 122, 126], 0.08);
+    g.fillStyle = '#55555a';
+    g.fillRect(ox + 2, oy + 2, 12, 2);
+    g.fillRect(ox + 2, oy + 12, 12, 2);
+    g.fillStyle = '#1c1410';
+    g.fillRect(ox + 4, oy + 6, 8, 5);
+    g.fillStyle = '#f07818';
+    g.fillRect(ox + 5, oy + 8, 2, 3); g.fillRect(ox + 8, oy + 7, 2, 4); g.fillRect(ox + 11, oy + 9, 1, 2);
+    g.fillStyle = '#ffc93c';
+    px(ox, oy, 6, 10, '#ffc93c'); px(ox, oy, 8, 9, '#ffc93c'); px(ox, oy, 9, 10, '#ffc93c');
+  }
+  {
+    const ox = (32 % GRADE) * TILE;
+    const oy = Math.floor(32 / GRADE) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#8a6a3c';
+    for (let i = 0; i < 9; i++) g.fillRect(ox + 3 + i, oy + 12 - i, 2, 2);
+    g.fillStyle = '#c9ccd4';
+    g.fillRect(ox + 7, oy + 2, 6, 2);
+    g.fillRect(ox + 5, oy + 3, 3, 2);
+    g.fillRect(ox + 12, oy + 4, 2, 3);
+    g.fillRect(ox + 3, oy + 4, 2, 2);
+    g.fillRect(ox + 13, oy + 6, 1, 2);
+    g.fillStyle = '#8e929c';
+    g.fillRect(ox + 7, oy + 2, 6, 1);
+    px(ox, oy, 3, 4, '#8e929c'); px(ox, oy, 13, 7, '#8e929c');
   }
 
   // --- 17/18/19 rachaduras (overlay de quebra, cutout) ---

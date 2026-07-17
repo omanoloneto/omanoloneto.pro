@@ -52,7 +52,7 @@ const SUMIU_S = 120;            // visto há >120s sai da sala sozinho
 const MAX_X = 192;
 const MAX_Y = 40;
 const MAX_Z = 192;
-const MAX_BLOCO = 24;   // maior id da tabela do cliente (ar..picareta)
+const MAX_BLOCO = 28;   // maior id da tabela do cliente (ar..picareta de ferro)
 const MAX_BICHOS = 16;  // teto de Winpups no blackboard (só posição)
 
 function falha(int $code, string $msg, array $extra = []): void {
