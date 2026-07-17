@@ -16,12 +16,15 @@ const description =
   <main id="conteudo" class="ss" data-game role="application" aria-label="Sugar Splash: derreta os bonecos de açúcar com sua bisnaga d'água">
     <div class="cena" data-cena>
       <div class="mira" aria-hidden="true">+</div>
-      <div class="fps-topo" aria-hidden="true">
+      <div class="fps-topo" data-hud-top aria-hidden="true">
         <span>⏱ <strong data-tempo>5:00</strong></span>
         <span class="fps-sep">·</span>
         <strong data-placar>🔵 0 × 0 🔴</strong>
+        <span class="fps-sep" data-room-sep hidden>·</span>
+        <strong class="fps-room" data-room-code hidden></strong>
       </div>
       <div class="fps-pontos" aria-hidden="true">⭐ <strong data-pontos>0</strong></div>
+      <div class="fps-team" data-team-badge aria-hidden="true" hidden></div>
       <div class="fps-botoes">
         <button class="hud__mute" type="button" data-pause aria-label="Pausar o jogo" hidden>⏸</button>
         <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
@@ -30,6 +33,10 @@ const description =
       </div>
       <div class="fps-vida" data-vida-box aria-label="Solidez do boneco">❤️ <strong data-solidez-num>100</strong></div>
       <div class="fps-agua" data-agua-box aria-label="Água na bisnaga">💧 <strong data-tanque-num>40</strong></div>
+      <div class="scoreboard" data-scoreboard aria-hidden="true" hidden>
+        <p class="scoreboard__titulo">🏆 Placar da sala</p>
+        <ol class="tabela" data-scoreboard-list></ol>
+      </div>
       <div class="dano-flash" data-dano-flash aria-hidden="true"></div>
       <div class="agua-tint" data-agua-tint aria-hidden="true"></div>
       <div class="respawn" data-respawn aria-hidden="true" hidden></div>
@@ -185,7 +192,7 @@ const description =
     .fps-topo {
       position: absolute; top: 12px; left: 50%;
       transform: translateX(-50%);
-      z-index: 24; pointer-events: none;
+      z-index: 24; pointer-events: auto; cursor: pointer;
       display: flex; align-items: center; gap: 14px;
       padding: 9px 26px; border-radius: 999px;
       background: rgba(8, 48, 63, 0.55);
@@ -193,6 +200,29 @@ const description =
       white-space: nowrap;
     }
     .fps-sep { opacity: 0.5; }
+    .fps-sep[hidden] { display: none; }
+    .fps-room { font-size: 0.72em; letter-spacing: 3px; opacity: 0.85; }
+    .fps-room[hidden] { display: none; }
+    .fps-team {
+      position: absolute; top: 60px; left: 16px;
+      z-index: 24; pointer-events: none;
+      color: #fff; font-weight: 800; font-size: clamp(0.95rem, 1.8vw, 1.15rem);
+      text-shadow: 0 2px 6px rgba(8, 48, 63, 0.85);
+    }
+    .fps-team[hidden] { display: none; }
+    .scoreboard {
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 30; pointer-events: none;
+      width: min(88vw, 380px);
+      padding: 14px 16px; border-radius: 16px;
+      background: rgba(8, 48, 63, 0.82);
+    }
+    .scoreboard[hidden] { display: none; }
+    .scoreboard__titulo { margin: 0 0 10px; text-align: center; color: #fff; font-weight: 800; }
+    .scoreboard .tabela { margin: 0; }
+    .scoreboard .tabela li { background: rgba(240, 250, 255, 0.94); border-color: rgba(32, 152, 216, 0.35); }
+    .scoreboard .tabela li.novo { background: rgba(255, 231, 150, 0.96); border-color: #dcaa28; }
     .fps-pontos {
       position: absolute; top: 18px; left: 16px;
       z-index: 24; pointer-events: none;
@@ -225,8 +255,10 @@ const description =
       .fps-vida, .fps-agua { bottom: calc(126px + env(safe-area-inset-bottom)); }
     }
     @media (max-width: 700px) {
-      .fps-topo { left: 10px; transform: none; font-size: 1.05rem; gap: 8px; padding: 7px 14px; }
+      .fps-topo { left: 10px; right: 128px; transform: none; font-size: 1.05rem; gap: 8px; row-gap: 2px; padding: 7px 14px; flex-wrap: wrap; white-space: normal; }
+      .fps-topo > span, .fps-topo > strong { white-space: nowrap; }
       .fps-pontos { top: 64px; left: 12px; }
+      .fps-team { top: 96px; left: 12px; }
       .hud__mute { width: 46px; height: 46px; font-size: 1.25rem; }
     }
     .hud__mute {

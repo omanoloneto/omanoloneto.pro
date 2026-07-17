@@ -163,6 +163,11 @@ export function criarJogador(ctx: Contexto) {
       ' ': 'pulo',
     };
     window.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey && estado.fase === 'jogando') {
+        e.preventDefault();
+        if (!e.repeat) ctx.fluxo.setScoreboard(true);
+        return;
+      }
       if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
       if (e.key === 'Escape' && estado.fase === 'jogando') {
         ctx.fluxo.pausar();
@@ -175,6 +180,10 @@ export function criarJogador(ctx: Contexto) {
       }
     });
     window.addEventListener('keyup', (e) => {
+      if (e.key === 'Tab') {
+        ctx.fluxo.setScoreboard(false);
+        return;
+      }
       const acao = TECLAS[e.key];
       if (acao) (input as any)[acao] = false;
     });

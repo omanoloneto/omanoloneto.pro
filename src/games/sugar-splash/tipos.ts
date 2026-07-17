@@ -157,6 +157,7 @@ export interface Fluxo {
   reiniciar(): void;
   medir(): void;
   soltarInputs(): void;
+  setScoreboard(on: boolean): void;
 }
 
 export interface Contexto {

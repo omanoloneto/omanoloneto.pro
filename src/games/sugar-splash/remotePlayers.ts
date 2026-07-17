@@ -3,6 +3,11 @@ import { buildCharacter, createCharacterMaterials } from './models';
 import type { Contexto, RemotePlayers, RoomPlayer } from './tipos';
 
 const MAX_REMOTE = 12;
+const SNAP_DIST = 12;
+const MAX_EXTRAP_S = 0.55;
+const CATCHUP_SPEED_MULT = 1.6;
+const MIN_SYNC_GAP_S = 0.12;
+const MAX_SYNC_GAP_S = 1.6;
 
 type Remote = {
   used: boolean;
@@ -16,6 +21,9 @@ type Remote = {
   ty: number;
   tz: number;
   tyaw: number;
+  vx: number;
+  vz: number;
+  lastSyncMs: number;
   atirando: boolean;
   derretido: boolean;
   meltT: number;
@@ -72,6 +80,7 @@ export function createRemotePlayers(ctx: Contexto): RemotePlayers {
     return {
       used: false, nome: '', team: 0 as 0 | 1,
       x: 0, y: 0, z: 0, yaw: 0, tx: 0, ty: 0, tz: 0, tyaw: 0,
+      vx: 0, vz: 0, lastSyncMs: 0,
       atirando: false, derretido: false, meltT: 0, moving: false, nextDropMs: 0,
       group: rig.group, armL: rig.armL, armR: rig.armR, legL: rig.legL, legR: rig.legR,
       setTeam: rig.setTeam, label, labelCanvas, labelTex, puddle,
@@ -94,6 +103,7 @@ export function createRemotePlayers(ctx: Contexto): RemotePlayers {
 
   return {
     update(lista: RoomPlayer[]) {
+      const now = performance.now();
       const seen = new Set<string>();
       for (const p of lista) {
         seen.add(p.nome);
@@ -108,6 +118,8 @@ export function createRemotePlayers(ctx: Contexto): RemotePlayers {
           r.y = p.y;
           r.z = p.z;
           r.yaw = p.yaw;
+          r.vx = 0;
+          r.vz = 0;
           r.meltT = 0;
           r.nextDropMs = 0;
           r.setTeam(r.team);
@@ -116,7 +128,34 @@ export function createRemotePlayers(ctx: Contexto): RemotePlayers {
           r.group.visible = true;
           r.puddle.visible = false;
           drawLabel(r);
+        } else {
+          const gap = (now - r.lastSyncMs) / 1000;
+          const jump = Math.hypot(p.x - r.tx, p.z - r.tz);
+          const respawned = r.derretido && p.derretido !== true;
+          if (respawned || jump > SNAP_DIST) {
+            r.x = p.x;
+            r.y = p.y;
+            r.z = p.z;
+            r.yaw = p.yaw;
+            r.vx = 0;
+            r.vz = 0;
+          } else if (p.derretido === true || gap < MIN_SYNC_GAP_S || gap > MAX_SYNC_GAP_S) {
+            r.vx = 0;
+            r.vz = 0;
+          } else {
+            let vx = (p.x - r.tx) / gap;
+            let vz = (p.z - r.tz) / gap;
+            const speed = Math.hypot(vx, vz);
+            const maxSpeed = ctx.cfg.jogador.vel * 1.3;
+            if (speed > maxSpeed) {
+              vx *= maxSpeed / speed;
+              vz *= maxSpeed / speed;
+            }
+            r.vx = vx;
+            r.vz = vz;
+          }
         }
+        r.lastSyncMs = now;
         r.tx = p.x;
         r.ty = p.y;
         r.tz = p.z;
@@ -131,12 +170,23 @@ export function createRemotePlayers(ctx: Contexto): RemotePlayers {
     passo(dt: number, ts: number) {
       for (const r of remotes) {
         if (!r.used) continue;
-        const k = Math.min(1, dt * 8);
+        const age = Math.min(MAX_EXTRAP_S, Math.max(0, (ts - r.lastSyncMs) / 1000));
+        const gx = r.tx + r.vx * age;
+        const gz = r.tz + r.vz * age;
+        const k = Math.min(1, dt * 10);
         const antesX = r.x;
         const antesZ = r.z;
-        r.x += (r.tx - r.x) * k;
+        let stepX = (gx - r.x) * k;
+        let stepZ = (gz - r.z) * k;
+        const stepLen = Math.hypot(stepX, stepZ);
+        const stepMax = ctx.cfg.jogador.vel * CATCHUP_SPEED_MULT * dt;
+        if (stepLen > stepMax) {
+          stepX *= stepMax / stepLen;
+          stepZ *= stepMax / stepLen;
+        }
+        r.x += stepX;
         r.y += (r.ty - r.y) * k;
-        r.z += (r.tz - r.z) * k;
+        r.z += stepZ;
         let dyaw = r.tyaw - r.yaw;
         while (dyaw > Math.PI) dyaw -= Math.PI * 2;
         while (dyaw < -Math.PI) dyaw += Math.PI * 2;

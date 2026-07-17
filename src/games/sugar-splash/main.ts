@@ -96,6 +96,25 @@ export function iniciarJogo() {
   }
 
   let lastAttacker = '';
+  let roster: SyncPayload['jogadores'] = [];
+  let scoreboardOpen = false;
+
+  function renderScoreboard() {
+    const rows = [{ nome: estado.nome, team: estado.team, kills: estado.kills, self: true }]
+      .concat(roster.map((j) => ({ nome: j.nome, team: j.team, kills: j.kills, self: false })))
+      .sort((a, b) => b.kills - a.kills);
+    ui.els.scoreboardList.innerHTML = rows
+      .map((l) => '<li' + (l.self ? ' class="novo"' : '') + '><span class="pos">' + (l.team === 0 ? '🔵' : '🔴') + '</span><span class="nome">' + l.nome + (l.self ? ' (você)' : '') + '</span><span class="det">' + l.kills + ' kills</span><span class="pts">' + l.kills * cfg.bots.pontosPorBot + '</span></li>')
+      .join('');
+  }
+
+  function setScoreboard(open: boolean) {
+    const show = open && estado.modo === 'multi' && estado.fase === 'jogando';
+    if (show === scoreboardOpen) return;
+    scoreboardOpen = show;
+    if (show) renderScoreboard();
+    ui.els.scoreboard.hidden = !show;
+  }
 
   function derreterJogador() {
     if (estado.derretendo) return;
@@ -183,6 +202,10 @@ export function iniciarJogo() {
       ui.els.introModal.hidden = true;
       ui.els.controles.hidden = false;
       ui.els.pauseBtn.hidden = false;
+      ui.els.roomSep.hidden = true;
+      ui.els.roomCode.hidden = true;
+      ui.els.teamBadge.textContent = 'Seu time: ' + (estado.team === 0 ? '🔵' : '🔴');
+      ui.els.teamBadge.hidden = false;
       ui.esconderRespawn();
       medir();
       ui.atualizarHud();
@@ -258,6 +281,9 @@ export function iniciarJogo() {
       [ui.els.pausaModal, ui.els.fimModal, ui.els.entradaModal, ui.els.recordesModal, ui.els.lobbyModal].forEach((m) => { m.hidden = true; });
       ui.els.controles.hidden = true;
       ui.els.pauseBtn.hidden = true;
+      ui.els.roomSep.hidden = true;
+      ui.els.roomCode.hidden = true;
+      ui.els.teamBadge.hidden = true;
       ui.els.introModal.hidden = false;
       renderer.render(scene, camera);
       setTimeout(() => (document.querySelector('[data-comecar]') as HTMLElement).focus(), 60);
@@ -266,7 +292,9 @@ export function iniciarJogo() {
     soltarInputs() {
       input.frente = input.tras = input.esq = input.dir = input.pulo = input.atirando = false;
       input.joyX = input.joyY = 0;
+      setScoreboard(false);
     },
+    setScoreboard,
   };
   ctx.fluxo = fluxo;
   ctx.ranking = criarRanking(ctx);
@@ -337,6 +365,11 @@ export function iniciarJogo() {
     ui.els.lobbyModal.hidden = true;
     ui.els.controles.hidden = false;
     ui.els.pauseBtn.hidden = false;
+    ui.els.roomCode.textContent = ctx.net.code();
+    ui.els.roomCode.hidden = false;
+    ui.els.roomSep.hidden = false;
+    ui.els.teamBadge.textContent = 'Seu time: ' + (estado.team === 0 ? '🔵' : '🔴');
+    ui.els.teamBadge.hidden = false;
     ui.esconderRespawn();
     medir();
     ui.atualizarHud();
@@ -416,6 +449,7 @@ export function iniciarJogo() {
     if (estado.modo !== 'multi') return;
     estado.placarAzul = r.placar.azul;
     estado.placarVermelho = r.placar.vermelho;
+    roster = r.jogadores;
     ctx.remotos.update(r.jogadores);
     if (r.fase === 'lobby') {
       renderLobby(r);
@@ -429,6 +463,7 @@ export function iniciarJogo() {
     estado.emContagem = r.fase === 'contagem';
     if (r.fase === 'jogando') estado.tempoRestanteS = r.restanteMs / 1000;
     processarEventos(r.eventos);
+    if (scoreboardOpen) renderScoreboard();
     ui.atualizarHud();
   }
 
@@ -505,6 +540,7 @@ export function iniciarJogo() {
     fluxo.reiniciar();
   });
   ui.els.pauseBtn.addEventListener('click', () => fluxo.pausar());
+  ui.els.hudTop.addEventListener('click', () => setScoreboard(!scoreboardOpen));
   (document.querySelector('[data-ver-recordes]') as HTMLElement).addEventListener('click', () => ctx.ranking.abrirRecordes(true));
   (document.querySelector('[data-gravar-nome]') as HTMLElement).addEventListener('click', () => ctx.ranking.abrirEntrada());
   (document.querySelector('[data-recordes-replay]') as HTMLElement).addEventListener('click', () => fluxo.reiniciar());

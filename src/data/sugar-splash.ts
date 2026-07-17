@@ -51,7 +51,7 @@ export const config = {
   },
   sala: {
     api: '/class/api/ss-salas.php',
-    pollMs: 900,
+    pollMs: 500,
     pollLobbyMs: 1500,
     jitterMs: 200,
     maxJogadores: 12,
