@@ -1,4 +1,4 @@
-import type { config, especies, mapaVila, npcs, tiles } from '../../data/wildmon';
+import type { config, especies, mapas, tiles } from '../../data/wildmon';
 
 export type Cfg = typeof config;
 export type Dir = 0 | 1 | 2 | 3;
@@ -19,6 +19,7 @@ export interface Estado {
   fase: Fase;
   nome: string;
   starter: 'dog' | 'cat';
+  mapa: string;
   mudo: boolean;
   online: number;
 }
@@ -34,6 +35,7 @@ export interface Overworld {
   desenhar(ts: number): void;
   interagir(): void;
   solido(x: number, y: number): boolean;
+  trocarMapa(id: string, x: number, y: number): void;
 }
 
 export interface Rede {
@@ -46,6 +48,7 @@ export interface Rede {
 export interface JogadorRemoto {
   nome: string;
   skin: string;
+  mapa: string;
   x: number;
   y: number;
   ax: number;
@@ -75,7 +78,7 @@ export interface Audio {
 }
 
 export interface Salvar {
-  carregar(): { nome: string; starter: 'dog' | 'cat'; x: number; y: number } | null;
+  carregar(): { nome: string; starter: 'dog' | 'cat'; mapa: string; x: number; y: number } | null;
   gravar(): void;
   nomeGuardado(): string;
 }
@@ -83,9 +86,8 @@ export interface Salvar {
 export interface Contexto {
   cfg: Cfg;
   especies: typeof especies;
-  mapa: typeof mapaVila;
+  mapas: typeof mapas;
   tiles: typeof tiles;
-  npcs: typeof npcs;
   motionReduzido: boolean;
   canvas: HTMLCanvasElement;
   g: CanvasRenderingContext2D;

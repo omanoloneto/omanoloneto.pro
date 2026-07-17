@@ -9,7 +9,7 @@ import { criarSalvar } from './salvar';
 export function iniciarJogo() {
   const dados = JSON.parse(document.querySelector('[data-dados]')!.textContent!);
 
-  const estado: Estado = { fase: 'intro', nome: '', starter: 'dog', mudo: false, online: 1 };
+  const estado: Estado = { fase: 'intro', nome: '', starter: 'dog', mapa: 'vila', mudo: false, online: 1 };
   const jogador: Jogador = { x: dados.config.spawn.x, y: dados.config.spawn.y, px: dados.config.spawn.x, py: dados.config.spawn.y, dir: 0, andando: false, progresso: 0, trilha: [] };
   const input: Input = { dx: 0, dy: 0, a: false };
 
@@ -22,9 +22,8 @@ export function iniciarJogo() {
   const ctx = {
     cfg: dados.config,
     especies: dados.especies,
-    mapa: dados.mapa,
+    mapas: dados.mapas,
     tiles: dados.tiles,
-    npcs: dados.npcs,
     motionReduzido: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     canvas,
     g,
@@ -64,9 +63,10 @@ export function iniciarJogo() {
     return bruto.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, ctx.cfg.nomeMax);
   }
 
-  async function comecar(nome: string, starter: 'dog' | 'cat', x: number, y: number) {
+  async function comecar(nome: string, starter: 'dog' | 'cat', mapa: string, x: number, y: number) {
     estado.nome = nome;
     estado.starter = starter;
+    estado.mapa = ctx.mapas[mapa] ? mapa : 'vila';
     jogador.x = x;
     jogador.y = y;
     jogador.px = x;
@@ -126,7 +126,7 @@ export function iniciarJogo() {
     }
     audio.retomar();
     audio.jingleEscolha();
-    comecar(nome, starterEscolhido, ctx.cfg.spawn.x, ctx.cfg.spawn.y);
+    comecar(nome, starterEscolhido, 'vila', ctx.cfg.spawn.x, ctx.cfg.spawn.y);
   });
 
   function apertouA() {
@@ -213,7 +213,7 @@ export function iniciarJogo() {
 
   const salvo = salvar.carregar();
   if (salvo) {
-    comecar(salvo.nome, salvo.starter, salvo.x, salvo.y);
+    comecar(salvo.nome, salvo.starter, salvo.mapa, salvo.x, salvo.y);
   } else {
     setTimeout(() => campoNome.focus(), 60);
   }

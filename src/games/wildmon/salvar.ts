@@ -21,11 +21,13 @@ export function criarSalvar(ctx: Contexto): Salvar {
       if (nome.length < ctx.cfg.nomeMin) return null;
       const starter = o.starter === 'cat' ? 'cat' : o.starter === 'dog' ? 'dog' : null;
       if (!starter) return null;
-      const larg = ctx.mapa[0].length;
-      const alt = ctx.mapa.length;
+      const mapa = typeof o.mapa === 'string' && ctx.mapas[o.mapa] ? o.mapa : 'vila';
+      const grade = ctx.mapas[mapa].mapa;
+      const larg = grade[0].length;
+      const alt = grade.length;
       const x = typeof o.x === 'number' && Number.isFinite(o.x) ? Math.max(0, Math.min(larg - 1, Math.floor(o.x))) : ctx.cfg.spawn.x;
       const y = typeof o.y === 'number' && Number.isFinite(o.y) ? Math.max(0, Math.min(alt - 1, Math.floor(o.y))) : ctx.cfg.spawn.y;
-      return { nome, starter, x, y };
+      return { nome, starter, mapa, x, y };
     },
     gravar() {
       try {
@@ -33,6 +35,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
           v: 1,
           nome: ctx.estado.nome,
           starter: ctx.estado.starter,
+          mapa: ctx.estado.mapa,
           x: ctx.jogador.x,
           y: ctx.jogador.y,
         }));

@@ -46,6 +46,7 @@ export function criarRede(ctx: Contexto): Rede {
       const alvo: JogadorRemoto = {
         nome: j.nome,
         skin: j.skin === 'cat' ? 'cat' : 'dog',
+        mapa: typeof j.mapa === 'string' ? j.mapa : 'vila',
         x: antigo ? antigo.x : +j.x,
         y: antigo ? antigo.y : +j.y,
         ax: +j.x,
@@ -74,7 +75,7 @@ export function criarRede(ctx: Contexto): Rede {
       const r = await api({
         acao: 'sync',
         token,
-        pos: { x: +j.px.toFixed(2), y: +j.py.toFixed(2), dir: j.dir, andando: j.andando },
+        pos: { x: +j.px.toFixed(2), y: +j.py.toFixed(2), dir: j.dir, andando: j.andando, mapa: ctx.estado.mapa },
       });
       if (!ativo) return;
       if (!r.ok) {
@@ -113,7 +114,7 @@ export function criarRede(ctx: Contexto): Rede {
       return null;
     },
     remotos() {
-      const lista = [...vistos.values()];
+      const lista = [...vistos.values()].filter((r) => r.mapa === ctx.estado.mapa);
       for (const r of lista) {
         const k = 0.18;
         r.x += (r.ax - r.x) * k;

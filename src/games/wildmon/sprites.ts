@@ -412,6 +412,72 @@ function retrato(id: 'dog' | 'cat'): HTMLCanvasElement {
   return contorno(c);
 }
 
+
+function selvagem(id: string, frame: number): HTMLCanvasElement {
+  const [c, g] = novo(16, 16);
+  const f = frame === 1;
+  if (id === 'fox') {
+    ret(g, 3, 8, 9, 5, '#e07830');
+    ret(g, 3, 8, 9, 2, '#f09850');
+    ret(g, 10, 4, 4, 5, '#e07830');
+    ret(g, 11, 6, 3, 2, '#f8f0e0');
+    px(g, 12, 5, '#282828');
+    px(g, 10, 2, '#e07830');
+    px(g, 11, 3, '#e07830');
+    px(g, 13, 2, '#e07830');
+    px(g, 13, 3, '#e07830');
+    ret(g, 0, 5, 3, 3, '#e07830');
+    ret(g, 0, 5, 2, 2, '#f8f0e0');
+    ret(g, f ? 4 : 5, 13, 2, 2, '#a05020');
+    ret(g, f ? 9 : 8, 13, 2, 2, '#a05020');
+  } else if (id === 'owl') {
+    ret(g, 4, 4, 8, 10, '#9a7048');
+    ret(g, 5, 3, 6, 3, '#9a7048');
+    ret(g, 5, 8, 6, 5, '#c8a878');
+    ret(g, 4, 5, 3, 3, '#f8f0e0');
+    ret(g, 9, 5, 3, 3, '#f8f0e0');
+    px(g, 5, 6, '#282828');
+    px(g, 10, 6, '#282828');
+    px(g, 7, 7, '#f0a030');
+    px(g, 8, 7, '#f0a030');
+    px(g, 4, 2, '#9a7048');
+    px(g, 11, 2, '#9a7048');
+    ret(g, 5, 14, 2, 1, '#f0a030');
+    ret(g, 9, 14, 2, 1, '#f0a030');
+    if (f) {
+      ret(g, 2, 6, 2, 5, '#7a5838');
+      ret(g, 12, 6, 2, 5, '#7a5838');
+    } else {
+      ret(g, 3, 6, 1, 6, '#7a5838');
+      ret(g, 12, 6, 1, 6, '#7a5838');
+    }
+  } else if (id === 'bird') {
+    ret(g, 4, 7, 8, 5, '#4890e0');
+    ret(g, 9, 4, 4, 4, '#4890e0');
+    ret(g, 5, 8, 5, 3, '#78b8f0');
+    px(g, 11, 5, '#282828');
+    ret(g, 13, 5, 2, 2, '#f0a030');
+    ret(g, 2, 6, 3, 3, '#3878c0');
+    if (f) {
+      ret(g, 4, 5, 5, 2, '#3878c0');
+    }
+    ret(g, f ? 6 : 7, 12, 1, 2, '#f0a030');
+    ret(g, f ? 9 : 8, 12, 1, 2, '#f0a030');
+  } else {
+    ret(g, 7, 6, 2, 6, '#484038');
+    px(g, 6, 4, '#484038');
+    px(g, 9, 4, '#484038');
+    const asa = f ? 1 : 0;
+    ret(g, 2 + asa, 4, 5 - asa, 5, '#e878b0');
+    ret(g, 9, 4, 5 - asa, 5, '#e878b0');
+    ret(g, 3 + asa, 9, 4 - asa, 3, '#f8b048');
+    ret(g, 9, 9, 4 - asa, 3, '#f8b048');
+    px(g, 4 + asa, 5, '#f8f0e0');
+    px(g, 11 - asa, 5, '#f8f0e0');
+  }
+  return contorno(c);
+}
+
 export function criarSprites(): Record<string, HTMLCanvasElement | HTMLCanvasElement[]> {
   const s: Record<string, HTMLCanvasElement | HTMLCanvasElement[]> = {
     grama: tileGrama(),
@@ -452,6 +518,9 @@ export function criarSprites(): Record<string, HTMLCanvasElement | HTMLCanvasEle
   });
   ['professora', 'morador', 'crianca', 'placa'].forEach((n) => {
     s['npc-' + n] = npcSprite(n);
+  });
+  ['fox', 'owl', 'bird', 'butterfly'].forEach((id) => {
+    s['selvagem-' + id] = [selvagem(id, 0), selvagem(id, 1)];
   });
   return s;
 }

@@ -52,7 +52,7 @@ function publicos(array $jogadores, string $excetoToken): array {
   $fora = [];
   foreach ($jogadores as $token => $j) {
     if ($token === $excetoToken) continue;
-    $fora[] = ['nome' => $j['nome'], 'skin' => $j['skin'], 'x' => $j['x'], 'y' => $j['y'], 'dir' => $j['dir'], 'andando' => $j['andando']];
+    $fora[] = ['nome' => $j['nome'], 'skin' => $j['skin'], 'mapa' => $j['mapa'] ?? 'vila', 'x' => $j['x'], 'y' => $j['y'], 'dir' => $j['dir'], 'andando' => $j['andando']];
   }
   return $fora;
 }
@@ -80,7 +80,7 @@ if ($acao === 'entrar') {
     $n = 2;
     while (in_array($final, $nomes, true)) $final = substr($nome, 0, 8) . $n++;
     $token = bin2hex(random_bytes(8));
-    $jogadores[$token] = ['nome' => $final, 'skin' => $skin, 'x' => 16, 'y' => 13, 'dir' => 0, 'andando' => false, 'visto' => time()];
+    $jogadores[$token] = ['nome' => $final, 'skin' => $skin, 'mapa' => 'vila', 'x' => 16, 'y' => 13, 'dir' => 0, 'andando' => false, 'visto' => time()];
     escreverTodos($jogadores);
     return ['token' => $token, 'nome' => $final];
   });
@@ -98,14 +98,16 @@ if ($acao === 'sync') {
   $y = is_numeric($pos['y'] ?? null) ? max(0, min(MAX_Y, (float) $pos['y'])) : 0;
   $dir = in_array($pos['dir'] ?? null, [0, 1, 2, 3], true) ? $pos['dir'] : 0;
   $andando = ($pos['andando'] ?? false) === true;
+  $mapa = in_array($pos['mapa'] ?? null, ['vila', 'rota1'], true) ? $pos['mapa'] : 'vila';
 
-  $resp = comLock(function () use ($token, $x, $y, $dir, $andando) {
+  $resp = comLock(function () use ($token, $x, $y, $dir, $andando, $mapa) {
     $jogadores = expulsarSumidos(lerTodos());
     if (!isset($jogadores[$token])) falha(403, 'você saiu da vila — entra de novo');
     $jogadores[$token]['x'] = $x;
     $jogadores[$token]['y'] = $y;
     $jogadores[$token]['dir'] = $dir;
     $jogadores[$token]['andando'] = $andando;
+    $jogadores[$token]['mapa'] = $mapa;
     $jogadores[$token]['visto'] = time();
     escreverTodos($jogadores);
     return ['jogadores' => publicos($jogadores, $token)];
