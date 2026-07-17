@@ -4,8 +4,8 @@ export function criarJogador(ctx: Contexto) {
   const { cfg, jogador: j, input, estado } = ctx;
   let ultimoTiroMs = 0;
   let travado = false;
-  let modoTouch = false;
   const telaTouch = window.matchMedia('(pointer: coarse)').matches;
+  let modoTouch = telaTouch;
 
   function pedirFullscreen() {
     if (!telaTouch || document.fullscreenElement) return;
@@ -14,12 +14,7 @@ export function criarJogador(ctx: Contexto) {
       const pr = el.requestFullscreen
         ? el.requestFullscreen({ navigationUI: 'hide' } as FullscreenOptions)
         : (el.webkitRequestFullscreen && el.webkitRequestFullscreen(), undefined);
-      if (pr && typeof pr.then === 'function') {
-        pr.then(() => {
-          const o = screen.orientation as ScreenOrientation & { lock?: (m: string) => Promise<void> };
-          if (o && typeof o.lock === 'function') o.lock('landscape').catch(() => {});
-        }).catch(() => {});
-      }
+      if (pr && typeof pr.catch === 'function') pr.catch(() => {});
     } catch { }
   }
 
@@ -154,7 +149,7 @@ export function criarJogador(ctx: Contexto) {
     });
     document.addEventListener('pointerlockchange', () => {
       travado = document.pointerLockElement === cenaEl;
-      if (!travado && estado.fase === 'jogando' && !modoTouch) ctx.fluxo.pausar();
+      if (!travado && estado.fase === 'jogando' && !modoTouch && !telaTouch) ctx.fluxo.pausar();
     });
     window.addEventListener('mousemove', (e) => {
       if (!travado || estado.fase !== 'jogando') return;
@@ -165,16 +160,7 @@ export function criarJogador(ctx: Contexto) {
     const joy = document.querySelector('[data-joy]') as HTMLElement;
     const joyPino = document.querySelector('[data-joy-pino]') as HTMLElement;
     let joyId = -1;
-    joy.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      modoTouch = true;
-      pedirFullscreen();
-      joyId = e.pointerId;
-      joy.setPointerCapture(e.pointerId);
-    });
-    joy.addEventListener('pointermove', (e) => {
-      if (e.pointerId !== joyId) return;
-      e.preventDefault();
+    function aplicarJoy(e: PointerEvent) {
       const r = joy.getBoundingClientRect();
       const dx = (e.clientX - r.left - r.width / 2) / (r.width / 2);
       const dy = (e.clientY - r.top - r.height / 2) / (r.height / 2);
@@ -183,6 +169,18 @@ export function criarJogador(ctx: Contexto) {
       input.joyX = dx * k;
       input.joyY = dy * k;
       joyPino.style.transform = 'translate(' + dx * k * 26 + 'px,' + dy * k * 26 + 'px)';
+    }
+    joy.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      modoTouch = true;
+      joyId = e.pointerId;
+      try { joy.setPointerCapture(e.pointerId); } catch { }
+      aplicarJoy(e);
+    });
+    joy.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== joyId) return;
+      e.preventDefault();
+      aplicarJoy(e);
     });
     const soltaJoy = (e: PointerEvent) => {
       if (e.pointerId !== joyId) return;
@@ -193,6 +191,7 @@ export function criarJogador(ctx: Contexto) {
     };
     joy.addEventListener('pointerup', soltaJoy);
     joy.addEventListener('pointercancel', soltaJoy);
+    joy.addEventListener('lostpointercapture', soltaJoy);
 
     let olharId = -1;
     let olharX = 0;
@@ -201,7 +200,6 @@ export function criarJogador(ctx: Contexto) {
       if (e.pointerType !== 'touch') return;
       e.preventDefault();
       modoTouch = true;
-      pedirFullscreen();
       if (olharId !== -1) return;
       olharId = e.pointerId;
       olharX = e.clientX;
@@ -227,8 +225,7 @@ export function criarJogador(ctx: Contexto) {
     btnAtira.addEventListener('pointerdown', (e) => {
       e.preventDefault();
       modoTouch = true;
-      pedirFullscreen();
-      btnAtira.setPointerCapture(e.pointerId);
+      try { btnAtira.setPointerCapture(e.pointerId); } catch { }
       input.atirando = true;
       btnAtira.classList.add('on');
     });

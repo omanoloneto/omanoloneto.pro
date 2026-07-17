@@ -184,6 +184,7 @@ export function iniciarJogo() {
     },
     continuarJogo() {
       if (estado.fase !== 'pausado') return;
+      jog.pedirFullscreen();
       ui.els.pausaModal.hidden = true;
       estado.fase = 'jogando';
       medir();

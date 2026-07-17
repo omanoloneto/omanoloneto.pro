@@ -146,7 +146,7 @@ const description =
       font-display: swap;
     }
 
-    body.is-game { background: #8fd4f0; overflow: hidden; }
+    body.is-game { background: #8fd4f0; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; width: 100%; touch-action: none; }
     body.is-game::before { display: none !important; }
 
     .ss {
@@ -154,6 +154,8 @@ const description =
       display: flex; flex-direction: column;
       font-family: 'Oxanium', Verdana, sans-serif;
       color: #08303f; user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
       --azul: #2098d8;
       --branco: #f5f2ea;
     }
@@ -240,6 +242,7 @@ const description =
 
     .controles {
       position: absolute; inset: 0; z-index: 28; pointer-events: none;
+      touch-action: none;
     }
     .controles[hidden] { display: none; }
     .joy {
@@ -253,18 +256,19 @@ const description =
     .joy__pino {
       width: 44px; height: 44px; border-radius: 50%;
       background: rgba(234, 246, 255, 0.75);
+      pointer-events: none;
     }
     .botoes-dir {
       position: absolute; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom));
       display: flex; align-items: flex-end; gap: 12px;
-      pointer-events: auto;
+      pointer-events: auto; touch-action: none;
     }
     .ctl {
       border-radius: 50%; cursor: pointer;
       background: rgba(8, 48, 63, 0.4);
       border: 2px solid rgba(234, 246, 255, 0.55);
       color: #eaf6ff; font-family: inherit; font-weight: 800;
-      touch-action: manipulation;
+      touch-action: none;
     }
     .ctl--pular { width: 56px; height: 56px; font-size: 1.3rem; }
     .ctl--atirar { width: 76px; height: 76px; font-size: 1.8rem; }
