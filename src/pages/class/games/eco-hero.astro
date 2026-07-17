@@ -1,0 +1,342 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { config, fase1, tiposLixo } from '../../../data/eco-hero';
+
+const dadosJson = JSON.stringify({ config, fase1, tiposLixo });
+const letrasNome = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+const title = 'Eco Hero — limpe a praia coletando todo o lixo! | Manolo Neto';
+const description =
+  'Jogo de plataforma para crianças estilo Mario: viaje o mundo limpando os lugares! Fase 1 no Brasil: colete garrafas, latas e sacolas da praia, desvie dos caranguejos e abra a lixeira gigante. Em português.';
+---
+
+<Layout title={title} description={description}>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="eh" data-game role="application" aria-label="Eco Hero: colete todo o lixo da fase">
+    <header class="hud">
+      <div class="hud__bloco"><span class="hud__label">🗑️</span><strong data-lixo>0/0</strong></div>
+      <div class="hud__bloco"><span class="hud__label">⭐</span><strong data-pontos>0</strong></div>
+      <div class="hud__bloco"><span class="hud__vidas" data-vidas></span></div>
+      <button class="hud__mute" type="button" data-pause aria-label="Pausar o jogo" hidden>⏸</button>
+      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <span data-mute-icon>🔊</span>
+      </button>
+    </header>
+
+    <div class="palco">
+      <canvas class="tela" data-canvas aria-hidden="true"></canvas>
+      <div class="dano-flash" data-dano-flash aria-hidden="true"></div>
+      <div class="toast" data-toast aria-live="polite" hidden></div>
+    </div>
+
+    <div class="controles" data-controles hidden>
+      <div class="andar">
+        <button class="ctl" type="button" data-ctl="esq" aria-label="Andar pra esquerda">◀</button>
+        <button class="ctl" type="button" data-ctl="dir" aria-label="Andar pra direita">▶</button>
+      </div>
+      <button class="ctl ctl--pulo" type="button" data-ctl="pulo" aria-label="Pular">⬆</button>
+    </div>
+
+    <p class="sr-only" data-anuncio aria-live="assertive"></p>
+
+    <div class="modal" data-intro>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
+        <div class="placa__topo" id="intro-title">🌎🧹 Eco Hero</div>
+        <div class="placa__corpo">
+          <ol class="regras">
+            <li>Viaje o mundo <b>limpando os lugares</b> por onde passa! 🌎</li>
+            <li>Fase 1: <b>Brasil</b> — colete TODO o lixo da praia. 🗑️</li>
+            <li>Pule EM CIMA dos caranguejos pra eles se esconderem — <b>nenhum bicho se machuca</b>. 🦀</li>
+            <li>Coletou tudo? A <b>lixeira gigante</b> abre no fim da fase! 🚮</li>
+          </ol>
+          <p class="controles-dica">⌨️ setas andam · ⬆/espaço pula (segure pra pular mais alto!)<br />📱 no touch: ◀ ▶ e o botão de pulo</p>
+          <button class="botao botao--go" type="button" data-comecar>▶ Jogar!</button>
+          <button class="recordes-btn" type="button" data-ver-recordes>🏆 Recordes</button>
+          <a class="voltar" href="/class/games/">← voltar pros jogos</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-pausa hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="pausa-title">
+        <div class="placa__topo" id="pausa-title">⏸ Pausa — descansando da limpeza…</div>
+        <div class="placa__corpo center">
+          <div class="pausa-acoes">
+            <button class="botao botao--go" type="button" data-continuar>▶ Continuar</button>
+            <button class="botao botao--sec" type="button" data-recomecar>🔄 Recomeçar</button>
+            <a class="botao botao--sec" href="/class/games/">🚪 Sair do jogo</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-vitoria hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="vitoria-title">
+        <div class="placa__topo" id="vitoria-title">🎉 Fase limpa!</div>
+        <div class="placa__corpo center">
+          <p class="grande" data-vit-msg></p>
+          <p class="aviso" data-vit-bonus></p>
+          <p class="placar">Sua pontuação: <strong data-vit-score>0</strong></p>
+          <div class="fim-acoes">
+            <button class="botao botao--go" type="button" data-gravar-nome>🏆 Gravar meu nome</button>
+            <button class="botao botao--sec" type="button" data-replay>Jogar de novo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-fim hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="fim-title">
+        <div class="placa__topo" id="fim-title">Fim de jogo 💫</div>
+        <div class="placa__corpo center">
+          <p class="grande" data-fim-msg></p>
+          <div class="fim-acoes">
+            <button class="botao botao--go" type="button" data-replay>Tentar de novo</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-entrada hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="entrada-title">
+        <div class="placa__topo" id="entrada-title">Digite seu nome, herói!</div>
+        <div class="placa__corpo center">
+          <p class="nome-slots" data-entrada-slots aria-live="polite">_ _ _</p>
+          <div class="grade-letras" role="group" aria-label="Letras">
+            {letrasNome.map((l) => (
+              <button class="letra" type="button" data-tecla-nome={l}>{l}</button>
+            ))}
+            <button class="letra letra--apagar" type="button" data-nome-apagar aria-label="Apagar letra">⌫</button>
+            <button class="letra letra--ok" type="button" data-nome-ok aria-label="Confirmar">✓</button>
+          </div>
+          <button class="botao botao--sec botao--mini" type="button" data-entrada-voltar>← Voltar</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-recordes hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="recordes-title">
+        <div class="placa__topo" id="recordes-title">🏆 Recordes dos Eco Heróis</div>
+        <div class="placa__corpo center">
+          <ol class="tabela" data-tabela></ol>
+          <p class="aviso" data-recordes-vazio hidden>Ninguém gravou o nome ainda. Seja o primeiro! 🧹</p>
+          <p class="aviso aviso--fonte" data-recordes-fonte></p>
+          <div class="recordes-acoes">
+            <button class="botao botao--go" type="button" data-recordes-replay>Jogar de novo</button>
+            <button class="botao botao--sec" type="button" data-voltar-intro hidden>Voltar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <style is:global>
+    @font-face {
+      font-family: 'Oxanium';
+      src: url('/class/fonts/oxanium/Oxanium-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Oxanium';
+      src: url('/class/fonts/oxanium/Oxanium-ExtraBold.ttf') format('truetype');
+      font-weight: 800;
+      font-display: swap;
+    }
+
+    body.is-game { background: #2a7a4a; overflow: hidden; }
+    body.is-game::before { display: none !important; }
+
+    .eh {
+      position: fixed; inset: 0; overflow: clip;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Oxanium', Verdana, sans-serif;
+      color: #eaf6ff; user-select: none;
+      --verde: #38b858; --amarelo: #f8d048;
+    }
+
+    .hud {
+      width: 100%; display: flex; align-items: center; gap: 16px;
+      padding: 7px 14px;
+      background: rgba(10, 40, 22, 0.9);
+      z-index: 30;
+    }
+    .hud__bloco { display: flex; align-items: center; gap: 6px; }
+    .hud__label { font-size: 0.95rem; }
+    .hud__bloco strong { font-size: 1.15rem; font-weight: 800; }
+    .hud__vidas { font-size: 1rem; letter-spacing: 2px; }
+    .hud__mute {
+      margin-left: auto;
+      width: 38px; height: 38px; border-radius: 10px; cursor: pointer;
+      background: rgba(56, 184, 88, 0.15); border: 1px solid rgba(56, 184, 88, 0.5);
+      color: #eaf6ff; font-size: 1.05rem;
+    }
+    .hud__mute[hidden] { display: none; }
+    .hud__mute + .hud__mute { margin-left: 0; }
+
+    .palco {
+      position: relative;
+      width: min(98vw, calc((100svh - 150px) * (320 / 192)));
+      aspect-ratio: 320 / 192;
+      margin-top: 8px;
+      border: 3px solid rgba(56, 184, 88, 0.6);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #68b8e8;
+    }
+    .tela { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+
+    .dano-flash {
+      position: absolute; inset: 0; z-index: 22;
+      pointer-events: none; opacity: 0;
+      box-shadow: inset 0 0 70px 22px rgba(232, 72, 72, 0.7);
+    }
+    .dano-flash.show { animation: dano-pisca 0.35s ease-out; }
+    @keyframes dano-pisca { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+    .toast {
+      position: absolute; left: 50%; top: 10px;
+      transform: translateX(-50%);
+      background: rgba(10, 40, 22, 0.92);
+      border: 1px solid rgba(56, 184, 88, 0.6);
+      border-radius: 999px;
+      padding: 7px 16px;
+      font-size: 0.9rem; font-weight: 700;
+      opacity: 0; transition: opacity 0.25s ease;
+      pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; }
+    .toast[hidden] { display: none; }
+
+    .controles {
+      display: flex; align-items: center; justify-content: space-between;
+      width: min(98vw, 560px);
+      padding: 10px 8px calc(10px + env(safe-area-inset-bottom));
+    }
+    .controles[hidden] { display: none; }
+    .andar { display: flex; gap: 10px; }
+    .ctl {
+      width: 62px; height: 62px; border-radius: 16px; cursor: pointer;
+      background: rgba(56, 184, 88, 0.18);
+      border: 2px solid rgba(56, 184, 88, 0.55);
+      color: #eaf6ff; font-size: 1.4rem; font-family: inherit; font-weight: 800;
+      touch-action: manipulation;
+    }
+    .ctl.on, .ctl:active { background: rgba(56, 184, 88, 0.5); }
+    .ctl--pulo { width: 76px; height: 76px; border-radius: 50%; font-size: 1.7rem; }
+
+    @media (min-width: 900px) and (hover: hover) {
+      .controles { display: none; }
+      .palco { width: min(96vw, calc((100svh - 80px) * (320 / 192))); }
+    }
+
+    .modal {
+      position: absolute; inset: 0; z-index: 70;
+      display: grid; place-items: center; padding: 20px;
+      background: rgba(6, 24, 12, 0.7);
+    }
+    .modal[hidden] { display: none; }
+    .placa {
+      width: min(94vw, 460px);
+      max-height: 92svh; overflow: auto;
+      background: rgba(240, 252, 244, 0.97);
+      border: 3px solid var(--verde);
+      border-radius: 18px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
+      animation: placa-pop 0.25s ease;
+      color: #103522;
+    }
+    @keyframes placa-pop { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .placa__topo {
+      padding: 12px 18px;
+      background: linear-gradient(90deg, #38b858, #78d888);
+      color: #fff; font-size: 1.2rem; font-weight: 800;
+    }
+    .placa__corpo { padding: 18px 22px 22px; }
+    .placa__corpo.center { text-align: center; }
+    .regras { margin: 0 0 14px 20px; display: grid; gap: 9px; font-size: 0.98rem; line-height: 1.45; }
+    .controles-dica { font-size: 0.85rem; line-height: 1.5; color: #2a6a44; margin-bottom: 14px; text-align: center; }
+    .grande { font-size: 1.15rem; font-weight: 800; margin-bottom: 10px; }
+    .placar { font-size: 1.05rem; margin-bottom: 14px; }
+    .placar strong { font-size: 1.6rem; color: #1f8a48; }
+    .aviso { color: #2a6a44; font-size: 0.92rem; margin-bottom: 10px; min-height: 1.2em; }
+    .aviso--fonte { font-size: 0.8rem; }
+
+    .botao {
+      display: block; width: 100%; text-align: center; text-decoration: none; cursor: pointer;
+      font-family: inherit; font-weight: 800; font-size: 1.05rem;
+      padding: 12px; border-radius: 12px; margin-bottom: 10px;
+      touch-action: manipulation; box-sizing: border-box;
+    }
+    .botao--go {
+      color: #fff; border: 0;
+      background: linear-gradient(180deg, #78d888 0%, #38b858 60%, #1f8a48 100%);
+      box-shadow: 0 4px 0 #14602f;
+    }
+    .botao--go:active { transform: translateY(3px); box-shadow: 0 1px 0 #14602f; }
+    .botao--sec {
+      color: #103522; background: rgba(56, 184, 88, 0.12);
+      border: 2px solid rgba(56, 184, 88, 0.5);
+    }
+    .botao--mini { padding: 9px 16px; font-size: 0.92rem; width: auto; margin: 0 auto; }
+    .botao:focus-visible, .letra:focus-visible, .ctl:focus-visible, .recordes-btn:focus-visible { outline: 3px solid #f7a11b; outline-offset: 2px; }
+    .fim-acoes, .pausa-acoes { display: grid; gap: 4px; }
+    .recordes-btn {
+      display: block; margin: 4px auto 0; cursor: pointer;
+      font-family: inherit; font-weight: 800; font-size: 0.92rem;
+      padding: 8px 18px; border-radius: 10px;
+      color: #8a6a10; background: rgba(248, 208, 72, 0.25);
+      border: 2px solid rgba(220, 170, 40, 0.6);
+    }
+    .voltar { display: block; text-align: center; margin-top: 12px; color: #2a6a44; font-size: 0.85rem; }
+
+    .nome-slots {
+      font-size: 2rem; font-weight: 800; letter-spacing: 8px;
+      color: #1f8a48; margin-bottom: 12px; min-height: 1.3em;
+    }
+    .grade-letras { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 12px; }
+    .letra {
+      height: 44px; cursor: pointer;
+      font-family: inherit; font-size: 1.05rem; font-weight: 800;
+      color: #103522; background: rgba(56, 184, 88, 0.1);
+      border: 2px solid rgba(56, 184, 88, 0.4); border-radius: 8px;
+      touch-action: manipulation;
+    }
+    .letra--apagar { border-color: rgba(220, 80, 60, 0.6); color: #b04030; }
+    .letra--ok { border-color: rgba(24, 138, 88, 0.7); color: #187048; }
+    .tabela {
+      margin: 0 0 12px; padding: 0; list-style: none;
+      display: grid; gap: 4px; font-size: 0.95rem; text-align: left;
+    }
+    .tabela li {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 10px;
+      background: rgba(56, 184, 88, 0.08);
+      border: 1px solid rgba(56, 184, 88, 0.25);
+      border-radius: 8px;
+    }
+    .tabela li.novo { background: rgba(248, 208, 72, 0.3); border-color: #dcaa28; }
+    .tabela .pos { font-weight: 800; width: 30px; color: #dc8a10; }
+    .tabela .nome { font-weight: 800; flex: 1; letter-spacing: 2px; }
+    .tabela .det { font-size: 0.78rem; color: #2a6a44; }
+    .tabela .pts { font-weight: 800; color: #1f8a48; }
+    .recordes-acoes { display: grid; gap: 4px; }
+
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      margin: -1px; padding: 0; overflow: hidden;
+      clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .placa, .dano-flash.show { animation: none !important; }
+      .toast { transition: none !important; }
+    }
+  </style>
+
+  <script>
+    import { iniciarJogo } from '../../../games/eco-hero/main';
+    iniciarJogo();
+  </script>
+</Layout>
