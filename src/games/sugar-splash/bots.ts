@@ -21,7 +21,7 @@ type Bot = {
   armR: THREE.Group;
   legL: THREE.Group;
   legR: THREE.Group;
-  teamMeshes: THREE.Mesh[];
+  setTeam: (team: 0 | 1) => void;
   poca: THREE.Mesh;
 };
 
@@ -44,7 +44,7 @@ export function criarBots(ctx: Contexto): Bots {
     return {
       ativo: false, derretendo: 0, respawnRestante: 0, hitPulse: 0, x: 0, y: 0, z: 0, hp: 0, hpMax: 0, vel: 0, proxTiroMs: 0,
       grupo: rig.group, armL: rig.armL, armR: rig.armR, legL: rig.legL, legR: rig.legR,
-      teamMeshes: rig.teamMeshes, poca,
+      setTeam: rig.setTeam, poca,
     };
   });
 
@@ -76,8 +76,7 @@ export function criarBots(ctx: Contexto): Bots {
     b.hpMax = B.hp;
     b.vel = B.vel * (0.85 + Math.random() * 0.3);
     b.proxTiroMs = performance.now() + 800 + Math.random() * 1200;
-    const teamMat = ctx.estado.team === 0 ? mats.trunksRed : mats.trunksBlue;
-    for (const mesh of b.teamMeshes) mesh.material = teamMat;
+    b.setTeam(ctx.estado.team === 0 ? 1 : 0);
     resetLimbs(b);
     b.grupo.visible = true;
     b.grupo.scale.set(1, 1, 1);

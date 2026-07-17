@@ -16,7 +16,7 @@ export function criarJogador(ctx: Contexto) {
   ctx.camera.add(viewmodel);
 
   function definirTime(team: 0 | 1) {
-    viewmodelMats.gunBody.color.set(team === 0 ? 0x3878c0 : 0xd04838);
+    viewmodelMats.skin.color.set(team === 0 ? 0x6aaef5 : 0xf57d92);
   }
   const telaTouch = window.matchMedia('(pointer: coarse)').matches;
   let modoTouch = telaTouch;

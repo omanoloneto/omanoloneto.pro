@@ -26,7 +26,7 @@ type Remote = {
   armR: THREE.Group;
   legL: THREE.Group;
   legR: THREE.Group;
-  teamMeshes: THREE.Mesh[];
+  setTeam: (team: 0 | 1) => void;
   label: THREE.Sprite;
   labelCanvas: HTMLCanvasElement;
   labelTex: THREE.CanvasTexture;
@@ -74,7 +74,7 @@ export function createRemotePlayers(ctx: Contexto): RemotePlayers {
       x: 0, y: 0, z: 0, yaw: 0, tx: 0, ty: 0, tz: 0, tyaw: 0,
       atirando: false, derretido: false, meltT: 0, moving: false, nextDropMs: 0,
       group: rig.group, armL: rig.armL, armR: rig.armR, legL: rig.legL, legR: rig.legR,
-      teamMeshes: rig.teamMeshes, label, labelCanvas, labelTex, puddle,
+      setTeam: rig.setTeam, label, labelCanvas, labelTex, puddle,
     };
   });
 
@@ -110,8 +110,7 @@ export function createRemotePlayers(ctx: Contexto): RemotePlayers {
           r.yaw = p.yaw;
           r.meltT = 0;
           r.nextDropMs = 0;
-          const teamMat = r.team === 0 ? mats.trunksBlue : mats.trunksRed;
-          for (const mesh of r.teamMeshes) mesh.material = teamMat;
+          r.setTeam(r.team);
           resetLimbs(r);
           r.group.scale.set(1, 1, 1);
           r.group.visible = true;
