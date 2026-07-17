@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Bots, Contexto } from './tipos';
+import { buildCharacter, createCharacterMaterials } from './models';
 
 const MAX_BOTS = 12;
 
@@ -13,74 +14,45 @@ type Bot = {
   hpMax: number;
   vel: number;
   proxTiroMs: number;
+  team: 0 | 1;
   grupo: THREE.Group;
+  armL: THREE.Group;
+  armR: THREE.Group;
+  legL: THREE.Group;
+  legR: THREE.Group;
+  teamMeshes: THREE.Mesh[];
   poca: THREE.Mesh;
 };
-
-function texAcucar(): THREE.CanvasTexture {
-  const c = document.createElement('canvas');
-  c.width = 32;
-  c.height = 32;
-  const g = c.getContext('2d')!;
-  g.fillStyle = '#f8f6f0';
-  g.fillRect(0, 0, 32, 32);
-  for (let i = 0; i < 60; i++) {
-    const x = (i * 13) % 32;
-    const y = (i * 7 + ((i / 3) | 0)) % 32;
-    g.fillStyle = i % 3 === 0 ? '#ffffff' : i % 3 === 1 ? '#e8e4d8' : '#dcd8cc';
-    g.fillRect(x, y, 1, 1);
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.magFilter = THREE.NearestFilter;
-  return t;
-}
 
 export function criarBots(ctx: Contexto): Bots {
   const { scene, cfg } = ctx;
   const B = cfg.bots;
 
-  const acucarTex = texAcucar();
-  const corpoMat = new THREE.MeshLambertMaterial({ map: acucarTex });
-  const olhoMat = new THREE.MeshBasicMaterial({ color: 0x303030 });
-  const bisnagaMat = new THREE.MeshLambertMaterial({ color: 0xf07838 });
+  const mats = createCharacterMaterials();
   const pocaMat = new THREE.MeshBasicMaterial({ color: 0x9adcf5, transparent: true, opacity: 0.7 });
   const pocaGeo = new THREE.CircleGeometry(0.9, 14);
 
-  function montarBoneco(): THREE.Group {
-    const g = new THREE.Group();
-    const corpo = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.5), corpoMat);
-    corpo.position.y = 0.85;
-    const cabeca = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.55), corpoMat);
-    cabeca.position.y = 1.6;
-    const pernaE = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.5, 0.3), corpoMat);
-    pernaE.position.set(-0.2, 0.25, 0);
-    const pernaD = pernaE.clone();
-    pernaD.position.x = 0.2;
-    const bracoE = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.7, 0.25), corpoMat);
-    bracoE.position.set(-0.55, 0.95, 0);
-    const bracoD = bracoE.clone();
-    bracoD.position.x = 0.55;
-    const olhoE = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.12, 0.03), olhoMat);
-    olhoE.position.set(-0.13, 1.66, 0.29);
-    const olhoD = olhoE.clone();
-    olhoD.position.x = 0.13;
-    const bisnaga = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.55), bisnagaMat);
-    bisnaga.position.set(0.55, 1.15, 0.3);
-    g.add(corpo, cabeca, pernaE, pernaD, bracoE, bracoD, olhoE, olhoD, bisnaga);
-    return g;
-  }
-
   const bots: Bot[] = Array.from({ length: MAX_BOTS }, () => {
-    const grupo = montarBoneco();
-    grupo.visible = false;
-    scene.add(grupo);
+    const rig = buildCharacter(mats);
+    rig.group.visible = false;
+    scene.add(rig.group);
     const poca = new THREE.Mesh(pocaGeo, pocaMat);
     poca.rotation.x = -Math.PI / 2;
     poca.visible = false;
     scene.add(poca);
-    return { ativo: false, derretendo: 0, x: 0, y: 0, z: 0, hp: 0, hpMax: 0, vel: 0, proxTiroMs: 0, grupo, poca };
+    return {
+      ativo: false, derretendo: 0, x: 0, y: 0, z: 0, hp: 0, hpMax: 0, vel: 0, proxTiroMs: 0,
+      team: 0 as 0 | 1, grupo: rig.group, armL: rig.armL, armR: rig.armR, legL: rig.legL, legR: rig.legR,
+      teamMeshes: rig.teamMeshes, poca,
+    };
   });
+
+  function resetLimbs(b: Bot) {
+    b.armL.rotation.x = 0;
+    b.armR.rotation.x = 0;
+    b.legL.rotation.x = 0;
+    b.legR.rotation.x = 0;
+  }
 
   function spawnOnda(onda: number) {
     const n = Math.min(cfg.ondas.botsMax, cfg.ondas.botsBase + (onda - 1) * cfg.ondas.botsPorOnda);
@@ -100,6 +72,10 @@ export function criarBots(ctx: Contexto): Bots {
       b.hpMax = hp;
       b.vel = vel * (0.85 + Math.random() * 0.3);
       b.proxTiroMs = performance.now() + 800 + Math.random() * 1200;
+      b.team = sx < 0 ? 0 : 1;
+      const teamMat = b.team === 0 ? mats.trunksBlue : mats.trunksRed;
+      for (const mesh of b.teamMeshes) mesh.material = teamMat;
+      resetLimbs(b);
       b.grupo.visible = true;
       b.grupo.scale.set(1, 1, 1);
       b.grupo.position.set(b.x, b.y, b.z);
@@ -129,7 +105,8 @@ export function criarBots(ctx: Contexto): Bots {
       const dx = j.x - b.x;
       const dz = j.z - b.z;
       const dist = Math.hypot(dx, dz);
-      if (dist < B.alcanceVisao && dist > B.alcanceTiro * 0.55) {
+      const walking = dist < B.alcanceVisao && dist > B.alcanceTiro * 0.55;
+      if (walking) {
         const passoX = (dx / dist) * b.vel * dt;
         const passoZ = (dz / dist) * b.vel * dt;
         let nx = b.x + passoX;
@@ -154,6 +131,11 @@ export function criarBots(ctx: Contexto): Bots {
       b.y += (alvoY - b.y) * Math.min(1, 8 * dt);
       b.grupo.position.set(b.x, b.y, b.z);
       b.grupo.rotation.y = Math.atan2(dx, dz);
+      const swing = !ctx.motionReduzido && walking ? Math.sin(ts / 140 + b.x * 3) * 0.55 : 0;
+      b.legL.rotation.x = swing;
+      b.legR.rotation.x = -swing;
+      b.armL.rotation.x = -swing;
+      b.armR.rotation.x = dist < B.alcanceVisao ? -1.25 : swing;
       if (!ctx.motionReduzido) {
         b.grupo.position.y = b.y + Math.abs(Math.sin(ts / 180 + b.x)) * 0.06;
       }
@@ -161,7 +143,8 @@ export function criarBots(ctx: Contexto): Bots {
         b.proxTiroMs = ts + B.cadenciaMs + Math.random() * 500;
         const origemY = b.y + 1.2;
         const alvoAltura = j.y + 1.2;
-        const dy = alvoAltura - origemY + dist * 0.06;
+        const drop = (cfg.bisnaga.dropletGravity * dist * dist) / (2 * B.velJato * B.velJato);
+        const dy = alvoAltura - origemY + drop;
         const norm = Math.hypot(dx, dy, dz) || 0.001;
         ctx.agua.atirar(b.x + (dx / dist) * 0.6, origemY, b.z + (dz / dist) * 0.6, dx / norm, dy / norm, dz / norm, false);
         ctx.audio.somJato();
@@ -175,6 +158,7 @@ export function criarBots(ctx: Contexto): Bots {
     b.hp -= dano;
     if (b.hp <= 0) {
       b.derretendo = 0.001;
+      resetLimbs(b);
       ctx.estado.pontos += B.pontosPorBot;
       ctx.audio.somDerreter();
       ctx.ui.atualizarHud();
@@ -188,7 +172,7 @@ export function criarBots(ctx: Contexto): Bots {
       const dx = px - b.x;
       const dz = pz - b.z;
       const dy = py - b.y;
-      if (dx * dx + dz * dz < B.raio * B.raio * 1.3 && dy > 0 && dy < B.altura + 0.2) return i;
+      if (dx * dx + dz * dz < B.raio * B.raio * 1.3 && dy > 0 && dy < B.altura + 0.3) return i;
     }
     return -1;
   }

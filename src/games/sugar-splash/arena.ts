@@ -34,6 +34,34 @@ function texAzulejo(base: string, rejunte: string, faixa?: string): THREE.Canvas
   return t;
 }
 
+function lockerTexture(accent: string): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 32;
+  c.height = 64;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#b8bcc0';
+  g.fillRect(0, 0, 32, 64);
+  g.strokeStyle = '#70767c';
+  g.lineWidth = 2;
+  g.strokeRect(1, 1, 30, 62);
+  g.fillStyle = accent;
+  g.fillRect(4, 4, 24, 56);
+  g.strokeStyle = '#3a3e44';
+  g.lineWidth = 1;
+  g.strokeRect(4.5, 4.5, 23, 55);
+  g.fillStyle = '#3a3e44';
+  for (let i = 0; i < 3; i++) g.fillRect(8, 10 + i * 5, 16, 2);
+  g.fillRect(22, 32, 3, 6);
+  g.fillStyle = 'rgba(0,0,0,0.25)';
+  g.fillRect(4, 54, 24, 6);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.RepeatWrapping;
+  t.magFilter = THREE.NearestFilter;
+  return t;
+}
+
 function texCaixote(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 64;
@@ -136,6 +164,89 @@ export function criarArena(ctx: Contexto): Arena {
     scene.add(m);
     aabbs.push({ minX: cx.x - cx.w / 2, maxX: cx.x + cx.w / 2, minZ: cx.z - cx.d / 2, maxZ: cx.z + cx.d / 2, alt: cx.h });
   }
+
+  const LR = A.lockerRoom;
+  const benchMat = new THREE.MeshLambertMaterial({ color: 0xb98a56 });
+  function buildLockerRoom(side: number, theme: { tile: [string, string, string]; floor: [string, string]; accent: string }) {
+    const wallTex = texAzulejo(theme.tile[0], theme.tile[1], theme.tile[2]);
+    wallTex.repeat.set(5, 1.4);
+    const wallMat = new THREE.MeshLambertMaterial({ map: wallTex });
+    const floorTex = texAzulejo(theme.floor[0], theme.floor[1]);
+    floorTex.repeat.set(3.2, 16);
+    const floorMat = new THREE.MeshLambertMaterial({ map: floorTex });
+    const lockerTex = lockerTexture(theme.accent);
+    lockerTex.repeat.set(10, 1);
+    const lockerMat = new THREE.MeshLambertMaterial({ map: lockerTex });
+    const stallTex = texAzulejo(theme.tile[0], theme.tile[1]);
+    stallTex.repeat.set(2, 3);
+    const stallMat = new THREE.MeshLambertMaterial({ map: stallTex });
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(6.4, A.prof), floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(side * 24.5, 0.01, 0);
+    scene.add(floor);
+
+    const backTex = texAzulejo(theme.tile[0], theme.tile[1], theme.tile[2]);
+    backTex.repeat.set(16, 1.9);
+    const backMat = new THREE.MeshLambertMaterial({ map: backTex });
+    const backLiner = new THREE.Mesh(new THREE.PlaneGeometry(A.prof, LR.wallH), backMat);
+    backLiner.position.set(side * (meiaL - 0.31), LR.wallH / 2, 0);
+    backLiner.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+    scene.add(backLiner);
+
+    const capTex = texAzulejo(theme.tile[0], theme.tile[1], theme.tile[2]);
+    capTex.repeat.set(3.2, 1.9);
+    const capMat = new THREE.MeshLambertMaterial({ map: capTex });
+    for (const sz of [-1, 1]) {
+      const capLiner = new THREE.Mesh(new THREE.PlaneGeometry(6.4, LR.wallH), capMat);
+      capLiner.position.set(side * 24.5, LR.wallH / 2, sz * (meiaP - 0.31));
+      capLiner.rotation.y = sz < 0 ? 0 : Math.PI;
+      scene.add(capLiner);
+    }
+
+    const segments = [
+      { z: -11.75, len: 8.5 },
+      { z: 0, len: 9 },
+      { z: 11.75, len: 8.5 },
+    ];
+    for (const s of segments) {
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(0.6, LR.wallH, s.len), wallMat);
+      wall.position.set(side * LR.innerX, LR.wallH / 2, s.z);
+      scene.add(wall);
+      aabbs.push({ minX: side * LR.innerX - 0.3, maxX: side * LR.innerX + 0.3, minZ: s.z - s.len / 2, maxZ: s.z + s.len / 2, alt: LR.wallH });
+    }
+
+    for (const pz of [-8, -6.4, -4.8, -3.2, -1.6, 0]) {
+      const partition = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.2, 0.12), stallMat);
+      partition.position.set(side * 26.95, 1.1, pz);
+      scene.add(partition);
+      aabbs.push({ minX: side * 26.95 - 0.75, maxX: side * 26.95 + 0.75, minZ: pz - 0.06, maxZ: pz + 0.06, alt: 2.2 });
+    }
+
+    for (const dz of [-6.9, -5.3, -2.1, -0.5]) {
+      const door = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.8, 1.0), stallMat);
+      door.position.set(side * 26.2, 1.2, dz);
+      scene.add(door);
+      aabbs.push({ minX: side * 26.2 - 0.06, maxX: side * 26.2 + 0.06, minZ: dz - 0.5, maxZ: dz + 0.5, alt: 2.1 });
+    }
+    const openDoor = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.8, 0.12), stallMat);
+    openDoor.position.set(side * 25.64, 1.2, -4.74);
+    scene.add(openDoor);
+    aabbs.push({ minX: side * 25.64 - 0.5, maxX: side * 25.64 + 0.5, minZ: -4.8, maxZ: -4.68, alt: 2.1 });
+
+    const lockers = new THREE.Mesh(new THREE.BoxGeometry(0.55, 2.1, 6.0), lockerMat);
+    lockers.position.set(side * 27.42, 1.05, 5.0);
+    scene.add(lockers);
+    aabbs.push({ minX: side * 27.42 - 0.275, maxX: side * 27.42 + 0.275, minZ: 2, maxZ: 8, alt: 2.1 });
+
+    const bench = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 4.0), benchMat);
+    bench.position.set(side * 24.5, 0.45, -4);
+    scene.add(bench);
+    aabbs.push({ minX: side * 24.5 - 0.25, maxX: side * 24.5 + 0.25, minZ: -6, maxZ: -2, alt: 0.9 });
+  }
+
+  buildLockerRoom(-1, { tile: ['#d8e6f4', '#a0b8cc', '#3878c0'], floor: ['#cfe0f0', '#9ab4c8'], accent: '#3878c0' });
+  buildLockerRoom(1, { tile: ['#f4dcd8', '#cca0a0', '#d04838'], floor: ['#f0d4d0', '#c89a96'], accent: '#d04838' });
 
   const brancoMat = new THREE.MeshLambertMaterial({ color: 0xf5f2ea });
   const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.4, 0.5), brancoMat);

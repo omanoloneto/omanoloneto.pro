@@ -14,12 +14,13 @@ export const config = {
   },
   bisnaga: {
     cadenciaMs: 140,
-    velJato: 22,
+    velJato: 38,
     dano: 12,
     tanqueMax: 40,
     recargaPorS: 3,
     recargaPiscinaPorS: 30,
-    alcanceMorto: 30,
+    dropletGravity: 4,
+    dropletLifeS: 2,
   },
   bots: {
     raio: 0.55,
@@ -32,8 +33,8 @@ export const config = {
     dano: 9,
     cadenciaMs: 1100,
     alcanceTiro: 12,
-    alcanceVisao: 26,
-    velJato: 10,
+    alcanceVisao: 34,
+    velJato: 14,
     pontosPorBot: 100,
     bonusOndaLimpa: 150,
   },
@@ -44,10 +45,11 @@ export const config = {
     respiroMs: 3500,
   },
   arena: {
-    larg: 44,
+    larg: 56,
     prof: 32,
     alturaParede: 5,
     piscina: { x0: -9, z0: -6, x1: 9, z1: 6, fundo: -1.5 },
+    lockerRoom: { innerX: 21, wallH: 3.8, doorZ: 6, doorW: 3 },
   },
   ranking: {
     api: '/class/api/ranking.php',
@@ -75,7 +77,7 @@ export const caixotes: Caixote[] = [
 ];
 
 export const spawnsBots: Array<[number, number]> = [
-  [-19, -13], [19, -13], [-19, 13], [19, 13], [0, -14], [0, 14], [-19, 0], [19, 0],
+  [-21, -6], [21, -6], [-21, 6], [21, 6], [-12, -13], [12, 13], [-12, 13], [12, -13],
 ];
 
 export const spawnJogador = { x: 0, z: 10, yaw: 0 };

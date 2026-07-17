@@ -60,51 +60,75 @@ export function criarAgua(ctx: Contexto): Agua {
       g.y = y;
       g.z = z;
       const vel = doJogador ? cfg.bisnaga.velJato : cfg.bots.velJato;
-      const esp = doJogador ? 0.015 : 0.05;
+      const esp = doJogador ? 0.01 : 0.05;
       g.vx = (dx + (Math.random() - 0.5) * esp) * vel;
       g.vy = (dy + (Math.random() - 0.5) * esp) * vel;
       g.vz = (dz + (Math.random() - 0.5) * esp) * vel;
       g.doJogador = doJogador;
-      g.vida = 2;
+      g.vida = cfg.bisnaga.dropletLifeS;
       return;
     }
+  }
+
+  function hitsSolid(x: number, y: number, z: number): boolean {
+    for (const b of ctx.arena.aabbs) {
+      if (x > b.minX - 0.09 && x < b.maxX + 0.09 && z > b.minZ - 0.09 && z < b.maxZ + 0.09 && y < b.alt) return true;
+    }
+    return false;
   }
 
   function passo(dt: number) {
     const j = ctx.jogador;
     const rj = cfg.jogador.raio;
+    const gravity = cfg.bisnaga.dropletGravity;
     for (const g of gotas) {
       if (!g.ativa) continue;
       g.vida -= dt;
-      g.vy -= 3.5 * dt;
-      g.x += g.vx * dt;
-      g.y += g.vy * dt;
-      g.z += g.vz * dt;
-      const chao = ctx.arena.chaoEm(g.x, g.z);
-      if (g.vida <= 0 || g.y <= chao + 0.05) {
-        if (g.y <= chao + 0.05) splash(g.x, chao + 0.08, g.z, false);
+      if (g.vida <= 0) {
         g.ativa = false;
         continue;
       }
-      if (g.doJogador) {
-        const idx = ctx.bots.colideJato(g.x, g.y, g.z);
-        if (idx >= 0) {
-          ctx.bots.atingir(idx, cfg.bisnaga.dano);
-          splash(g.x, g.y, g.z, true);
+      const speed = Math.hypot(g.vx, g.vy, g.vz);
+      const steps = Math.min(6, Math.max(1, Math.ceil((speed * dt) / 0.3)));
+      const sdt = dt / steps;
+      for (let s = 0; s < steps; s++) {
+        g.vy -= gravity * sdt;
+        g.x += g.vx * sdt;
+        g.y += g.vy * sdt;
+        g.z += g.vz * sdt;
+        const chao = ctx.arena.chaoEm(g.x, g.z);
+        if (g.y <= chao + 0.05) {
+          splash(g.x, chao + 0.08, g.z, false);
           g.ativa = false;
+          break;
         }
-      } else {
-        const dx = g.x - j.x;
-        const dz = g.z - j.z;
-        const dy = g.y - (j.y + 1);
-        if (dx * dx + dz * dz < rj * rj * 1.4 && dy > -1.2 && dy < 0.9) {
-          ctx.fluxo && ctx.ui.flashDano();
-          ctx.estado.solidez -= cfg.bots.dano;
-          ctx.estado.ultimoDanoMs = performance.now();
-          ctx.audio.somDano();
-          ctx.ui.atualizarHud();
-          splash(g.x, g.y, g.z, true);
+        if (hitsSolid(g.x, g.y, g.z)) {
+          splash(g.x, g.y, g.z, false);
           g.ativa = false;
+          break;
+        }
+        if (g.doJogador) {
+          const idx = ctx.bots.colideJato(g.x, g.y, g.z);
+          if (idx >= 0) {
+            ctx.bots.atingir(idx, cfg.bisnaga.dano);
+            splash(g.x, g.y, g.z, true);
+            g.ativa = false;
+            break;
+          }
+        } else {
+          const dx = g.x - j.x;
+          const dz = g.z - j.z;
+          const dy = g.y - (j.y + 1);
+          if (dx * dx + dz * dz < rj * rj * 1.4 && dy > -1.2 && dy < 0.9) {
+            ctx.fluxo && ctx.ui.flashDano();
+            ctx.estado.solidez -= cfg.bots.dano;
+            ctx.estado.ultimoDanoMs = performance.now();
+            ctx.audio.somDano();
+            ctx.ui.atualizarHud();
+            splash(g.x, g.y, g.z, true);
+            g.ativa = false;
+            break;
+          }
         }
       }
     }

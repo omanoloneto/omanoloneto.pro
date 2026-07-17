@@ -25,6 +25,7 @@ export function iniciarJogo() {
   scene.background = new THREE.Color(0x8fd4f0);
   scene.fog = new THREE.Fog(0x8fd4f0, 40, 90);
   const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 120);
+  scene.add(camera);
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   cenaEl.insertBefore(renderer.domElement, cenaEl.firstChild);

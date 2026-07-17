@@ -1,9 +1,16 @@
 import type { Contexto } from './tipos';
+import { createCharacterMaterials, createViewmodel } from './models';
 
 export function criarJogador(ctx: Contexto) {
   const { cfg, jogador: j, input, estado } = ctx;
   let ultimoTiroMs = 0;
   let travado = false;
+  let recoil = 0;
+  let bobPhase = 0;
+  const viewmodel = createViewmodel(createCharacterMaterials());
+  viewmodel.position.set(0.3, -0.32, -0.5);
+  viewmodel.rotation.y = -0.08;
+  ctx.camera.add(viewmodel);
   const telaTouch = window.matchMedia('(pointer: coarse)').matches;
   let modoTouch = telaTouch;
 
@@ -91,6 +98,16 @@ export function criarJogador(ctx: Contexto) {
       const alt = j.naPiscina ? cfg.jogador.alturaAgua : cfg.jogador.altura;
       ctx.agua.atirar(j.x + dx * 0.5, j.y + alt - 0.25, j.z + dz * 0.5, dx, dy, dz, true);
       ctx.audio.somJato();
+      recoil = 1;
+    }
+
+    recoil = Math.max(0, recoil - dt * 6);
+    viewmodel.position.x = Math.min(0.3, 0.12 + ctx.camera.aspect * 0.11);
+    viewmodel.position.z = -0.5 + recoil * 0.06;
+    viewmodel.rotation.x = recoil * 0.12;
+    if (!ctx.motionReduzido) {
+      bobPhase += dt * (mag > 0.1 ? 9 : 2);
+      viewmodel.position.y = -0.32 + Math.sin(bobPhase) * 0.012;
     }
 
     if (estado.solidez < cfg.jogador.solidezMax && performance.now() - estado.ultimoDanoMs > cfg.jogador.regenAposS * 1000) {
