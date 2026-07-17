@@ -100,6 +100,7 @@ export interface Net {
   createRoom(nome: string): Promise<{ codigo: string; nome: string; team: 0 | 1 } | { erro: string }>;
   joinRoom(codigo: string, nome: string): Promise<{ codigo: string; nome: string; team: 0 | 1 } | { erro: string }>;
   startMatch(): void;
+  reopenMatch(): void;
   queueEvent(ev: RoomEvent): void;
   leave(): void;
   bind(handlers: { onSync: (r: SyncPayload) => void; onDrop: () => void }): void;

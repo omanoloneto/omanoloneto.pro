@@ -163,6 +163,10 @@ export function criarJogador(ctx: Contexto) {
       ' ': 'pulo',
     };
     window.addEventListener('keydown', (e) => {
+      if (!ctx.ui.els.pausaModal.hidden) {
+        if (e.key === 'Escape') ctx.fluxo.continuarJogo();
+        return;
+      }
       if (e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey && estado.fase === 'jogando') {
         e.preventDefault();
         if (!e.repeat) ctx.fluxo.setScoreboard(true);
@@ -235,6 +239,7 @@ export function criarJogador(ctx: Contexto) {
     });
     joy.addEventListener('pointermove', (e) => {
       if (e.pointerId !== joyId) return;
+      if (!ctx.ui.els.pausaModal.hidden) return;
       e.preventDefault();
       aplicarJoy(e);
     });
@@ -264,6 +269,7 @@ export function criarJogador(ctx: Contexto) {
     });
     cenaEl.addEventListener('pointermove', (e) => {
       if (e.pointerId !== olharId || estado.fase !== 'jogando') return;
+      if (!ctx.ui.els.pausaModal.hidden) return;
       e.preventDefault();
       j.yaw -= (e.clientX - olharX) * 0.005;
       j.pitch = Math.max(-1.4, Math.min(1.4, j.pitch - (e.clientY - olharY) * 0.005));

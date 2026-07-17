@@ -27,6 +27,7 @@ const JOGOS = [
   // Trem de Palavras — modo Fácil (arcade endless). nivel = produtos entregues.
   'trem-de-palavras-facil' => [99999, 999],
   'sugar-splash' => [99999, 99],
+  'sugar-splash-multi' => [99999, 99],
   'eco-hero' => [99999, 99],
 ];
 const MAX_ENTRADAS = 10;
@@ -61,7 +62,7 @@ if (!isset(JOGOS[$jogo])) falha(400, 'jogo inválido');
 [$maxPontos, $maxNivel] = JOGOS[$jogo];
 
 $nome = $corpo['nome'] ?? '';
-if (!is_string($nome) || !preg_match('/^[A-Z]{2,6}$/', $nome)) falha(400, 'nome inválido');
+if (!is_string($nome) || !preg_match('/^[A-Z0-9]{2,6}$/', $nome)) falha(400, 'nome inválido');
 
 $pontos = $corpo['pontos'] ?? null;
 if (!is_int($pontos) || $pontos < 0 || $pontos > $maxPontos) falha(400, 'pontos inválidos');

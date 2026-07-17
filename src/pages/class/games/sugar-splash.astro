@@ -69,7 +69,6 @@ const description =
             <li>Derreteu? Sem drama: volta em <b>5 segundos</b> no seu vestiário.</li>
             <li>Sem água? <b>Mergulhe na piscina</b>. Quer se esconder? Usa as <b>cabines</b>! 🚽</li>
           </ol>
-          <p class="controles-dica">🖱 mouse mira · clique atira · <b>W A S D</b> anda · <b>espaço</b> pula<br />📱 no touch: alavanca anda, arrastar mira, 💦 atira</p>
           <label class="campo"><span>Seu nome</span>
             <input data-campo-nome type="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ex: LEO" />
           </label>
@@ -122,6 +121,7 @@ const description =
           <ol class="tabela" data-fim-tabela hidden></ol>
           <div class="fim-acoes">
             <button class="botao botao--go" type="button" data-gravar-nome hidden>🏆 Gravar meu nome</button>
+            <button class="botao botao--sec" type="button" data-fim-mesma-sala hidden>🔁 Jogar de novo aqui</button>
             <button class="botao botao--sec" type="button" data-replay>Jogar de novo</button>
           </div>
         </div>
@@ -149,6 +149,10 @@ const description =
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="recordes-title">
         <div class="placa__topo" id="recordes-title">🏆 Recordes do Splash</div>
         <div class="placa__corpo center">
+          <div class="recordes-abas" role="group" aria-label="Tipo de recorde">
+            <button class="aba" type="button" data-recordes-aba="solo" aria-pressed="true">🤖 Sozinho</button>
+            <button class="aba" type="button" data-recordes-aba="multi" aria-pressed="false">👥 Salas</button>
+          </div>
           <ol class="tabela" data-tabela></ol>
           <p class="aviso" data-recordes-vazio hidden>Ninguém gravou o nome ainda. Seja o primeiro! 💦</p>
           <p class="aviso aviso--fonte" data-recordes-fonte></p>
@@ -193,18 +197,20 @@ const description =
       position: absolute; top: 12px; left: 50%;
       transform: translateX(-50%);
       z-index: 24; pointer-events: auto; cursor: pointer;
-      display: flex; align-items: center; gap: 14px;
+      display: flex; align-items: center; justify-content: center;
+      flex-wrap: wrap; gap: 14px; row-gap: 2px;
+      max-width: calc(100% - 284px);
       padding: 9px 26px; border-radius: 999px;
       background: rgba(8, 48, 63, 0.55);
       color: #fff; font-weight: 800; font-size: clamp(1.2rem, 2.4vw, 1.6rem);
-      white-space: nowrap;
     }
+    .fps-topo > span, .fps-topo > strong { white-space: nowrap; }
     .fps-sep { opacity: 0.5; }
     .fps-sep[hidden] { display: none; }
     .fps-room { font-size: 0.72em; letter-spacing: 3px; opacity: 0.85; }
     .fps-room[hidden] { display: none; }
     .fps-team {
-      position: absolute; top: 60px; left: 16px;
+      position: absolute; top: 68px; left: 16px;
       z-index: 24; pointer-events: none;
       color: #fff; font-weight: 800; font-size: clamp(0.95rem, 1.8vw, 1.15rem);
       text-shadow: 0 2px 6px rgba(8, 48, 63, 0.85);
@@ -254,12 +260,24 @@ const description =
     @media (hover: none) {
       .fps-vida, .fps-agua { bottom: calc(126px + env(safe-area-inset-bottom)); }
     }
-    @media (max-width: 700px) {
-      .fps-topo { left: 10px; right: 128px; transform: none; font-size: 1.05rem; gap: 8px; row-gap: 2px; padding: 7px 14px; flex-wrap: wrap; white-space: normal; }
-      .fps-topo > span, .fps-topo > strong { white-space: nowrap; }
-      .fps-pontos { top: 64px; left: 12px; }
-      .fps-team { top: 96px; left: 12px; }
+    @media (max-width: 860px) {
+      .fps-topo { left: 10px; right: 140px; transform: none; max-width: none; font-size: 1.05rem; gap: 8px; padding: 7px 14px; justify-content: flex-start; }
+      .fps-pontos { top: 76px; left: 12px; }
+      .fps-team { top: 108px; left: 12px; }
       .hud__mute { width: 46px; height: 46px; font-size: 1.25rem; }
+    }
+    @media (max-width: 480px) {
+      .fps-topo { font-size: 0.92rem; gap: 6px; padding: 6px 10px; }
+    }
+    @media (max-height: 540px) {
+      .fps-vida, .fps-agua { font-size: clamp(1.6rem, 8vh, 2.6rem); }
+    }
+    @media (max-height: 540px) and (hover: hover) {
+      .fps-vida, .fps-agua { bottom: 12px; }
+    }
+    @media (hover: none) and (max-height: 420px) {
+      .fps-vida { left: 138px; bottom: 12px; }
+      .fps-agua { right: 158px; bottom: 12px; }
     }
     .hud__mute {
       width: 54px; height: 54px; border-radius: 14px; cursor: pointer;
@@ -268,7 +286,7 @@ const description =
     }
     .hud__mute[hidden] { display: none; }
 
-    .cena { position: relative; flex: 1; touch-action: none; }
+    .cena { position: relative; flex: 1; touch-action: none; overflow: clip; }
     .cena canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
     .mira {
@@ -413,7 +431,6 @@ const description =
     .placa__corpo { padding: 18px 22px 22px; }
     .placa__corpo.center { text-align: center; }
     .regras { margin: 0 0 14px 20px; display: grid; gap: 9px; font-size: 0.98rem; line-height: 1.45; }
-    .controles-dica { font-size: 0.85rem; line-height: 1.5; color: #3a6a7d; margin-bottom: 14px; text-align: center; }
     .grande { font-size: 1.15rem; font-weight: 800; margin-bottom: 10px; }
     .placar { font-size: 1.05rem; margin-bottom: 14px; }
     .placar strong { font-size: 1.6rem; color: var(--azul); }
@@ -427,6 +444,7 @@ const description =
       touch-action: manipulation;
       box-sizing: border-box;
     }
+    .botao[hidden] { display: none; }
     .botao--go {
       color: #fff; border: 0;
       background: linear-gradient(180deg, #58c8f0 0%, #2098d8 60%, #1878b0 100%);
@@ -505,6 +523,7 @@ const description =
       margin: 0 0 12px; padding: 0; list-style: none;
       display: grid; gap: 4px; font-size: 0.95rem; text-align: left;
     }
+    .tabela[hidden] { display: none; }
     .tabela li {
       display: flex; align-items: center; gap: 8px;
       padding: 5px 10px;
@@ -518,6 +537,14 @@ const description =
     .tabela .det { font-size: 0.78rem; color: #3a6a7d; }
     .tabela .pts { font-weight: 800; color: var(--azul); }
     .recordes-acoes { display: grid; gap: 4px; }
+    .recordes-abas { display: flex; justify-content: center; gap: 8px; margin-bottom: 12px; }
+    .recordes-abas .aba {
+      padding: 7px 16px; border-radius: 999px; cursor: pointer;
+      border: 2px solid var(--azul); background: transparent;
+      color: #08303f; font-weight: 800; font-size: 0.95rem;
+    }
+    .recordes-abas .aba[aria-pressed="true"] { background: var(--azul); color: #fff; }
+    .recordes-abas .aba:focus-visible { outline: 3px solid #f7a11b; outline-offset: 2px; }
 
     .sr-only {
       position: absolute; width: 1px; height: 1px;

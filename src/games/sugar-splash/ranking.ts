@@ -1,18 +1,25 @@
 import type { Contexto, Ranking } from './tipos';
 
 type Entrada = { nome: string; pontos: number; nivel: number; data: string };
+type Tab = 'solo' | 'multi';
 
 export function criarRanking(ctx: Contexto): Ranking {
   const $ = (s: string) => document.querySelector(s) as HTMLElement;
   const R = ctx.cfg.ranking;
   const CHAVE = 'sugar-splash:ranking';
   let nome = '';
+  let tab: Tab = 'solo';
+  let reqGen = 0;
+
+  const suffix = () => (tab === 'multi' ? '-multi' : '');
+  const gameKey = () => R.jogo + suffix();
+  const cacheKey = () => CHAVE + suffix();
 
   function lerLocal(): Entrada[] {
-    try { return JSON.parse(localStorage.getItem(CHAVE) || '[]'); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(cacheKey()) || '[]'); } catch { return []; }
   }
   function salvarLocal(lista: Entrada[]) {
-    try { localStorage.setItem(CHAVE, JSON.stringify(lista)); } catch { }
+    try { localStorage.setItem(cacheKey(), JSON.stringify(lista)); } catch { }
   }
 
   async function fetchRanking(corpo?: Record<string, unknown>): Promise<Entrada[] | null> {
@@ -20,8 +27,8 @@ export function criarRanking(ctx: Contexto): Ranking {
     const timer = setTimeout(() => aborto.abort(), 4000);
     try {
       const r = corpo
-        ? await fetch(R.api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jogo: R.jogo, ...corpo }), signal: aborto.signal })
-        : await fetch(R.api + '?jogo=' + R.jogo, { signal: aborto.signal });
+        ? await fetch(R.api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jogo: gameKey(), ...corpo }), signal: aborto.signal })
+        : await fetch(R.api + '?jogo=' + gameKey(), { signal: aborto.signal });
       if (!r.ok) return null;
       const j = await r.json();
       return Array.isArray(j) ? j : null;
@@ -45,9 +52,51 @@ export function criarRanking(ctx: Contexto): Ranking {
     });
   }
 
+  function marcarAbas() {
+    document.querySelectorAll<HTMLElement>('[data-recordes-aba]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.recordesAba === tab));
+    });
+  }
+
+  async function carregarLista(destaque?: Entrada) {
+    const g = ++reqGen;
+    marcarAbas();
+    render(lerLocal(), destaque);
+    const fonte = $('[data-recordes-fonte]');
+    fonte.textContent = 'atualizando…';
+    const online = await fetchRanking();
+    if (g !== reqGen || ctx.estado.fase !== 'recordes') return;
+    if (online) {
+      salvarLocal(online);
+      render(online, destaque);
+      fonte.textContent = '';
+    } else {
+      fonte.textContent = '📡 sem internet — mostrando os recordes deste computador';
+    }
+  }
+
+  function abrir(consulta: boolean, destaque?: Entrada) {
+    ctx.estado.fase = 'recordes';
+    ctx.ui.els.introModal.hidden = true;
+    ctx.ui.els.fimModal.hidden = true;
+    ctx.ui.els.entradaModal.hidden = true;
+    ctx.ui.els.recordesModal.hidden = false;
+    ($('[data-voltar-intro]') as HTMLElement).hidden = !consulta;
+    carregarLista(destaque);
+  }
+
   function atualizarSlots() {
     $('[data-entrada-slots]').textContent = (nome + '___'.slice(0, Math.max(0, 3 - nome.length))).split('').join(' ');
   }
+
+  document.querySelectorAll<HTMLElement>('[data-recordes-aba]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const alvo: Tab = b.dataset.recordesAba === 'multi' ? 'multi' : 'solo';
+      if (alvo === tab) return;
+      tab = alvo;
+      carregarLista();
+    });
+  });
 
   return {
     abrirEntrada() {
@@ -58,25 +107,9 @@ export function criarRanking(ctx: Contexto): Ranking {
       ctx.ui.els.entradaModal.hidden = false;
       setTimeout(() => ($('[data-tecla-nome="A"]') as HTMLElement).focus(), 60);
     },
-    async abrirRecordes(consulta) {
-      ctx.estado.fase = 'recordes';
-      ctx.ui.els.introModal.hidden = true;
-      ctx.ui.els.fimModal.hidden = true;
-      ctx.ui.els.entradaModal.hidden = true;
-      ctx.ui.els.recordesModal.hidden = false;
-      ($('[data-voltar-intro]') as HTMLElement).hidden = !consulta;
-      const fonte = $('[data-recordes-fonte]');
-      render(lerLocal());
-      fonte.textContent = 'atualizando…';
-      const online = await fetchRanking();
-      if (ctx.estado.fase !== 'recordes') return;
-      if (online) {
-        salvarLocal(online);
-        render(online);
-        fonte.textContent = '';
-      } else {
-        fonte.textContent = '📡 sem internet — mostrando os recordes deste computador';
-      }
+    abrirRecordes(consulta) {
+      tab = ctx.estado.modo === 'multi' ? 'multi' : 'solo';
+      abrir(consulta);
     },
     digitarLetra(l) {
       if (nome.length >= R.nomeMax) return;
@@ -89,6 +122,7 @@ export function criarRanking(ctx: Contexto): Ranking {
     },
     async confirmarEntrada() {
       if (nome.length < R.nomeMin) return;
+      tab = ctx.estado.modo === 'multi' ? 'multi' : 'solo';
       const entrada: Entrada = { nome, pontos: ctx.estado.pontos, nivel: ctx.estado.kills, data: new Date().toISOString().slice(0, 10) };
       const online = await fetchRanking({ nome: entrada.nome, pontos: entrada.pontos, nivel: entrada.nivel });
       let lista: Entrada[];
@@ -102,8 +136,7 @@ export function criarRanking(ctx: Contexto): Ranking {
       }
       salvarLocal(lista);
       ctx.ui.els.entradaModal.hidden = true;
-      this.abrirRecordes(false);
-      render(lista, entrada);
+      abrir(false, entrada);
     },
   };
 }

@@ -37,7 +37,7 @@ export function createNet(ctx: Contexto): Net {
   function schedule(soonMs?: number) {
     if (!isActive) return;
     clearTimeout(pollTimer);
-    const base = soonMs ?? (lastFase === 'lobby' ? S.pollLobbyMs : S.pollMs);
+    const base = soonMs ?? (lastFase === 'lobby' || lastFase === 'fim' ? S.pollLobbyMs : S.pollMs);
     pollTimer = window.setTimeout(sync, base + (Math.random() * 2 - 1) * S.jitterMs);
   }
 
@@ -92,8 +92,7 @@ export function createNet(ctx: Contexto): Net {
       }
       lastFase = payload.fase;
       handlers.onSync(payload);
-      if (payload.fase !== 'fim') schedule();
-      else isActive = false;
+      schedule();
     } finally {
       syncing = false;
     }
@@ -128,6 +127,10 @@ export function createNet(ctx: Contexto): Net {
     startMatch() {
       if (!isActive) return;
       api({ acao: 'comecar', codigo: roomCode, token }).then(() => schedule(150));
+    },
+    reopenMatch() {
+      if (!isActive) return;
+      api({ acao: 'reabrir', codigo: roomCode, token }).then(() => schedule(150));
     },
     queueEvent(ev) {
       if (isActive) eventQueue.push(ev);

@@ -274,6 +274,29 @@ if ($acao === 'comecar') {
   exit;
 }
 
+if ($acao === 'reabrir') {
+  comLock($codigo, function () use ($codigo, $token) {
+    $sala = lerSala($codigo);
+    if ($sala === null) falha(404, 'sala não encontrada');
+    $agora = agoraMs();
+    expulsarSumidos($sala, $agora);
+    if (!isset($sala['jogadores'][$token])) falha(403, 'você não está nessa sala');
+    if (faseDaSala($sala, $agora)['fase'] !== 'fim') falha(409, 'a partida ainda não acabou');
+    if (tokenAnfitriao($sala, $agora) !== $token) falha(403, 'só quem criou a sala pode recomeçar');
+    $sala['inicioMs'] = null;
+    $sala['eventos'] = [];
+    foreach ($sala['jogadores'] as $tk => $j) {
+      $sala['jogadores'][$tk]['kills'] = 0;
+      $sala['jogadores'][$tk]['mortes'] = 0;
+      $sala['jogadores'][$tk]['derretidoAteMs'] = 0;
+      $sala['jogadores'][$tk]['atirando'] = false;
+    }
+    escreverSala($codigo, $sala);
+  });
+  echo json_encode(['ok' => true]);
+  exit;
+}
+
 if ($acao === 'sync') {
   $desde = is_numeric($corpo['desde'] ?? null) ? (int) $corpo['desde'] : 0;
   $pos = is_array($corpo['pos'] ?? null) ? $corpo['pos'] : [];

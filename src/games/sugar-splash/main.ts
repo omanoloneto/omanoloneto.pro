@@ -98,6 +98,7 @@ export function iniciarJogo() {
   let lastAttacker = '';
   let roster: SyncPayload['jogadores'] = [];
   let scoreboardOpen = false;
+  let isHost = false;
 
   function renderScoreboard() {
     const rows = [{ nome: estado.nome, team: estado.team, kills: estado.kills, self: true }]
@@ -218,16 +219,34 @@ export function iniciarJogo() {
     },
     pausar() {
       if (estado.fase !== 'jogando') return;
+      if (estado.modo === 'multi') {
+        if (!ui.els.pausaModal.hidden) return;
+        fluxo.soltarInputs();
+        jog.soltarLock();
+        (document.querySelector('[data-recomecar]') as HTMLElement).textContent = '🚪 Sair da sala';
+        ui.els.pausaModal.hidden = false;
+        setTimeout(() => (document.querySelector('[data-continuar]') as HTMLElement).focus(), 60);
+        ui.anunciar('Menu aberto — a partida continua!');
+        return;
+      }
       estado.fase = 'pausado';
       fluxo.soltarInputs();
       jog.soltarLock();
       pararLoop();
       renderer.render(scene, camera);
+      (document.querySelector('[data-recomecar]') as HTMLElement).textContent = '🔄 Recomeçar';
       ui.els.pausaModal.hidden = false;
       setTimeout(() => (document.querySelector('[data-continuar]') as HTMLElement).focus(), 60);
       ui.anunciar('Jogo pausado.');
     },
     continuarJogo() {
+      if (estado.modo === 'multi') {
+        if (ui.els.pausaModal.hidden) return;
+        ui.els.pausaModal.hidden = true;
+        jog.pedirFullscreen();
+        if (!jog.emModoTouch()) jog.pedirLock();
+        return;
+      }
       if (estado.fase !== 'pausado') return;
       jog.pedirFullscreen();
       ui.els.pausaModal.hidden = true;
@@ -257,6 +276,8 @@ export function iniciarJogo() {
       }
       const fim = ui.els.fimModal;
       ui.els.fimTabela.hidden = true;
+      (fim.querySelector('[data-replay]') as HTMLElement).textContent = 'Jogar de novo';
+      (fim.querySelector('[data-fim-mesma-sala]') as HTMLElement).hidden = true;
       (fim.querySelector('[data-fim-msg]') as HTMLElement).textContent = msg;
       (fim.querySelector('[data-fim-score]') as HTMLElement).textContent = String(estado.pontos);
       const gravar = fim.querySelector('[data-gravar-nome]') as HTMLElement;
@@ -362,7 +383,7 @@ export function iniciarJogo() {
     jogador.shake = 0;
     ctx.bots.limpar();
     ctx.agua.limpar();
-    ui.els.lobbyModal.hidden = true;
+    [ui.els.lobbyModal, ui.els.fimModal, ui.els.entradaModal, ui.els.recordesModal, ui.els.pausaModal].forEach((m) => { m.hidden = true; });
     ui.els.controles.hidden = false;
     ui.els.pauseBtn.hidden = false;
     ui.els.roomCode.textContent = ctx.net.code();
@@ -429,6 +450,9 @@ export function iniciarJogo() {
         ? 'Empate suado: ' + meu + ' × ' + outro + '! 🤝'
         : 'O outro time venceu por ' + outro + ' × ' + meu + '. Na próxima! 💪';
     const fim = ui.els.fimModal;
+    ui.els.pausaModal.hidden = true;
+    (fim.querySelector('[data-replay]') as HTMLElement).textContent = '🚪 Sair da sala';
+    (fim.querySelector('[data-fim-mesma-sala]') as HTMLElement).hidden = false;
     (fim.querySelector('[data-fim-msg]') as HTMLElement).textContent = msg;
     (fim.querySelector('[data-fim-score]') as HTMLElement).textContent = String(estado.pontos);
     const linhas = [{ nome: estado.nome, team: estado.team, kills: estado.kills, mortes: estado.mortes }]
@@ -447,16 +471,23 @@ export function iniciarJogo() {
 
   function onSync(r: SyncPayload) {
     if (estado.modo !== 'multi') return;
+    isHost = r.souHost;
     estado.placarAzul = r.placar.azul;
     estado.placarVermelho = r.placar.vermelho;
     roster = r.jogadores;
     ctx.remotos.update(r.jogadores);
     if (r.fase === 'lobby') {
+      if (estado.fase === 'entrada') return;
+      if (estado.fase === 'fim' || estado.fase === 'recordes') {
+        [ui.els.fimModal, ui.els.entradaModal, ui.els.recordesModal].forEach((m) => { m.hidden = true; });
+        estado.fase = 'inicio';
+        ui.mostrarToast('🔁 A sala vai jogar de novo!', 'ok', 2200);
+      }
       renderLobby(r);
       return;
     }
     if (r.fase === 'fim') {
-      if (estado.fase !== 'fim') fimMulti(r);
+      if (estado.fase === 'jogando') fimMulti(r);
       return;
     }
     if (estado.fase !== 'jogando') iniciarPartidaMulti();
@@ -470,7 +501,7 @@ export function iniciarJogo() {
   ctx.net.bind({
     onSync,
     onDrop() {
-      if (estado.modo === 'multi' && estado.fase !== 'fim') fluxo.reiniciar();
+      if (estado.modo === 'multi' && (estado.fase !== 'fim' || !ui.els.lobbyModal.hidden)) fluxo.reiniciar();
     },
   });
 
@@ -534,6 +565,21 @@ export function iniciarJogo() {
 
   (document.querySelector('[data-comecar]') as HTMLElement).addEventListener('click', () => fluxo.comecar());
   (document.querySelector('[data-replay]') as HTMLElement).addEventListener('click', () => fluxo.reiniciar());
+  (document.querySelector('[data-fim-mesma-sala]') as HTMLElement).addEventListener('click', () => {
+    if (!ctx.net.active()) {
+      ui.mostrarToast('😵 A sala fechou — cria uma nova!', 'err', 2400);
+      return;
+    }
+    if (isHost) ctx.net.reopenMatch();
+    ui.els.fimModal.hidden = true;
+    ui.els.lobbyModal.hidden = false;
+    ui.els.lobbyCodigo.textContent = ctx.net.code();
+    ui.els.lobbyComecar.hidden = true;
+    ui.els.lobbyStatus.textContent = 'Esperando recomeçar…';
+    const linhas = ['<li>' + (estado.team === 0 ? '🔵' : '🔴') + ' ' + estado.nome + ' (você)</li>'];
+    for (const j of roster) linhas.push('<li>' + (j.team === 0 ? '🔵' : '🔴') + ' ' + j.nome + '</li>');
+    ui.els.lobbyLista.innerHTML = linhas.join('');
+  });
   (document.querySelector('[data-continuar]') as HTMLElement).addEventListener('click', () => fluxo.continuarJogo());
   (document.querySelector('[data-recomecar]') as HTMLElement).addEventListener('click', () => {
     ui.els.pausaModal.hidden = true;
@@ -545,7 +591,15 @@ export function iniciarJogo() {
   (document.querySelector('[data-gravar-nome]') as HTMLElement).addEventListener('click', () => ctx.ranking.abrirEntrada());
   (document.querySelector('[data-recordes-replay]') as HTMLElement).addEventListener('click', () => fluxo.reiniciar());
   (document.querySelector('[data-voltar-intro]') as HTMLElement).addEventListener('click', () => fluxo.reiniciar());
-  (document.querySelector('[data-entrada-voltar]') as HTMLElement).addEventListener('click', () => fluxo.fimDeJogo());
+  (document.querySelector('[data-entrada-voltar]') as HTMLElement).addEventListener('click', () => {
+    if (estado.modo === 'multi') {
+      ui.els.entradaModal.hidden = true;
+      estado.fase = 'fim';
+      ui.els.fimModal.hidden = false;
+      return;
+    }
+    fluxo.fimDeJogo();
+  });
   document.querySelectorAll<HTMLElement>('[data-tecla-nome]').forEach((b) => {
     b.addEventListener('click', () => ctx.ranking.digitarLetra(b.dataset.teclaNome!));
   });
