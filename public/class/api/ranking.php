@@ -26,6 +26,7 @@ const JOGOS = [
   'entrega-turbo' => [60000, 20],
   // Trem de Palavras — modo Fácil (arcade endless). nivel = produtos entregues.
   'trem-de-palavras-facil' => [99999, 999],
+  'sugar-splash' => [99999, 99],
 ];
 const MAX_ENTRADAS = 10;
 
