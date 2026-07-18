@@ -2,3 +2,7 @@
 <FilesMatch "^ranking-.*\.json$">
   Require all denied
 </FilesMatch>
+
+<Files "rooms-lib.php">
+  Require all denied
+</Files>

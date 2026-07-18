@@ -18,9 +18,7 @@
 //  Escrita atômica: tmp + rename; exclusão mútua por arquivo .lock.
 // ============================================================
 
-declare(strict_types=1);
-header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store');
+require __DIR__ . '/rooms-lib.php';
 
 const DIR_SALAS = __DIR__ . '/salas';
 const TTL_S = 7200;          // sala morre 2h após a última escrita
@@ -40,37 +38,18 @@ const POOLS = [
   'dificil' => ['gy','sr','cu','jm','pa','cr','ma','ng','ke','tr','sa','il','th','vn','id','ph','nz','ch','se','no','dk','fi','is','nl','be','at','pl','ua','cz','hu','hr','ro','pk','bd','ir','iq','ie','ci','td','ml','sn','gn','et','gh','cm','hn','ni','mn','kz','dz','tn','mm'],
 ];
 
-function falha(int $code, string $msg): void {
-  http_response_code($code);
-  echo json_encode(['erro' => $msg]);
-  exit;
-}
+sendJsonHeaders();
 
-function agoraMs(): int { return (int) round(microtime(true) * 1000); }
-function arquivoSala(string $codigo): string { return DIR_SALAS . '/sala-' . $codigo . '.json'; }
+function salaFile(string $codigo): string {
+  return roomFile(DIR_SALAS, $codigo);
+}
 
 function lerSala(string $codigo): ?array {
-  $bruto = @file_get_contents(arquivoSala($codigo));
-  if ($bruto === false) return null;
-  $sala = json_decode($bruto, true);
-  return is_array($sala) ? $sala : null;
+  return readJson(salaFile($codigo));
 }
 
-// escrita atômica: leitores nunca veem arquivo pela metade
 function escreverSala(array $sala): void {
-  $f = arquivoSala($sala['codigo']);
-  $tmp = $f . '.tmp' . getmypid();
-  file_put_contents($tmp, json_encode($sala, JSON_UNESCAPED_UNICODE));
-  rename($tmp, $f);
-}
-
-// exclusão mútua pra read-modify-write (lock em arquivo separado,
-// porque o rename troca o inode do JSON)
-function comLock(string $codigo, callable $fn) {
-  $lock = fopen(arquivoSala($codigo) . '.lock', 'c');
-  if ($lock === false || !flock($lock, LOCK_EX)) falha(500, 'não consegui travar a sala');
-  try { return $fn(); }
-  finally { flock($lock, LOCK_UN); fclose($lock); }
+  writeJson(salaFile($sala['codigo']), $sala);
 }
 
 // A fase é derivada do relógio — o coração do multiplayer sem cron.
@@ -119,26 +98,13 @@ function placarDe(array $sala): array {
   return $lista;
 }
 
-function limparSalasVelhas(): int {
-  $vivas = 0;
-  foreach (glob(DIR_SALAS . '/sala-*.json') ?: [] as $f) {
-    if (time() - filemtime($f) > TTL_S) {
-      @unlink($f);
-      @unlink($f . '.lock');
-    } else {
-      $vivas++;
-    }
-  }
-  return $vivas;
-}
-
 function validarNome(mixed $nome): string {
-  if (!is_string($nome) || !preg_match('/^[A-Z]{2,6}$/', $nome)) falha(400, 'nome inválido');
+  if (!matchesCharset($nome, 'A-Z', 2, 6)) fail(400, 'nome inválido');
   return $nome;
 }
 
 function validarCodigo(mixed $codigo): string {
-  if (!is_string($codigo) || !preg_match('/^[' . LETRAS_CODIGO . ']{4}$/', $codigo)) falha(400, 'código inválido');
+  if (!matchesCharset($codigo, LETRAS_CODIGO, 4, 4)) fail(400, 'código inválido');
   return $codigo;
 }
 
@@ -148,10 +114,11 @@ $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($metodo === 'GET') {
   $codigo = validarCodigo($_GET['codigo'] ?? '');
   $token = $_GET['token'] ?? '';
+  if (!isToken($token)) fail(400, 'token inválido');
   $sala = lerSala($codigo);
-  if ($sala === null) falha(404, 'sala não existe');
-  if (!isset($sala['jogadores'][$token])) falha(403, 'você não está nesta sala');
-  $agora = agoraMs();
+  if ($sala === null) fail(404, 'sala não existe');
+  if (!isset($sala['jogadores'][$token])) fail(403, 'você não está nesta sala');
+  $agora = nowMs();
   $f = faseDaSala($sala, $agora);
   $eu = $sala['jogadores'][$token];
   $cfg = $sala['cfg'];
@@ -208,36 +175,31 @@ if ($metodo === 'GET') {
   exit;
 }
 
-if ($metodo !== 'POST') falha(405, 'método não permitido');
-
-$corpo = json_decode(file_get_contents('php://input') ?: '', true);
-if (!is_array($corpo)) falha(400, 'JSON inválido');
-$acao = $corpo['acao'] ?? '';
+requirePost();
+[$corpo, $acao] = readJsonBody();
 
 if ($acao === 'criar') {
   $dificuldade = $corpo['dificuldade'] ?? '';
-  if (!isset(POOLS[$dificuldade])) falha(400, 'dificuldade inválida');
+  if (!isset(POOLS[$dificuldade])) fail(400, 'dificuldade inválida');
   $rodadas = $corpo['rodadas'] ?? null;
-  if (!in_array($rodadas, RODADAS_OK, true)) falha(400, 'rodadas inválidas');
+  if (!in_array($rodadas, RODADAS_OK, true)) fail(400, 'rodadas inválidas');
   $rodadaMs = $corpo['rodadaMs'] ?? null;
-  if (!in_array($rodadaMs, RODADA_MS_OK, true)) falha(400, 'tempo inválido');
+  if (!in_array($rodadaMs, RODADA_MS_OK, true)) fail(400, 'tempo inválido');
   $nome = validarNome($corpo['nome'] ?? '');
   $telao = ($corpo['telao'] ?? false) === true;
 
   if (!is_dir(DIR_SALAS)) @mkdir(DIR_SALAS, 0755, true);
-  if (limparSalasVelhas() >= MAX_SALAS) falha(429, 'muitas salas abertas agora — tente de novo em alguns minutos');
+  if (cleanOldRooms(DIR_SALAS, TTL_S, 4) >= MAX_SALAS) fail(429, 'muitas salas abertas agora — tente de novo em alguns minutos');
 
-  do {
-    $codigo = '';
-    for ($i = 0; $i < 4; $i++) $codigo .= LETRAS_CODIGO[random_int(0, strlen(LETRAS_CODIGO) - 1)];
-  } while (file_exists(arquivoSala($codigo)));
+  $codigo = claimRandomCode(DIR_SALAS, LETRAS_CODIGO, 4, 8);
+  if ($codigo === null) fail(500, 'não consegui criar a sala');
 
   $pool = POOLS[$dificuldade];
   shuffle($pool);
-  $token = bin2hex(random_bytes(8));
+  $token = newToken();
   $sala = [
     'codigo' => $codigo,
-    'criadoMs' => agoraMs(),
+    'criadoMs' => nowMs(),
     'inicioMs' => null,
     'avancoMs' => 0,
     'cfg' => ['rodadas' => $rodadas, 'rodadaMs' => $rodadaMs, 'dificuldade' => $dificuldade],
@@ -245,7 +207,7 @@ if ($acao === 'criar') {
     // 3 países decorativos já pintados com a bandeira no início (nunca perguntados)
     'marcados' => array_slice($pool, $rodadas, 3),
     'host' => $token,
-    'jogadores' => [$token => ['nome' => $nome, 'telao' => $telao, 'entrouMs' => agoraMs()]],
+    'jogadores' => [$token => ['nome' => $nome, 'telao' => $telao, 'entrouMs' => nowMs()]],
     'respostas' => array_fill(0, $rodadas, []),
   ];
   escreverSala($sala);
@@ -256,16 +218,16 @@ if ($acao === 'criar') {
 if ($acao === 'entrar') {
   $codigo = validarCodigo($corpo['codigo'] ?? '');
   $nome = validarNome($corpo['nome'] ?? '');
-  $resultado = comLock($codigo, function () use ($codigo, $nome) {
+  $resultado = withLock(salaFile($codigo), function () use ($codigo, $nome) {
     $sala = lerSala($codigo);
-    if ($sala === null) falha(404, 'sala não encontrada — confira o código');
-    if (faseDaSala($sala, agoraMs())['fase'] === 'fim') falha(410, 'essa partida já acabou');
-    if (count($sala['jogadores']) >= MAX_JOGADORES) falha(429, 'a sala está cheia');
+    if ($sala === null) fail(404, 'sala não encontrada — confira o código');
+    if (faseDaSala($sala, nowMs())['fase'] === 'fim') fail(410, 'essa partida já acabou');
+    if (count($sala['jogadores']) >= MAX_JOGADORES) fail(429, 'a sala está cheia');
     foreach ($sala['jogadores'] as $j) {
-      if ($j['nome'] === $nome && !$j['telao']) falha(409, 'já tem alguém com esse nome na sala');
+      if ($j['nome'] === $nome && !$j['telao']) fail(409, 'já tem alguém com esse nome na sala');
     }
-    $token = bin2hex(random_bytes(8));
-    $sala['jogadores'][$token] = ['nome' => $nome, 'telao' => false, 'entrouMs' => agoraMs()];
+    $token = newToken();
+    $sala['jogadores'][$token] = ['nome' => $nome, 'telao' => false, 'entrouMs' => nowMs()];
     escreverSala($sala);
     return ['token' => $token];
   });
@@ -276,12 +238,13 @@ if ($acao === 'entrar') {
 if ($acao === 'comecar') {
   $codigo = validarCodigo($corpo['codigo'] ?? '');
   $token = (string) ($corpo['token'] ?? '');
-  comLock($codigo, function () use ($codigo, $token) {
+  if (!isToken($token)) fail(400, 'token inválido');
+  withLock(salaFile($codigo), function () use ($codigo, $token) {
     $sala = lerSala($codigo);
-    if ($sala === null) falha(404, 'sala não existe');
-    if ($token !== $sala['host']) falha(403, 'só quem criou a sala pode começar');
-    if ($sala['inicioMs'] !== null) falha(409, 'a partida já começou');
-    $sala['inicioMs'] = agoraMs();
+    if ($sala === null) fail(404, 'sala não existe');
+    if ($token !== $sala['host']) fail(403, 'só quem criou a sala pode começar');
+    if ($sala['inicioMs'] !== null) fail(409, 'a partida já começou');
+    $sala['inicioMs'] = nowMs();
     escreverSala($sala);
   });
   echo json_encode(['ok' => true]);
@@ -291,18 +254,19 @@ if ($acao === 'comecar') {
 if ($acao === 'responder') {
   $codigo = validarCodigo($corpo['codigo'] ?? '');
   $token = (string) ($corpo['token'] ?? '');
+  if (!isToken($token)) fail(400, 'token inválido');
   $rodada = $corpo['rodada'] ?? null;
   $iso = $corpo['iso'] ?? '';
-  if (!is_int($rodada) || !is_string($iso) || !preg_match('/^[a-z]{2}$/', $iso)) falha(400, 'resposta inválida');
-  comLock($codigo, function () use ($codigo, $token, $rodada, $iso) {
+  if (!is_int($rodada) || !is_string($iso) || !preg_match('/^[a-z]{2}$/', $iso)) fail(400, 'resposta inválida');
+  withLock(salaFile($codigo), function () use ($codigo, $token, $rodada, $iso) {
     $sala = lerSala($codigo);
-    if ($sala === null) falha(404, 'sala não existe');
+    if ($sala === null) fail(404, 'sala não existe');
     $eu = $sala['jogadores'][$token] ?? null;
-    if ($eu === null) falha(403, 'você não está nesta sala');
-    if ($eu['telao']) falha(403, 'o telão não joga');
-    $f = faseDaSala($sala, agoraMs());
-    if ($f['fase'] !== 'rodada' || $f['rodada'] !== $rodada) falha(409, 'essa rodada já fechou');
-    if (isset($sala['respostas'][$rodada][$token])) falha(409, 'você já respondeu');
+    if ($eu === null) fail(403, 'você não está nesta sala');
+    if ($eu['telao']) fail(403, 'o telão não joga');
+    $f = faseDaSala($sala, nowMs());
+    if ($f['fase'] !== 'rodada' || $f['rodada'] !== $rodada) fail(409, 'essa rodada já fechou');
+    if (isset($sala['respostas'][$rodada][$token])) fail(409, 'você já respondeu');
     // dtMs vem do relógio do SERVIDOR — bônus de velocidade à prova de trapaça
     $sala['respostas'][$rodada][$token] = [
       'iso' => $iso,
@@ -321,4 +285,4 @@ if ($acao === 'responder') {
   exit;
 }
 
-falha(400, 'ação desconhecida');
+fail(400, 'ação desconhecida');
