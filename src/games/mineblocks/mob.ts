@@ -11,6 +11,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32 } from '../../lib/rng';
+import { DIA_S } from './ceu';
 import type { BichoRede, Contexto, Mob } from './tipos';
 
 const LA = 21;
@@ -177,7 +178,7 @@ export function criarMob(ctx: Contexto): Mob {
   // simulação (anfitrião/solo): wander + bob + drop de dia
   function simular(dt: number) {
     const dtMs = dt * 1000;
-    const deDia = ctx.ceu.tempo() < 900; // DIA_S = 900s (dropa só de dia)
+    const deDia = ctx.ceu.tempo() < DIA_S; // dropa só de dia
     for (const w of vivos) {
       // repensa o destino de vez em quando
       if (tempoMs >= w.trocaMs) {

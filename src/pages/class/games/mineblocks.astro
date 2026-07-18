@@ -46,8 +46,6 @@ const description =
             <button class="inv__fechar" type="button" data-inv-fechar aria-label="Fechar o inventário">✖</button>
           </div>
           <div class="inv__grade" data-inv-grade></div>
-          <p class="mat__titulo">🧶 Materiais <small>(recursos pra fabricar)</small></p>
-          <div class="mat__lista" data-mat-lista></div>
           <p class="craft__titulo">🛠️ Fabricar</p>
           <div class="craft__lista" data-craft-painel></div>
         </div>
@@ -357,29 +355,30 @@ const description =
     }
     .inv__grade {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 5px;
       margin-bottom: 12px;
     }
-    .inv-item {
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
-      padding: 8px 4px 6px; border-radius: 10px; cursor: pointer;
+    .inv-slot {
+      position: relative; aspect-ratio: 1; width: 100%;
+      padding: 0; border-radius: 8px;
       font-family: inherit; color: var(--texto);
       background: rgba(0, 0, 0, 0.3);
-      border: 2px solid rgba(255, 255, 255, 0.12);
+      border: 2px solid rgba(255, 255, 255, 0.14);
     }
-    .inv-item .slot__img {
-      position: static; display: block;
-      width: 34px; height: 34px;
+    .inv-slot.tem { cursor: pointer; }
+    .inv-slot .slot__img {
+      position: absolute; inset: 5px;
       background-size: 400% 1000%;
       image-rendering: pixelated;
       border-radius: 5px;
     }
-    .inv-item__nome { font-size: 0.72rem; font-weight: 700; line-height: 1.1; text-align: center; }
-    .inv-item__qtd { font-size: 0.78rem; font-weight: 800; color: var(--amarelo); }
-    .inv-item.vazio { opacity: 0.45; }
-    .inv-item.vazio .inv-item__qtd { color: rgba(255, 255, 255, 0.4); }
-    .inv-item.sel { border-color: var(--amarelo); }
+    .inv-slot__qtd {
+      position: absolute; right: 3px; bottom: 1px;
+      font-size: 0.72rem; font-weight: 800; color: var(--amarelo);
+      text-shadow: 0 1px 2px #000; pointer-events: none;
+    }
+    .inv-slot.sel { border-color: var(--amarelo); box-shadow: 0 0 8px rgba(255, 210, 63, 0.6); }
 
     /* baú + placa */
     .bau__rotulo { margin: 8px 0 6px; font-weight: 800; font-size: 0.9rem; }
@@ -429,33 +428,6 @@ const description =
     .craft__lista { display: grid; gap: 6px; }
     .craft__titulo { margin: 0 0 6px; font-weight: 800; font-size: 0.95rem; }
 
-    /* materiais (recursos só-coletáveis, ex.: lã do Winpup) */
-    .mat__titulo { margin: 2px 0 6px; font-weight: 800; font-size: 0.95rem; }
-    .mat__titulo small { font-weight: 400; opacity: 0.72; font-size: 0.78rem; }
-    .mat__lista {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(102px, 1fr));
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-    .mat-item {
-      display: flex; flex-direction: column; align-items: center; gap: 3px;
-      padding: 8px 4px 6px; border-radius: 10px;
-      color: var(--texto);
-      background: rgba(0, 0, 0, 0.3);
-      border: 2px solid rgba(255, 255, 255, 0.12);
-    }
-    .mat-item .slot__img {
-      position: static; display: block;
-      width: 34px; height: 34px;
-      background-size: 400% 1000%;
-      image-rendering: pixelated;
-      border-radius: 5px;
-    }
-    .mat-item__nome { font-size: 0.72rem; font-weight: 700; line-height: 1.1; text-align: center; }
-    .mat-item__qtd { font-size: 0.78rem; font-weight: 800; color: var(--amarelo); }
-    .mat-item.vazio { opacity: 0.5; }
-    .mat-item.vazio .mat-item__qtd { color: rgba(255, 255, 255, 0.4); }
     .receita {
       display: flex; align-items: center; gap: 10px;
       padding: 7px 10px; border-radius: 10px; cursor: pointer;
@@ -712,7 +684,9 @@ const description =
       .salvando { font-size: 0.72rem; }
       .sala-chip { font-size: 0.7rem; padding: 3px 7px; }
       .sala__codigo { font-size: 1.9rem; }
-      .inv__grade { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); }
+      .inv__grade { gap: 3px; }
+      .inv-slot { border-radius: 6px; }
+      .inv-slot .slot__img { inset: 3px; }
       .inv__caixa { padding: 10px 12px 12px; }
       .modal { padding: 10px; }
     }

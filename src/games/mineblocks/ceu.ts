@@ -1,12 +1,14 @@
 // Céu com ciclo dia/noite. Mundo é MeshBasicMaterial (SwiftShader, sem luz
 // dinâmica), então nada de shadow map: o dia/noite é um domo de gradiente +
 // sol/lua cruzando em arco + um tint global nos materiais do mundo.
-// Dia = 15 min (900s), noite = 10 min (600s). Pausa/reduced-motion congela.
+// Dia = 3 min, noite = 3 min (encurtado a pedido do Manolo pra testar o ciclo
+// em aula; pra mudar, mexa SÓ em DIA_S/NOITE_S — o resto deriva).
+// Pausa/reduced-motion congela.
 import * as THREE from 'three';
 import type { Contexto, Ceu } from './tipos';
 
-const DIA_S = 900;
-const NOITE_S = 600;
+export const DIA_S = 180;
+export const NOITE_S = 180;
 const CICLO_S = DIA_S + NOITE_S;
 const R = 250; // raio do domo (< far 260); recentrado na câmera todo frame
 
@@ -19,15 +21,17 @@ interface Chave {
   tint: [number, number, number];
   vis: number;
 }
+const dia = (f: number) => Math.round(DIA_S * f);
+const noite = (f: number) => Math.round(DIA_S + NOITE_S * f);
 const CHAVES: Chave[] = [
-  { s: 0, zen: 0x1c4f96, hor: 0xffb877, tint: [1.0, 0.88, 0.74], vis: 0.9 }, // amanhecer
-  { s: 120, zen: 0x2f7ad0, hor: 0xcfe9f7, tint: [1.0, 1.0, 1.0], vis: 1 }, // manhã
-  { s: 450, zen: 0x2b78d4, hor: 0xd8edf9, tint: [1.0, 1.0, 1.0], vis: 1 }, // meio-dia
-  { s: 760, zen: 0x2e6fbe, hor: 0xffd39a, tint: [1.0, 0.93, 0.8], vis: 1 }, // tarde dourada
-  { s: 880, zen: 0x2a3f7a, hor: 0xff8c4a, tint: [0.92, 0.66, 0.52], vis: 0.85 }, // pôr do sol
-  { s: 980, zen: 0x0d1735, hor: 0x1a2947, tint: [0.38, 0.42, 0.56], vis: 0.5 }, // anoitecer
-  { s: 1290, zen: 0x070d24, hor: 0x101a38, tint: [0.22, 0.25, 0.38], vis: 0.35 }, // noite cheia (breu)
-  { s: 1440, zen: 0x101d40, hor: 0x24335c, tint: [0.3, 0.33, 0.48], vis: 0.6 }, // pré-amanhecer
+  { s: dia(0), zen: 0x1c4f96, hor: 0xffb877, tint: [1.0, 0.88, 0.74], vis: 0.9 }, // amanhecer
+  { s: dia(0.13), zen: 0x2f7ad0, hor: 0xcfe9f7, tint: [1.0, 1.0, 1.0], vis: 1 }, // manhã
+  { s: dia(0.5), zen: 0x2b78d4, hor: 0xd8edf9, tint: [1.0, 1.0, 1.0], vis: 1 }, // meio-dia
+  { s: dia(0.84), zen: 0x2e6fbe, hor: 0xffd39a, tint: [1.0, 0.93, 0.8], vis: 1 }, // tarde dourada
+  { s: dia(0.98), zen: 0x2a3f7a, hor: 0xff8c4a, tint: [0.92, 0.66, 0.52], vis: 0.85 }, // pôr do sol
+  { s: noite(0.13), zen: 0x0d1735, hor: 0x1a2947, tint: [0.38, 0.42, 0.56], vis: 0.5 }, // anoitecer
+  { s: noite(0.65), zen: 0x070d24, hor: 0x101a38, tint: [0.22, 0.25, 0.38], vis: 0.35 }, // noite cheia (breu)
+  { s: noite(0.9), zen: 0x101d40, hor: 0x24335c, tint: [0.3, 0.33, 0.48], vis: 0.6 }, // pré-amanhecer
 ];
 
 export function criarCeu(ctx: Contexto): Ceu {
@@ -36,7 +40,7 @@ export function criarCeu(ctx: Contexto): Ceu {
   const parado = ctx.motionReduzido;
 
   // relógio do ciclo (segundos). Começa de manhã; save/mundo novo ajustam.
-  let rel = 120;
+  let rel = dia(0.13);
   let acumTint = 0; // throttle das cores (não precisa recolorir todo frame)
 
   // ---- domo de céu: esfera grande, BackSide, gradiente por vertexColor ----
@@ -183,9 +187,9 @@ export function criarCeu(ctx: Contexto): Ceu {
   // = elevação (some no horizonte, brilha no alto). Posição recentra na câmera.
   const dir = new THREE.Vector3();
   // ativo = a fase daquele corpo está no ar; fora dela o corpo some. O gate
-  // por 'ativo' é obrigatório: como o dia (900s) é mais longo que a noite
-  // (600s), a frac da lua chega a -1.5 no amanhecer e sin(-1.5π)=+1 faria a
-  // lua reaparecer de dia se a visibilidade saísse só do sinal do seno.
+  // por 'ativo' é obrigatório: com dia e noite de durações diferentes a frac
+  // da lua passa de -1 no amanhecer e o seno voltaria positivo — a lua
+  // reapareceria de dia se a visibilidade saísse só do sinal do seno.
   function posicionar(corpo: THREE.Sprite, fracFase: number, mat: THREE.SpriteMaterial, ativo: boolean) {
     const phi = Math.PI * fracFase; // 0 nasce (leste), π/2 no alto, π põe (oeste)
     const el = Math.sin(phi); // elevação: 0 no horizonte, 1 no alto
@@ -198,8 +202,8 @@ export function criarCeu(ctx: Contexto): Ceu {
   }
 
   function atualizarCorpos() {
-    posicionar(sol, rel / DIA_S, solMat, rel < DIA_S); // sol: só de dia [0,900)
-    posicionar(lua, (rel - DIA_S) / NOITE_S, luaMat, rel >= DIA_S); // lua: só de noite [900,1500)
+    posicionar(sol, rel / DIA_S, solMat, rel < DIA_S); // sol: só de dia [0,DIA_S)
+    posicionar(lua, (rel - DIA_S) / NOITE_S, luaMat, rel >= DIA_S); // lua: só de noite [DIA_S,CICLO_S)
   }
 
   aplicarCores();

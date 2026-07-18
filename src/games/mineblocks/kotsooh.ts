@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { DIA_S } from './ceu';
 import type { Contexto, Kotsooh } from './tipos';
 
-const NIGHT_START = 900;
+const NIGHT_START = DIA_S;
 
 function cubePart(w: number, h: number, d: number, x: number, y: number, z: number, cor: THREE.Color, rz = 0, rx = 0): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);

@@ -10,7 +10,7 @@ import { criarMundo } from './mundo';
 import { criarMetas } from './meta';
 import { gerarMundo } from './geracao';
 import { criarMalha } from './malha';
-import { criarCeu } from './ceu';
+import { criarCeu, DIA_S } from './ceu';
 import { criarKotsooh } from './kotsooh';
 import { criarMob } from './mob';
 import { criarFisica } from './fisica';
@@ -408,7 +408,7 @@ export function iniciarJogo() {
         jogador.z = ctx.cfg.mundo.SZ / 2 + 0.5;
         jogador.yaw = Math.PI * 0.75;
         jogador.pitch = 0;
-        ctx.ceu.definirTempo(120); // mundo novo começa de manhã
+        ctx.ceu.definirTempo(Math.round(DIA_S * 0.13)); // mundo novo começa de manhã
       }
       ctx.malha.construirTudo();
       ctx.edicao.iniciarMudas(); // mudas do save voltam pro relógio

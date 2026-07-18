@@ -27,7 +27,6 @@ export function criarUI(ctx: Contexto): UI {
     craftPainel: $('[data-craft-painel]'),
     invPainel: $('[data-inv]'),
     invGrade: $('[data-inv-grade]'),
-    matLista: $('[data-mat-lista]'),
     fantasma: $('[data-fantasma]'),
     pauseBtn: $('[data-pause]'),
     muteBtn: $('[data-mute]'),
@@ -121,20 +120,22 @@ export function criarUI(ctx: Contexto): UI {
       }
       s.classList.remove('vazio');
     });
-    // grade do inventário (tecla E): todos os tipos com contagem
-    els.invGrade.querySelectorAll<HTMLElement>('.inv-item').forEach((s, i) => {
-      const id = ctx.itens[i];
-      const n = inv[id] || 0;
-      (s.querySelector('[data-qtd]') as HTMLElement).textContent = n > 0 ? '× ' + n : '—';
-      s.classList.toggle('vazio', n === 0);
-      s.classList.toggle('sel', id === ctx.estado.hotbarSlots[ctx.estado.sel]);
-    });
-    // materiais (lã etc.): contagem read-only
-    els.matLista.querySelectorAll<HTMLElement>('.mat-item').forEach((s) => {
-      const id = +(s.dataset.mat || 0);
-      const n = inv[id] || 0;
-      (s.querySelector('[data-qtd]') as HTMLElement).textContent = n > 0 ? '× ' + n : '—';
-      s.classList.toggle('vazio', n === 0);
+    // grade do inventário (tecla E): só o que a criança TEM, em slots 3×9
+    const donos = ctx.itens.concat(ctx.materiais || []).filter((id) => (inv[id] || 0) > 0);
+    els.invGrade.querySelectorAll<HTMLElement>('.inv-slot').forEach((s, i) => {
+      const id = donos[i] || 0;
+      if (+(s.dataset.id || 0) !== id) {
+        s.dataset.id = String(id);
+        s.innerHTML = id ? imgDoBloco(id) + '<span class="inv-slot__qtd" data-qtd></span>' : '';
+      }
+      if (id) {
+        (s.querySelector('[data-qtd]') as HTMLElement).textContent = String(inv[id] || 0);
+        s.setAttribute('aria-label', ctx.porId(id).nome + ', ' + (inv[id] || 0));
+      } else {
+        s.setAttribute('aria-label', 'Espaço vazio');
+      }
+      s.classList.toggle('tem', id !== 0);
+      s.classList.toggle('sel', id !== 0 && id === ctx.estado.hotbarSlots[ctx.estado.sel]);
     });
     // receitas acendem/apagam conforme o material disponível
     els.craftPainel.querySelectorAll<HTMLElement>('.receita').forEach((r, i) => {
@@ -144,26 +145,24 @@ export function criarUI(ctx: Contexto): UI {
     });
   }
 
-  // grade do inventário estilo Minecraft: todos os tipos com contagem;
-  // clicar num item PÕE ele no slot selecionado da hotbar (atalho —
-  // as contagens são globais, nada se perde na troca)
+  // grade do inventário estilo Minecraft: 3 linhas de 9 slots, mostrando SÓ
+  // o que foi coletado (materiais como lã incluídos); clicar num item colocável
+  // PÕE ele no slot selecionado da hotbar (atalho — as contagens são globais,
+  // nada se perde na troca)
   function montarInventario() {
     els.invGrade.innerHTML = '';
-    ctx.itens.forEach((id) => {
-      const b = ctx.porId(id);
+    const total = ctx.cfg.hotbarTamanho * 3;
+    for (let i = 0; i < total; i++) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'inv-item';
-      btn.setAttribute('aria-label', b.nome + ' — pôr no espaço selecionado da hotbar');
-      btn.innerHTML =
-        imgDoBloco(id) +
-        '<span class="inv-item__nome">' + b.nome + '</span>' +
-        '<span class="inv-item__qtd" data-qtd>—</span>';
+      btn.className = 'inv-slot';
+      btn.setAttribute('aria-label', 'Espaço vazio');
       btn.addEventListener('click', () => {
-        // item que a criança ainda não TEM não vira atalho (apagaria o
-        // atalho atual e anunciaria sucesso falso)
-        if ((ctx.estado.inventario[id] || 0) <= 0) {
-          api.mostrarToast('🎒 Você ainda não tem ' + b.nome + ' — quebre blocos pra ganhar!', 'info', 2000);
+        const id = +(btn.dataset.id || 0);
+        if (!id) return;
+        const b = ctx.porId(id);
+        if (!ctx.itens.includes(id)) {
+          api.mostrarToast('🧶 ' + b.nome + ' é material de fabricação — usa nas receitas aí embaixo!', 'info', 2200);
           return;
         }
         ctx.estado.hotbarSlots[ctx.estado.sel] = id;
@@ -172,25 +171,7 @@ export function criarUI(ctx: Contexto): UI {
         api.anunciar(b.nome + ' está no espaço ' + (ctx.estado.sel + 1) + ' da hotbar.');
       });
       els.invGrade.appendChild(btn);
-    });
-    montarMateriais();
-  }
-
-  // materiais = recursos só-coletáveis (lã do Winpup): cards read-only com
-  // contagem, não viram atalho de hotbar (não são colocáveis)
-  function montarMateriais() {
-    els.matLista.innerHTML = '';
-    (ctx.materiais || []).forEach((id) => {
-      const b = ctx.porId(id);
-      const div = document.createElement('div');
-      div.className = 'mat-item';
-      div.dataset.mat = String(id);
-      div.innerHTML =
-        imgDoBloco(id) +
-        '<span class="mat-item__nome">' + b.nome + '</span>' +
-        '<span class="mat-item__qtd" data-qtd>—</span>';
-      els.matLista.appendChild(div);
-    });
+    }
   }
 
   function montarCraft() {
