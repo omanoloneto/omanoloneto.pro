@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { mulberry32 } from '../../lib/rng';
 import type { Arena, Contexto, MapDef } from './tipos';
 import type { Piscina, Rect } from '../../data/sugar-splash';
 
@@ -88,70 +89,161 @@ function lockerTexture(accent: string): THREE.CanvasTexture {
   return t;
 }
 
-function texFaroeste(letreiro: string | null, janelas: number, porta: boolean): HTMLCanvasElement {
+// uma "rua" inteira por parede: sequência de prédios de 3-5 unidades, cada
+// um com madeira, janelas, porta e letreiro próprios — nada de fachada
+// repetida colada na vizinha
+function texRuaFaroeste(unidades: number, rng: () => number, memoria: { ultimos: string[] }): HTMLCanvasElement {
+  const PX = 32;
+  const H = 160;
   const c = document.createElement('canvas');
-  c.width = 96;
-  c.height = 120;
+  c.width = Math.max(PX * 2, unidades * PX);
+  c.height = H;
   const g = c.getContext('2d')!;
-  g.fillStyle = '#b58455';
-  g.fillRect(0, 0, 96, 120);
-  g.strokeStyle = 'rgba(90,58,30,0.55)';
-  g.lineWidth = 2;
-  for (let x = 0; x <= 96; x += 12) {
-    g.beginPath();
-    g.moveTo(x, 0);
-    g.lineTo(x, 120);
-    g.stroke();
-  }
-  g.strokeStyle = 'rgba(255,235,200,0.18)';
-  for (let y = 30; y < 120; y += 30) {
-    g.beginPath();
-    g.moveTo(0, y);
-    g.lineTo(96, y);
-    g.stroke();
-  }
-  g.fillStyle = '#7c5430';
-  g.fillRect(0, 112, 96, 8);
-  g.fillStyle = '#8f6238';
-  g.fillRect(0, 0, 96, 16);
-  g.fillStyle = '#5e3e20';
-  g.fillRect(0, 14, 96, 3);
-  if (letreiro) {
-    g.fillStyle = '#4a3018';
-    g.fillRect(6, 1, 84, 13);
-    g.strokeStyle = '#2e1c0c';
-    g.lineWidth = 1;
-    g.strokeRect(6.5, 1.5, 83, 12);
-    g.fillStyle = '#f5e8c8';
-    g.font = 'bold 10px Georgia, serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(letreiro, 48, 8);
-  }
-  const jx = janelas === 1 ? [48] : porta ? [20, 76] : [28, 68];
-  for (const x of jx) {
-    g.fillStyle = '#f0e6d2';
-    g.fillRect(x - 11, 40, 22, 30);
-    g.fillStyle = '#54687e';
-    g.fillRect(x - 8, 43, 16, 24);
-    g.strokeStyle = '#f0e6d2';
+  const tons: Array<[string, string]> = [
+    ['#b58455', '#8f6238'],
+    ['#a87b4b', '#7f5a30'],
+    ['#c19267', '#987048'],
+    ['#9b7040', '#744f26'],
+  ];
+  const nomes = ['SALOON', 'HOTEL', 'BANCO', 'ARMAZEM', 'XERIFE', 'CORREIO', 'DOCERIA', 'BARBEARIA'];
+
+  const predio = (ox: number, w: number) => {
+    const [base, escuro] = tons[Math.floor(rng() * tons.length)];
+    g.fillStyle = base;
+    g.fillRect(ox, 0, w, H);
+    g.strokeStyle = 'rgba(70,44,20,0.5)';
     g.lineWidth = 2;
-    g.beginPath();
-    g.moveTo(x, 43);
-    g.lineTo(x, 67);
-    g.stroke();
-    g.beginPath();
-    g.moveTo(x - 8, 55);
-    g.lineTo(x + 8, 55);
-    g.stroke();
-  }
-  if (porta) {
-    g.fillStyle = '#f0e6d2';
-    g.fillRect(35, 70, 26, 48);
-    g.fillStyle = '#5a3a20';
-    g.fillRect(38, 73, 20, 45);
-    g.fillStyle = '#c9a227';
-    g.fillRect(54, 94, 3, 3);
+    const passo = 10 + Math.floor(rng() * 5);
+    for (let x = ox + passo; x < ox + w; x += passo) {
+      g.beginPath();
+      g.moveTo(x, 0);
+      g.lineTo(x, H);
+      g.stroke();
+    }
+    g.strokeStyle = 'rgba(255,235,200,0.15)';
+    for (let y = 40; y < H; y += 38) {
+      g.beginPath();
+      g.moveTo(ox, y);
+      g.lineTo(ox + w, y);
+      g.stroke();
+    }
+    g.fillStyle = '#5e3c1e';
+    g.fillRect(ox, H - 8, w, 8);
+    g.fillStyle = escuro;
+    g.fillRect(ox, 0, w, 22);
+    g.fillStyle = '#4a2f16';
+    g.fillRect(ox, 20, w, 3);
+
+    if (w >= 90 && rng() < 0.72) {
+      let idx = Math.floor(rng() * nomes.length);
+      for (let t2 = 0; t2 < 4 && memoria.ultimos.includes(nomes[idx]); t2++) idx = (idx + 1) % nomes.length;
+      const nome = nomes[idx];
+      memoria.ultimos.push(nome);
+      if (memoria.ultimos.length > 4) memoria.ultimos.shift();
+      g.fillStyle = '#42280f';
+      g.fillRect(ox + 8, 2, w - 16, 17);
+      g.strokeStyle = '#28170a';
+      g.lineWidth = 1;
+      g.strokeRect(ox + 8.5, 2.5, w - 17, 16);
+      g.fillStyle = '#f5e8c8';
+      g.font = 'bold 13px Georgia, serif';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(nome, ox + w / 2, 11, w - 26);
+    }
+
+    const temPorta = rng() < 0.62;
+    const portaLado = rng();
+    const portaX = temPorta
+      ? ox + (portaLado < 0.34 ? w * 0.22 : portaLado < 0.67 ? w * 0.5 : w * 0.78)
+      : -999;
+    const estiloPorta = Math.floor(rng() * 3);
+
+    const nJan = w >= 120 ? 2 : rng() < 0.4 ? 2 : 1;
+    const vagas = [ox + w * 0.25, ox + w * 0.75, ox + w * 0.5];
+    let postas = 0;
+    for (const jx of vagas) {
+      if (postas >= nJan) break;
+      if (temPorta && Math.abs(jx - portaX) < 26) continue;
+      postas++;
+      const jy = 46 + Math.floor(rng() * 12);
+      const estilo = Math.floor(rng() * 3);
+      if (estilo === 0) {
+        g.fillStyle = '#f0e6d2';
+        g.fillRect(jx - 12, jy, 24, 32);
+        g.fillStyle = '#54687e';
+        g.fillRect(jx - 9, jy + 3, 18, 26);
+        g.strokeStyle = '#f0e6d2';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(jx, jy + 3);
+        g.lineTo(jx, jy + 29);
+        g.moveTo(jx - 9, jy + 16);
+        g.lineTo(jx + 9, jy + 16);
+        g.stroke();
+      } else if (estilo === 1) {
+        g.fillStyle = '#f0e6d2';
+        g.fillRect(jx - 9, jy - 4, 18, 42);
+        g.fillStyle = '#46586c';
+        g.fillRect(jx - 6, jy - 1, 12, 36);
+        g.strokeStyle = '#f0e6d2';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(jx - 6, jy + 17);
+        g.lineTo(jx + 6, jy + 17);
+        g.stroke();
+      } else {
+        g.fillStyle = escuro;
+        g.fillRect(jx - 17, jy, 10, 30);
+        g.fillRect(jx + 7, jy, 10, 30);
+        g.fillStyle = '#f0e6d2';
+        g.fillRect(jx - 8, jy, 16, 30);
+        g.fillStyle = '#54687e';
+        g.fillRect(jx - 5, jy + 3, 10, 24);
+      }
+    }
+
+    if (temPorta) {
+      if (estiloPorta === 0) {
+        g.fillStyle = '#f0e6d2';
+        g.fillRect(portaX - 14, 96, 28, 56);
+        g.fillStyle = '#4f3018';
+        g.fillRect(portaX - 11, 99, 22, 53);
+        g.fillStyle = '#c9a227';
+        g.fillRect(portaX + 5, 124, 3, 4);
+      } else if (estiloPorta === 1) {
+        g.fillStyle = '#3a2410';
+        g.fillRect(portaX - 15, 96, 30, 56);
+        g.fillStyle = '#8f6238';
+        g.fillRect(portaX - 13, 112, 12, 26);
+        g.fillRect(portaX + 1, 112, 12, 26);
+        g.strokeStyle = '#5e3c1e';
+        g.lineWidth = 2;
+        g.strokeRect(portaX - 13, 112, 12, 26);
+        g.strokeRect(portaX + 1, 112, 12, 26);
+      } else {
+        g.fillStyle = '#f0e6d2';
+        g.fillRect(portaX - 14, 88, 28, 64);
+        g.fillStyle = '#54687e';
+        g.fillRect(portaX - 10, 92, 20, 12);
+        g.fillStyle = '#4f3018';
+        g.fillRect(portaX - 10, 107, 20, 45);
+        g.fillStyle = '#c9a227';
+        g.fillRect(portaX + 4, 128, 3, 4);
+      }
+    }
+
+    g.fillStyle = 'rgba(40,23,10,0.85)';
+    g.fillRect(ox, 0, 2, H);
+    g.fillRect(ox + w - 2, 0, 2, H);
+  };
+
+  let u = 0;
+  while (u < unidades) {
+    let seg = Math.min(unidades - u, 3 + Math.floor(rng() * 3));
+    if (unidades - u - seg > 0 && unidades - u - seg < 3) seg = unidades - u;
+    predio(u * PX, seg * PX);
+    u += seg;
   }
   return c;
 }
@@ -365,32 +457,22 @@ export function criarArena(ctx: Contexto): Arena {
       abertos = atual;
     }
 
-    const fachadas = [
-      texFaroeste('SALOON', 2, true),
-      texFaroeste(null, 2, false),
-      texFaroeste('HOTEL', 2, true),
-      texFaroeste(null, 1, true),
-      texFaroeste('BANCO', 2, false),
-      texFaroeste('ARMAZEM', 1, true),
-    ];
     const toldoCanvas = texToldo();
     const madeiraMat = new THREE.MeshLambertMaterial({ color: 0x6e4b28 });
     const cornijaMat = new THREE.MeshLambertMaterial({ color: 0x53381e });
     const posteMat = new THREE.MeshLambertMaterial({ color: 0x64431f });
     const livre = (ix: number, iz: number) => andavel.has(key(ix, iz));
+    const memoriaLetreiro = { ultimos: [] as string[] };
     let vi = 0;
     for (const r of retos) {
       const w = r.x1 - r.x0;
       const d = r.z1 - r.z0;
       const len = Math.max(w, d);
-      const rep = Math.max(1, Math.round(len / 4));
+      const rng = mulberry32((0xfa0e57e ^ (vi * 2654435761)) >>> 0);
       const hPredio = [5, 4.3, 5.6, 4.7][vi % 4];
-      const t = new THREE.CanvasTexture(fachadas[vi % fachadas.length]);
+      const t = new THREE.CanvasTexture(texRuaFaroeste(len, rng, memoriaLetreiro));
       t.colorSpace = THREE.SRGBColorSpace;
-      t.wrapS = THREE.RepeatWrapping;
-      t.wrapT = THREE.RepeatWrapping;
       t.magFilter = THREE.NearestFilter;
-      t.repeat.set(rep, 1);
       const fachadaMat = new THREE.MeshLambertMaterial({ map: t });
       const mats = w >= d
         ? [madeiraMat, madeiraMat, madeiraMat, madeiraMat, fachadaMat, fachadaMat]
@@ -429,35 +511,41 @@ export function criarArena(ctx: Contexto): Arena {
         toldoTex.colorSpace = THREE.SRGBColorSpace;
         toldoTex.wrapS = THREE.RepeatWrapping;
         toldoTex.magFilter = THREE.NearestFilter;
-        toldoTex.repeat.set(Math.max(2, Math.round(len / 2)), 1);
+        toldoTex.repeat.set(2, 1);
         const toldoMat = new THREE.MeshLambertMaterial({ map: toldoTex, side: THREE.DoubleSide });
-        const montarToldo = (ladoZ: boolean, dir: 1 | -1) => {
-          const comp = len - 0.9;
+        const montarToldo = (ladoZ: boolean, dir: 1 | -1, centro: number) => {
+          const comp = Math.min(4.6, len - 1.4);
           const toldo = new THREE.Mesh(
             ladoZ ? new THREE.BoxGeometry(comp, 0.06, 1.4) : new THREE.BoxGeometry(1.4, 0.06, comp),
             toldoMat
           );
           if (ladoZ) {
-            toldo.position.set(cx, 2.8, dir > 0 ? r.z1 + 0.62 : r.z0 - 0.62);
+            toldo.position.set(centro, 2.8, dir > 0 ? r.z1 + 0.62 : r.z0 - 0.62);
             toldo.rotation.x = 0.3 * dir;
           } else {
-            toldo.position.set(dir > 0 ? r.x1 + 0.62 : r.x0 - 0.62, 2.8, cz);
+            toldo.position.set(dir > 0 ? r.x1 + 0.62 : r.x0 - 0.62, 2.8, centro);
             toldo.rotation.z = -0.3 * dir;
           }
           group.add(toldo);
           for (const ponta of [-1, 1]) {
             const poste = new THREE.Mesh(new THREE.BoxGeometry(0.09, 2.55, 0.09), posteMat);
-            if (ladoZ) poste.position.set(cx + ponta * (comp / 2 - 0.25), 1.275, dir > 0 ? r.z1 + 1.12 : r.z0 - 1.12);
-            else poste.position.set(dir > 0 ? r.x1 + 1.12 : r.x0 - 1.12, 1.275, cz + ponta * (comp / 2 - 0.25));
+            if (ladoZ) poste.position.set(centro + ponta * (comp / 2 - 0.25), 1.275, dir > 0 ? r.z1 + 1.12 : r.z0 - 1.12);
+            else poste.position.set(dir > 0 ? r.x1 + 1.12 : r.x0 - 1.12, 1.275, centro + ponta * (comp / 2 - 0.25));
             group.add(poste);
           }
         };
-        if (w >= d) {
-          if (livre(Math.floor(cx), r.z1)) montarToldo(true, 1);
-          else if (livre(Math.floor(cx), r.z0 - 1)) montarToldo(true, -1);
-        } else {
-          if (livre(r.x1, Math.floor(cz))) montarToldo(false, 1);
-          else if (livre(r.x0 - 1, Math.floor(cz))) montarToldo(false, -1);
+        const n = Math.max(1, Math.min(3, Math.floor(len / 9)));
+        const ini = w >= d ? r.x0 : r.z0;
+        for (let i = 0; i < n; i++) {
+          const faixa = len / n;
+          const centro = ini + faixa * i + faixa * (0.35 + rng() * 0.3);
+          if (w >= d) {
+            if (livre(Math.floor(centro), r.z1)) montarToldo(true, 1, centro);
+            else if (livre(Math.floor(centro), r.z0 - 1)) montarToldo(true, -1, centro);
+          } else {
+            if (livre(r.x1, Math.floor(centro))) montarToldo(false, 1, centro);
+            else if (livre(r.x0 - 1, Math.floor(centro))) montarToldo(false, -1, centro);
+          }
         }
       }
       vi++;
