@@ -19,7 +19,7 @@ const CHARSET_CODIGO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 // spawns/limites espelham o registro de mapas do cliente (data/sugar-splash)
 const MAPAS = [
   'piscina' => ['spawns' => [[-24.5, 12.0], [24.5, 12.0]], 'limX' => 28.0, 'limZ' => 16.0],
-  'deserto' => ['spawns' => [[-27.0, 17.0], [27.0, -17.0]], 'limX' => 31.0, 'limZ' => 21.0],
+  'deserto' => ['spawns' => [[-26.5, 13.0], [10.0, -24.0]], 'limX' => 31.0, 'limZ' => 25.0],
 ];
 
 function mapaDaSala(array $sala): string {

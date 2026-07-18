@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Arena, Contexto, MapDef } from './tipos';
+import type { Piscina, Rect } from '../../data/sugar-splash';
 
 function texAzulejo(base: string, rejunte: string, faixa?: string): THREE.CanvasTexture {
   const c = document.createElement('canvas');
@@ -117,8 +118,8 @@ export function criarArena(ctx: Contexto): Arena {
   const group = new THREE.Group();
   scene.add(group);
   let mapaAtual: MapDef = mapas[0];
-  let aguaTex!: THREE.CanvasTexture;
-  let agua!: THREE.Mesh;
+  let aguaTexs: THREE.CanvasTexture[] = [];
+  let aguaMeshes: THREE.Mesh[] = [];
 
   function disposeAll() {
     const mats = new Set<THREE.Material>();
@@ -136,73 +137,22 @@ export function criarArena(ctx: Contexto): Arena {
     group.clear();
   }
 
-  function build(id: string) {
-    const M = mapas.find((m) => m.id === id) || mapas[0];
-    mapaAtual = M;
-    disposeAll();
-    aabbs.length = 0;
+  function chaoPlano(x0: number, z0: number, x1: number, z1: number, y: number, mat: THREE.Material) {
+    const w = x1 - x0;
+    const d = z1 - z0;
+    if (w <= 0 || d <= 0) return;
+    const plano = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat);
+    plano.rotation.x = -Math.PI / 2;
+    plano.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
+    group.add(plano);
+  }
 
-    const T = M.tema;
-    scene.background = new THREE.Color(T.ceu);
-    scene.fog = new THREE.Fog(T.ceu, T.nevoa[0], T.nevoa[1]);
-
-    const P = M.piscina;
-    const meiaL = M.larg / 2;
-    const meiaP = M.prof / 2;
-
-    for (const [sx2, sz2, w, d] of [
-      [0, (P.z0 - meiaP) / 2, M.larg, meiaP + P.z0],
-      [0, (P.z1 + meiaP) / 2, M.larg, meiaP - P.z1],
-      [(P.x0 - meiaL) / 2, 0, meiaL + P.x0, P.z1 - P.z0],
-      [(P.x1 + meiaL) / 2, 0, meiaL - P.x1, P.z1 - P.z0],
-    ] as Array<[number, number, number, number]>) {
-      const tex = texAzulejo(T.deck[0], T.deck[1]);
-      tex.repeat.set(w / 2, d / 2);
-      const strip = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshLambertMaterial({ map: tex }));
-      strip.rotation.x = -Math.PI / 2;
-      strip.position.set(sx2, 0, sz2);
-      group.add(strip);
-    }
-
-    const tParede = texAzulejo(T.perimetro[0], T.perimetro[1], T.perimetro[2]);
-    tParede.repeat.set(10, 1.6);
-    const paredeMat = new THREE.MeshLambertMaterial({ map: tParede });
-    const bordas: Array<[number, number, number, number]> = [
-      [0, -meiaP, M.larg, 0.6],
-      [0, meiaP, M.larg, 0.6],
-      [-meiaL, 0, 0.6, M.prof],
-      [meiaL, 0, 0.6, M.prof],
-    ];
-    for (const [x, z, w, d] of bordas) {
-      const p = new THREE.Mesh(new THREE.BoxGeometry(w, A.alturaParede, d), paredeMat);
-      p.position.set(x, A.alturaParede / 2, z);
-      group.add(p);
-      aabbs.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, alt: A.alturaParede });
-    }
-
-    if (M.paredes.length) {
-      const tInterna = texAzulejo(T.interna[0], T.interna[1]);
-      tInterna.repeat.set(6, 1.6);
-      const internaMat = new THREE.MeshLambertMaterial({ map: tInterna });
-      for (const w of M.paredes) {
-        const p = new THREE.Mesh(new THREE.BoxGeometry(w.w, w.h, w.d), internaMat);
-        p.position.set(w.x, w.h / 2, w.z);
-        group.add(p);
-        aabbs.push({ minX: w.x - w.w / 2, maxX: w.x + w.w / 2, minZ: w.z - w.d / 2, maxZ: w.z + w.d / 2, alt: w.h });
-      }
-    }
-
-    const tPiscina = texAzulejo('#bfe6f0', '#7ab8d0');
+  function renderPiscina(P: Piscina) {
     const pw = P.x1 - P.x0;
     const pd = P.z1 - P.z0;
+    const tPiscina = texAzulejo('#bfe6f0', '#7ab8d0');
     tPiscina.repeat.set(pw / 2, pd / 2);
-    const fundoPiscina = new THREE.Mesh(
-      new THREE.PlaneGeometry(pw, pd),
-      new THREE.MeshLambertMaterial({ map: tPiscina })
-    );
-    fundoPiscina.rotation.x = -Math.PI / 2;
-    fundoPiscina.position.set((P.x0 + P.x1) / 2, P.fundo, (P.z0 + P.z1) / 2);
-    group.add(fundoPiscina);
+    chaoPlano(P.x0, P.z0, P.x1, P.z1, P.fundo, new THREE.MeshLambertMaterial({ map: tPiscina }));
 
     const tLateral = texAzulejo('#bfe6f0', '#7ab8d0');
     tLateral.repeat.set(6, 1);
@@ -221,27 +171,162 @@ export function criarArena(ctx: Contexto): Arena {
       group.add(lat);
     }
 
-    aguaTex = waterTexture();
+    const aguaTex = waterTexture();
     aguaTex.repeat.set(Math.max(2, pw / 3), Math.max(2, pd / 3));
-    agua = new THREE.Mesh(
+    const agua = new THREE.Mesh(
       new THREE.PlaneGeometry(pw, pd),
       new THREE.MeshLambertMaterial({ map: aguaTex, transparent: true, opacity: 0.7 })
     );
     agua.rotation.x = -Math.PI / 2;
     agua.position.set((P.x0 + P.x1) / 2, -0.12, (P.z0 + P.z1) / 2);
     group.add(agua);
+    aguaTexs.push(aguaTex);
+    aguaMeshes.push(agua);
 
     const copingMat = new THREE.MeshLambertMaterial({ color: 0xf5f2ea });
+    const cx = (P.x0 + P.x1) / 2;
+    const cz = (P.z0 + P.z1) / 2;
     for (const [bx, bz, bw, bd] of [
-      [0, P.z0 - 0.2, pw + 0.8, 0.4],
-      [0, P.z1 + 0.2, pw + 0.8, 0.4],
-      [P.x0 - 0.2, 0, 0.4, pd],
-      [P.x1 + 0.2, 0, 0.4, pd],
+      [cx, P.z0 - 0.2, pw + 0.8, 0.4],
+      [cx, P.z1 + 0.2, pw + 0.8, 0.4],
+      [P.x0 - 0.2, cz, 0.4, pd],
+      [P.x1 + 0.2, cz, 0.4, pd],
     ] as Array<[number, number, number, number]>) {
       const coping = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.08, bd), copingMat);
       coping.position.set(bx, 0.04, bz);
       group.add(coping);
     }
+  }
+
+  function chaoComPiscinas(r: Rect, y: number, mat: THREE.Material, piscinas: Piscina[]) {
+    const dentro = piscinas.filter((p) => p.x0 >= r.x0 && p.x1 <= r.x1 && p.z0 >= r.z0 && p.z1 <= r.z1);
+    if (!dentro.length) {
+      chaoPlano(r.x0, r.z0, r.x1, r.z1, y, mat);
+      return;
+    }
+    const p = dentro[0];
+    chaoPlano(r.x0, r.z0, r.x1, p.z0, y, mat);
+    chaoPlano(r.x0, p.z1, r.x1, r.z1, y, mat);
+    chaoPlano(r.x0, p.z0, p.x0, p.z1, y, mat);
+    chaoPlano(p.x1, p.z0, r.x1, p.z1, y, mat);
+  }
+
+  function buildBlueprint(M: MapDef, paredeMat: THREE.Material) {
+    const bp = M.blueprint!;
+    const T = M.tema;
+
+    const tPraca = texAzulejo(T.deck[0], T.deck[1]);
+    tPraca.repeat.set(0.5, 0.5);
+    const pracaMat = new THREE.MeshLambertMaterial({ map: tPraca });
+    const tCorredor = texAzulejo(T.interna[0], T.interna[1]);
+    tCorredor.repeat.set(0.5, 0.5);
+    const corredorMat = new THREE.MeshLambertMaterial({ map: tCorredor });
+    const tetoMat = new THREE.MeshLambertMaterial({ color: new THREE.Color(T.interna[1]) });
+
+    for (const r of bp.pracas) chaoComPiscinas(r, 0, pracaMat, M.piscinas);
+    for (const r of bp.corredores) {
+      chaoPlano(r.x0, r.z0, r.x1, r.z1, 0.02, corredorMat);
+      const teto = new THREE.Mesh(new THREE.BoxGeometry(r.x1 - r.x0, 0.3, r.z1 - r.z0), tetoMat);
+      teto.position.set((r.x0 + r.x1) / 2, 3.55, (r.z0 + r.z1) / 2);
+      group.add(teto);
+    }
+
+    const OFF = 200;
+    const key = (ix: number, iz: number) => (ix + OFF) * 1000 + (iz + OFF);
+    const andavel = new Set<number>();
+    for (const r of [...bp.pracas, ...bp.corredores]) {
+      for (let ix = r.x0; ix < r.x1; ix++) {
+        for (let iz = r.z0; iz < r.z1; iz++) andavel.add(key(ix, iz));
+      }
+    }
+    const muros = new Set<number>();
+    for (const k of andavel) {
+      const ix = Math.floor(k / 1000) - OFF;
+      const iz = (k % 1000) - OFF;
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          if (!dx && !dz) continue;
+          const nk = key(ix + dx, iz + dz);
+          if (!andavel.has(nk)) muros.add(nk);
+        }
+      }
+    }
+    const porLinha = new Map<number, number[]>();
+    for (const k of muros) {
+      const ix = Math.floor(k / 1000) - OFF;
+      const iz = (k % 1000) - OFF;
+      if (!porLinha.has(iz)) porLinha.set(iz, []);
+      porLinha.get(iz)!.push(ix);
+    }
+    for (const [iz, xs] of porLinha) {
+      xs.sort((a, b) => a - b);
+      let ini = xs[0];
+      let fim = xs[0];
+      const emitir = () => {
+        const w = fim - ini + 1;
+        const m = new THREE.Mesh(new THREE.BoxGeometry(w, A.alturaParede, 1), paredeMat);
+        m.position.set(ini + w / 2, A.alturaParede / 2, iz + 0.5);
+        group.add(m);
+        aabbs.push({ minX: ini, maxX: ini + w, minZ: iz, maxZ: iz + 1, alt: A.alturaParede });
+      };
+      for (let i = 1; i < xs.length; i++) {
+        if (xs[i] === fim + 1) { fim = xs[i]; continue; }
+        emitir();
+        ini = xs[i];
+        fim = xs[i];
+      }
+      emitir();
+    }
+  }
+
+  function build(id: string) {
+    const M = mapas.find((m) => m.id === id) || mapas[0];
+    mapaAtual = M;
+    disposeAll();
+    aabbs.length = 0;
+    aguaTexs = [];
+    aguaMeshes = [];
+
+    const T = M.tema;
+    scene.background = new THREE.Color(T.ceu);
+    scene.fog = new THREE.Fog(T.ceu, T.nevoa[0], T.nevoa[1]);
+
+    const meiaL = M.larg / 2;
+    const meiaP = M.prof / 2;
+
+    const tParede = texAzulejo(T.perimetro[0], T.perimetro[1], T.perimetro[2]);
+    tParede.repeat.set(10, 1.6);
+    const paredeMat = new THREE.MeshLambertMaterial({ map: tParede });
+
+    if (M.blueprint) {
+      buildBlueprint(M, paredeMat);
+    } else {
+      const P = M.piscinas[0];
+      for (const [x0, z0, x1, z1] of [
+        [-meiaL, -meiaP, meiaL, P.z0],
+        [-meiaL, P.z1, meiaL, meiaP],
+        [-meiaL, P.z0, P.x0, P.z1],
+        [P.x1, P.z0, meiaL, P.z1],
+      ] as Array<[number, number, number, number]>) {
+        const tex = texAzulejo(T.deck[0], T.deck[1]);
+        tex.repeat.set((x1 - x0) / 2, (z1 - z0) / 2);
+        chaoPlano(x0, z0, x1, z1, 0, new THREE.MeshLambertMaterial({ map: tex }));
+      }
+      const bordas: Array<[number, number, number, number]> = [
+        [0, -meiaP, M.larg, 0.6],
+        [0, meiaP, M.larg, 0.6],
+        [-meiaL, 0, 0.6, M.prof],
+        [meiaL, 0, 0.6, M.prof],
+      ];
+      for (const [x, z, w, d] of bordas) {
+        const p = new THREE.Mesh(new THREE.BoxGeometry(w, A.alturaParede, d), paredeMat);
+        p.position.set(x, A.alturaParede / 2, z);
+        group.add(p);
+        aabbs.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2, alt: A.alturaParede });
+      }
+    }
+
+    for (const p of M.piscinas) renderPiscina(p);
 
     const tCaixote = texCaixote();
     const caixoteMat = new THREE.MeshLambertMaterial({ map: tCaixote });
@@ -254,6 +339,7 @@ export function criarArena(ctx: Contexto): Arena {
     }
 
     if (M.vestiarios) {
+      const P = M.piscinas[0];
       const LR = A.lockerRoom;
       const benchMat = new THREE.MeshLambertMaterial({ color: 0xb98a56 });
       const porcelainMat = new THREE.MeshLambertMaterial({ color: 0xf8f8f2 });
@@ -396,7 +482,7 @@ export function criarArena(ctx: Contexto): Arena {
       const cabo = new THREE.MeshLambertMaterial({ color: 0xf5f2ea });
       const bala = new THREE.MeshLambertMaterial({ color: 0xe85898 });
       const espiral = new THREE.MeshLambertMaterial({ color: 0xffffff });
-      for (const [lx, lz] of [[22, -20], [-22, 20]] as Array<[number, number]>) {
+      for (const [lx, lz] of [[22, 24], [-13, 4]] as Array<[number, number]>) {
         const haste = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.4, 8), cabo);
         haste.position.set(lx, 1.7, lz);
         const doce = new THREE.Mesh(new THREE.SphereGeometry(1.1, 16, 12), bala);
@@ -415,12 +501,17 @@ export function criarArena(ctx: Contexto): Arena {
   }
 
   function dentroPiscina(x: number, z: number): boolean {
-    const P = mapaAtual.piscina;
-    return x > P.x0 && x < P.x1 && z > P.z0 && z < P.z1;
+    for (const P of mapaAtual.piscinas) {
+      if (x > P.x0 && x < P.x1 && z > P.z0 && z < P.z1) return true;
+    }
+    return false;
   }
 
   function chaoEm(x: number, z: number): number {
-    let alt = dentroPiscina(x, z) ? mapaAtual.piscina.fundo : 0;
+    let alt = 0;
+    for (const P of mapaAtual.piscinas) {
+      if (x > P.x0 && x < P.x1 && z > P.z0 && z < P.z1) alt = P.fundo;
+    }
     for (const b of aabbs) {
       if (b.alt <= 3.5 && x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ) {
         alt = Math.max(alt, b.alt);
@@ -430,9 +521,13 @@ export function criarArena(ctx: Contexto): Arena {
   }
 
   function passo(ts: number) {
-    aguaTex.offset.x = (ts / 14000) % 1;
-    aguaTex.offset.y = (ts / 23000) % 1;
-    if (!ctx.motionReduzido) agua.position.y = -0.12 + Math.sin(ts / 700) * 0.02;
+    for (const t of aguaTexs) {
+      t.offset.x = (ts / 14000) % 1;
+      t.offset.y = (ts / 23000) % 1;
+    }
+    if (!ctx.motionReduzido) {
+      for (const m of aguaMeshes) m.position.y = -0.12 + Math.sin(ts / 700) * 0.02;
+    }
   }
 
   build(mapaAtual.id);

@@ -57,6 +57,8 @@ export const config = {
 } as const;
 
 export type Caixote = { x: number; z: number; w: number; d: number; h: number };
+export type Rect = { x0: number; z0: number; x1: number; z1: number };
+export type Piscina = Rect & { fundo: number };
 
 export type MapId = 'piscina' | 'deserto';
 
@@ -75,10 +77,12 @@ export interface MapDef {
   emoji: string;
   larg: number;
   prof: number;
-  piscina: { x0: number; z0: number; x1: number; z1: number; fundo: number };
+  piscinas: Piscina[];
   vestiarios: boolean;
   tema: MapTheme;
-  paredes: Caixote[];
+  // blueprint: praças (áreas abertas) + corredores (fechados, com teto);
+  // as paredes saem do contorno da união — fora dos retângulos é sólido
+  blueprint?: { pracas: Rect[]; corredores: Rect[] };
   caixotes: Caixote[];
   spawnsTime: Array<{ x: number; z: number; yaw: number }>;
   spawnsBots: Array<[number, number]>;
@@ -91,7 +95,7 @@ export const mapas: MapDef[] = [
     emoji: '🏊',
     larg: 56,
     prof: 32,
-    piscina: { x0: -9, z0: -6, x1: 9, z1: 6, fundo: -1.5 },
+    piscinas: [{ x0: -9, z0: -6, x1: 9, z1: 6, fundo: -1.5 }],
     vestiarios: true,
     tema: {
       ceu: 0x8fd4f0,
@@ -101,7 +105,6 @@ export const mapas: MapDef[] = [
       interna: ['#dce8ec', '#a8b8c0'],
       sol: 0xfff2d5,
     },
-    paredes: [],
     caixotes: [
       { x: -16, z: -10, w: 2, d: 2, h: 1.6 },
       { x: -14, z: -10, w: 2, d: 2, h: 1.6 },
@@ -122,15 +125,19 @@ export const mapas: MapDef[] = [
       [-21, -6], [21, -6], [-21, 6], [21, 6], [-12, -13], [12, 13], [-12, 13], [12, -13],
     ],
   },
-  // dust2 de doce: simetria de ponto (obstáculo em (x,z) tem gêmeo em
-  // (-x,-z)) pra nenhum time levar vantagem; fonte central recarrega água
+  // dust2 de doce seguindo o blueprint do Manolo (2026-07-18): duas bases
+  // com piscina própria, espinha de corredores fechados no norte, praça
+  // central e praça leste ligadas embaixo, anexo aberto na direita
   {
     id: 'deserto',
     nome: 'Deserto Doce',
     emoji: '🏜️',
     larg: 64,
-    prof: 44,
-    piscina: { x0: -4, z0: -4, x1: 4, z1: 4, fundo: -1.2 },
+    prof: 52,
+    piscinas: [
+      { x0: 8, z0: -22, x1: 12, z1: -18, fundo: -1.2 },
+      { x0: -29, z0: 15, x1: -23, z1: 23, fundo: -1.2 },
+    ],
     vestiarios: false,
     tema: {
       ceu: 0xffddab,
@@ -140,34 +147,41 @@ export const mapas: MapDef[] = [
       interna: ['#d9a86c', '#b08048'],
       sol: 0xffe2b8,
     },
-    paredes: [
-      { x: -13, z: -12, w: 14, d: 1, h: 5 },
-      { x: 7, z: -12, w: 14, d: 1, h: 5 },
-      { x: 13, z: 12, w: 14, d: 1, h: 5 },
-      { x: -7, z: 12, w: 14, d: 1, h: 5 },
-      { x: -10, z: -3, w: 1, d: 8, h: 5 },
-      { x: 10, z: 3, w: 1, d: 8, h: 5 },
-    ],
+    blueprint: {
+      pracas: [
+        { x0: 3, z0: -26, x1: 16, z1: -14 },
+        { x0: -15, z0: 2, x1: 3, z1: 25 },
+        { x0: 7, z0: 6, x1: 24, z1: 26 },
+        { x0: 28, z0: -2, x1: 32, z1: 4 },
+        { x0: -32, z0: 11, x1: -21, z1: 25 },
+      ],
+      corredores: [
+        { x0: 8, z0: -14, x1: 12, z1: -7 },
+        { x0: -10, z0: -7, x1: 28, z1: -3 },
+        { x0: -10, z0: -3, x1: -6, z1: 2 },
+        { x0: 8, z0: -3, x1: 12, z1: 6 },
+        { x0: 24, z0: -3, x1: 28, z1: 10 },
+        { x0: -21, z0: 20, x1: -15, z1: 25 },
+        { x0: 3, z0: 20, x1: 7, z1: 25 },
+      ],
+    },
     caixotes: [
-      { x: 20, z: -15, w: 2, d: 2, h: 1.6 },
-      { x: 22, z: -15, w: 2, d: 2, h: 1.6 },
-      { x: 20, z: -15, w: 2, d: 2, h: 3.2 },
-      { x: -20, z: 15, w: 2, d: 2, h: 1.6 },
-      { x: -22, z: 15, w: 2, d: 2, h: 1.6 },
-      { x: -20, z: 15, w: 2, d: 2, h: 3.2 },
-      { x: -16, z: -17, w: 2.4, d: 2.4, h: 2 },
-      { x: 16, z: 17, w: 2.4, d: 2.4, h: 2 },
-      { x: 1, z: -8.5, w: 3, d: 1.6, h: 1.8 },
-      { x: -1, z: 8.5, w: 3, d: 1.6, h: 1.8 },
-      { x: -26, z: 8, w: 2, d: 2, h: 1.6 },
-      { x: 26, z: -8, w: 2, d: 2, h: 1.6 },
+      { x: -9, z: 12, w: 2, d: 2, h: 1.6 },
+      { x: -7, z: 12, w: 2, d: 2, h: 1.6 },
+      { x: -9, z: 12, w: 2, d: 2, h: 3.2 },
+      { x: 18, z: 12, w: 2, d: 2, h: 1.6 },
+      { x: 20, z: 12, w: 2, d: 2, h: 1.6 },
+      { x: 18, z: 12, w: 2, d: 2, h: 3.2 },
+      { x: -3, z: 6, w: 2.4, d: 2.4, h: 2 },
+      { x: 12, z: 22, w: 2.4, d: 2.4, h: 2 },
+      { x: 30.5, z: 1, w: 1.6, d: 1.6, h: 1.6 },
     ],
     spawnsTime: [
-      { x: -27, z: 17, yaw: -1.01 },
-      { x: 27, z: -17, yaw: 2.13 },
+      { x: -26.5, z: 13, yaw: -2.6 },
+      { x: 10, z: -24, yaw: 3.14 },
     ],
     spawnsBots: [
-      [-24, -17], [-27, -8], [-18, 18], [-8, -19], [24, 17], [27, 8], [18, -18], [8, 19],
+      [-26, 12], [-10, 10], [-5, 20], [-13, 16], [12, -24], [16, 10], [10, 16], [30, 3],
     ],
   },
 ];
