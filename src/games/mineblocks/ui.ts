@@ -15,6 +15,7 @@ export function criarUI(ctx: Contexto): UI {
     balao: $('[data-balao]'),
     reticula: $('[data-reticula]'),
     aguaOverlay: $('[data-agua]'),
+    susto: $('[data-susto]'),
     salvando: $('[data-salvando]'),
     nomeMundoHud: $('[data-nome-mundo]'),
     controles: $('[data-controles]'),
@@ -408,6 +409,11 @@ export function criarUI(ctx: Contexto): UI {
       if (estado !== 'salvando') {
         salvandoTimer = window.setTimeout(() => { el.hidden = true; }, 1800);
       }
+    },
+    flashSusto() {
+      els.susto.classList.remove('show');
+      void els.susto.offsetWidth;
+      els.susto.classList.add('show');
     },
   };
   return api;

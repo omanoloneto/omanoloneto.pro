@@ -70,6 +70,8 @@ export interface Audio {
   somUI(): void;
   somSalvo(): void;
   somErro(): void;
+  somFantasma(): void;
+  somSusto(): void;
 }
 
 export interface Textura {
@@ -148,7 +150,17 @@ export interface Metas {
 
 export interface Fisica {
   passo(dt: number): void;
+  empurrar(dx: number, dz: number): void;
   assentar(): void; // põe o jogador em pé no chão do spawn
+}
+
+export interface Kotsooh {
+  nascer(): void;
+  passo(dt: number): void;
+  aparecer(): boolean;
+  ativo(): boolean;
+  posicao(): { x: number; y: number; z: number } | null;
+  limpar(): void;
 }
 
 export interface Camera3 {
@@ -205,6 +217,7 @@ export interface UI {
   alternarCraft(abrir?: boolean): void; // abre/fecha o painel do inventário
   atualizarModo(): void;
   mostrarSalvando(estado: 'salvando' | 'salvo' | 'erro' | 'nada'): void;
+  flashSusto(): void;
   // baú: painel de troca de itens (conteúdo ↔ inventário)
   abrirBau(chave: number, titulo: string, editavel: boolean): void;
   fecharBau(): void;
@@ -287,6 +300,7 @@ export interface Contexto {
   ceu: Ceu;
   mob: Mob;
   fisica: Fisica;
+  kotsooh: Kotsooh;
   camera3: Camera3;
   mira: Mira;
   edicao: Edicao;

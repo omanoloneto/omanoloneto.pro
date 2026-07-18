@@ -31,6 +31,7 @@ const description =
 
       <div class="reticula" data-reticula aria-hidden="true" hidden>+</div>
       <div class="agua-overlay" data-agua aria-hidden="true" hidden></div>
+      <div class="susto" data-susto aria-hidden="true"></div>
 
       <!-- hotbar de blocos + fabricação -->
       <nav class="hotbar" data-hotbar aria-label="Blocos pra construir" hidden></nav>
@@ -246,6 +247,13 @@ const description =
       pointer-events: none;
     }
     .agua-overlay[hidden] { display: none; }
+    .susto {
+      position: absolute; inset: 0; z-index: 16;
+      pointer-events: none; opacity: 0;
+      box-shadow: inset 0 0 120px 40px rgba(120, 80, 200, 0.75);
+    }
+    .susto.show { animation: susto-pisca 0.45s ease-out; }
+    @keyframes susto-pisca { 0% { opacity: 1; } 100% { opacity: 0; } }
 
     /* ===== Hotbar ===== */
     .hotbar {
@@ -689,6 +697,7 @@ const description =
 
     @media (prefers-reduced-motion: reduce) {
       .fantasma, .gerando__cubo { animation: none; }
+      .susto.show { animation: none; }
       .toast, .balao { transition: none; }
     }
   </style>

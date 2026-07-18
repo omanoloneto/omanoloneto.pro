@@ -52,6 +52,32 @@ export function criarAudio(ctx: Contexto): Audio {
     src.stop(t + dur + 0.02);
   }
 
+  function howl(f0: number, f1: number, dur: number, vol: number) {
+    if (!actx) return;
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    const lfo = actx.createOscillator();
+    const lfoGain = actx.createGain();
+    o.type = 'sine';
+    lfo.type = 'sine';
+    lfo.frequency.value = 5.5;
+    lfoGain.gain.value = f0 * 0.06;
+    lfo.connect(lfoGain);
+    lfoGain.connect(o.frequency);
+    o.connect(g);
+    g.connect(actx.destination);
+    const t = actx.currentTime;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + dur * 0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.start(t);
+    lfo.start(t);
+    o.stop(t + dur + 0.05);
+    lfo.stop(t + dur + 0.05);
+  }
+
   const mudo = () => ctx.estado.mudo;
 
   return {
@@ -90,5 +116,7 @@ export function criarAudio(ctx: Contexto): Audio {
     somUI() { if (mudo()) return; tom(660, 0, 0.06, 'triangle', 0.1); },
     somSalvo() { if (mudo()) return; tom(523, 0, 0.1, 'triangle', 0.12); tom(784, 0.09, 0.14, 'triangle', 0.12); },
     somErro() { if (mudo()) return; tom(220, 0, 0.15, 'square', 0.08); },
+    somFantasma() { if (mudo()) return; howl(180, 118, 1.1, 0.09); },
+    somSusto() { if (mudo()) return; howl(300, 150, 0.35, 0.14); croc(250, 0.2, 0.18); },
   };
 }

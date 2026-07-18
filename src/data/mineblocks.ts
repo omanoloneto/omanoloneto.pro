@@ -156,6 +156,22 @@ export const config = {
     larguraDropMax: 38000,
     maxLaPerto: 5, // não dropa se já tem 5 tufos por perto (raio 6)
   },
+  kotsooh: {
+    vel: 3.6,
+    alturaVoo: 1.6,
+    alcanceBatida: 1.2,
+    empurrao: 7,
+    pulinho: 4.5,
+    cooldownBatidaMs: 2600,
+    esperaMinS: 8,
+    esperaMaxS: 25,
+    retornoMinS: 25,
+    retornoMaxS: 50,
+    distSpawn: 26,
+    abrigoS: 1.5,
+    uivoMinMs: 6000,
+    uivoMaxMs: 11000,
+  },
   // folhas órfãs: espera antes de cair (decay em cascata, estilo Minecraft)
   decay: { atrasoMinMs: 400, atrasoMaxMs: 2900, chanceMuda: 0.15, alcanceTronco: 6 },
   salvar: {

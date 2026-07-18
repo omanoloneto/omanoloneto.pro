@@ -52,6 +52,9 @@ export function criarFisica(ctx: Contexto): Fisica {
     return true;
   }
 
+  let kbX = 0;
+  let kbZ = 0;
+
   function passo(dt: number) {
     const p = jogador;
     const { SX, SZ, SY } = ctx.cfg.mundo;
@@ -68,8 +71,13 @@ export function criarFisica(ctx: Contexto): Fisica {
     const rx = Math.cos(p.yaw);
     const rz = -Math.sin(p.yaw);
     const fator = p.naAgua ? F.aguaFator : 1;
-    p.vx = (fx * my + rx * mx) * F.andar * fator;
-    p.vz = (fz * my + rz * mx) * F.andar * fator;
+    p.vx = (fx * my + rx * mx) * F.andar * fator + kbX;
+    p.vz = (fz * my + rz * mx) * F.andar * fator + kbZ;
+    const kbDecay = Math.exp(-dt * 5);
+    kbX *= kbDecay;
+    kbZ *= kbDecay;
+    if (Math.abs(kbX) < 0.02) kbX = 0;
+    if (Math.abs(kbZ) < 0.02) kbZ = 0;
 
     // ----- na água? (bloco do tronco) -----
     p.naAgua = porId(mundo.obter(Math.floor(p.x), Math.floor(p.y + 0.9), Math.floor(p.z))).render === 'agua';
@@ -126,6 +134,10 @@ export function criarFisica(ctx: Contexto): Fisica {
 
   return {
     passo,
+    empurrar(dx: number, dz: number) {
+      kbX += dx;
+      kbZ += dz;
+    },
     assentar() {
       const p = jogador;
       const topo = mundo.chaoMaisAlto(Math.floor(p.x), Math.floor(p.z));
