@@ -1,176 +1,71 @@
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { Contexto, Kotsooh } from './tipos';
 
 const NIGHT_START = 900;
 
-function drawGhostFront(g: CanvasRenderingContext2D) {
-  g.clearRect(0, 0, 64, 96);
+function cubePart(w: number, h: number, d: number, x: number, y: number, z: number, cor: THREE.Color, rz = 0, rx = 0): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(w, h, d);
+  if (rz) g.rotateZ(rz);
+  if (rx) g.rotateX(rx);
+  g.translate(x, y, z);
+  const n = g.attributes.position.count;
+  const cores = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    cores[i * 3] = cor.r;
+    cores[i * 3 + 1] = cor.g;
+    cores[i * 3 + 2] = cor.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(cores, 3));
+  return g;
+}
 
-  g.fillStyle = '#8a6aaa';
-  g.beginPath();
-  g.moveTo(10, 18); g.lineTo(2, 6); g.lineTo(18, 10); g.closePath();
-  g.fill();
-  g.beginPath();
-  g.moveTo(54, 16); g.lineTo(62, 4); g.lineTo(46, 8); g.closePath();
-  g.fill();
-  g.fillStyle = '#6a4e8a';
-  g.beginPath();
-  g.moveTo(10, 18); g.lineTo(6, 8); g.lineTo(14, 12); g.closePath();
-  g.fill();
+function ghostGeometry(): THREE.BufferGeometry {
+  const body = new THREE.Color('#f2f0ec');
+  const bodyShade = new THREE.Color('#dcd8d0');
+  const horn = new THREE.Color('#8a6aaa');
+  const socket = new THREE.Color('#4a3a7a');
+  const gold = new THREE.Color('#f0d896');
+  const mouth = new THREE.Color('#3a3244');
+  const claw = new THREE.Color('#f8f6f0');
+  const palm = new THREE.Color('#7a5f9d');
+  const tail = new THREE.Color('#9a7ab8');
 
-  g.fillStyle = '#f2f0ec';
-  g.beginPath();
-  g.ellipse(32, 30, 24, 22, 0, Math.PI, 0);
-  g.fill();
-  g.fillRect(8, 28, 48, 34);
-  g.beginPath();
-  g.ellipse(32, 62, 24, 10, 0, 0, Math.PI);
-  g.fill();
-
-  g.fillStyle = '#e2ded6';
-  g.fillRect(8, 56, 6, 8);
-  g.fillRect(50, 54, 6, 8);
-
-  const eye = (ex: number, ey: number) => {
-    g.fillStyle = '#4a3a7a';
-    g.beginPath();
-    g.ellipse(ex, ey, 8, 9.5, 0, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = '#d8d4e8';
-    g.beginPath();
-    g.ellipse(ex, ey - 1, 5.5, 6.5, 0, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = '#f0d896';
-    g.beginPath();
-    g.arc(ex, ey - 1, 4, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = '#fff8e0';
-    g.beginPath();
-    g.arc(ex - 1.5, ey - 2.5, 1.5, 0, Math.PI * 2);
-    g.fill();
-  };
-  eye(21, 32);
-  eye(43, 27);
-
-  g.strokeStyle = '#3a3244';
-  g.lineWidth = 2;
-  g.beginPath();
-  g.arc(32, 48, 5, Math.PI * 1.15, Math.PI * 1.85);
-  g.stroke();
-
-  const hand = (hx: number, hy: number) => {
-    g.fillStyle = '#f2f0ec';
-    g.beginPath();
-    g.ellipse(hx, hy, 8, 7, 0, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = '#7a5f9d';
-    g.beginPath();
-    g.ellipse(hx, hy + 3, 6, 4, 0, 0, Math.PI);
-    g.fill();
-    g.fillStyle = '#f8f6f0';
-    for (const dx of [-4, 0, 4]) {
-      g.beginPath();
-      g.moveTo(hx + dx - 1.5, hy + 4);
-      g.lineTo(hx + dx, hy + 11);
-      g.lineTo(hx + dx + 1.5, hy + 4);
-      g.closePath();
-      g.fill();
+  const p: THREE.BufferGeometry[] = [];
+  p.push(cubePart(1.0, 1.3, 0.8, 0, 1.35, 0, body));
+  p.push(cubePart(1.1, 0.35, 0.9, 0, 1.75, 0, body));
+  p.push(cubePart(0.2, 0.28, 0.2, -0.48, 2.05, 0, horn, 0.45));
+  p.push(cubePart(0.2, 0.28, 0.2, 0.48, 2.05, 0, horn, -0.45));
+  p.push(cubePart(0.12, 0.16, 0.12, -0.6, 2.18, 0, horn, 0.7));
+  p.push(cubePart(0.12, 0.16, 0.12, 0.6, 2.18, 0, horn, -0.7));
+  p.push(cubePart(0.3, 0.36, 0.06, -0.24, 1.58, 0.41, socket));
+  p.push(cubePart(0.3, 0.36, 0.06, 0.24, 1.66, 0.41, socket));
+  p.push(cubePart(0.15, 0.18, 0.06, -0.24, 1.58, 0.45, gold));
+  p.push(cubePart(0.15, 0.18, 0.06, 0.24, 1.66, 0.45, gold));
+  p.push(cubePart(0.24, 0.07, 0.05, 0, 1.24, 0.41, mouth));
+  p.push(cubePart(0.07, 0.07, 0.05, -0.17, 1.3, 0.41, mouth));
+  p.push(cubePart(0.07, 0.07, 0.05, 0.17, 1.3, 0.41, mouth));
+  p.push(cubePart(0.3, 0.3, 0.3, -0.62, 1.05, 0.16, body));
+  p.push(cubePart(0.3, 0.3, 0.3, 0.62, 1.05, 0.16, body));
+  p.push(cubePart(0.24, 0.14, 0.24, -0.62, 0.92, 0.16, palm));
+  p.push(cubePart(0.24, 0.14, 0.24, 0.62, 0.92, 0.16, palm));
+  for (const s of [-1, 1]) {
+    for (const dx of [-0.08, 0, 0.08]) {
+      p.push(cubePart(0.06, 0.18, 0.06, s * 0.62 + dx, 0.8, 0.2, claw));
     }
-  };
-  hand(12, 58);
-  hand(52, 55);
-
-  g.fillStyle = '#f2f0ec';
-  for (const [tx, tw, th] of [[10, 8, 12], [20, 7, 8], [28, 9, 14], [38, 7, 9], [46, 8, 12]] as const) {
-    g.beginPath();
-    g.moveTo(tx, 64);
-    g.lineTo(tx + tw / 2, 64 + th);
-    g.lineTo(tx + tw, 64);
-    g.closePath();
-    g.fill();
   }
-
-  g.fillStyle = '#9a7ab8';
-  g.beginPath();
-  g.moveTo(30, 68);
-  g.quadraticCurveTo(24, 80, 12, 88);
-  g.quadraticCurveTo(20, 82, 26, 74);
-  g.closePath();
-  g.fill();
-  g.beginPath();
-  g.ellipse(28, 72, 6, 4, -0.6, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = '#b898d4';
-  g.beginPath();
-  g.ellipse(14, 86, 4, 2.5, -0.8, 0, Math.PI * 2);
-  g.fill();
-
-  g.fillStyle = '#5a4a8a';
-  for (const [px, py] of [[24, 58], [36, 62], [42, 56], [18, 50]] as const) {
-    g.fillRect(px, py, 2, 3);
+  const hem = [
+    [-0.4, 0.52, 0.3], [-0.2, 0.62, 0.24], [0, 0.5, 0.34], [0.2, 0.6, 0.26], [0.4, 0.54, 0.3],
+  ] as const;
+  for (const [hx, hy, hh] of hem) {
+    p.push(cubePart(0.2, hh, 0.7, hx, hy, 0, bodyShade));
   }
-}
-
-function drawGhostBack(g: CanvasRenderingContext2D) {
-  g.clearRect(0, 0, 64, 96);
-
-  g.fillStyle = '#8a6aaa';
-  g.beginPath();
-  g.moveTo(18, 16); g.lineTo(8, 5); g.lineTo(24, 9); g.closePath();
-  g.fill();
-  g.beginPath();
-  g.moveTo(46, 14); g.lineTo(56, 3); g.lineTo(40, 7); g.closePath();
-  g.fill();
-
-  g.fillStyle = '#e9e6df';
-  g.beginPath();
-  g.ellipse(32, 30, 24, 22, 0, Math.PI, 0);
-  g.fill();
-  g.fillRect(8, 28, 48, 34);
-  g.beginPath();
-  g.ellipse(32, 62, 24, 10, 0, 0, Math.PI);
-  g.fill();
-
-  g.fillStyle = '#dbd6cc';
-  g.beginPath();
-  g.ellipse(32, 34, 14, 16, 0, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = '#e9e6df';
-  g.beginPath();
-  g.ellipse(30, 32, 11, 13, 0, 0, Math.PI * 2);
-  g.fill();
-
-  g.fillStyle = '#e9e6df';
-  for (const [tx, tw, th] of [[10, 8, 12], [20, 7, 8], [28, 9, 14], [38, 7, 9], [46, 8, 12]] as const) {
-    g.beginPath();
-    g.moveTo(tx, 64);
-    g.lineTo(tx + tw / 2, 64 + th);
-    g.lineTo(tx + tw, 64);
-    g.closePath();
-    g.fill();
-  }
-
-  g.fillStyle = '#9a7ab8';
-  g.beginPath();
-  g.moveTo(34, 68);
-  g.quadraticCurveTo(40, 80, 52, 88);
-  g.quadraticCurveTo(44, 82, 38, 74);
-  g.closePath();
-  g.fill();
-  g.fillStyle = '#b898d4';
-  g.beginPath();
-  g.ellipse(50, 86, 4, 2.5, 0.8, 0, Math.PI * 2);
-  g.fill();
-}
-
-function makeTex(draw: (g: CanvasRenderingContext2D) => void): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 64;
-  canvas.height = 96;
-  draw(canvas.getContext('2d')!);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+  p.push(cubePart(0.24, 0.24, 0.24, 0.16, 0.42, -0.14, tail, 0.35));
+  p.push(cubePart(0.17, 0.17, 0.17, 0.34, 0.28, -0.26, tail, 0.6));
+  p.push(cubePart(0.11, 0.11, 0.11, 0.48, 0.16, -0.36, tail, 0.9));
+  const geo = mergeGeometries(p)!;
+  p.forEach((g) => g.dispose());
+  return geo;
 }
 
 type Ghost = {
@@ -179,6 +74,7 @@ type Ghost = {
   z: number;
   faceX: number;
   faceZ: number;
+  yawVis: number;
   tx: number;
   tz: number;
   state: 'wander' | 'chase';
@@ -190,16 +86,15 @@ type Ghost = {
   hitCdMs: number;
   bobPhase: number;
   looking: boolean;
-  mat: THREE.SpriteMaterial;
-  sprite: THREE.Sprite;
+  mat: THREE.MeshBasicMaterial;
+  mesh: THREE.Mesh;
 };
 
 export function criarKotsooh(ctx: Contexto): Kotsooh {
   const K = ctx.cfg.kotsooh;
   const { SX, SZ, SY, nivelAgua } = ctx.cfg.mundo;
 
-  const texFront = makeTex(drawGhostFront);
-  const texBack = makeTex(drawGhostBack);
+  const geo = ghostGeometry();
 
   function rand(a: number, b: number) {
     return a + Math.random() * (b - a);
@@ -207,17 +102,16 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
 
   const ghosts: Ghost[] = [];
   for (let i = 0; i < K.quantos; i++) {
-    const mat = new THREE.SpriteMaterial({ map: texBack, transparent: true, opacity: 0, depthWrite: false });
-    const sprite = new THREE.Sprite(mat);
-    sprite.scale.set(1.7, 2.55, 1);
-    sprite.renderOrder = 3;
-    sprite.visible = false;
-    ctx.scene.add(sprite);
+    const mat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = 3;
+    mesh.visible = false;
+    ctx.scene.add(mesh);
     ghosts.push({
-      x: 0, y: 0, z: 0, faceX: 1, faceZ: 0, tx: 0, tz: 0,
+      x: 0, y: 0, z: 0, faceX: 1, faceZ: 0, yawVis: 0, tx: 0, tz: 0,
       state: 'wander', retargetMs: 0, freezeMs: 0, gazeS: 0, noTriggerS: 0,
       shelterS: 0, hitCdMs: 0, bobPhase: rand(0, Math.PI * 2), looking: false,
-      mat, sprite,
+      mat, mesh,
     });
   }
 
@@ -302,14 +196,16 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
       const fa = Math.random() * Math.PI * 2;
       g.faceX = Math.cos(fa);
       g.faceZ = Math.sin(fa);
+      g.yawVis = Math.atan2(g.faceX, g.faceZ);
       g.state = 'wander';
       g.gazeS = 0;
       g.noTriggerS = 0;
       g.shelterS = 0;
       g.hitCdMs = 0;
+      g.freezeMs = 0;
       g.looking = false;
       g.mat.opacity = 0;
-      g.sprite.visible = true;
+      g.mesh.visible = true;
       newWanderTarget(g);
       ok = true;
     }
@@ -329,6 +225,18 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
     }
   }
 
+  function applyVisual(g: Ghost, dt: number) {
+    const targetYaw = Math.atan2(g.faceX, g.faceZ);
+    let dYaw = targetYaw - g.yawVis;
+    while (dYaw > Math.PI) dYaw -= Math.PI * 2;
+    while (dYaw < -Math.PI) dYaw += Math.PI * 2;
+    g.yawVis += dYaw * Math.min(1, dt * 6);
+    g.mesh.rotation.y = g.yawVis;
+    const pulse = 1 + Math.sin(bobT * 3.1 + g.bobPhase) * 0.03;
+    g.mesh.scale.setScalar(pulse);
+    g.mesh.position.set(g.x, g.y - 1.3 + Math.sin(bobT * 2.6 + g.bobPhase) * 0.16, g.z);
+  }
+
   function passo(dt: number) {
     bobT += dt;
     const night = isNight();
@@ -339,9 +247,9 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
         if (g.state === 'chase') stopChase(g, false);
         g.mat.opacity = Math.max(0, g.mat.opacity - dt * 0.7);
         g.y += dt * 1.5;
-        g.sprite.position.set(g.x, g.y + Math.sin(bobT * 2.6 + g.bobPhase) * 0.16, g.z);
+        applyVisual(g, dt);
         if (g.mat.opacity > 0.01) anyVisible = true;
-        else g.sprite.visible = false;
+        else g.mesh.visible = false;
       }
       if (!anyVisible) materialized = false;
       return;
@@ -366,7 +274,7 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
     }
 
     for (const g of ghosts) {
-      if (!g.sprite.visible) continue;
+      if (!g.mesh.visible) continue;
       g.mat.opacity = Math.min(0.92, g.mat.opacity + dt * 0.8);
       g.hitCdMs = Math.max(0, g.hitCdMs - dt * 1000);
       g.noTriggerS = Math.max(0, g.noTriggerS - dt);
@@ -474,18 +382,9 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
         }
       }
 
-      const showFront = g.state === 'chase' || g.looking;
-      const wantTex = showFront ? texFront : texBack;
-      if (g.mat.map !== wantTex) {
-        g.mat.map = wantTex;
-        g.mat.needsUpdate = true;
-      }
-
       const targetY = g.state === 'chase' ? Math.max(hoverY(g.x, g.z), eyeY - 0.4) : hoverY(g.x, g.z);
       g.y += (targetY - g.y) * Math.min(1, dt * 3);
-      const pulse = 1 + Math.sin(bobT * 3.1 + g.bobPhase) * 0.03;
-      g.sprite.scale.set(1.7 * pulse, 2.55 * pulse, 1);
-      g.sprite.position.set(g.x, g.y + Math.sin(bobT * 2.6 + g.bobPhase) * 0.16, g.z);
+      applyVisual(g, dt);
     }
   }
 
@@ -495,7 +394,7 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
       toldOnce = false;
       for (const g of ghosts) {
         g.state = 'wander';
-        g.sprite.visible = false;
+        g.mesh.visible = false;
         g.mat.opacity = 0;
       }
     },
@@ -515,14 +414,14 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
         g.freezeMs = 4000;
       }
     },
-    ativo: () => ghosts.some((g) => g.state === 'chase' && g.sprite.visible),
+    ativo: () => ghosts.some((g) => g.state === 'chase' && g.mesh.visible),
     fantasmas: () =>
       ghosts
-        .filter((g) => g.sprite.visible)
+        .filter((g) => g.mesh.visible)
         .map((g) => ({ x: g.x, y: g.y, z: g.z, cacando: g.state === 'chase', olhando: g.looking })),
     limpar() {
       materialized = false;
-      for (const g of ghosts) g.sprite.visible = false;
+      for (const g of ghosts) g.mesh.visible = false;
     },
   };
 }
