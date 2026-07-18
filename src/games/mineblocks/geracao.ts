@@ -92,121 +92,130 @@ function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: n
   }
 
   type Room = { x: number; z: number; w: number; d: number };
-  const rooms: Room[] = [];
-  const baseAngle = rng() * Math.PI * 2;
-  const spin = rng() < 0.5 ? 1 : -1;
-  for (let i = 0; i < D.salas; i++) {
-    for (let t = 0; t < 60; t++) {
-      const ang = baseAngle + spin * i * 0.22 + (rng() - 0.5) * 0.12;
-      const need = KEEP_OUT / Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)));
-      const dist = need + 3 + rng() * 8;
-      const cx = Math.round(midX + Math.cos(ang) * dist);
-      const cz = Math.round(midZ + Math.sin(ang) * dist);
-      const w = 7 + 2 * Math.floor(rng() * 3);
-      const d = 7 + 2 * Math.floor(rng() * 2);
-      const x0 = cx - (w >> 1);
-      const z0 = cz - (d >> 1);
-      if (Math.max(Math.abs(cx - midX), Math.abs(cz - midZ)) <= KEEP_OUT) continue;
-      if (!areaOk(x0 - 1, x0 + w, z0 - 1, z0 + d)) continue;
-      if (rooms.some((r) => Math.abs(r.x - cx) < (r.w + w) / 2 + 3 && Math.abs(r.z - cz) < (r.d + d) / 2 + 3)) continue;
-      rooms.push({ x: cx, z: cz, w, d });
-      break;
-    }
-  }
-  if (!rooms.length) return;
+  const todas: Room[] = [];
+  const baseGlobal = rng() * Math.PI * 2;
 
-  for (let i = 1; i < rooms.length; i++) {
-    const a = rooms[i - 1];
-    const b = rooms[i];
-    const xLo = Math.min(a.x, b.x);
-    const xHi = Math.max(a.x, b.x);
-    const zLo = Math.min(a.z, b.z);
-    const zHi = Math.max(a.z, b.z);
-    if (areaOk(xLo, xHi + 1, a.z, a.z + 1) && areaOk(b.x, b.x + 1, zLo, zHi + 1)) {
-      carveBox(xLo, xHi + 1, a.z, a.z + 1, HALL_TOP);
-      carveBox(b.x, b.x + 1, zLo, zHi + 1, HALL_TOP);
-    } else if (areaOk(a.x, a.x + 1, zLo, zHi + 1) && areaOk(xLo, xHi + 1, b.z, b.z + 1)) {
-      carveBox(a.x, a.x + 1, zLo, zHi + 1, HALL_TOP);
-      carveBox(xLo, xHi + 1, b.z, b.z + 1, HALL_TOP);
-    }
-  }
-
-  function seedOre(roomIndex: number, oreId: number, quota: number) {
-    const r = rooms[roomIndex];
-    const x0 = r.x - (r.w >> 1);
-    const z0 = r.z - (r.d >> 1);
-    const x1 = x0 + r.w - 1;
-    const z1 = z0 + r.d - 1;
-    let placed = 0;
-    for (let t = 0; t < quota * 5 && placed < quota; t++) {
-      const face = Math.floor(rng() * 5);
-      let x = x0 + Math.floor(rng() * r.w);
-      let z = z0 + Math.floor(rng() * r.d);
-      let y = FLOOR_Y + 1 + Math.floor(rng() * 4);
-      if (face === 0) x = x0 - 1;
-      else if (face === 1) x = x1 + 1;
-      else if (face === 2) z = z0 - 1;
-      else if (face === 3) z = z1 + 1;
-      else y = ROOM_TOP + 1;
-      if (mundo.obter(x, y, z) === 3) {
-        setCell(x, y, z, oreId);
-        placed++;
+  // cada dungeon vive num setor angular próprio ao redor do spawn; a lista
+  // `todas` impede sala de uma invadir sala da outra
+  function digOne(baseAngle: number) {
+    const rooms: Room[] = [];
+    const spin = rng() < 0.5 ? 1 : -1;
+    for (let i = 0; i < D.salas; i++) {
+      for (let t = 0; t < 60; t++) {
+        const ang = baseAngle + spin * i * 0.22 + (rng() - 0.5) * 0.12;
+        const need = KEEP_OUT / Math.max(Math.abs(Math.cos(ang)), Math.abs(Math.sin(ang)));
+        const dist = need + 3 + rng() * 8;
+        const cx = Math.round(midX + Math.cos(ang) * dist);
+        const cz = Math.round(midZ + Math.sin(ang) * dist);
+        const w = 7 + 2 * Math.floor(rng() * 3);
+        const d = 7 + 2 * Math.floor(rng() * 2);
+        const x0 = cx - (w >> 1);
+        const z0 = cz - (d >> 1);
+        if (Math.max(Math.abs(cx - midX), Math.abs(cz - midZ)) <= KEEP_OUT) continue;
+        if (!areaOk(x0 - 1, x0 + w, z0 - 1, z0 + d)) continue;
+        if (todas.some((r) => Math.abs(r.x - cx) < (r.w + w) / 2 + 3 && Math.abs(r.z - cz) < (r.d + d) / 2 + 3)) continue;
+        rooms.push({ x: cx, z: cz, w, d });
+        todas.push({ x: cx, z: cz, w, d });
+        break;
       }
     }
-  }
+    if (!rooms.length) return;
 
-  for (let i = 0; i < rooms.length; i++) {
-    const r = rooms[i];
-    const x0 = r.x - (r.w >> 1);
-    const z0 = r.z - (r.d >> 1);
-    carveBox(x0, x0 + r.w - 1, z0, z0 + r.d - 1, ROOM_TOP);
-  }
-  for (let i = 0; i < rooms.length; i++) {
-    seedOre(i, 22, D.carvaoPorSala);
-    if (i >= 2) seedOre(i, 25, D.ferroPorSala);
-  }
-
-  const last = rooms[rooms.length - 1];
-  setCell(last.x, FLOOR_Y + 1, last.z, 17);
-  const loot = new Array(ctx.blocos.length).fill(0);
-  loot[6] = 8;
-  loot[8] = 4;
-  loot[9] = 6;
-  loot[23] = 6;
-  loot[26] = 2;
-  ctx.metas.definir(last.x, FLOOR_Y + 1, last.z, { tipo: 'bau', dono: '*', itens: loot });
-
-  const first = rooms[0];
-  const stepX = Math.abs(first.x - midX) >= Math.abs(first.z - midZ) ? Math.sign(first.x - midX) : 0;
-  const stepZ = stepX === 0 ? Math.sign(first.z - midZ) : 0;
-  let sx = first.x + stepX * ((first.w >> 1) + 1);
-  let sz = first.z + stepZ * ((first.d >> 1) + 1);
-  let floorY = FLOOR_Y;
-  for (let i = 0; i < 60; i++) {
-    if (sx < 2 || sx >= SX - 2 || sz < 2 || sz >= SZ - 2) return;
-    const h = heightAt(sx, sz);
-    if (h < nivelAgua) return;
-    setCell(sx, floorY, sz, 10);
-    const emerged = floorY + 3 >= h;
-    const topo = emerged ? h + 1 : floorY + 3;
-    for (let y = floorY + 1; y <= topo; y++) setCell(sx, y, sz, 0);
-    if (floorY >= h) {
-      const px = stepZ;
-      const pz = stepX;
-      for (const s of [-1, 1]) {
-        const bx = sx + px * s;
-        const bz = sz + pz * s;
-        if (bx < 1 || bx >= SX - 1 || bz < 1 || bz >= SZ - 1) continue;
-        const hh = heightAt(bx, bz);
-        setCell(bx, hh + 1, bz, 10);
-        setCell(bx, hh + 2, bz, 10);
+    for (let i = 1; i < rooms.length; i++) {
+      const a = rooms[i - 1];
+      const b = rooms[i];
+      const xLo = Math.min(a.x, b.x);
+      const xHi = Math.max(a.x, b.x);
+      const zLo = Math.min(a.z, b.z);
+      const zHi = Math.max(a.z, b.z);
+      if (areaOk(xLo, xHi + 1, a.z, a.z + 1) && areaOk(b.x, b.x + 1, zLo, zHi + 1)) {
+        carveBox(xLo, xHi + 1, a.z, a.z + 1, HALL_TOP);
+        carveBox(b.x, b.x + 1, zLo, zHi + 1, HALL_TOP);
+      } else if (areaOk(a.x, a.x + 1, zLo, zHi + 1) && areaOk(xLo, xHi + 1, b.z, b.z + 1)) {
+        carveBox(a.x, a.x + 1, zLo, zHi + 1, HALL_TOP);
+        carveBox(xLo, xHi + 1, b.z, b.z + 1, HALL_TOP);
       }
-      return;
     }
-    floorY++;
-    sx += stepX;
-    sz += stepZ;
-  }
+
+    function seedOre(roomIndex: number, oreId: number, quota: number) {
+      const r = rooms[roomIndex];
+      const x0 = r.x - (r.w >> 1);
+      const z0 = r.z - (r.d >> 1);
+      const x1 = x0 + r.w - 1;
+      const z1 = z0 + r.d - 1;
+      let placed = 0;
+      for (let t = 0; t < quota * 5 && placed < quota; t++) {
+        const face = Math.floor(rng() * 5);
+        let x = x0 + Math.floor(rng() * r.w);
+        let z = z0 + Math.floor(rng() * r.d);
+        let y = FLOOR_Y + 1 + Math.floor(rng() * 4);
+        if (face === 0) x = x0 - 1;
+        else if (face === 1) x = x1 + 1;
+        else if (face === 2) z = z0 - 1;
+        else if (face === 3) z = z1 + 1;
+        else y = ROOM_TOP + 1;
+        if (mundo.obter(x, y, z) === 3) {
+          setCell(x, y, z, oreId);
+          placed++;
+        }
+      }
+    }
+
+    for (let i = 0; i < rooms.length; i++) {
+      const r = rooms[i];
+      const x0 = r.x - (r.w >> 1);
+      const z0 = r.z - (r.d >> 1);
+      carveBox(x0, x0 + r.w - 1, z0, z0 + r.d - 1, ROOM_TOP);
+    }
+    for (let i = 0; i < rooms.length; i++) {
+      seedOre(i, 22, D.carvaoPorSala);
+      if (i >= 2) seedOre(i, 25, D.ferroPorSala);
+    }
+
+    const last = rooms[rooms.length - 1];
+    setCell(last.x, FLOOR_Y + 1, last.z, 17);
+    const loot = new Array(ctx.blocos.length).fill(0);
+    loot[6] = 8;
+    loot[8] = 4;
+    loot[9] = 6;
+    loot[23] = 6;
+    loot[26] = 2;
+    ctx.metas.definir(last.x, FLOOR_Y + 1, last.z, { tipo: 'bau', dono: '*', itens: loot });
+
+    const first = rooms[0];
+    const stepX = Math.abs(first.x - midX) >= Math.abs(first.z - midZ) ? Math.sign(first.x - midX) : 0;
+    const stepZ = stepX === 0 ? Math.sign(first.z - midZ) : 0;
+    let sx = first.x + stepX * ((first.w >> 1) + 1);
+    let sz = first.z + stepZ * ((first.d >> 1) + 1);
+    let floorY = FLOOR_Y;
+    for (let i = 0; i < 60; i++) {
+      if (sx < 2 || sx >= SX - 2 || sz < 2 || sz >= SZ - 2) return;
+      const h = heightAt(sx, sz);
+      if (h < nivelAgua) return;
+      setCell(sx, floorY, sz, 10);
+      const emerged = floorY + 3 >= h;
+      const topo = emerged ? h + 1 : floorY + 3;
+      for (let y = floorY + 1; y <= topo; y++) setCell(sx, y, sz, 0);
+      if (floorY >= h) {
+        const px = stepZ;
+        const pz = stepX;
+        for (const s of [-1, 1]) {
+          const bx = sx + px * s;
+          const bz = sz + pz * s;
+          if (bx < 1 || bx >= SX - 1 || bz < 1 || bz >= SZ - 1) continue;
+          const hh = heightAt(bx, bz);
+          setCell(bx, hh + 1, bz, 10);
+          setCell(bx, hh + 2, bz, 10);
+        }
+        return;
+      }
+      floorY++;
+      sx += stepX;
+      sz += stepZ;
+    }
+    }
+
+  for (let d = 0; d < D.n; d++) digOne(baseGlobal + (d * Math.PI * 2) / D.n);
 }
 
 export function gerarMundo(ctx: Contexto, seed: number) {

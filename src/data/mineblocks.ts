@@ -124,7 +124,7 @@ export const config = {
     ilhaQueda: 11, // quantos blocos afunda até a borda
     arvores: 880, // tentativas (nem toda posição serve)
     flores: 2400,
-    dungeon: { salas: 7, carvaoPorSala: 10, ferroPorSala: 5 },
+    dungeon: { n: 3, salas: 7, carvaoPorSala: 10, ferroPorSala: 5 },
     // veios aleatórios no subsolo (fora da dungeon): carvão em qualquer
     // profundidade, ferro só na metade mais funda
     veins: {
