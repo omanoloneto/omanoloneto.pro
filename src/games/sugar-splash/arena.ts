@@ -156,6 +156,20 @@ function texFaroeste(letreiro: string | null, janelas: number, porta: boolean): 
   return c;
 }
 
+function texToldo(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 32;
+  const g = c.getContext('2d')!;
+  for (let x = 0; x < 64; x += 16) {
+    g.fillStyle = '#c94f4f';
+    g.fillRect(x, 0, 8, 32);
+    g.fillStyle = '#f2e6d0';
+    g.fillRect(x + 8, 0, 8, 32);
+  }
+  return c;
+}
+
 function texCaixote(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 64;
@@ -289,18 +303,9 @@ export function criarArena(ctx: Contexto): Arena {
     const tPraca = texAzulejo(T.deck[0], T.deck[1]);
     tPraca.repeat.set(0.5, 0.5);
     const pracaMat = new THREE.MeshLambertMaterial({ map: tPraca });
-    const tCorredor = texAzulejo(T.interna[0], T.interna[1]);
-    tCorredor.repeat.set(0.5, 0.5);
-    const corredorMat = new THREE.MeshLambertMaterial({ map: tCorredor });
-    const tetoMat = new THREE.MeshLambertMaterial({ color: new THREE.Color(T.interna[1]) });
 
     for (const r of bp.pracas) chaoComPiscinas(r, 0, pracaMat, M.piscinas);
-    for (const r of bp.corredores) {
-      chaoPlano(r.x0, r.z0, r.x1, r.z1, 0.02, corredorMat);
-      const teto = new THREE.Mesh(new THREE.BoxGeometry(r.x1 - r.x0, 0.3, r.z1 - r.z0), tetoMat);
-      teto.position.set((r.x0 + r.x1) / 2, 3.55, (r.z0 + r.z1) / 2);
-      group.add(teto);
-    }
+    for (const r of bp.corredores) chaoPlano(r.x0, r.z0, r.x1, r.z1, 0.02, pracaMat);
 
     const OFF = 200;
     const key = (ix: number, iz: number) => (ix + OFF) * 1000 + (iz + OFF);
@@ -368,14 +373,18 @@ export function criarArena(ctx: Contexto): Arena {
       texFaroeste('BANCO', 2, false),
       texFaroeste('ARMAZEM', 1, true),
     ];
-    const madeiraMat = new THREE.MeshLambertMaterial({ color: 0x8f6238 });
-    const cornijaMat = new THREE.MeshLambertMaterial({ color: 0x6e4a28 });
+    const toldoCanvas = texToldo();
+    const madeiraMat = new THREE.MeshLambertMaterial({ color: 0x6e4b28 });
+    const cornijaMat = new THREE.MeshLambertMaterial({ color: 0x53381e });
+    const posteMat = new THREE.MeshLambertMaterial({ color: 0x64431f });
+    const livre = (ix: number, iz: number) => andavel.has(key(ix, iz));
     let vi = 0;
     for (const r of retos) {
       const w = r.x1 - r.x0;
       const d = r.z1 - r.z0;
       const len = Math.max(w, d);
       const rep = Math.max(1, Math.round(len / 4));
+      const hPredio = [5, 4.3, 5.6, 4.7][vi % 4];
       const t = new THREE.CanvasTexture(fachadas[vi % fachadas.length]);
       t.colorSpace = THREE.SRGBColorSpace;
       t.wrapS = THREE.RepeatWrapping;
@@ -386,17 +395,70 @@ export function criarArena(ctx: Contexto): Arena {
       const mats = w >= d
         ? [madeiraMat, madeiraMat, madeiraMat, madeiraMat, fachadaMat, fachadaMat]
         : [fachadaMat, fachadaMat, madeiraMat, madeiraMat, madeiraMat, madeiraMat];
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, A.alturaParede, d), mats);
-      m.position.set((r.x0 + r.x1) / 2, A.alturaParede / 2, (r.z0 + r.z1) / 2);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, hPredio, d), mats);
+      const cx = (r.x0 + r.x1) / 2;
+      const cz = (r.z0 + r.z1) / 2;
+      m.position.set(cx, hPredio / 2, cz);
       group.add(m);
-      aabbs.push({ minX: r.x0, maxX: r.x1, minZ: r.z0, maxZ: r.z1, alt: A.alturaParede });
+      aabbs.push({ minX: r.x0, maxX: r.x1, minZ: r.z0, maxZ: r.z1, alt: hPredio });
+
       if (len >= 5) {
         const cornija = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.18, d + 0.3), cornijaMat);
-        cornija.position.set((r.x0 + r.x1) / 2, A.alturaParede + 0.09, (r.z0 + r.z1) / 2);
-        const hP = [0.6, 1.1, 0.8][vi % 3];
-        const platibanda = new THREE.Mesh(new THREE.BoxGeometry(w, hP, d), madeiraMat);
-        platibanda.position.set((r.x0 + r.x1) / 2, A.alturaParede + 0.18 + hP / 2, (r.z0 + r.z1) / 2);
-        group.add(cornija, platibanda);
+        cornija.position.set(cx, hPredio + 0.09, cz);
+        group.add(cornija);
+        const estilo = vi % 3;
+        if (estilo === 0) {
+          const plati = new THREE.Mesh(new THREE.BoxGeometry(w, 0.8, d), madeiraMat);
+          plati.position.set(cx, hPredio + 0.18 + 0.4, cz);
+          group.add(plati);
+        } else if (estilo === 1) {
+          const base = new THREE.Mesh(new THREE.BoxGeometry(w, 0.45, d), madeiraMat);
+          base.position.set(cx, hPredio + 0.18 + 0.225, cz);
+          const topo = new THREE.Mesh(new THREE.BoxGeometry(w >= d ? w * 0.45 : w, 0.6, w >= d ? d : d * 0.45), madeiraMat);
+          topo.position.set(cx, hPredio + 0.63 + 0.3, cz);
+          group.add(base, topo);
+        } else {
+          const plati = new THREE.Mesh(new THREE.BoxGeometry(w, 0.4, d), madeiraMat);
+          plati.position.set(cx, hPredio + 0.18 + 0.2, cz);
+          group.add(plati);
+        }
+      }
+
+      if (len >= 6) {
+        const toldoTex = new THREE.CanvasTexture(toldoCanvas);
+        toldoTex.colorSpace = THREE.SRGBColorSpace;
+        toldoTex.wrapS = THREE.RepeatWrapping;
+        toldoTex.magFilter = THREE.NearestFilter;
+        toldoTex.repeat.set(Math.max(2, Math.round(len / 2)), 1);
+        const toldoMat = new THREE.MeshLambertMaterial({ map: toldoTex, side: THREE.DoubleSide });
+        const montarToldo = (ladoZ: boolean, dir: 1 | -1) => {
+          const comp = len - 0.9;
+          const toldo = new THREE.Mesh(
+            ladoZ ? new THREE.BoxGeometry(comp, 0.06, 1.4) : new THREE.BoxGeometry(1.4, 0.06, comp),
+            toldoMat
+          );
+          if (ladoZ) {
+            toldo.position.set(cx, 2.8, dir > 0 ? r.z1 + 0.62 : r.z0 - 0.62);
+            toldo.rotation.x = 0.3 * dir;
+          } else {
+            toldo.position.set(dir > 0 ? r.x1 + 0.62 : r.x0 - 0.62, 2.8, cz);
+            toldo.rotation.z = -0.3 * dir;
+          }
+          group.add(toldo);
+          for (const ponta of [-1, 1]) {
+            const poste = new THREE.Mesh(new THREE.BoxGeometry(0.09, 2.55, 0.09), posteMat);
+            if (ladoZ) poste.position.set(cx + ponta * (comp / 2 - 0.25), 1.275, dir > 0 ? r.z1 + 1.12 : r.z0 - 1.12);
+            else poste.position.set(dir > 0 ? r.x1 + 1.12 : r.x0 - 1.12, 1.275, cz + ponta * (comp / 2 - 0.25));
+            group.add(poste);
+          }
+        };
+        if (w >= d) {
+          if (livre(Math.floor(cx), r.z1)) montarToldo(true, 1);
+          else if (livre(Math.floor(cx), r.z0 - 1)) montarToldo(true, -1);
+        } else {
+          if (livre(r.x1, Math.floor(cz))) montarToldo(false, 1);
+          else if (livre(r.x0 - 1, Math.floor(cz))) montarToldo(false, -1);
+        }
       }
       vi++;
     }
@@ -613,6 +675,33 @@ export function criarArena(ctx: Contexto): Arena {
         const anel = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.14, 8, 20), espiral);
         anel.position.set(lx, 3.8, lz + 0.28);
         group.add(haste, doce, anel);
+      }
+
+      const barrilMat = new THREE.MeshLambertMaterial({ color: 0x8a5f34 });
+      const aroMat = new THREE.MeshLambertMaterial({ color: 0x3e3e42 });
+      for (const [bx, bz] of [[5.5, -4.2], [8.8, -1.5], [-14.2, 3.4], [23.2, 7.3], [-19.9, 21.4]] as Array<[number, number]>) {
+        const corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.36, 0.82, 10), barrilMat);
+        corpo.position.set(bx, 0.41, bz);
+        group.add(corpo);
+        for (const ay of [0.2, 0.62]) {
+          const aro = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 10), aroMat);
+          aro.position.set(bx, ay, bz);
+          group.add(aro);
+        }
+      }
+
+      const cactoMat = new THREE.MeshLambertMaterial({ color: 0x3f9d4e });
+      const florMat = new THREE.MeshLambertMaterial({ color: 0xe85898 });
+      for (const [gx, gz] of [[1.8, 23.2], [8.2, 24.8], [30.6, -1.2], [13.8, -15.2]] as Array<[number, number]>) {
+        const corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 1.6, 8), cactoMat);
+        corpo.position.set(gx, 0.8, gz);
+        const bracoE = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.9, 8), cactoMat);
+        bracoE.position.set(gx - 0.45, 1.05, gz);
+        const bracoD = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.7, 8), cactoMat);
+        bracoD.position.set(gx + 0.42, 0.85, gz);
+        const flor = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), florMat);
+        flor.position.set(gx, 1.72, gz);
+        group.add(corpo, bracoE, bracoD, flor);
       }
     }
 
