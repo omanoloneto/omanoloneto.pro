@@ -92,7 +92,13 @@ function lockerTexture(accent: string): THREE.CanvasTexture {
 // uma "rua" inteira por parede: sequência de prédios de 3-5 unidades, cada
 // um com madeira, janelas, porta e letreiro próprios — nada de fachada
 // repetida colada na vizinha
-function texRuaFaroeste(unidades: number, rng: () => number, memoria: { ultimos: string[] }): HTMLCanvasElement {
+type StreetPlot = { start: number; width: number; doorU: number | null; roofStyle: number };
+
+function texRuaFaroeste(
+  unidades: number,
+  rng: () => number,
+  memoria: { ultimos: string[] }
+): { canvas: HTMLCanvasElement; plots: StreetPlot[] } {
   const PX = 32;
   const H = 160;
   const c = document.createElement('canvas');
@@ -104,10 +110,12 @@ function texRuaFaroeste(unidades: number, rng: () => number, memoria: { ultimos:
     ['#a87b4b', '#7f5a30'],
     ['#c19267', '#987048'],
     ['#9b7040', '#744f26'],
+    ['#8d7b60', '#6b5a42'],
+    ['#a55f3a', '#7d4526'],
   ];
   const nomes = ['SALOON', 'HOTEL', 'BANCO', 'ARMAZEM', 'XERIFE', 'CORREIO', 'DOCERIA', 'BARBEARIA'];
 
-  const predio = (ox: number, w: number) => {
+  const predio = (ox: number, w: number): number => {
     const [base, escuro] = tons[Math.floor(rng() * tons.length)];
     g.fillStyle = base;
     g.fillRect(ox, 0, w, H);
@@ -150,6 +158,17 @@ function texRuaFaroeste(unidades: number, rng: () => number, memoria: { ultimos:
       g.textAlign = 'center';
       g.textBaseline = 'middle';
       g.fillText(nome, ox + w / 2, 11, w - 26);
+    }
+
+    if (w >= 64 && rng() < 0.2) {
+      g.fillStyle = '#f0e6d2';
+      g.beginPath();
+      g.arc(ox + w / 2, 33, 8, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#54687e';
+      g.beginPath();
+      g.arc(ox + w / 2, 33, 5.5, 0, Math.PI * 2);
+      g.fill();
     }
 
     const temPorta = rng() < 0.62;
@@ -236,16 +255,19 @@ function texRuaFaroeste(unidades: number, rng: () => number, memoria: { ultimos:
     g.fillStyle = 'rgba(40,23,10,0.85)';
     g.fillRect(ox, 0, 2, H);
     g.fillRect(ox + w - 2, 0, 2, H);
+    return temPorta ? portaX : -1;
   };
 
+  const plots: StreetPlot[] = [];
   let u = 0;
   while (u < unidades) {
     let seg = Math.min(unidades - u, 3 + Math.floor(rng() * 3));
     if (unidades - u - seg > 0 && unidades - u - seg < 3) seg = unidades - u;
-    predio(u * PX, seg * PX);
+    const portaPx = predio(u * PX, seg * PX);
+    plots.push({ start: u, width: seg, doorU: portaPx >= 0 ? portaPx / PX : null, roofStyle: Math.floor(rng() * 4) });
     u += seg;
   }
-  return c;
+  return { canvas: c, plots };
 }
 
 function texToldo(): HTMLCanvasElement {
@@ -259,6 +281,22 @@ function texToldo(): HTMLCanvasElement {
     g.fillStyle = '#f2e6d0';
     g.fillRect(x + 8, 0, 8, 32);
   }
+  return c;
+}
+
+function texTowerBand(): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 32;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#42280f';
+  g.fillRect(0, 0, 512, 32);
+  g.fillStyle = '#f5e8c8';
+  g.font = 'bold 20px Georgia, serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('DOCE CITY', 128, 17);
+  g.fillText('DOCE CITY', 384, 17);
   return c;
 }
 
@@ -457,7 +495,12 @@ export function criarArena(ctx: Contexto): Arena {
       abertos = atual;
     }
 
-    const toldoCanvas = texToldo();
+    const toldoTex = new THREE.CanvasTexture(texToldo());
+    toldoTex.colorSpace = THREE.SRGBColorSpace;
+    toldoTex.wrapS = THREE.RepeatWrapping;
+    toldoTex.magFilter = THREE.NearestFilter;
+    toldoTex.repeat.set(2, 1);
+    const toldoMat = new THREE.MeshLambertMaterial({ map: toldoTex, side: THREE.DoubleSide });
     const madeiraMat = new THREE.MeshLambertMaterial({ color: 0x6e4b28 });
     const cornijaMat = new THREE.MeshLambertMaterial({ color: 0x53381e });
     const posteMat = new THREE.MeshLambertMaterial({ color: 0x64431f });
@@ -468,13 +511,16 @@ export function criarArena(ctx: Contexto): Arena {
       const w = r.x1 - r.x0;
       const d = r.z1 - r.z0;
       const len = Math.max(w, d);
+      const alongX = w >= d;
+      const ini = alongX ? r.x0 : r.z0;
       const rng = mulberry32((0xfa0e57e ^ (vi * 2654435761)) >>> 0);
       const hPredio = [5, 4.3, 5.6, 4.7][vi % 4];
-      const t = new THREE.CanvasTexture(texRuaFaroeste(len, rng, memoriaLetreiro));
+      const rua = texRuaFaroeste(len, rng, memoriaLetreiro);
+      const t = new THREE.CanvasTexture(rua.canvas);
       t.colorSpace = THREE.SRGBColorSpace;
       t.magFilter = THREE.NearestFilter;
       const fachadaMat = new THREE.MeshLambertMaterial({ map: t });
-      const mats = w >= d
+      const mats = alongX
         ? [madeiraMat, madeiraMat, madeiraMat, madeiraMat, fachadaMat, fachadaMat]
         : [fachadaMat, fachadaMat, madeiraMat, madeiraMat, madeiraMat, madeiraMat];
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, hPredio, d), mats);
@@ -484,72 +530,322 @@ export function criarArena(ctx: Contexto): Arena {
       group.add(m);
       aabbs.push({ minX: r.x0, maxX: r.x1, minZ: r.z0, maxZ: r.z1, alt: hPredio });
 
+      const topo = hPredio + 0.18;
       if (len >= 5) {
         const cornija = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.18, d + 0.3), cornijaMat);
         cornija.position.set(cx, hPredio + 0.09, cz);
         group.add(cornija);
-        const estilo = vi % 3;
-        if (estilo === 0) {
-          const plati = new THREE.Mesh(new THREE.BoxGeometry(w, 0.8, d), madeiraMat);
-          plati.position.set(cx, hPredio + 0.18 + 0.4, cz);
-          group.add(plati);
-        } else if (estilo === 1) {
-          const base = new THREE.Mesh(new THREE.BoxGeometry(w, 0.45, d), madeiraMat);
-          base.position.set(cx, hPredio + 0.18 + 0.225, cz);
-          const topo = new THREE.Mesh(new THREE.BoxGeometry(w >= d ? w * 0.45 : w, 0.6, w >= d ? d : d * 0.45), madeiraMat);
-          topo.position.set(cx, hPredio + 0.63 + 0.3, cz);
-          group.add(base, topo);
-        } else {
-          const plati = new THREE.Mesh(new THREE.BoxGeometry(w, 0.4, d), madeiraMat);
-          plati.position.set(cx, hPredio + 0.18 + 0.2, cz);
-          group.add(plati);
+        for (const p of rua.plots) {
+          const centro = ini + p.start + p.width / 2;
+          const px = alongX ? centro : cx;
+          const pz = alongX ? cz : centro;
+          const caixaTopo = (bw: number, bh: number) =>
+            new THREE.Mesh(alongX ? new THREE.BoxGeometry(bw, bh, d) : new THREE.BoxGeometry(w, bh, bw), madeiraMat);
+          if (p.roofStyle === 0) {
+            const hh = 0.75 + rng() * 0.5;
+            const plati = caixaTopo(p.width, hh);
+            plati.position.set(px, topo + hh / 2, pz);
+            group.add(plati);
+          } else if (p.roofStyle === 1) {
+            const base = caixaTopo(p.width, 0.45);
+            base.position.set(px, topo + 0.225, pz);
+            const degrau = caixaTopo(Math.max(1.2, p.width * 0.55), 0.55);
+            degrau.position.set(px, topo + 0.72, pz);
+            group.add(base, degrau);
+          } else if (p.roofStyle === 2) {
+            const rr = (Math.min(w, d) + 0.5) / 1.73;
+            const geo = new THREE.CylinderGeometry(rr, rr, Math.max(1, p.width - 0.2), 3, 1, false, alongX ? Math.PI / 2 : Math.PI);
+            const telhado = new THREE.Mesh(geo, cornijaMat);
+            if (alongX) telhado.rotation.z = Math.PI / 2;
+            else telhado.rotation.x = Math.PI / 2;
+            telhado.position.set(px, topo + rr / 2, pz);
+            group.add(telhado);
+          }
+          if (p.width >= 3 && rng() < 0.25) {
+            const chamine = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.3, 0.35), cornijaMat);
+            const desloc = (rng() < 0.5 ? -1 : 1) * (p.width / 2 - 0.6);
+            chamine.position.set(alongX ? centro + desloc : px, topo + 0.65, alongX ? pz : centro + desloc);
+            group.add(chamine);
+          }
         }
       }
 
-      if (len >= 6) {
-        const toldoTex = new THREE.CanvasTexture(toldoCanvas);
-        toldoTex.colorSpace = THREE.SRGBColorSpace;
-        toldoTex.wrapS = THREE.RepeatWrapping;
-        toldoTex.magFilter = THREE.NearestFilter;
-        toldoTex.repeat.set(2, 1);
-        const toldoMat = new THREE.MeshLambertMaterial({ map: toldoTex, side: THREE.DoubleSide });
-        const montarToldo = (ladoZ: boolean, dir: 1 | -1, centro: number) => {
-          const comp = Math.min(4.6, len - 1.4);
-          const toldo = new THREE.Mesh(
-            ladoZ ? new THREE.BoxGeometry(comp, 0.06, 1.4) : new THREE.BoxGeometry(1.4, 0.06, comp),
-            toldoMat
-          );
-          if (ladoZ) {
-            toldo.position.set(centro, 2.8, dir > 0 ? r.z1 + 0.62 : r.z0 - 0.62);
-            toldo.rotation.x = 0.3 * dir;
-          } else {
-            toldo.position.set(dir > 0 ? r.x1 + 0.62 : r.x0 - 0.62, 2.8, centro);
-            toldo.rotation.z = -0.3 * dir;
-          }
-          group.add(toldo);
-          for (const ponta of [-1, 1]) {
-            const poste = new THREE.Mesh(new THREE.BoxGeometry(0.09, 2.55, 0.09), posteMat);
-            if (ladoZ) poste.position.set(centro + ponta * (comp / 2 - 0.25), 1.275, dir > 0 ? r.z1 + 1.12 : r.z0 - 1.12);
-            else poste.position.set(dir > 0 ? r.x1 + 1.12 : r.x0 - 1.12, 1.275, centro + ponta * (comp / 2 - 0.25));
-            group.add(poste);
-          }
-        };
-        const n = Math.max(1, Math.min(3, Math.floor(len / 9)));
-        const ini = w >= d ? r.x0 : r.z0;
-        for (let i = 0; i < n; i++) {
-          const faixa = len / n;
-          const centro = ini + faixa * i + faixa * (0.35 + rng() * 0.3);
-          if (w >= d) {
-            if (livre(Math.floor(centro), r.z1)) montarToldo(true, 1, centro);
-            else if (livre(Math.floor(centro), r.z0 - 1)) montarToldo(true, -1, centro);
-          } else {
-            if (livre(r.x1, Math.floor(centro))) montarToldo(false, 1, centro);
-            else if (livre(r.x0 - 1, Math.floor(centro))) montarToldo(false, -1, centro);
-          }
+      const montarVaranda = (centro: number, dir: 1 | -1, comp: number) => {
+        const prof = 1.5;
+        const off = prof / 2 + 0.02;
+        const deck = new THREE.Mesh(
+          alongX ? new THREE.BoxGeometry(comp, 0.18, prof) : new THREE.BoxGeometry(prof, 0.18, comp),
+          madeiraMat
+        );
+        deck.position.set(
+          alongX ? centro : dir > 0 ? r.x1 + off : r.x0 - off,
+          0.09,
+          alongX ? (dir > 0 ? r.z1 + off : r.z0 - off) : centro
+        );
+        group.add(deck);
+        aabbs.push(
+          alongX
+            ? { minX: centro - comp / 2, maxX: centro + comp / 2, minZ: dir > 0 ? r.z1 : r.z0 - prof, maxZ: dir > 0 ? r.z1 + prof : r.z0, alt: 0.18 }
+            : { minX: dir > 0 ? r.x1 : r.x0 - prof, maxX: dir > 0 ? r.x1 + prof : r.x0, minZ: centro - comp / 2, maxZ: centro + comp / 2, alt: 0.18 }
+        );
+        const telha = new THREE.Mesh(
+          alongX ? new THREE.BoxGeometry(comp, 0.08, prof + 0.4) : new THREE.BoxGeometry(prof + 0.4, 0.08, comp),
+          cornijaMat
+        );
+        telha.position.set(
+          alongX ? centro : dir > 0 ? r.x1 + off + 0.12 : r.x0 - off - 0.12,
+          2.78,
+          alongX ? (dir > 0 ? r.z1 + off + 0.12 : r.z0 - off - 0.12) : centro
+        );
+        if (alongX) telha.rotation.x = 0.16 * dir;
+        else telha.rotation.z = -0.16 * dir;
+        group.add(telha);
+        const nPostes = comp > 3 ? 3 : 2;
+        for (let i = 0; i < nPostes; i++) {
+          const frac = nPostes === 2 ? (i ? 1 : -1) : i - 1;
+          const pAlong = centro + frac * (comp / 2 - 0.18);
+          const poste = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.6, 0.1), posteMat);
+          if (alongX) poste.position.set(pAlong, 1.48, dir > 0 ? r.z1 + prof - 0.12 : r.z0 - prof + 0.12);
+          else poste.position.set(dir > 0 ? r.x1 + prof - 0.12 : r.x0 - prof + 0.12, 1.48, pAlong);
+          group.add(poste);
         }
+      };
+      const montarToldo = (centro: number, dir: 1 | -1, comp: number) => {
+        const toldo = new THREE.Mesh(
+          alongX ? new THREE.BoxGeometry(comp, 0.06, 1.4) : new THREE.BoxGeometry(1.4, 0.06, comp),
+          toldoMat
+        );
+        if (alongX) {
+          toldo.position.set(centro, 2.8, dir > 0 ? r.z1 + 0.62 : r.z0 - 0.62);
+          toldo.rotation.x = 0.3 * dir;
+        } else {
+          toldo.position.set(dir > 0 ? r.x1 + 0.62 : r.x0 - 0.62, 2.8, centro);
+          toldo.rotation.z = -0.3 * dir;
+        }
+        group.add(toldo);
+        for (const ponta of [-1, 1]) {
+          const poste = new THREE.Mesh(new THREE.BoxGeometry(0.09, 2.55, 0.09), posteMat);
+          if (alongX) poste.position.set(centro + ponta * (comp / 2 - 0.25), 1.275, dir > 0 ? r.z1 + 1.12 : r.z0 - 1.12);
+          else poste.position.set(dir > 0 ? r.x1 + 1.12 : r.x0 - 1.12, 1.275, centro + ponta * (comp / 2 - 0.25));
+          group.add(poste);
+        }
+      };
+
+      // a mesma textura cobre as duas faces longas e o BoxGeometry inverte o
+      // eixo U na face oposta, então a porta aparece em posições espelhadas —
+      // frente/fundos abaixo refazem essa conta antes de checar a rua livre
+      for (const p of rua.plots) {
+        if (p.doorU === null || p.width < 3) continue;
+        let dir: 1 | -1 | 0 = 0;
+        let dw = 0;
+        if (alongX) {
+          const frente = r.x0 + p.doorU;
+          const fundos = r.x1 - p.doorU;
+          if (livre(Math.floor(frente), r.z1)) { dir = 1; dw = frente; }
+          else if (livre(Math.floor(fundos), r.z0 - 1)) { dir = -1; dw = fundos; }
+        } else {
+          const frente = r.z1 - p.doorU;
+          const fundos = r.z0 + p.doorU;
+          if (livre(r.x1, Math.floor(frente))) { dir = 1; dw = frente; }
+          else if (livre(r.x0 - 1, Math.floor(fundos))) { dir = -1; dw = fundos; }
+        }
+        if (!dir) continue;
+        const comp = Math.min(4.2, p.width - 0.6);
+        const centro = Math.min(Math.max(dw, ini + p.start + comp / 2 + 0.2), ini + p.start + p.width - comp / 2 - 0.2);
+        if (rng() < 0.6) montarVaranda(centro, dir, comp);
+        else montarToldo(centro, dir, comp);
       }
       vi++;
     }
+  }
+
+  function buildDesertProps() {
+    const rng = mulberry32(0xdec0de);
+    const woodMat = new THREE.MeshLambertMaterial({ color: 0x6e4b28 });
+    const darkMat = new THREE.MeshLambertMaterial({ color: 0x53381e });
+    const candyMat = new THREE.MeshLambertMaterial({ color: 0xe85898 });
+
+    const stickMat = new THREE.MeshLambertMaterial({ color: 0xf5f2ea });
+    const swirlMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    for (const [lx, lz] of [[22, 24], [-13, 4]] as Array<[number, number]>) {
+      const haste = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.4, 8), stickMat);
+      haste.position.set(lx, 1.7, lz);
+      const doce = new THREE.Mesh(new THREE.SphereGeometry(1.1, 16, 12), candyMat);
+      doce.scale.z = 0.35;
+      doce.position.set(lx, 3.8, lz);
+      const anel = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.14, 8, 20), swirlMat);
+      anel.position.set(lx, 3.8, lz + 0.28);
+      group.add(haste, doce, anel);
+    }
+
+    const barrilMat = new THREE.MeshLambertMaterial({ color: 0x8a5f34 });
+    const aroMat = new THREE.MeshLambertMaterial({ color: 0x3e3e42 });
+    for (const [bx, bz] of [[5.5, -4.2], [8.8, -1.5], [-14.2, 3.4], [23.2, 7.3], [-19.9, 21.4], [13.5, 24.5], [-31, 12]] as Array<[number, number]>) {
+      const corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.36, 0.82, 10), barrilMat);
+      corpo.position.set(bx, 0.41, bz);
+      group.add(corpo);
+      for (const ay of [0.2, 0.62]) {
+        const aro = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 10), aroMat);
+        aro.position.set(bx, ay, bz);
+        group.add(aro);
+      }
+    }
+
+    const cactoMat = new THREE.MeshLambertMaterial({ color: 0x3f9d4e });
+    for (const [gx, gz] of [[1.8, 23.2], [8.2, 24.8], [30.6, -1.2], [13.8, -15.2], [0.5, 4.5], [14.8, -25.2]] as Array<[number, number]>) {
+      const s = 0.8 + rng() * 0.6;
+      const corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.26 * s, 0.3 * s, 1.6 * s, 8), cactoMat);
+      corpo.position.set(gx, 0.8 * s, gz);
+      group.add(corpo);
+      const ladoBraco = [-1, 1, 0];
+      const nBracos = 1 + Math.floor(rng() * 3);
+      for (let i = 0; i < nBracos; i++) {
+        const braco = new THREE.Mesh(new THREE.CylinderGeometry(0.13 * s, 0.13 * s, (0.6 + rng() * 0.4) * s, 8), cactoMat);
+        braco.position.set(gx + ladoBraco[i] * 0.44 * s, (0.7 + rng() * 0.5) * s, gz + (i === 2 ? 0.4 * s : 0));
+        group.add(braco);
+      }
+      if (rng() < 0.7) {
+        const flor = new THREE.Mesh(new THREE.SphereGeometry(0.16 * s, 8, 6), candyMat);
+        flor.position.set(gx, 1.72 * s, gz);
+        group.add(flor);
+      }
+    }
+
+    const tx = 16;
+    const tz = 23;
+    for (const [ox, oz] of [[-0.9, -0.9], [0.9, -0.9], [-0.9, 0.9], [0.9, 0.9]] as Array<[number, number]>) {
+      const perna = new THREE.Mesh(new THREE.BoxGeometry(0.22, 3.4, 0.22), darkMat);
+      perna.position.set(tx + ox, 1.7, tz + oz);
+      group.add(perna);
+      aabbs.push({ minX: tx + ox - 0.11, maxX: tx + ox + 0.11, minZ: tz + oz - 0.11, maxZ: tz + oz + 0.11, alt: 5 });
+    }
+    for (const [bw, bd, ox, oz] of [[2.1, 0.12, 0, -0.9], [2.1, 0.12, 0, 0.9], [0.12, 2.1, -0.9, 0], [0.12, 2.1, 0.9, 0]] as Array<[number, number, number, number]>) {
+      const trava = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.12, bd), darkMat);
+      trava.position.set(tx + ox, 1.15, tz + oz);
+      group.add(trava);
+    }
+    const tanque = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.55, 1.9, 14), woodMat);
+    tanque.position.set(tx, 4.35, tz);
+    const tampa = new THREE.Mesh(new THREE.ConeGeometry(1.75, 0.85, 14), darkMat);
+    tampa.position.set(tx, 5.7, tz);
+    const faixaTex = new THREE.CanvasTexture(texTowerBand());
+    faixaTex.colorSpace = THREE.SRGBColorSpace;
+    faixaTex.magFilter = THREE.NearestFilter;
+    const faixa = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.58, 1.58, 0.62, 14, 1, true),
+      new THREE.MeshLambertMaterial({ map: faixaTex, side: THREE.DoubleSide })
+    );
+    faixa.position.set(tx, 4.45, tz);
+    group.add(tanque, tampa, faixa);
+
+    const wagon = new THREE.Group();
+    const cacamba = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.45, 1.3), woodMat);
+    cacamba.position.y = 0.85;
+    wagon.add(cacamba);
+    for (const lado of [-1, 1]) {
+      const borda = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.4, 0.1), darkMat);
+      borda.position.set(0, 1.22, lado * 0.62);
+      wagon.add(borda);
+    }
+    for (const [wx, wz] of [[-0.85, -0.72], [0.85, -0.72], [-0.85, 0.72], [0.85, 0.72]] as Array<[number, number]>) {
+      const roda = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.1, 12), darkMat);
+      roda.rotation.x = Math.PI / 2;
+      roda.position.set(wx, 0.52, wz);
+      wagon.add(roda);
+    }
+    for (const lado of [-1, 1]) {
+      const varal = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 0.08), woodMat);
+      varal.rotation.z = 0.35;
+      varal.position.set(-1.95, 0.62, lado * 0.4);
+      wagon.add(varal);
+    }
+    wagon.rotation.y = 0.35;
+    wagon.position.set(-6, 0, 8);
+    group.add(wagon);
+    aabbs.push({ minX: -7.6, maxX: -4.4, minZ: 6.7, maxZ: 9.3, alt: 1.15 });
+
+    const caldaMat = new THREE.MeshLambertMaterial({ color: 0xf082b0 });
+    const montarCocho = (x: number, z: number, deitadoX: boolean) => {
+      const corpo = new THREE.Mesh(deitadoX ? new THREE.BoxGeometry(1.8, 0.55, 0.7) : new THREE.BoxGeometry(0.7, 0.55, 1.8), woodMat);
+      corpo.position.set(x, 0.32, z);
+      const calda = new THREE.Mesh(deitadoX ? new THREE.BoxGeometry(1.6, 0.06, 0.5) : new THREE.BoxGeometry(0.5, 0.06, 1.6), caldaMat);
+      calda.position.set(x, 0.56, z);
+      group.add(corpo, calda);
+      aabbs.push(deitadoX
+        ? { minX: x - 0.9, maxX: x + 0.9, minZ: z - 0.35, maxZ: z + 0.35, alt: 0.7 }
+        : { minX: x - 0.35, maxX: x + 0.35, minZ: z - 0.9, maxZ: z + 0.9, alt: 0.7 });
+    };
+    montarCocho(-14.2, 10, false);
+    montarCocho(18, 7, true);
+
+    const montarHitch = (x: number, z: number, deitadoX: boolean) => {
+      for (const ponta of [-1, 1]) {
+        const poste = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 0.1), darkMat);
+        poste.position.set(deitadoX ? x + ponta * 0.8 : x, 0.5, deitadoX ? z : z + ponta * 0.8);
+        group.add(poste);
+      }
+      const trave = new THREE.Mesh(deitadoX ? new THREE.BoxGeometry(1.9, 0.09, 0.09) : new THREE.BoxGeometry(0.09, 0.09, 1.9), woodMat);
+      trave.position.set(x, 0.88, z);
+      group.add(trave);
+    };
+    montarHitch(-1.5, 2.9, true);
+    montarHitch(15, 6.9, true);
+    montarHitch(15.1, -19, false);
+
+    const cristalRosaMat = new THREE.MeshLambertMaterial({ color: 0xf5a8cc });
+    const cristalBrancoMat = new THREE.MeshLambertMaterial({ color: 0xfdf4fa });
+    const montarCristal = (x: number, z: number, s: number, solido: boolean) => {
+      const grande = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45 * s), cristalRosaMat);
+      grande.position.set(x, 0.28 * s, z);
+      grande.rotation.set(0.4, rng() * 3, 0.2);
+      const menor = new THREE.Mesh(new THREE.DodecahedronGeometry(0.26 * s), cristalBrancoMat);
+      menor.position.set(x + 0.5 * s, 0.16 * s, z + 0.2 * s);
+      menor.rotation.set(0.1, rng() * 3, 0.5);
+      group.add(grande, menor);
+      if (solido) aabbs.push({ minX: x - 0.5 * s, maxX: x + 0.5 * s, minZ: z - 0.45 * s, maxZ: z + 0.45 * s, alt: 0.6 });
+    };
+    montarCristal(-11, 22, 1.3, true);
+    montarCristal(7.9, 19, 1.2, true);
+    montarCristal(22.5, 9.5, 0.9, false);
+    montarCristal(4.8, -15.2, 0.8, false);
+    montarCristal(-22.5, 12.2, 0.85, false);
+
+    const sacoMat = new THREE.MeshLambertMaterial({ color: 0xe8d8b8 });
+    const montarSacos = (x: number, z: number) => {
+      for (const [ox, oy, oz] of [[-0.35, 0.26, 0], [0.35, 0.26, 0.1], [0, 0.72, 0.05]] as Array<[number, number, number]>) {
+        const saco = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), sacoMat);
+        saco.scale.y = 0.62;
+        saco.position.set(x + ox, oy, z + oz);
+        group.add(saco);
+      }
+      aabbs.push({ minX: x - 0.8, maxX: x + 0.8, minZ: z - 0.5, maxZ: z + 0.5, alt: 0.9 });
+    };
+    montarSacos(4, -25);
+    montarSacos(-30.5, 24);
+
+    const montarCerca = (x0: number, z0: number, x1: number, z1: number) => {
+      const compX = x1 - x0;
+      const compZ = z1 - z0;
+      const comp = Math.max(compX, compZ);
+      const n = Math.max(2, Math.round(comp / 1.4) + 1);
+      for (let i = 0; i < n; i++) {
+        const f = i / (n - 1);
+        const poste = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.0, 0.12), darkMat);
+        poste.position.set(x0 + compX * f, 0.5, z0 + compZ * f);
+        group.add(poste);
+      }
+      for (const ty of [0.45, 0.8]) {
+        const trava = new THREE.Mesh(
+          compX >= compZ ? new THREE.BoxGeometry(comp + 0.2, 0.09, 0.07) : new THREE.BoxGeometry(0.07, 0.09, comp + 0.2),
+          woodMat
+        );
+        trava.position.set((x0 + x1) / 2, ty, (z0 + z1) / 2);
+        group.add(trava);
+      }
+      aabbs.push({ minX: x0 - 0.1, maxX: x1 + 0.1, minZ: z0 - 0.1, maxZ: z1 + 0.1, alt: 0.9 });
+    };
+    montarCerca(8.5, -16.8, 11.5, -16.8);
+    montarCerca(19, 24.8, 22, 24.8);
   }
 
   function build(id: string) {
@@ -750,48 +1046,7 @@ export function criarArena(ctx: Contexto): Arena {
       }
     }
 
-    if (M.id === 'deserto') {
-      const cabo = new THREE.MeshLambertMaterial({ color: 0xf5f2ea });
-      const bala = new THREE.MeshLambertMaterial({ color: 0xe85898 });
-      const espiral = new THREE.MeshLambertMaterial({ color: 0xffffff });
-      for (const [lx, lz] of [[22, 24], [-13, 4]] as Array<[number, number]>) {
-        const haste = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 3.4, 8), cabo);
-        haste.position.set(lx, 1.7, lz);
-        const doce = new THREE.Mesh(new THREE.SphereGeometry(1.1, 16, 12), bala);
-        doce.scale.z = 0.35;
-        doce.position.set(lx, 3.8, lz);
-        const anel = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.14, 8, 20), espiral);
-        anel.position.set(lx, 3.8, lz + 0.28);
-        group.add(haste, doce, anel);
-      }
-
-      const barrilMat = new THREE.MeshLambertMaterial({ color: 0x8a5f34 });
-      const aroMat = new THREE.MeshLambertMaterial({ color: 0x3e3e42 });
-      for (const [bx, bz] of [[5.5, -4.2], [8.8, -1.5], [-14.2, 3.4], [23.2, 7.3], [-19.9, 21.4]] as Array<[number, number]>) {
-        const corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.36, 0.82, 10), barrilMat);
-        corpo.position.set(bx, 0.41, bz);
-        group.add(corpo);
-        for (const ay of [0.2, 0.62]) {
-          const aro = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 10), aroMat);
-          aro.position.set(bx, ay, bz);
-          group.add(aro);
-        }
-      }
-
-      const cactoMat = new THREE.MeshLambertMaterial({ color: 0x3f9d4e });
-      const florMat = new THREE.MeshLambertMaterial({ color: 0xe85898 });
-      for (const [gx, gz] of [[1.8, 23.2], [8.2, 24.8], [30.6, -1.2], [13.8, -15.2]] as Array<[number, number]>) {
-        const corpo = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 1.6, 8), cactoMat);
-        corpo.position.set(gx, 0.8, gz);
-        const bracoE = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.9, 8), cactoMat);
-        bracoE.position.set(gx - 0.45, 1.05, gz);
-        const bracoD = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.7, 8), cactoMat);
-        bracoD.position.set(gx + 0.42, 0.85, gz);
-        const flor = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), florMat);
-        flor.position.set(gx, 1.72, gz);
-        group.add(corpo, bracoE, bracoD, flor);
-      }
-    }
+    if (M.id === 'deserto') buildDesertProps();
 
     group.add(new THREE.HemisphereLight(0xeaf6ff, 0x9a9585, 1.1));
     const sol = new THREE.DirectionalLight(T.sol, 1.1);
