@@ -88,6 +88,74 @@ function lockerTexture(accent: string): THREE.CanvasTexture {
   return t;
 }
 
+function texFaroeste(letreiro: string | null, janelas: number, porta: boolean): HTMLCanvasElement {
+  const c = document.createElement('canvas');
+  c.width = 96;
+  c.height = 120;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#b58455';
+  g.fillRect(0, 0, 96, 120);
+  g.strokeStyle = 'rgba(90,58,30,0.55)';
+  g.lineWidth = 2;
+  for (let x = 0; x <= 96; x += 12) {
+    g.beginPath();
+    g.moveTo(x, 0);
+    g.lineTo(x, 120);
+    g.stroke();
+  }
+  g.strokeStyle = 'rgba(255,235,200,0.18)';
+  for (let y = 30; y < 120; y += 30) {
+    g.beginPath();
+    g.moveTo(0, y);
+    g.lineTo(96, y);
+    g.stroke();
+  }
+  g.fillStyle = '#7c5430';
+  g.fillRect(0, 112, 96, 8);
+  g.fillStyle = '#8f6238';
+  g.fillRect(0, 0, 96, 16);
+  g.fillStyle = '#5e3e20';
+  g.fillRect(0, 14, 96, 3);
+  if (letreiro) {
+    g.fillStyle = '#4a3018';
+    g.fillRect(6, 1, 84, 13);
+    g.strokeStyle = '#2e1c0c';
+    g.lineWidth = 1;
+    g.strokeRect(6.5, 1.5, 83, 12);
+    g.fillStyle = '#f5e8c8';
+    g.font = 'bold 10px Georgia, serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(letreiro, 48, 8);
+  }
+  const jx = janelas === 1 ? [48] : porta ? [20, 76] : [28, 68];
+  for (const x of jx) {
+    g.fillStyle = '#f0e6d2';
+    g.fillRect(x - 11, 40, 22, 30);
+    g.fillStyle = '#54687e';
+    g.fillRect(x - 8, 43, 16, 24);
+    g.strokeStyle = '#f0e6d2';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(x, 43);
+    g.lineTo(x, 67);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(x - 8, 55);
+    g.lineTo(x + 8, 55);
+    g.stroke();
+  }
+  if (porta) {
+    g.fillStyle = '#f0e6d2';
+    g.fillRect(35, 70, 26, 48);
+    g.fillStyle = '#5a3a20';
+    g.fillRect(38, 73, 20, 45);
+    g.fillStyle = '#c9a227';
+    g.fillRect(54, 94, 3, 3);
+  }
+  return c;
+}
+
 function texCaixote(): THREE.CanvasTexture {
   const c = document.createElement('canvas');
   c.width = 64;
@@ -211,7 +279,10 @@ export function criarArena(ctx: Contexto): Arena {
     chaoPlano(p.x1, p.z0, r.x1, p.z1, y, mat);
   }
 
-  function buildBlueprint(M: MapDef, paredeMat: THREE.Material) {
+  // paredes do blueprint viram fachadas de velho oeste: cada retângulo de
+  // muro ganha uma frente de loja (tábuas, janelas, porta, letreiro) e as
+  // maiores levam platibanda de fachada falsa, como nas cidades de filme
+  function buildBlueprint(M: MapDef) {
     const bp = M.blueprint!;
     const T = M.tema;
 
@@ -258,24 +329,76 @@ export function criarArena(ctx: Contexto): Arena {
       if (!porLinha.has(iz)) porLinha.set(iz, []);
       porLinha.get(iz)!.push(ix);
     }
-    for (const [iz, xs] of porLinha) {
-      xs.sort((a, b) => a - b);
+    type MuroRect = { x0: number; x1: number; z0: number; z1: number };
+    const retos: MuroRect[] = [];
+    let abertos = new Map<string, MuroRect>();
+    for (const iz of [...porLinha.keys()].sort((a, b) => a - b)) {
+      const xs = porLinha.get(iz)!.sort((a, b) => a - b);
+      const runs: Array<[number, number]> = [];
       let ini = xs[0];
       let fim = xs[0];
-      const emitir = () => {
-        const w = fim - ini + 1;
-        const m = new THREE.Mesh(new THREE.BoxGeometry(w, A.alturaParede, 1), paredeMat);
-        m.position.set(ini + w / 2, A.alturaParede / 2, iz + 0.5);
-        group.add(m);
-        aabbs.push({ minX: ini, maxX: ini + w, minZ: iz, maxZ: iz + 1, alt: A.alturaParede });
-      };
       for (let i = 1; i < xs.length; i++) {
         if (xs[i] === fim + 1) { fim = xs[i]; continue; }
-        emitir();
+        runs.push([ini, fim]);
         ini = xs[i];
         fim = xs[i];
       }
-      emitir();
+      runs.push([ini, fim]);
+      const atual = new Map<string, MuroRect>();
+      for (const [a, b] of runs) {
+        const chave = a + ':' + b;
+        const prev = abertos.get(chave);
+        if (prev && prev.z1 === iz) {
+          prev.z1 = iz + 1;
+          atual.set(chave, prev);
+        } else {
+          const r = { x0: a, x1: b + 1, z0: iz, z1: iz + 1 };
+          retos.push(r);
+          atual.set(chave, r);
+        }
+      }
+      abertos = atual;
+    }
+
+    const fachadas = [
+      texFaroeste('SALOON', 2, true),
+      texFaroeste(null, 2, false),
+      texFaroeste('HOTEL', 2, true),
+      texFaroeste(null, 1, true),
+      texFaroeste('BANCO', 2, false),
+      texFaroeste('ARMAZEM', 1, true),
+    ];
+    const madeiraMat = new THREE.MeshLambertMaterial({ color: 0x8f6238 });
+    const cornijaMat = new THREE.MeshLambertMaterial({ color: 0x6e4a28 });
+    let vi = 0;
+    for (const r of retos) {
+      const w = r.x1 - r.x0;
+      const d = r.z1 - r.z0;
+      const len = Math.max(w, d);
+      const rep = Math.max(1, Math.round(len / 4));
+      const t = new THREE.CanvasTexture(fachadas[vi % fachadas.length]);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.wrapS = THREE.RepeatWrapping;
+      t.wrapT = THREE.RepeatWrapping;
+      t.magFilter = THREE.NearestFilter;
+      t.repeat.set(rep, 1);
+      const fachadaMat = new THREE.MeshLambertMaterial({ map: t });
+      const mats = w >= d
+        ? [madeiraMat, madeiraMat, madeiraMat, madeiraMat, fachadaMat, fachadaMat]
+        : [fachadaMat, fachadaMat, madeiraMat, madeiraMat, madeiraMat, madeiraMat];
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, A.alturaParede, d), mats);
+      m.position.set((r.x0 + r.x1) / 2, A.alturaParede / 2, (r.z0 + r.z1) / 2);
+      group.add(m);
+      aabbs.push({ minX: r.x0, maxX: r.x1, minZ: r.z0, maxZ: r.z1, alt: A.alturaParede });
+      if (len >= 5) {
+        const cornija = new THREE.Mesh(new THREE.BoxGeometry(w + 0.3, 0.18, d + 0.3), cornijaMat);
+        cornija.position.set((r.x0 + r.x1) / 2, A.alturaParede + 0.09, (r.z0 + r.z1) / 2);
+        const hP = [0.6, 1.1, 0.8][vi % 3];
+        const platibanda = new THREE.Mesh(new THREE.BoxGeometry(w, hP, d), madeiraMat);
+        platibanda.position.set((r.x0 + r.x1) / 2, A.alturaParede + 0.18 + hP / 2, (r.z0 + r.z1) / 2);
+        group.add(cornija, platibanda);
+      }
+      vi++;
     }
   }
 
@@ -294,13 +417,12 @@ export function criarArena(ctx: Contexto): Arena {
     const meiaL = M.larg / 2;
     const meiaP = M.prof / 2;
 
-    const tParede = texAzulejo(T.perimetro[0], T.perimetro[1], T.perimetro[2]);
-    tParede.repeat.set(10, 1.6);
-    const paredeMat = new THREE.MeshLambertMaterial({ map: tParede });
-
     if (M.blueprint) {
-      buildBlueprint(M, paredeMat);
+      buildBlueprint(M);
     } else {
+      const tParede = texAzulejo(T.perimetro[0], T.perimetro[1], T.perimetro[2]);
+      tParede.repeat.set(10, 1.6);
+      const paredeMat = new THREE.MeshLambertMaterial({ map: tParede });
       const P = M.piscinas[0];
       for (const [x0, z0, x1, z1] of [
         [-meiaL, -meiaP, meiaL, P.z0],
