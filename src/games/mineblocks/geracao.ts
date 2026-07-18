@@ -1,17 +1,8 @@
 // Geração procedural da ilha: value noise 2D pro relevo, camadas
 // grama/terra/pedra, praia, lagos, árvores e flores. Funções puras
 // (mesma seed = mesmo mundo).
+import { mulberry32 } from '../../lib/rng';
 import type { Contexto } from './tipos';
-
-export function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 // hash inteiro determinístico do ponto da grade (independente de Math.sin)
 function hash2(ix: number, iz: number, seed: number): number {

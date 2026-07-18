@@ -5,6 +5,7 @@ import { criarRede } from './rede';
 import { criarUI } from './ui';
 import { criarAudio } from './audio';
 import { criarSalvar } from './salvar';
+import { cleanPlayerName } from '../../lib/player-name';
 
 export function iniciarJogo() {
   const dados = JSON.parse(document.querySelector('[data-dados]')!.textContent!);
@@ -60,7 +61,7 @@ export function iniciarJogo() {
   }
 
   function nomeLimpo(bruto: string): string {
-    return bruto.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, ctx.cfg.nomeMax);
+    return cleanPlayerName(bruto, ctx.cfg.nomeMax);
   }
 
   async function comecar(nome: string, starter: 'dog' | 'cat', mapa: string, x: number, y: number) {

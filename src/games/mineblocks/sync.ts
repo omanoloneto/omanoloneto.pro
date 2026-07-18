@@ -12,7 +12,7 @@
 // relógios de mudas/decay — Math.random em duas máquinas divergiria o
 // mundo. O anfitrião também compacta: manda uma foto nova quando o
 // diário engorda, e o servidor poda as edições antigas.
-import { codificarRLE, decodificarRLE } from './salvar';
+import { encodeRLE, decodeRLE } from '../../lib/rle';
 import type { Contexto, JogadorRemoto, Meta, Sync } from './tipos';
 
 interface FotoSala {
@@ -96,12 +96,12 @@ export function criarSync(ctx: Contexto): Sync {
   }
 
   function fotoAtual(): FotoSala {
-    return { seed: ctx.estado.seed >>> 0, blocos: codificarRLE(ctx.mundo.dados), metas: ctx.metas.serializar() };
+    return { seed: ctx.estado.seed >>> 0, blocos: encodeRLE(ctx.mundo.dados), metas: ctx.metas.serializar() };
   }
 
   // ----- aplicar o que veio do servidor -----
   function aplicarFoto(foto: FotoSala): boolean {
-    const blocos = decodificarRLE(foto.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
+    const blocos = decodeRLE(foto.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
     if (!blocos) return false;
     ctx.mundo.dados.set(blocos);
     ctx.estado.seed = foto.seed >>> 0;
@@ -172,7 +172,7 @@ export function criarSync(ctx: Contexto): Sync {
       if (s <= seqVisto) continue;
       seqVisto = s;
       // cinto e suspensório: id fora da tabela não entra no mundo
-      // (envenenaria o save do dono — decodificarRLE recusa no load)
+      // (envenenaria o save do dono — decodeRLE recusa no load)
       if (!Number.isInteger(b) || b < 0 || b >= ctx.blocos.length) continue;
       // eco da própria edição (ou no-op): nada a fazer, nem remesh
       if (ctx.mundo.obter(x, y, z) === b) continue;

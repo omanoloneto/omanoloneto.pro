@@ -1,6 +1,7 @@
 // Atlas de texturas procedural: 4×4 tiles de 16px pintados num canvas,
 // estilo pixelado (NearestFilter, sem mipmaps). Nenhum asset externo.
 import * as THREE from 'three';
+import { mulberry32 } from '../../lib/rng';
 import type { Contexto, Textura } from './tipos';
 
 const TILE = 16;
@@ -9,22 +10,12 @@ const LINHAS = 10;     // linhas (com folga pra novos tiles)
 const LADO = TILE * GRADE; // 64
 const ALTO = TILE * LINHAS; // 128
 
-// rng determinístico pro ruído dos tiles (mesma cara em todo mundo)
-function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0; a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 export function criarTextura(_ctx: Contexto): Textura {
   const canvas = document.createElement('canvas');
   canvas.width = LADO;
   canvas.height = ALTO;
   const g = canvas.getContext('2d')!;
+  // rng determinístico pro ruído dos tiles (mesma cara em todo mundo)
   const rng = mulberry32(20260714);
 
   // pinta o tile n com cor base + variação por pixel (ruído sutil)

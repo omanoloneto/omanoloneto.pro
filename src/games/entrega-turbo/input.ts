@@ -1,6 +1,7 @@
 // Entrada: teclado (setas/WASD/espaço) e touch (Pointer Events multi-toque).
 // Teclas presas em alt-tab/blur são soltas pelo fluxo (soltarInputs).
 import type { Contexto } from './tipos';
+import { stripDiacritics } from '../../lib/player-name';
 
 const TECLAS: Record<string, keyof Contexto['input']> = {
   ArrowLeft: 'esq', a: 'esq', A: 'esq',
@@ -23,7 +24,7 @@ export function ligarInput(ctx: Contexto) {
       return;
     }
     if (estado.fase === 'entrada') {
-      const l = e.key.length === 1 ? e.key.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '') : '';
+      const l = e.key.length === 1 ? stripDiacritics(e.key.toUpperCase()) : '';
       if (/^[A-Z]$/.test(l)) { e.preventDefault(); ranking.digitarLetra(l); }
       else if (e.key === 'Backspace') { e.preventDefault(); ranking.apagarLetra(); }
       else if (e.key === 'Enter') {

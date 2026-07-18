@@ -1,6 +1,7 @@
 // MineBlocks — orquestrador: monta o Contexto, liga os módulos, roda o
 // loop rAF e rege o fluxo (inicio → gerando → jogando ⇄ pausado).
 import * as THREE from 'three';
+import { cleanPlayerName } from '../../lib/player-name';
 import type { Contexto, Estado, Input, Jogador } from './tipos';
 import { criarUI } from './ui';
 import { criarAudio } from './audio';
@@ -338,12 +339,7 @@ export function iniciarJogo() {
   }
 
   function nomeJogadorLimpo(bruto: string): string {
-    return bruto
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, '')
-      .slice(0, ctx.cfg.sala.nomeMax);
+    return cleanPlayerName(bruto, ctx.cfg.sala.nomeMax);
   }
   function codigoLimpo(bruto: string): string {
     const re = new RegExp('[^' + ctx.cfg.codigo.charset + ']', 'g');

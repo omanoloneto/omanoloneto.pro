@@ -7,51 +7,13 @@
 // salvoEm que o cliente conhece (base); se o servidor tem um save MAIS
 // NOVO (outra aba/outro colega), devolve conflito — o auto-save para e
 // só o save manual, com confirmação da criança, passa por cima.
+import { encodeRLE, decodeRLE } from '../../lib/rle';
 import { gerarMundo } from './geracao';
 import type { Contexto, Salvar } from './tipos';
 
 const LEGACY_SX = 96;
 const LEGACY_SZ = 96;
 const LEGACY_SY = 40;
-
-export function codificarRLE(dados: Uint8Array): string {
-  const bytes: number[] = [];
-  let i = 0;
-  while (i < dados.length) {
-    const id = dados[i];
-    let run = 1;
-    while (i + run < dados.length && dados[i + run] === id && run < 65535) run++;
-    bytes.push(run & 0xff, run >> 8, id);
-    i += run;
-  }
-  // btoa em pedaços (String.fromCharCode estoura a pilha com array grande)
-  let bin = '';
-  for (let j = 0; j < bytes.length; j += 8192) {
-    bin += String.fromCharCode(...bytes.slice(j, j + 8192));
-  }
-  return btoa(bin);
-}
-
-export function decodificarRLE(b64: string, tamanho: number, maxId: number): Uint8Array | null {
-  try {
-    const bin = atob(b64);
-    const saida = new Uint8Array(tamanho);
-    let pos = 0;
-    for (let i = 0; i + 2 < bin.length; i += 3) {
-      const run = bin.charCodeAt(i) | (bin.charCodeAt(i + 1) << 8);
-      const id = bin.charCodeAt(i + 2);
-      // id fora da tabela = save corrompido/versão futura: recusa inteiro
-      // (deixar passar bricaria o mesher)
-      if (id > maxId) return null;
-      if (pos + run > tamanho) return null;
-      saida.fill(id, pos, pos + run);
-      pos += run;
-    }
-    return pos === tamanho ? saida : null;
-  } catch {
-    return null;
-  }
-}
 
 export function criarSalvar(ctx: Contexto): Salvar {
   const S = ctx.cfg.salvar;
@@ -107,7 +69,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
       inv: ctx.estado.inventario,
       slots: ctx.estado.hotbarSlots,
       metas: ctx.metas.serializar(),
-      blocos: codificarRLE(ctx.mundo.dados),
+      blocos: encodeRLE(ctx.mundo.dados),
     });
   }
 
@@ -238,9 +200,9 @@ export function criarSalvar(ctx: Contexto): Salvar {
       }
       let migrado = false;
       let genMetas: Record<string, unknown> = {};
-      let blocos = decodificarRLE(p.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
+      let blocos = decodeRLE(p.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
       if (!blocos) {
-        const legado = decodificarRLE(p.blocos, LEGACY_SX * LEGACY_SZ * LEGACY_SY, ctx.blocos.length - 1);
+        const legado = decodeRLE(p.blocos, LEGACY_SX * LEGACY_SZ * LEGACY_SY, ctx.blocos.length - 1);
         if (legado) {
           blocos = expandLegacyWorld(legado, p.seed >>> 0);
           genMetas = ctx.metas.serializar() as Record<string, unknown>;

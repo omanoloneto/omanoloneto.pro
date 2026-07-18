@@ -5,6 +5,7 @@ import { criarMotor } from './motor';
 import { criarUI } from './ui';
 import { criarAudio } from './audio';
 import { criarRanking } from './ranking';
+import { stripDiacritics } from '../../lib/player-name';
 
 export function iniciarJogo() {
   const dados = JSON.parse(document.querySelector('[data-dados]')!.textContent!);
@@ -199,7 +200,7 @@ export function iniciarJogo() {
   window.addEventListener('keydown', (e) => {
     if (e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
     if (estado.fase === 'entrada') {
-      const l = e.key.length === 1 ? e.key.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '') : '';
+      const l = e.key.length === 1 ? stripDiacritics(e.key.toUpperCase()) : '';
       if (/^[A-Z]$/.test(l)) { e.preventDefault(); ctx.ranking.digitarLetra(l); }
       else if (e.key === 'Backspace') { e.preventDefault(); ctx.ranking.apagarLetra(); }
       else if (e.key === 'Enter') { e.preventDefault(); ctx.ranking.confirmarEntrada(); }

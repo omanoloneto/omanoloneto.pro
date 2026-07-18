@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { cleanPlayerName, stripDiacritics } from '../../lib/player-name';
 import type { Contexto, Estado, Input, Jogador, SyncPayload } from './tipos';
 import { criarArena } from './arena';
 import { criarAgua } from './agua';
@@ -322,7 +323,7 @@ export function iniciarJogo() {
   jog.ligarInput();
 
   function nomeLimpo(bruto: string): string {
-    return bruto.normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, cfg.ranking.nomeMax);
+    return cleanPlayerName(bruto, cfg.ranking.nomeMax);
   }
   const campoNome = document.querySelector('[data-campo-nome]') as HTMLInputElement;
   try { campoNome.value = localStorage.getItem('sugar-splash:nome') || ''; } catch { }
@@ -607,7 +608,7 @@ export function iniciarJogo() {
   (document.querySelector('[data-nome-ok]') as HTMLElement).addEventListener('click', () => ctx.ranking.confirmarEntrada());
   window.addEventListener('keydown', (e) => {
     if (estado.fase !== 'entrada') return;
-    const l = e.key.length === 1 ? e.key.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '') : '';
+    const l = e.key.length === 1 ? stripDiacritics(e.key.toUpperCase()) : '';
     if (/^[A-Z]$/.test(l)) { e.preventDefault(); ctx.ranking.digitarLetra(l); }
     else if (e.key === 'Backspace') { e.preventDefault(); ctx.ranking.apagarLetra(); }
     else if (e.key === 'Enter') { e.preventDefault(); ctx.ranking.confirmarEntrada(); }

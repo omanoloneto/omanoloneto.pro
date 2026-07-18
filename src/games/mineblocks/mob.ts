@@ -10,7 +10,7 @@
 // (lê o mundo local, que já está sincronizado).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { mulberry32 } from './geracao';
+import { mulberry32 } from '../../lib/rng';
 import type { BichoRede, Contexto, Mob } from './tipos';
 
 const LA = 21;
