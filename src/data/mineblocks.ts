@@ -106,23 +106,31 @@ export const receitas: Receita[] = [
 
 export const config = {
   mundo: {
-    SX: 192,
-    SZ: 192,
-    SY: 40,
-    CHUNK: 16, // 6×6 chunks de coluna inteira
-    nivelAgua: 10,
-    tetoConstrucao: 37, // dá pra ficar em pé no bloco mais alto (37+1+1.8 ≤ 40)
+    SX: 384,
+    SZ: 384,
+    SY: 80,
+    CHUNK: 16, // 24×24 chunks de coluna inteira
+    nivelAgua: 50,
+    tetoConstrucao: 77, // dá pra ficar em pé no bloco mais alto (77+1+1.8 ≤ 80)
   },
   geracao: {
-    alturaBase: 12,
+    // superfície fica no alto (base 52 de 80): metade de baixo é subsolo
+    // minerável — a "profundidade dobrada" pedida pelo Manolo
+    alturaBase: 52,
     amplitude: 6.5,
     escalaRuido: 0.035,
     // ilha: o terreno afunda do raio de início até a borda
     ilhaInicioR: 0.68, // fração da meia-largura onde começa a cair
     ilhaQueda: 11, // quantos blocos afunda até a borda
-    arvores: 220, // tentativas (nem toda posição serve)
-    flores: 600,
+    arvores: 880, // tentativas (nem toda posição serve)
+    flores: 2400,
     dungeon: { salas: 7, carvaoPorSala: 10, ferroPorSala: 5 },
+    // veios aleatórios no subsolo (fora da dungeon): carvão em qualquer
+    // profundidade, ferro só na metade mais funda
+    veins: {
+      coal: { n: 1400, sizeMin: 3, sizeMax: 6, yMin: 2 },
+      iron: { n: 700, sizeMin: 2, sizeMax: 5, yMin: 2, yMax: 34 },
+    },
   },
   fisica: {
     gravidade: 25,
@@ -186,7 +194,7 @@ export const config = {
     api: '/class/api/mundos.php',
     debounceMs: 12000, // auto-save após o último bloco editado
     minEntreSavesMs: 5000,
-    maxPayload: 2000000,
+    maxPayload: 4000000,
   },
   // multiplayer por sala (mb-salas.php): snapshot + diário de edições,
   // polling puro — funciona de qualquer casa, sem rede local

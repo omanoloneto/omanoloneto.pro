@@ -38,7 +38,7 @@ const LETRAS_CODIGO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const TTL_S = 10800;            // sala parada há 3h é limpa na criação de outra
 const MAX_SALAS = 30;
 const MAX_JOGADORES = 30;       // turma inteira
-const MAX_FOTO = 2000000;        // bytes do JSON da foto (RLE real fica em 15-60KB)
+const MAX_FOTO = 4000000;        // bytes do JSON da foto (RLE real fica bem abaixo)
 const MAX_EDICOES_POR_SYNC = 200;
 const MAX_DIARIO = 3000;        // freio de emergência; anfitrião compacta muito antes
 const MAX_METAS_POR_SYNC = 64;  // metadata (baú/placa) muda pouco por sync
@@ -50,12 +50,12 @@ const ATIVO_S = 12;             // visto há <12s conta pra eleger anfitrião
 // tem que ser MAIOR que isso, senão alt-tab de 2min expulsa a criança
 const SUMIU_S = 120;            // visto há >120s sai da sala sozinho
 
-// mundo 192×192×40; MAX_BLOCO tem que casar com a tabela do cliente
+// mundo 384×384×80; MAX_BLOCO tem que casar com a tabela do cliente
 // (id acima da tabela envenena o save do dono: o decodificarRLE recusa
 // o mundo inteiro no próximo carregar)
-const MAX_X = 192;
-const MAX_Y = 40;
-const MAX_Z = 192;
+const MAX_X = 384;
+const MAX_Y = 80;
+const MAX_Z = 384;
 const MAX_BLOCO = 28;   // maior id da tabela do cliente (ar..picareta de ferro)
 const MAX_BICHOS = 16;  // teto de Winpups no blackboard (só posição)
 
@@ -132,7 +132,7 @@ function posLimpa($pos): array {
 // pos de quem acabou de chegar: centro do mapa (spawn), não (0,0,0) —
 // senão o boneco nasce enterrado no canto até o 1º sync do novato
 function posInicial(): array {
-  return posLimpa(['x' => MAX_X / 2 + 0.5, 'y' => 30, 'z' => MAX_Z / 2 + 0.5]);
+  return posLimpa(['x' => MAX_X / 2 + 0.5, 'y' => 62, 'z' => MAX_Z / 2 + 0.5]);
 }
 
 // bichos (Winpup) = blackboard escrito SÓ pelo anfitrião e lido por todos.

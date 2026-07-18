@@ -57,20 +57,22 @@ export function brotarArvore(ctx: Contexto, x: number, h: number, z: number, rng
 
 function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: number) => number) {
   const { mundo, cfg } = ctx;
-  const { SX, SZ } = cfg.mundo;
+  const { SX, SZ, nivelAgua } = cfg.mundo;
   const D = cfg.geracao.dungeon;
   const midX = SX / 2;
   const midZ = SZ / 2;
-  const FLOOR_Y = 2;
-  const ROOM_TOP = 6;
-  const HALL_TOP = 5;
+  // meia-profundidade: a escada até a superfície fica com tamanho de gente
+  // e ainda sobra um subsolo inteiro pra minerar abaixo da dungeon
+  const FLOOR_Y = 26;
+  const ROOM_TOP = FLOOR_Y + 4;
+  const HALL_TOP = FLOOR_Y + 3;
   const KEEP_OUT = SX / 4 + 3;
 
   function areaOk(x0: number, x1: number, z0: number, z1: number): boolean {
     if (x0 < 3 || z0 < 3 || x1 >= SX - 3 || z1 >= SZ - 3) return false;
     for (let z = z0; z <= z1; z++) {
       for (let x = x0; x <= x1; x++) {
-        if (heightAt(x, z) < 10) return false;
+        if (heightAt(x, z) < nivelAgua) return false;
       }
     }
     return true;
@@ -180,10 +182,10 @@ function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: n
   let sx = first.x + stepX * ((first.w >> 1) + 1);
   let sz = first.z + stepZ * ((first.d >> 1) + 1);
   let floorY = FLOOR_Y;
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 60; i++) {
     if (sx < 2 || sx >= SX - 2 || sz < 2 || sz >= SZ - 2) return;
     const h = heightAt(sx, sz);
-    if (h < 10) return;
+    if (h < nivelAgua) return;
     setCell(sx, floorY, sz, 10);
     const emerged = floorY + 3 >= h;
     const topo = emerged ? h + 1 : floorY + 3;
@@ -252,6 +254,30 @@ export function gerarMundo(ctx: Contexto, seed: number) {
     mundo.obter(x, alturaEm(x, z), z) === 1;
 
   digDungeon(ctx, rng, alturaEm);
+
+  // ----- veios de minério espalhados no subsolo (random walk na pedra) -----
+  const semearVeios = (oreId: number, v: { n: number; sizeMin: number; sizeMax: number; yMin: number; yMax?: number }) => {
+    for (let i = 0; i < v.n; i++) {
+      let x = 2 + Math.floor(rng() * (SX - 4));
+      let z = 2 + Math.floor(rng() * (SZ - 4));
+      const teto = Math.min(v.yMax ?? SY, alturaEm(x, z) - 3);
+      if (teto <= v.yMin) continue;
+      let y = v.yMin + Math.floor(rng() * (teto - v.yMin + 1));
+      const tam = v.sizeMin + Math.floor(rng() * (v.sizeMax - v.sizeMin + 1));
+      for (let b = 0; b < tam; b++) {
+        if (mundo.dados[x + z * SX + y * SX * SZ] === 3) {
+          mundo.dados[x + z * SX + y * SX * SZ] = oreId;
+        }
+        const eixo = Math.floor(rng() * 3);
+        const passo = rng() < 0.5 ? -1 : 1;
+        if (eixo === 0) x = Math.max(1, Math.min(SX - 2, x + passo));
+        else if (eixo === 1) y = Math.max(1, Math.min(SY - 2, y + passo));
+        else z = Math.max(1, Math.min(SZ - 2, z + passo));
+      }
+    }
+  };
+  semearVeios(22, G.veins.coal);
+  semearVeios(25, G.veins.iron);
 
   // ----- árvores (tronco 4-5 + copa) -----
   const copas: Array<[number, number]> = [];
