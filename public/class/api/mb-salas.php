@@ -56,7 +56,7 @@ const SUMIU_S = 120;            // visto há >120s sai da sala sozinho
 const MAX_X = 384;
 const MAX_Y = 80;
 const MAX_Z = 384;
-const MAX_BLOCO = 28;   // maior id da tabela do cliente (ar..picareta de ferro)
+const MAX_BLOCO = 29;   // maior id da tabela do cliente (ar..tijolos de pedra)
 const MAX_BICHOS = 16;  // teto de Winpups no blackboard (só posição)
 
 function arquivoFoto(string $codigo): string {

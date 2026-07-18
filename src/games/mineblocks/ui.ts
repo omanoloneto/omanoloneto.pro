@@ -65,6 +65,10 @@ export function criarUI(ctx: Contexto): UI {
   function imgDoBloco(id: number): string {
     const GRADE = 4;
     const b = ctx.porId(id);
+    if (b.icone) {
+      return '<span class="slot__img slot__img--icone" style="background-image:url(/class/games/mineblocks/icones/' +
+        b.icone + '.png)"></span>';
+    }
     const tile = b.render === 'cruz' ? b.tiles[0] : b.tiles[1];
     const tx = tile % GRADE;
     const ty = Math.floor(tile / GRADE);
@@ -109,11 +113,17 @@ export function criarUI(ctx: Contexto): UI {
         s.setAttribute('aria-label', 'Espaço ' + (i + 1) + ' da hotbar: vazio');
       } else {
         const b = ctx.porId(id);
-        const GRADE = 4;
-        const tile = b.render === 'cruz' ? b.tiles[0] : b.tiles[1];
         img.hidden = false;
-        img.style.backgroundImage = 'url(' + ctx.textura.dataURL + ')';
-        img.style.backgroundPosition = (-(tile % GRADE) * 100) + '% ' + (-Math.floor(tile / GRADE) * 100) + '%';
+        img.classList.toggle('slot__img--icone', !!b.icone);
+        if (b.icone) {
+          img.style.backgroundImage = 'url(/class/games/mineblocks/icones/' + b.icone + '.png)';
+          img.style.backgroundPosition = '';
+        } else {
+          const GRADE = 4;
+          const tile = b.render === 'cruz' ? b.tiles[0] : b.tiles[1];
+          img.style.backgroundImage = 'url(' + ctx.textura.dataURL + ')';
+          img.style.backgroundPosition = (-(tile % GRADE) * 100) + '% ' + (-Math.floor(tile / GRADE) * 100) + '%';
+        }
         qtd.textContent = String(inv[id] || 0);
         s.classList.remove('vago');
         s.setAttribute('aria-label', 'Espaço ' + (i + 1) + ': ' + b.nome + ', ' + (inv[id] || 0));

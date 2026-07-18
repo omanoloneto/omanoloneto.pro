@@ -448,6 +448,15 @@ const description =
     }
     .receita__seta { color: var(--amarelo); font-weight: 800; }
 
+    /* itens com arte própria (PNG em icones/): tapa o recorte do atlas em
+       qualquer contexto — precisa vir DEPOIS das regras por contexto acima */
+    .slot__img.slot__img--icone {
+      background-size: contain;
+      background-position: center;
+      background-repeat: no-repeat;
+      image-rendering: auto;
+    }
+
     .balao {
       position: absolute; left: 50%; bottom: 68px;
       transform: translateX(-50%) translateY(6px);

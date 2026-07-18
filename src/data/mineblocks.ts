@@ -22,6 +22,9 @@ export interface Bloco {
   durezaFerro?: number;
   precisaPicareta?: boolean;
   ferramenta?: boolean;
+  // ícone PNG (public/class/games/mineblocks/icones/<icone>.png) usado no
+  // inventário/hotbar no lugar do recorte do atlas
+  icone?: string;
 }
 
 export const blocos: Bloco[] = [
@@ -31,11 +34,11 @@ export const blocos: Bloco[] = [
   { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo', drop: 10, dureza: 1300, durezaPicareta: 400, durezaFerro: 150 },
   { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo', dureza: 450 },
   { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo', dureza: 800 },
-  { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo', dureza: 800 },
+  { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo', dureza: 800, icone: 'tabuas' },
   // folhas opacas de propósito (estilo "fast graphics"): cull entre vizinhas, zero blend.
   // Naturais (id 7): dropam folhas E às vezes uma muda; DECAEM sem tronco conectado.
   { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', dropSorte: { id: 15, chance: 0.3 }, dureza: 300 },
-  { id: 8, nome: 'vidro', tiles: [9, 9, 9], solido: true, render: 'recorte', dureza: 350 },
+  { id: 8, nome: 'vidro', tiles: [9, 9, 9], solido: true, render: 'recorte', dureza: 350, icone: 'vidro' },
   { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
   { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo', dureza: 1100, durezaPicareta: 350, durezaFerro: 150 },
   { id: 11, nome: 'flor amarela', tiles: [12, 12, 12], solido: false, render: 'cruz', dureza: 350 },
@@ -60,7 +63,7 @@ export const blocos: Bloco[] = [
   { id: 20, nome: 'placa', tiles: [24, 24, 24], solido: false, render: 'cruz', dureza: 300 },
   // lã: dropada pelo Winpup no chão (tufo não-sólido). NÃO entra em `itens`
   // (criança não coloca) — passar por cima coleta como recurso (materiais)
-  { id: 21, nome: 'lã', tiles: [25, 25, 25], solido: false, render: 'cruz', drop: 21, dureza: 200 },
+  { id: 21, nome: 'lã', tiles: [25, 25, 25], solido: false, render: 'cruz', drop: 21, dureza: 200, icone: 'la' },
   { id: 22, nome: 'carvão', tiles: [26, 26, 26], solido: true, render: 'cubo', drop: 23, dureza: 600, durezaFerro: 250, precisaPicareta: true },
   { id: 23, nome: 'carvão', tiles: [27, 27, 27], solido: false, render: 'cruz' },
   { id: 24, nome: 'picareta de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true },
@@ -68,11 +71,12 @@ export const blocos: Bloco[] = [
   { id: 26, nome: 'barra de ferro', tiles: [30, 30, 30], solido: false, render: 'cruz' },
   { id: 27, nome: 'fornalha', tiles: [3, 31, 3], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
   { id: 28, nome: 'picareta de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true },
+  { id: 29, nome: 'tijolos de pedra', tiles: [33, 33, 33], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
 ];
 
 // tipos de item coletáveis (grade do inventário/E); a hotbar agora é
 // dinâmica: 9 slots vazios que enchem conforme a criança coleta
-export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28];
+export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29];
 
 // materiais = recursos SÓ-coletáveis (não colocáveis): o jogador junta e
 // fabrica coisas depois. Aparecem numa seção própria do inventário.
@@ -92,6 +96,7 @@ export interface Receita {
 export const receitas: Receita[] = [
   { de: 5, qtd: 1, para: 6, ganha: 4 }, // 1 tronco → 4 tábuas
   { de: 10, qtd: 2, para: 9, ganha: 1 }, // 2 pedregulhos → 1 tijolos
+  { de: 10, qtd: 2, para: 29, ganha: 1 }, // 2 pedregulhos → 1 tijolos de pedra
   { de: 2, qtd: 1, para: 1, ganha: 1 }, // 1 terra → 1 grama (plantou, cresceu!)
   { de: 6, qtd: 2, para: 17, ganha: 1 }, // 2 tábuas → 1 baú
   { de: 6, qtd: 2, para: 18, ganha: 1 }, // 2 tábuas → 1 porta

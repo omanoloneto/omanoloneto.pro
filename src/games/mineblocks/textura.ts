@@ -307,6 +307,18 @@ export function criarTextura(_ctx: Contexto): Textura {
     g.fillRect(ox + 7, oy + 2, 6, 1);
     px(ox, oy, 3, 4, '#8e929c'); px(ox, oy, 13, 7, '#8e929c');
   }
+  // --- 33 tijolos de pedra: fileiras cinza com rejunte escuro ---
+  {
+    const [ox, oy] = base(33, [138, 140, 146], 0.06);
+    g.fillStyle = '#5f6169';
+    for (const y of [0, 4, 8, 12]) g.fillRect(ox, oy + y, TILE, 1);
+    for (let fila = 0; fila < 4; fila++) {
+      const desloca = fila % 2 === 0 ? 4 : 0;
+      for (let x = desloca; x < TILE; x += 8) g.fillRect(ox + x, oy + fila * 4, 1, 4);
+    }
+    g.fillStyle = '#b8bcc6';
+    for (const y of [1, 5, 9, 13]) g.fillRect(ox, oy + y, TILE, 1);
+  }
 
   // --- 17/18/19 rachaduras (overlay de quebra, cutout) ---
   {
