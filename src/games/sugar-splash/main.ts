@@ -27,8 +27,6 @@ export function iniciarJogo() {
 
   const cenaEl = document.querySelector('[data-cena]') as HTMLElement;
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x8fd4f0);
-  scene.fog = new THREE.Fog(0x8fd4f0, 40, 90);
   const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 120);
   scene.add(camera);
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -37,9 +35,7 @@ export function iniciarJogo() {
 
   const ctx = {
     cfg: dados.config,
-    caixotes: dados.caixotes,
-    spawnsBots: dados.spawnsBots,
-    spawnsTime: dados.spawnsTime,
+    mapas: dados.mapas,
     motionReduzido: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     scene, camera, renderer, cenaEl,
     estado, jogador, input,
@@ -81,7 +77,7 @@ export function iniciarJogo() {
   }
 
   function respawnJogador() {
-    const sp = ctx.spawnsTime[estado.team];
+    const sp = ctx.arena.mapa().spawnsTime[estado.team];
     jogador.x = sp.x;
     jogador.z = sp.z;
     jogador.y = 0;
@@ -191,7 +187,8 @@ export function iniciarJogo() {
       estado.tanque = cfg.bisnaga.tanqueMax;
       estado.derretendo = false;
       jog.definirTime(estado.team);
-      const sp = ctx.spawnsTime[estado.team];
+      if (ctx.arena.mapa().id !== mapaEscolhido) ctx.arena.build(mapaEscolhido);
+      const sp = ctx.arena.mapa().spawnsTime[estado.team];
       jogador.x = sp.x;
       jogador.z = sp.z;
       jogador.y = 0;
@@ -277,6 +274,7 @@ export function iniciarJogo() {
       }
       const fim = ui.els.fimModal;
       ui.els.fimTabela.hidden = true;
+      ui.els.votoRow.hidden = true;
       (fim.querySelector('[data-replay]') as HTMLElement).textContent = 'Jogar de novo';
       (fim.querySelector('[data-fim-mesma-sala]') as HTMLElement).hidden = true;
       (fim.querySelector('[data-fim-msg]') as HTMLElement).textContent = msg;
@@ -344,6 +342,35 @@ export function iniciarJogo() {
     if (campoCodigo.value !== limpo) campoCodigo.value = limpo;
   });
 
+  const mapaBtns = Array.from(document.querySelectorAll<HTMLElement>('[data-mapa-opcao]'));
+  let mapaEscolhido = ctx.mapas[0].id as string;
+  try {
+    const salvo = localStorage.getItem('sugar-splash:mapa');
+    if (salvo && ctx.mapas.some((m) => m.id === salvo)) mapaEscolhido = salvo;
+  } catch { }
+  function marcarMapaEscolhido() {
+    for (const b of mapaBtns) b.setAttribute('aria-pressed', String(b.dataset.mapaOpcao === mapaEscolhido));
+  }
+  for (const b of mapaBtns) {
+    b.addEventListener('click', () => {
+      mapaEscolhido = b.dataset.mapaOpcao || mapaEscolhido;
+      try { localStorage.setItem('sugar-splash:mapa', mapaEscolhido); } catch { }
+      marcarMapaEscolhido();
+    });
+  }
+  marcarMapaEscolhido();
+
+  function rotuloMapa(id: string): string {
+    const m = ctx.mapas.find((x) => x.id === id) || ctx.mapas[0];
+    return m.emoji + ' ' + m.nome;
+  }
+
+  function atualizarVotos(v?: { trocar: number; ficar: number }) {
+    const alvo = ctx.mapas.find((m) => m.id !== ctx.arena.mapa().id) || ctx.mapas[0];
+    ui.els.votoTrocar.textContent = '🗺️ Trocar pro ' + alvo.emoji + ' ' + alvo.nome + ' (' + (v ? v.trocar : 0) + ')';
+    ui.els.votoFicar.textContent = '🙂 Ficar nesse (' + (v ? v.ficar : 0) + ')';
+  }
+
   function renderLobbySozinho() {
     ui.els.lobbyLista.innerHTML = '<li>' + (estado.team === 0 ? '🔵' : '🔴') + ' ' + estado.nome + ' (você)</li>';
   }
@@ -352,6 +379,7 @@ export function iniciarJogo() {
     ui.els.introModal.hidden = true;
     ui.els.lobbyModal.hidden = false;
     ui.els.lobbyCodigo.textContent = ctx.net.code();
+    ui.els.lobbyMapa.textContent = 'Mapa: ' + rotuloMapa(ctx.arena.mapa().id);
     const linhas = ['<li>' + (estado.team === 0 ? '🔵' : '🔴') + ' ' + estado.nome + ' (você)</li>'];
     for (const j of r.jogadores) linhas.push('<li>' + (j.team === 0 ? '🔵' : '🔴') + ' ' + j.nome + '</li>');
     ui.els.lobbyLista.innerHTML = linhas.join('');
@@ -374,7 +402,7 @@ export function iniciarJogo() {
     estado.tanque = cfg.bisnaga.tanqueMax;
     estado.derretendo = false;
     lastAttacker = '';
-    const sp = ctx.spawnsTime[estado.team];
+    const sp = ctx.arena.mapa().spawnsTime[estado.team];
     jogador.x = sp.x;
     jogador.z = sp.z;
     jogador.y = 0;
@@ -465,9 +493,13 @@ export function iniciarJogo() {
     ui.els.fimTabela.hidden = false;
     const gravar = fim.querySelector('[data-gravar-nome]') as HTMLElement;
     gravar.hidden = estado.pontos <= 0;
+    ui.els.votoRow.hidden = false;
+    ui.els.votoTrocar.setAttribute('aria-pressed', 'false');
+    ui.els.votoFicar.setAttribute('aria-pressed', 'false');
+    atualizarVotos(r.votos);
     fim.hidden = false;
     setTimeout(() => (gravar.hidden ? (document.querySelector('[data-replay]') as HTMLElement) : gravar).focus(), 60);
-    ui.anunciar('Fim de jogo! ' + msg);
+    ui.anunciar('Fim de jogo! ' + msg + ' Vota aí: troca de mapa na próxima?');
   }
 
   function onSync(r: SyncPayload) {
@@ -477,18 +509,31 @@ export function iniciarJogo() {
     estado.placarVermelho = r.placar.vermelho;
     roster = r.jogadores;
     ctx.remotos.update(r.jogadores);
+    let mapaTrocou = false;
+    if (r.mapa && r.mapa !== ctx.arena.mapa().id) {
+      ctx.arena.build(r.mapa);
+      const sp = ctx.arena.mapa().spawnsTime[estado.team];
+      jogador.x = sp.x;
+      jogador.z = sp.z;
+      jogador.y = 0;
+      jogador.vy = 0;
+      jogador.yaw = sp.yaw;
+      mapaTrocou = true;
+      ui.mostrarToast('🗺️ Mapa novo: ' + rotuloMapa(r.mapa) + '!', 'info', 3200);
+    }
     if (r.fase === 'lobby') {
       if (estado.fase === 'entrada') return;
       if (estado.fase === 'fim' || estado.fase === 'recordes') {
         [ui.els.fimModal, ui.els.entradaModal, ui.els.recordesModal].forEach((m) => { m.hidden = true; });
         estado.fase = 'inicio';
-        ui.mostrarToast('🔁 A sala vai jogar de novo!', 'ok', 2200);
+        if (!mapaTrocou) ui.mostrarToast('🔁 A sala vai jogar de novo!', 'ok', 2200);
       }
       renderLobby(r);
       return;
     }
     if (r.fase === 'fim') {
       if (estado.fase === 'jogando') fimMulti(r);
+      else atualizarVotos(r.votos);
       return;
     }
     if (estado.fase !== 'jogando') iniciarPartidaMulti();
@@ -524,7 +569,7 @@ export function iniciarJogo() {
     try { localStorage.setItem('sugar-splash:nome', nome); } catch { }
     audio.retomar();
     jog.pedirFullscreen();
-    const r = criar ? await ctx.net.createRoom(nome) : await ctx.net.joinRoom(campoCodigo.value, nome);
+    const r = criar ? await ctx.net.createRoom(nome, mapaEscolhido) : await ctx.net.joinRoom(campoCodigo.value, nome);
     if ('erro' in r) {
       ui.els.erroIntro.textContent = '😵 ' + r.erro;
       ui.els.erroIntro.hidden = false;
@@ -536,7 +581,8 @@ export function iniciarJogo() {
     estado.placarAzul = 0;
     estado.placarVermelho = 0;
     jog.definirTime(estado.team);
-    const sp = ctx.spawnsTime[estado.team];
+    if (ctx.arena.mapa().id !== r.mapa) ctx.arena.build(r.mapa);
+    const sp = ctx.arena.mapa().spawnsTime[estado.team];
     jogador.x = sp.x;
     jogador.z = sp.z;
     jogador.y = 0;
@@ -544,6 +590,7 @@ export function iniciarJogo() {
     ui.els.introModal.hidden = true;
     ui.els.lobbyModal.hidden = false;
     ui.els.lobbyCodigo.textContent = r.codigo;
+    ui.els.lobbyMapa.textContent = 'Mapa: ' + rotuloMapa(r.mapa);
     ui.els.lobbyComecar.hidden = !criar;
     ui.els.lobbyStatus.textContent = criar ? 'Passa o código pros amigos entrarem!' : 'Esperando quem criou a sala começar…';
     renderLobbySozinho();
@@ -580,6 +627,18 @@ export function iniciarJogo() {
     const linhas = ['<li>' + (estado.team === 0 ? '🔵' : '🔴') + ' ' + estado.nome + ' (você)</li>'];
     for (const j of roster) linhas.push('<li>' + (j.team === 0 ? '🔵' : '🔴') + ' ' + j.nome + '</li>');
     ui.els.lobbyLista.innerHTML = linhas.join('');
+  });
+  (document.querySelector('[data-voto-trocar]') as HTMLElement).addEventListener('click', () => {
+    if (estado.modo !== 'multi' || !ctx.net.active()) return;
+    ctx.net.vote('trocar');
+    ui.els.votoTrocar.setAttribute('aria-pressed', 'true');
+    ui.els.votoFicar.setAttribute('aria-pressed', 'false');
+  });
+  (document.querySelector('[data-voto-ficar]') as HTMLElement).addEventListener('click', () => {
+    if (estado.modo !== 'multi' || !ctx.net.active()) return;
+    ctx.net.vote('ficar');
+    ui.els.votoFicar.setAttribute('aria-pressed', 'true');
+    ui.els.votoTrocar.setAttribute('aria-pressed', 'false');
   });
   (document.querySelector('[data-continuar]') as HTMLElement).addEventListener('click', () => fluxo.continuarJogo());
   (document.querySelector('[data-recomecar]') as HTMLElement).addEventListener('click', () => {

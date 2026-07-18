@@ -85,17 +85,17 @@ export function createNet(ctx: Contexto): Net {
   }
 
   return {
-    async createRoom(nome) {
-      const r = await api({ acao: 'criar', nome });
+    async createRoom(nome, mapa) {
+      const r = await api({ acao: 'criar', nome, mapa });
       if (!r.ok) return { erro: r.json.erro || 'sem conexão com o servidor' };
       beginSession(r.json.codigo, r.json.token, r.json.nome || nome);
-      return { codigo: r.json.codigo, nome: myName, team: r.json.team === 1 ? 1 : 0 };
+      return { codigo: r.json.codigo, nome: myName, team: r.json.team === 1 ? 1 : 0, mapa: r.json.mapa || 'piscina' };
     },
     async joinRoom(codigo, nome) {
       const r = await api({ acao: 'entrar', codigo, nome });
       if (!r.ok) return { erro: r.json.erro || 'sem conexão com o servidor' };
       beginSession(r.json.codigo || codigo, r.json.token, r.json.nome || nome);
-      return { codigo: r.json.codigo || codigo, nome: myName, team: r.json.team === 1 ? 1 : 0 };
+      return { codigo: r.json.codigo || codigo, nome: myName, team: r.json.team === 1 ? 1 : 0, mapa: r.json.mapa || 'piscina' };
     },
     startMatch() {
       if (!poller.running()) return;
@@ -104,6 +104,10 @@ export function createNet(ctx: Contexto): Net {
     reopenMatch() {
       if (!poller.running()) return;
       api({ acao: 'reabrir', codigo: roomCode, token }).then(() => poller.schedule(150, true));
+    },
+    vote(v) {
+      if (!poller.running()) return;
+      api({ acao: 'votar', codigo: roomCode, token, voto: v }).then(() => poller.schedule(150, true));
     },
     queueEvent(ev) {
       if (poller.running()) eventQueue.push(ev);

@@ -59,7 +59,7 @@ export function criarBots(ctx: Contexto): Bots {
 
   function enemySpawns(): Array<[number, number]> {
     const ladoInimigo = ctx.estado.team === 0 ? 1 : -1;
-    return ctx.spawnsBots.filter(([x]) => Math.sign(x) === ladoInimigo);
+    return ctx.arena.mapa().spawnsBots.filter(([x]) => Math.sign(x) === ladoInimigo);
   }
 
   function reviver(b: Bot) {

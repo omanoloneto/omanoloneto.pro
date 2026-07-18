@@ -1,7 +1,8 @@
 import type * as THREE from 'three';
-import type { config, caixotes, spawnsBots, spawnsTime } from '../../data/sugar-splash';
+import type { config, MapDef, MapId } from '../../data/sugar-splash';
 
 export type Cfg = typeof config;
+export type { MapDef, MapId };
 export type Fase = 'inicio' | 'jogando' | 'pausado' | 'fim' | 'entrada' | 'recordes';
 
 export interface Estado {
@@ -52,6 +53,8 @@ export interface Arena {
   chaoEm(x: number, z: number): number;
   dentroPiscina(x: number, z: number): boolean;
   passo(ts: number): void;
+  build(id: string): void;
+  mapa(): MapDef;
 }
 
 export interface Bots {
@@ -94,13 +97,18 @@ export interface SyncPayload {
   jogadores: RoomPlayer[];
   eventos: Array<Array<string | number>>;
   placar: { azul: number; vermelho: number };
+  mapa?: string;
+  votos?: { trocar: number; ficar: number };
 }
 
+export type RoomEntry = { codigo: string; nome: string; team: 0 | 1; mapa: string };
+
 export interface Net {
-  createRoom(nome: string): Promise<{ codigo: string; nome: string; team: 0 | 1 } | { erro: string }>;
-  joinRoom(codigo: string, nome: string): Promise<{ codigo: string; nome: string; team: 0 | 1 } | { erro: string }>;
+  createRoom(nome: string, mapa: string): Promise<RoomEntry | { erro: string }>;
+  joinRoom(codigo: string, nome: string): Promise<RoomEntry | { erro: string }>;
   startMatch(): void;
   reopenMatch(): void;
+  vote(v: 'trocar' | 'ficar'): void;
   queueEvent(ev: RoomEvent): void;
   leave(): void;
   bind(handlers: { onSync: (r: SyncPayload) => void; onDrop: () => void }): void;
@@ -163,9 +171,7 @@ export interface Fluxo {
 
 export interface Contexto {
   cfg: Cfg;
-  caixotes: typeof caixotes;
-  spawnsBots: typeof spawnsBots;
-  spawnsTime: typeof spawnsTime;
+  mapas: MapDef[];
   motionReduzido: boolean;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;

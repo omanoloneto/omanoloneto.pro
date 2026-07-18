@@ -16,6 +16,17 @@ const EVENTO_TTL_MS = 15000;
 const MAX_EVENTOS_POR_SYNC = 16;
 const CHARSET_CODIGO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
+// spawns/limites espelham o registro de mapas do cliente (data/sugar-splash)
+const MAPAS = [
+  'piscina' => ['spawns' => [[-24.5, 12.0], [24.5, 12.0]], 'limX' => 28.0, 'limZ' => 16.0],
+  'deserto' => ['spawns' => [[-27.0, 17.0], [27.0, -17.0]], 'limX' => 31.0, 'limZ' => 21.0],
+];
+
+function mapaDaSala(array $sala): string {
+  $m = $sala['mapa'] ?? 'piscina';
+  return isset(MAPAS[$m]) ? $m : 'piscina';
+}
+
 sendJsonHeaders();
 
 function salaFile(string $codigo): string {
@@ -69,14 +80,25 @@ function nomeDisponivel(array $sala, string $nome): string {
   return $final;
 }
 
-function novoJogador(string $nome, int $team, int $agora): array {
+function novoJogador(string $nome, int $team, int $agora, string $mapa): array {
+  $sp = MAPAS[$mapa]['spawns'][$team];
   return [
     'nome' => $nome, 'team' => $team,
-    'x' => $team === 0 ? -24.5 : 24.5, 'y' => 0.0, 'z' => 12.0, 'yaw' => 0.0,
+    'x' => $sp[0], 'y' => 0.0, 'z' => $sp[1], 'yaw' => 0.0,
     'atirando' => false, 'derretidoAteMs' => 0,
     'kills' => 0, 'mortes' => 0,
     'entrouMs' => $agora, 'vistoMs' => $agora,
   ];
+}
+
+function votosDaSala(array $sala): array {
+  $trocar = 0;
+  $ficar = 0;
+  foreach ($sala['jogadores'] as $j) {
+    if (($j['voto'] ?? '') === 'trocar') $trocar++;
+    elseif (($j['voto'] ?? '') === 'ficar') $ficar++;
+  }
+  return ['trocar' => $trocar, 'ficar' => $ficar];
 }
 
 function jogadoresPublicos(array $sala, string $excetoToken, int $agora): array {
@@ -107,6 +129,8 @@ function respostaSync(array $sala, string $token, int $agora, int $desde): array
     'jogadores' => jogadoresPublicos($sala, $token, $agora),
     'eventos' => $eventos,
     'placar' => placarDaSala($sala),
+    'mapa' => mapaDaSala($sala),
+    'votos' => votosDaSala($sala),
   ];
 }
 
@@ -127,19 +151,22 @@ if ($acao === 'criar') {
   $agora = nowMs();
   $token = newToken();
   $team = random_int(0, 1);
+  $mapa = $corpo['mapa'] ?? 'piscina';
+  if (!is_string($mapa) || !isset(MAPAS[$mapa])) $mapa = 'piscina';
   $sala = [
     'codigo' => $codigo,
     'criadoMs' => $agora,
     'dono' => $token,
+    'mapa' => $mapa,
     'inicioMs' => null,
     'proxSeq' => 1,
     'eventos' => [],
-    'jogadores' => [$token => novoJogador($nome, $team, $agora)],
+    'jogadores' => [$token => novoJogador($nome, $team, $agora, $mapa)],
   ];
   withLock(salaFile($codigo), function () use ($codigo, $sala) {
     writeJson(salaFile($codigo), $sala, 'não consegui gravar a sala');
   });
-  echo json_encode(['codigo' => $codigo, 'token' => $token, 'nome' => $nome, 'team' => $team]);
+  echo json_encode(['codigo' => $codigo, 'token' => $token, 'nome' => $nome, 'team' => $team, 'mapa' => $mapa]);
   exit;
 }
 
@@ -163,9 +190,10 @@ if ($acao === 'entrar') {
     $final = nomeDisponivel($sala, $nome);
     $token = newToken();
     $team = timeBalanceado($sala);
-    $sala['jogadores'][$token] = novoJogador($final, $team, $agora);
+    $mapa = mapaDaSala($sala);
+    $sala['jogadores'][$token] = novoJogador($final, $team, $agora, $mapa);
     writeJson(salaFile($codigo), $sala, 'não consegui gravar a sala');
-    return ['token' => $token, 'nome' => $final, 'team' => $team, 'fase' => $fase['fase'], 'codigo' => $codigo];
+    return ['token' => $token, 'nome' => $final, 'team' => $team, 'fase' => $fase['fase'], 'codigo' => $codigo, 'mapa' => $mapa];
   });
   echo json_encode($resp, JSON_UNESCAPED_UNICODE);
   exit;
@@ -199,6 +227,11 @@ if ($acao === 'reabrir') {
     if (!isset($sala['jogadores'][$token])) fail(403, 'você não está nessa sala');
     if (faseDaSala($sala, $agora)['fase'] !== 'fim') fail(409, 'a partida ainda não acabou');
     if (anfitriao($sala, $agora) !== $token) fail(403, 'só quem criou a sala pode recomeçar');
+    // só votos dados contam; empate ou ninguém votando mantém o mapa
+    $votos = votosDaSala($sala);
+    if ($votos['trocar'] > $votos['ficar']) {
+      $sala['mapa'] = mapaDaSala($sala) === 'piscina' ? 'deserto' : 'piscina';
+    }
     $sala['inicioMs'] = null;
     $sala['eventos'] = [];
     foreach ($sala['jogadores'] as $tk => $j) {
@@ -206,7 +239,26 @@ if ($acao === 'reabrir') {
       $sala['jogadores'][$tk]['mortes'] = 0;
       $sala['jogadores'][$tk]['derretidoAteMs'] = 0;
       $sala['jogadores'][$tk]['atirando'] = false;
+      unset($sala['jogadores'][$tk]['voto']);
     }
+    writeJson(salaFile($codigo), $sala, 'não consegui gravar a sala');
+  });
+  echo json_encode(['ok' => true]);
+  exit;
+}
+
+if ($acao === 'votar') {
+  $voto = $corpo['voto'] ?? '';
+  if ($voto !== 'trocar' && $voto !== 'ficar') fail(400, 'voto inválido');
+  withLock(salaFile($codigo), function () use ($codigo, $token, $voto) {
+    $sala = readJson(salaFile($codigo));
+    if ($sala === null) fail(404, 'sala não encontrada');
+    $agora = nowMs();
+    dropVanishedPlayers($sala, $agora, SUMIU_S);
+    if (!isset($sala['jogadores'][$token])) fail(403, 'você não está nessa sala');
+    if (faseDaSala($sala, $agora)['fase'] !== 'fim') fail(409, 'a votação abre no fim da partida');
+    $sala['jogadores'][$token]['voto'] = $voto;
+    $sala['jogadores'][$token]['vistoMs'] = $agora;
     writeJson(salaFile($codigo), $sala, 'não consegui gravar a sala');
   });
   echo json_encode(['ok' => true]);
@@ -224,10 +276,11 @@ if ($acao === 'sync') {
     $agora = nowMs();
     dropVanishedPlayers($sala, $agora, SUMIU_S);
     if (!isset($sala['jogadores'][$token])) fail(403, 'você saiu da sala — entra de novo');
+    $lim = MAPAS[mapaDaSala($sala)];
     $eu = &$sala['jogadores'][$token];
-    $eu['x'] = is_numeric($pos['x'] ?? null) ? max(-28.0, min(28.0, (float) $pos['x'])) : $eu['x'];
+    $eu['x'] = is_numeric($pos['x'] ?? null) ? max(-$lim['limX'], min($lim['limX'], (float) $pos['x'])) : $eu['x'];
     $eu['y'] = is_numeric($pos['y'] ?? null) ? max(-2.0, min(6.0, (float) $pos['y'])) : $eu['y'];
-    $eu['z'] = is_numeric($pos['z'] ?? null) ? max(-16.0, min(16.0, (float) $pos['z'])) : $eu['z'];
+    $eu['z'] = is_numeric($pos['z'] ?? null) ? max(-$lim['limZ'], min($lim['limZ'], (float) $pos['z'])) : $eu['z'];
     $eu['yaw'] = is_numeric($pos['yaw'] ?? null) && is_finite((float) $pos['yaw']) ? (float) $pos['yaw'] : $eu['yaw'];
     $eu['atirando'] = ($pos['atirando'] ?? false) === true;
     $eu['vistoMs'] = $agora;

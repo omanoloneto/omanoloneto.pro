@@ -1,8 +1,8 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { config, caixotes, spawnsBots, spawnsTime } from '../../../data/sugar-splash';
+import { config, mapas } from '../../../data/sugar-splash';
 
-const dadosJson = JSON.stringify({ config, caixotes, spawnsBots, spawnsTime });
+const dadosJson = JSON.stringify({ config, mapas });
 const letrasNome = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 const title = 'Sugar Splash — guerra d\'água entre times de açúcar! | Manolo Neto';
@@ -72,6 +72,10 @@ const description =
           <label class="campo"><span>Seu nome</span>
             <input data-campo-nome type="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ex: LEO" />
           </label>
+          <div class="mapa-grupo" role="group" aria-label="Escolha o mapa">
+            <button class="mapa-opcao" type="button" data-mapa-opcao="piscina" aria-pressed="true">🏊 Clube da Piscina</button>
+            <button class="mapa-opcao" type="button" data-mapa-opcao="deserto" aria-pressed="false">🏜️ Deserto Doce</button>
+          </div>
           <p class="erro" data-erro-intro hidden></p>
           <button class="botao botao--go" type="button" data-comecar>🤖 Jogar sozinho</button>
           <button class="botao botao--sec" type="button" data-criar-sala>➕ Criar sala com amigos</button>
@@ -91,6 +95,7 @@ const description =
         <div class="placa__corpo center">
           <p class="lobby-codigo" data-lobby-codigo>—</p>
           <p class="aviso">Esse é o código da sala. Passa pros amigos!</p>
+          <p class="aviso lobby-mapa" data-lobby-mapa></p>
           <ul class="lobby-lista" data-lobby-lista></ul>
           <p class="aviso" data-lobby-status></p>
           <button class="botao botao--go" type="button" data-lobby-comecar hidden>▶ Começar!</button>
@@ -119,6 +124,14 @@ const description =
           <p class="grande" data-fim-msg></p>
           <p class="placar">Sua pontuação: <strong data-fim-score>0</strong></p>
           <ol class="tabela" data-fim-tabela hidden></ol>
+          <div class="voto-row" data-voto-row hidden>
+            <p class="voto-titulo">🗳️ Bora votar: troca de mapa na próxima?</p>
+            <div class="voto-botoes">
+              <button class="botao botao--sec" type="button" data-voto-trocar></button>
+              <button class="botao botao--sec" type="button" data-voto-ficar></button>
+            </div>
+            <p class="aviso">Quem criou a sala recomeça — vale o mapa mais votado!</p>
+          </div>
           <div class="fim-acoes">
             <button class="botao botao--go" type="button" data-gravar-nome hidden>🏆 Gravar meu nome</button>
             <button class="botao botao--sec" type="button" data-fim-mesma-sala hidden>🔁 Jogar de novo aqui</button>
@@ -466,6 +479,31 @@ const description =
       border: 2px solid rgba(220, 170, 40, 0.6);
     }
     .voltar { display: block; text-align: center; margin-top: 12px; color: #3a6a7d; font-size: 0.85rem; }
+
+    .mapa-grupo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+    .mapa-opcao {
+      cursor: pointer; font-family: inherit; font-weight: 800; font-size: 0.95rem;
+      padding: 10px 6px; border-radius: 12px;
+      color: #08303f; background: rgba(32, 152, 216, 0.08);
+      border: 2px solid rgba(32, 152, 216, 0.35);
+      touch-action: manipulation;
+    }
+    .mapa-opcao[aria-pressed='true'] {
+      background: rgba(32, 152, 216, 0.22);
+      border-color: #2098d8;
+      box-shadow: 0 0 0 2px rgba(32, 152, 216, 0.35);
+    }
+    .mapa-opcao:focus-visible { outline: 3px solid #f7a11b; outline-offset: 2px; }
+    .lobby-mapa { font-weight: 800; }
+    .voto-row { margin-bottom: 12px; }
+    .voto-row[hidden] { display: none; }
+    .voto-titulo { font-weight: 800; margin-bottom: 8px; }
+    .voto-botoes { display: grid; gap: 6px; }
+    .voto-botoes .botao { margin-bottom: 0; }
+    .voto-botoes .botao[aria-pressed='true'] {
+      background: rgba(32, 152, 216, 0.28);
+      border-color: #2098d8;
+    }
 
     .sala-linha { display: flex; gap: 8px; margin-bottom: 10px; }
     .sala-codigo {

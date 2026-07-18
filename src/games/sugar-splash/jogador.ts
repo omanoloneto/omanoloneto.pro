@@ -75,7 +75,8 @@ export function criarJogador(ctx: Contexto) {
           nz += (ddz / d) * (J.raio - d);
         }
       }
-      const lim = { x: cfg.arena.larg / 2 - 1, z: cfg.arena.prof / 2 - 1 };
+      const M = ctx.arena.mapa();
+      const lim = { x: M.larg / 2 - 1, z: M.prof / 2 - 1 };
       j.x = Math.max(-lim.x, Math.min(lim.x, nx));
       j.z = Math.max(-lim.z, Math.min(lim.z, nz));
     }
