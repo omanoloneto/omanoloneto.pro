@@ -12,6 +12,7 @@
 // relógios de mudas/decay — Math.random em duas máquinas divergiria o
 // mundo. O anfitrião também compacta: manda uma foto nova quando o
 // diário engorda, e o servidor poda as edições antigas.
+import { apiJson, beaconOrKeepalive, createGenerationGuard, createPoller } from '../../lib/net';
 import { encodeRLE, decodeRLE } from '../../lib/rle';
 import type { Contexto, JogadorRemoto, Meta, Sync } from './tipos';
 
@@ -42,12 +43,8 @@ export function criarSync(ctx: Contexto): Sync {
   let loteMeta: Array<[number, Meta | null]> | null = null;
   let donoNome = '';
   let ackPendentes: number[] = []; // ids de entregas de logout já resolvidas
-  let pollTimer = 0;
-  let pollAtivo = false;
-  let sincronizando = false;
   let aplicandoRemoto = false;
   let falhas = 0;
-  let geracao = 0; // muda a cada sala: resposta em voo da sala velha morre
   let fotoEmVoo = false;
   let ultimaFotoMs = 0;
   let fotoPendente: FotoSala | null = null;
@@ -75,25 +72,13 @@ export function criarSync(ctx: Contexto): Sync {
   }
 
   // ----- rede -----
-  async function api(corpo: Record<string, unknown>): Promise<{ ok: boolean; status: number; json: any }> {
-    const aborto = new AbortController();
-    const timer = setTimeout(() => aborto.abort(), 6000);
-    const corpoStr = JSON.stringify(corpo);
-    try {
-      const r = await fetch(S.api, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: corpoStr,
-        signal: aborto.signal,
-      });
-      const json = await r.json().catch(() => ({}));
-      return { ok: r.ok, status: r.status, json };
-    } catch {
-      return { ok: false, status: 0, json: {} };
-    } finally {
-      clearTimeout(timer);
-    }
-  }
+  const gen = createGenerationGuard();
+  const poller = createPoller({
+    run: sincronizar,
+    cadenceMs: () => S.pollMs,
+    jitterMs: S.jitterMs,
+  });
+  const api = (corpo: Record<string, unknown>) => apiJson(S.api, corpo);
 
   function fotoAtual(): FotoSala {
     return { seed: ctx.estado.seed >>> 0, blocos: encodeRLE(ctx.mundo.dados), metas: ctx.metas.serializar() };
@@ -201,7 +186,7 @@ export function criarSync(ctx: Contexto): Sync {
   function atualizarChip(total: number) {
     const chip = ctx.ui.els.salaChip;
     if (!chip) return;
-    chip.hidden = !pollAtivo;
+    chip.hidden = !poller.running();
     chip.textContent = '👥 ' + total + ' · ' + codigo;
   }
 
@@ -214,24 +199,18 @@ export function criarSync(ctx: Contexto): Sync {
 
   // ----- ciclo de polling -----
   function agendarPoll() {
-    if (!pollAtivo) return;
-    clearTimeout(pollTimer);
-    const jitter = (Math.random() * 2 - 1) * S.jitterMs;
-    pollTimer = window.setTimeout(sincronizar, S.pollMs + jitter);
+    poller.schedule();
   }
   function pollLogo(ms: number) {
-    if (!pollAtivo) return;
-    clearTimeout(pollTimer);
-    pollTimer = window.setTimeout(sincronizar, ms);
+    poller.schedule(ms);
   }
 
+  // o inflight do poller fica de pé até o FIM (inclusive na re-entrada
+  // pós-403) — um segundo sync no meio usaria token velho e derrubaria
+  // a criança
   async function sincronizar() {
-    if (!pollAtivo || sincronizando) return;
-    // sincronizando fica de pé até o FIM (inclusive na re-entrada pós-403)
-    // — um segundo sync no meio usaria token velho e derrubaria a criança
-    sincronizando = true;
-    const g = geracao;
-    try {
+    const g = gen.capture();
+    {
       if (!loteAtual) loteAtual = fila.splice(0, S.maxEdicoesPorSync);
       if (!loteMeta) {
         // respeita o teto do servidor (MAX_METAS_POR_SYNC) — mandar mais
@@ -257,7 +236,7 @@ export function criarSync(ctx: Contexto): Sync {
         bichos: anfitriao ? ctx.mob.estadoRede() : undefined,
         pos: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +yawN.toFixed(3), pitch: +p.pitch.toFixed(3) },
       });
-      if (!pollAtivo || g !== geracao) return;
+      if (!poller.running() || gen.stale(g)) return;
 
       if (!r.ok) {
         if (r.status === 404) {
@@ -268,7 +247,7 @@ export function criarSync(ctx: Contexto): Sync {
           // sumiu tempo demais (aba dormiu) e o servidor limpou a vaga —
           // tenta voltar UMA vez com o mesmo nome, sem incomodar a criança
           const volta = await api({ acao: 'entrar', codigo, nome: meuNome });
-          if (!pollAtivo || g !== geracao) return;
+          if (!poller.running() || gen.stale(g)) return;
           if (volta.ok) {
             token = volta.json.token;
             meuNome = volta.json.nome || meuNome;
@@ -374,16 +353,13 @@ export function criarSync(ctx: Contexto): Sync {
       }
 
       agendarPoll();
-    } finally {
-      sincronizando = false;
     }
   }
 
   // ----- entrar/sair -----
   function sairLocal(aviso?: string) {
-    pollAtivo = false;
-    geracao++; // resposta em voo da sala velha morre no ar
-    clearTimeout(pollTimer);
+    poller.stop();
+    gen.bump();
     removerGancho();
     fila = [];
     loteAtual = null;
@@ -413,14 +389,14 @@ export function criarSync(ctx: Contexto): Sync {
   }
 
   const api2: Sync = {
-    emSala: () => pollAtivo,
-    emVisita: () => pollAtivo && modo === 'visita',
+    emSala: () => poller.running(),
+    emVisita: () => poller.running() && modo === 'visita',
     souAnfitriao: () => anfitriao,
     codigoSala: () => codigo,
-    meuNomeNaSala: () => (pollAtivo ? meuNome : ''),
+    meuNomeNaSala: () => (poller.running() ? meuNome : ''),
 
     async criarSala(nomeJogador, cod) {
-      if (pollAtivo) return null;
+      if (poller.running()) return null;
       const foto = fotoAtual();
       if (foto.blocos.length > ctx.cfg.salvar.maxPayload) return '😅 O mundo ficou grande demais pra abrir sala!';
       const r = await api({ acao: 'criar', codigo: cod, nome: nomeJogador, foto });
@@ -442,7 +418,7 @@ export function criarSync(ctx: Contexto): Sync {
       nomesVistos = new Set();
       ultimaFotoMs = performance.now();
       instalarGancho();
-      pollAtivo = true;
+      poller.start();
       atualizarChip(1);
       atualizarListaPausa([]);
       agendarPoll();
@@ -450,7 +426,7 @@ export function criarSync(ctx: Contexto): Sync {
     },
 
     async entrarSala(cod, nomeJogador) {
-      if (pollAtivo) return null;
+      if (poller.running()) return null;
       const r = await api({ acao: 'entrar', codigo: cod, nome: nomeJogador });
       if (!r.ok) return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
       if (!r.json.foto || typeof r.json.foto.blocos !== 'string') return 'A sala veio vazia — tenta de novo?';
@@ -482,36 +458,27 @@ export function criarSync(ctx: Contexto): Sync {
     },
 
     ligarPoll() {
-      if (pollAtivo || modo === '') return;
+      if (poller.running() || modo === '') return;
       ultimaFotoMs = performance.now();
       instalarGancho();
-      pollAtivo = true;
+      poller.start();
       atualizarChip(nomesVistos.size + 1);
       pollLogo(80); // 1º sync já — presença + edições que chegaram no meio
     },
 
     async sairDaSala() {
-      if (!pollAtivo) return;
+      if (!poller.running()) return;
       // beacon e não fetch: o "sair" costuma vir colado numa navegação,
       // que abortaria o fetch — e o boneco ficaria 2min parado na sala.
       // O visitante manda o inventário: o dono resolve a entrega.
       const corpo = JSON.stringify({ acao: 'sair', codigo, token, inventario: invParaEntrega() });
       sairLocal();
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(S.api, new Blob([corpo], { type: 'application/json' }));
-      } else {
-        await fetch(S.api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: corpo, keepalive: true }).catch(() => {});
-      }
+      await beaconOrKeepalive(S.api, corpo);
     },
 
     flushSair() {
-      if (!pollAtivo) return;
-      const corpo = JSON.stringify({ acao: 'sair', codigo, token, inventario: invParaEntrega() });
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(S.api, new Blob([corpo], { type: 'application/json' }));
-      } else {
-        fetch(S.api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: corpo, keepalive: true }).catch(() => {});
-      }
+      if (!poller.running()) return;
+      beaconOrKeepalive(S.api, JSON.stringify({ acao: 'sair', codigo, token, inventario: invParaEntrega() }));
     },
 
     pollAgora: () => pollLogo(0),
