@@ -12,7 +12,6 @@ export interface Estado {
   mudo: boolean;
   seed: number;
   sel: number; // índice selecionado na hotbar (0..11)
-  modoColocar: boolean; // touch: ⛏️ quebrar × 🧱 colocar
   primeiroInput: boolean;
   // sobrevivência: contagem de itens por id de bloco — colocar consome,
   // quebrar devolve (o drop do bloco)
@@ -216,7 +215,6 @@ export interface UI {
   montarCraft(): void;
   montarInventario(): void;
   alternarCraft(abrir?: boolean): void; // abre/fecha o painel do inventário
-  atualizarModo(): void;
   mostrarSalvando(estado: 'salvando' | 'salvo' | 'erro' | 'nada'): void;
   flashSusto(): void;
   // baú: painel de troca de itens (conteúdo ↔ inventário)

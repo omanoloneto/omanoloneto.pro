@@ -29,7 +29,6 @@ export function iniciarJogo() {
     mudo: false,
     seed: 0,
     sel: 0,
-    modoColocar: false,
     primeiroInput: false,
     // sobrevivência: começa de mãos vazias — quebrou, ganhou
     inventario: new Array(dados.blocos.length).fill(0),
@@ -227,6 +226,17 @@ export function iniciarJogo() {
     renderer.render(scene, camera);
   }
 
+  function requestGameFullscreen() {
+    if (!inputRefs.emModoTouch() || document.fullscreenElement) return;
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
+    try {
+      const pr = el.requestFullscreen
+        ? el.requestFullscreen({ navigationUI: 'hide' } as FullscreenOptions)
+        : (el.webkitRequestFullscreen && el.webkitRequestFullscreen(), undefined);
+      if (pr && typeof pr.catch === 'function') pr.catch(() => {});
+    } catch { }
+  }
+
   // ----- fluxo -----
   const fluxo = {
     entrarNoMundo() {
@@ -239,6 +249,8 @@ export function iniciarJogo() {
       ui.els.pauseBtn.hidden = false;
       ui.els.craftBtn.hidden = false;
       ui.els.fantasma.hidden = false;
+      ui.els.controles.hidden = !inputRefs.emModoTouch();
+      requestGameFullscreen();
       ui.els.nomeMundoHud.textContent = salvar.temMundo()
         ? '🌍 ' + salvar.codigoMundo()
         : sync.emVisita() ? '🌍 ' + sync.codigoSala() : '🎲 mundo de brincadeira';
@@ -247,8 +259,6 @@ export function iniciarJogo() {
       }
       ui.atualizarContagens();
       ui.selecionarSlot(estado.sel, false);
-      estado.modoColocar = false;
-      ui.atualizarModo();
       ctx.audio.retomar();
       medir();
       retomarLoop();
@@ -282,6 +292,7 @@ export function iniciarJogo() {
       ui.els.pausaModal.hidden = true;
       ui.els.inicioModal.hidden = true;
       estado.fase = 'jogando';
+      requestGameFullscreen();
       medir();
       retomarLoop();
       // no desktop, o clique em Continuar é gesto válido pra re-travar o

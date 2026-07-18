@@ -3,8 +3,8 @@
 // solta → detectamos e pausamos), WASD/setas, espaço pula, clique
 // esquerdo quebra / direito coloca (com repetição segurando), 1-9 e
 // scroll na hotbar.
-// Touch: joystick flutuante no terço esquerdo, arrastar olha, tap curto
-// executa o modo (⛏️/🧱), botões grandes de pulo e modo.
+// Touch: joystick fixo no canto, arrastar olha, tap curto coloca ou
+// interage, botões grandes de quebrar (segurar) e pular.
 import type { Contexto } from './tipos';
 
 const TECLAS: Record<string, 'frente' | 'tras' | 'esq' | 'dir'> = {
@@ -159,10 +159,8 @@ export function ligarInput(ctx: Contexto) {
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // ----- touch -----
-  let modoTouch = false;
+  let modoTouch = window.matchMedia('(pointer: coarse)').matches;
   let joyId = -1;
-  let joyBaseX = 0;
-  let joyBaseY = 0;
   let olharId = -1;
   let olharX = 0;
   let olharY = 0;
@@ -177,12 +175,46 @@ export function ligarInput(ctx: Contexto) {
     ctx.ui.els.controles.hidden = false;
   }
 
+  const joyEl = ctx.ui.els.joystick;
+  const joyPino = ctx.ui.els.joystickPino;
+
+  function aplicarJoy(e: PointerEvent) {
+    const r = joyEl.getBoundingClientRect();
+    const dx = (e.clientX - r.left - r.width / 2) / (r.width / 2);
+    const dy = (e.clientY - r.top - r.height / 2) / (r.height / 2);
+    const mag = Math.hypot(dx, dy);
+    const k = mag > 1 ? 1 / mag : 1;
+    input.joyX = dx * k;
+    input.joyY = -dy * k;
+    joyPino.style.transform = 'translate(' + dx * k * 26 + 'px,' + dy * k * 26 + 'px)';
+  }
+
   function largarJoystick() {
     joyId = -1;
     input.joyX = 0;
     input.joyY = 0;
-    ctx.ui.els.joystick.hidden = true;
+    joyPino.style.transform = '';
   }
+
+  joyEl.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    ativarModoTouch();
+    ctx.fluxo.aoPrimeiroInput();
+    joyId = e.pointerId;
+    try { joyEl.setPointerCapture(e.pointerId); } catch { }
+    aplicarJoy(e);
+  });
+  joyEl.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== joyId) return;
+    e.preventDefault();
+    aplicarJoy(e);
+  });
+  const soltaJoy = (e: PointerEvent) => {
+    if (e.pointerId === joyId) largarJoystick();
+  };
+  joyEl.addEventListener('pointerup', soltaJoy);
+  joyEl.addEventListener('pointercancel', soltaJoy);
+  joyEl.addEventListener('lostpointercapture', soltaJoy);
 
   canvas.style.touchAction = 'none';
   canvas.addEventListener('pointerdown', (e) => {
@@ -190,18 +222,7 @@ export function ligarInput(ctx: Contexto) {
     ativarModoTouch();
     ctx.fluxo.aoPrimeiroInput();
     e.preventDefault();
-    const w = ctx.cenaEl.clientWidth;
-    if (e.clientX < w * 0.38 && joyId === -1) {
-      // joystick flutuante nasce onde o dedo pousou
-      joyId = e.pointerId;
-      joyBaseX = e.clientX;
-      joyBaseY = e.clientY;
-      const js = ctx.ui.els.joystick;
-      js.hidden = false;
-      js.style.left = e.clientX + 'px';
-      js.style.top = e.clientY + 'px';
-      ctx.ui.els.joystickPino.style.transform = 'translate(-50%,-50%)';
-    } else if (olharId === -1) {
+    if (olharId === -1) {
       olharId = e.pointerId;
       olharX = e.clientX;
       olharY = e.clientY;
@@ -209,28 +230,14 @@ export function ligarInput(ctx: Contexto) {
       tapX0 = e.clientX;
       tapY0 = e.clientY;
       tapMoveu = false;
-      // modo ⛏️: dedo parado na tela = golpeando o bloco mirado
-      if (!estado.modoColocar) input.golpe = true;
     }
   });
   canvas.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'touch') return;
-    if (e.pointerId === joyId) {
-      const R = 44;
-      let dx = e.clientX - joyBaseX;
-      let dy = e.clientY - joyBaseY;
-      const d = Math.hypot(dx, dy);
-      if (d > R) { dx = (dx / d) * R; dy = (dy / d) * R; }
-      input.joyX = dx / R;
-      input.joyY = -dy / R; // dedo pra cima = frente
-      ctx.ui.els.joystickPino.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px))';
-    } else if (e.pointerId === olharId) {
+    if (e.pointerId === olharId) {
       const dx = e.clientX - olharX;
       const dy = e.clientY - olharY;
-      if (Math.abs(e.clientX - tapX0) + Math.abs(e.clientY - tapY0) > 12) {
-        tapMoveu = true;
-        input.golpe = false; // virou olhar: solta o golpe
-      }
+      if (Math.abs(e.clientX - tapX0) + Math.abs(e.clientY - tapY0) > 12) tapMoveu = true;
       olharX = e.clientX;
       olharY = e.clientY;
       jogador.yaw -= dx * cfg.camera.sensTouch;
@@ -238,28 +245,40 @@ export function ligarInput(ctx: Contexto) {
     }
   });
   const soltarToque = (e: PointerEvent) => {
-    if (e.pointerId === joyId) largarJoystick();
     if (e.pointerId === olharId) {
       olharId = -1;
-      input.golpe = false;
-      // tap curto e parado: no modo 🧱 interage/coloca (quebrar é
-      // SEGURAR). No modo ⛏️, tap em porta/baú/placa TAMBÉM interage —
-      // senão a criança precisa trocar de modo só pra abrir uma porta
+      // tap curto e parado: coloca o bloco selecionado ou interage
+      // (porta/baú/placa); quebrar é SEGURAR o botão ⛏️
       if (!tapMoveu && performance.now() - tapT0 < 220 && estado.fase === 'jogando') {
-        const alvo = ctx.mira.alvo();
-        const interativo = alvo && (alvo.id === 17 || alvo.id === 18 || alvo.id === 19 || alvo.id === 20);
-        if (estado.modoColocar || interativo) ctx.edicao.interagir();
+        ctx.edicao.interagir();
       }
     }
   };
   canvas.addEventListener('pointerup', soltarToque);
   canvas.addEventListener('pointercancel', soltarToque);
 
-  // botões touch: pulo (segurar) e modo (toggle)
+  // botões touch: quebrar (segurar) e pulo (segurar)
+  const btnQuebrar = ctx.ui.els.btnQuebrar;
+  btnQuebrar.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    ativarModoTouch();
+    ctx.fluxo.aoPrimeiroInput();
+    try { btnQuebrar.setPointerCapture(e.pointerId); } catch { }
+    input.golpe = true;
+    btnQuebrar.classList.add('on');
+  });
+  const soltarQuebrar = () => {
+    input.golpe = false;
+    btnQuebrar.classList.remove('on');
+  };
+  btnQuebrar.addEventListener('pointerup', soltarQuebrar);
+  btnQuebrar.addEventListener('pointercancel', soltarQuebrar);
+  btnQuebrar.addEventListener('lostpointercapture', soltarQuebrar);
+
   const btnPulo = ctx.ui.els.btnPulo;
   btnPulo.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    btnPulo.setPointerCapture?.(e.pointerId);
+    try { btnPulo.setPointerCapture(e.pointerId); } catch { }
     input.pulo = true;
     btnPulo.classList.add('on');
   });
@@ -271,17 +290,11 @@ export function ligarInput(ctx: Contexto) {
   btnPulo.addEventListener('pointercancel', soltarPulo);
   btnPulo.addEventListener('lostpointercapture', soltarPulo);
 
-  ctx.ui.els.btnModo.addEventListener('click', () => {
-    estado.modoColocar = !estado.modoColocar;
-    ctx.ui.atualizarModo();
-    ctx.audio.somUI();
-    ctx.ui.anunciar(estado.modoColocar ? 'Modo colocar bloco' : 'Modo quebrar bloco');
-  });
-
   return {
     soltarTouch() {
       largarJoystick();
       olharId = -1;
+      soltarQuebrar();
       soltarPulo();
       pararRepetir();
     },

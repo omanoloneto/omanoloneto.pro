@@ -19,7 +19,7 @@ export function criarUI(ctx: Contexto): UI {
     salvando: $('[data-salvando]'),
     nomeMundoHud: $('[data-nome-mundo]'),
     controles: $('[data-controles]'),
-    btnModo: $('[data-btn-modo]'),
+    btnQuebrar: $('[data-btn-quebrar]'),
     btnPulo: $('[data-btn-pulo]'),
     joystick: $('[data-joystick]'),
     joystickPino: $('[data-joystick-pino]'),
@@ -227,11 +227,6 @@ export function criarUI(ctx: Contexto): UI {
     clearTimeout(balaoTimer);
     balaoTimer = window.setTimeout(() => els.balao.classList.remove('show'), 1100);
     if (anunciarSel) api.anunciar('Bloco: ' + nome);
-    // pegou um bloco = quer colocar (touch)
-    if (!ctx.estado.modoColocar) {
-      ctx.estado.modoColocar = true;
-      api.atualizarModo();
-    }
   }
 
   // ----- baú (painel de troca de itens) + placa (form/leitura) -----
@@ -393,12 +388,6 @@ export function criarUI(ctx: Contexto): UI {
       painel.hidden = !quer;
       els.craftBtn.setAttribute('aria-expanded', String(quer));
       if (quer) api.atualizarContagens();
-    },
-    atualizarModo() {
-      const colocar = ctx.estado.modoColocar;
-      els.btnModo.innerHTML = colocar ? '🧱' : '⛏️';
-      els.btnModo.setAttribute('aria-label', colocar ? 'Modo: colocar bloco (toque pra trocar)' : 'Modo: quebrar bloco (toque pra trocar)');
-      els.btnModo.classList.toggle('colocar', colocar);
     },
     mostrarSalvando(estado) {
       clearTimeout(salvandoTimer);
