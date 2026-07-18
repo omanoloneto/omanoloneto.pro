@@ -155,6 +155,7 @@ export const config = {
     larguraDropMin: 22000, // ms entre lãs (de dia): 22-38s
     larguraDropMax: 38000,
     maxLaPerto: 5, // não dropa se já tem 5 tufos por perto (raio 6)
+    woolDespawnMs: 60000, // lã não pega em 1 min some (não entulha o mapa)
   },
   kotsooh: {
     quantos: 3,

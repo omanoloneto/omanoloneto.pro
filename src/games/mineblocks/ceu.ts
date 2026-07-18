@@ -17,16 +17,17 @@ interface Chave {
   zen: number;
   hor: number;
   tint: [number, number, number];
+  vis: number;
 }
 const CHAVES: Chave[] = [
-  { s: 0, zen: 0x1c4f96, hor: 0xffb877, tint: [1.0, 0.88, 0.74] }, // amanhecer
-  { s: 120, zen: 0x2f7ad0, hor: 0xcfe9f7, tint: [1.0, 1.0, 1.0] }, // manhã
-  { s: 450, zen: 0x2b78d4, hor: 0xd8edf9, tint: [1.0, 1.0, 1.0] }, // meio-dia
-  { s: 760, zen: 0x2e6fbe, hor: 0xffd39a, tint: [1.0, 0.93, 0.8] }, // tarde dourada
-  { s: 880, zen: 0x2a3f7a, hor: 0xff8c4a, tint: [0.92, 0.66, 0.52] }, // pôr do sol
-  { s: 980, zen: 0x13204a, hor: 0x243a63, tint: [0.52, 0.58, 0.74] }, // anoitecer
-  { s: 1290, zen: 0x111c40, hor: 0x1e2c54, tint: [0.52, 0.58, 0.74] }, // noite cheia (luar)
-  { s: 1440, zen: 0x1a2a58, hor: 0x35477a, tint: [0.58, 0.6, 0.74] }, // pré-amanhecer
+  { s: 0, zen: 0x1c4f96, hor: 0xffb877, tint: [1.0, 0.88, 0.74], vis: 0.9 }, // amanhecer
+  { s: 120, zen: 0x2f7ad0, hor: 0xcfe9f7, tint: [1.0, 1.0, 1.0], vis: 1 }, // manhã
+  { s: 450, zen: 0x2b78d4, hor: 0xd8edf9, tint: [1.0, 1.0, 1.0], vis: 1 }, // meio-dia
+  { s: 760, zen: 0x2e6fbe, hor: 0xffd39a, tint: [1.0, 0.93, 0.8], vis: 1 }, // tarde dourada
+  { s: 880, zen: 0x2a3f7a, hor: 0xff8c4a, tint: [0.92, 0.66, 0.52], vis: 0.85 }, // pôr do sol
+  { s: 980, zen: 0x0d1735, hor: 0x1a2947, tint: [0.38, 0.42, 0.56], vis: 0.5 }, // anoitecer
+  { s: 1290, zen: 0x070d24, hor: 0x101a38, tint: [0.22, 0.25, 0.38], vis: 0.35 }, // noite cheia (breu)
+  { s: 1440, zen: 0x101d40, hor: 0x24335c, tint: [0.3, 0.33, 0.48], vis: 0.6 }, // pré-amanhecer
 ];
 
 export function criarCeu(ctx: Contexto): Ceu {
@@ -123,6 +124,7 @@ export function criarCeu(ctx: Contexto): Ceu {
   const cHor = new THREE.Color();
   const cTint = new THREE.Color();
   const cVert = new THREE.Color();
+  let vis = 1;
   function corPorTempo(s: number) {
     let a = CHAVES[CHAVES.length - 1];
     let b = CHAVES[0];
@@ -140,11 +142,15 @@ export function criarCeu(ctx: Contexto): Ceu {
     const t = sb === sa ? 0 : (s - sa) / (sb - sa);
     cZen.set(a.zen).lerp(new THREE.Color(b.zen), t);
     cHor.set(a.hor).lerp(new THREE.Color(b.hor), t);
+    // sRGB: sem a conversão o multiplicador vira tint^(1/2.2) na tela e a
+    // "noite escura" sai clara (0.25 aparecia como 0.56)
     cTint.setRGB(
       a.tint[0] + (b.tint[0] - a.tint[0]) * t,
       a.tint[1] + (b.tint[1] - a.tint[1]) * t,
       a.tint[2] + (b.tint[2] - a.tint[2]) * t,
+      THREE.SRGBColorSpace,
     );
+    vis = a.vis + (b.vis - a.vis) * t;
   }
 
   const corAttr = domoGeo.attributes.color as THREE.BufferAttribute;
@@ -165,7 +171,12 @@ export function criarCeu(ctx: Contexto): Ceu {
     malha.tingir(cTint);
     nuvemMat.color.copy(cTint).lerp(new THREE.Color(0xffffff), 0.25); // nuvem menos escura que o chão
     (scene.background as THREE.Color).copy(cHor);
-    if (scene.fog) scene.fog.color.copy(cHor);
+    if (scene.fog) {
+      scene.fog.color.copy(cHor);
+      // névoa fecha junto com a luz: de noite o terreno some perto (breu)
+      (scene.fog as THREE.Fog).near = 90 * vis;
+      (scene.fog as THREE.Fog).far = 240 * vis;
+    }
   }
 
   // sol/lua: elevação sai do próprio ciclo (dia 0..π, noite 0..π); opacidade

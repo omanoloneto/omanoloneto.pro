@@ -35,7 +35,9 @@ export function ligarInput(ctx: Contexto) {
       }
       else if (estado.fase === 'jogando' && !ctx.ui.els.invPainel.hidden) {
         e.preventDefault();
-        alternarInventario();
+        // sem relock: o keyup deste ESC soltaria o lock recém-pedido e o
+        // pointerlockchange abriria o pause — ESC aqui SÓ fecha o painel
+        alternarInventario(false);
       }
       return;
     }
@@ -102,7 +104,7 @@ export function ligarInput(ctx: Contexto) {
   });
 
   // inventário (tecla E / botão 🎒): abre soltando o mouse, fecha re-travando
-  function alternarInventario() {
+  function alternarInventario(relock = true) {
     if (estado.fase !== 'jogando') return;
     const abrindo = ctx.ui.els.invPainel.hidden;
     ctx.ui.alternarCraft(abrindo);
@@ -110,7 +112,7 @@ export function ligarInput(ctx: Contexto) {
       // solta TUDO: minerar/andar às cegas atrás do painel não
       ctx.fluxo.soltarInputs();
       if (travado) document.exitPointerLock();
-    } else if (!modoTouch) {
+    } else if (!modoTouch && relock) {
       pedirLock();
     }
     ctx.audio.somUI();

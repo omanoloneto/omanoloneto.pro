@@ -83,6 +83,10 @@ export function criarMob(ctx: Contexto): Mob {
   const vivos: Winpup[] = [];
   let tempoMs = 0;
   let coletaMs = 0;
+  let despawnMs = 0;
+  const dropped = new Map<number, number>();
+
+  const woolKey = (x: number, y: number, z: number) => x + z * SX + y * SX * SZ;
 
   // altura do chão sólido em (x,z) — pra flutuar acompanhando o relevo
   const chao = (x: number, z: number) =>
@@ -117,6 +121,12 @@ export function criarMob(ctx: Contexto): Mob {
   function nascer(seed: number) {
     limpar();
     tempoMs = 0;
+    dropped.clear();
+    // lã de save antigo (sem timestamp) ganha TTL cheio a partir de agora
+    for (let y = 1; y < cfg.mundo.SY; y++)
+      for (let z = 0; z < SZ; z++)
+        for (let x = 0; x < SX; x++)
+          if (mundo.obter(x, y, z) === LA) dropped.set(woolKey(x, y, z), B.woolDespawnMs);
     const rng = mulberry32((seed ^ 0x7712bb) >>> 0);
     let tentativas = 0;
     while (vivos.length < B.quantos && tentativas < 400) {
@@ -150,6 +160,18 @@ export function criarMob(ctx: Contexto): Mob {
     if (mundo.obter(cx, surf + 1, cz) !== 0) return;
     if (laPerto(cx, cz, surf) >= B.maxLaPerto) return;
     mundo.definir(cx, surf + 1, cz, LA); // vira bloco → sincroniza sozinho
+    dropped.set(woolKey(cx, surf + 1, cz), tempoMs + B.woolDespawnMs);
+  }
+
+  function despawnWool() {
+    for (const [key, expiresMs] of dropped) {
+      if (tempoMs < expiresMs) continue;
+      const x = key % SX;
+      const z = Math.floor(key / SX) % SZ;
+      const y = Math.floor(key / (SX * SZ));
+      if (mundo.obter(x, y, z) === LA) mundo.definir(x, y, z, 0);
+      dropped.delete(key);
+    }
   }
 
   // simulação (anfitrião/solo): wander + bob + drop de dia
@@ -173,7 +195,7 @@ export function criarMob(ctx: Contexto): Mob {
         const passo = Math.min(dist, B.passeio * dt);
         w.x += (dx / dist) * passo;
         w.z += (dz / dist) * passo;
-        w.yaw = Math.atan2(dx, dz); // olha pra onde vai (-Z na frente → atan2(dx,dz))
+        w.yaw = Math.atan2(-dx, -dz); // olha pra onde vai (-Z na frente → atan2(-dx,-dz))
       }
       w.y = hoverY(w.x, w.z);
       // solta lã
@@ -238,6 +260,10 @@ export function criarMob(ctx: Contexto): Mob {
     nascer,
     passo(dt, simularBichos) {
       tempoMs += dt * 1000;
+      if (simularBichos) {
+        despawnMs += dt * 1000;
+        if (despawnMs >= 1000) { despawnMs = 0; despawnWool(); }
+      }
       if (!vivos.length) return;
       if (simularBichos) simular(dt);
       else seguirRede(dt);
