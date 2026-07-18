@@ -332,6 +332,8 @@ export function criarArena(ctx: Contexto): Arena {
   let mapaAtual: MapDef = mapas[0];
   let aguaTexs: THREE.CanvasTexture[] = [];
   let aguaMeshes: THREE.Mesh[] = [];
+  let nuvens: THREE.Group[] = [];
+  let nuvemAlcance = 0;
 
   function disposeAll() {
     const mats = new Set<THREE.Material>();
@@ -855,6 +857,7 @@ export function criarArena(ctx: Contexto): Arena {
     aabbs.length = 0;
     aguaTexs = [];
     aguaMeshes = [];
+    nuvens = [];
 
     const T = M.tema;
     scene.background = new THREE.Color(T.ceu);
@@ -1052,6 +1055,38 @@ export function criarArena(ctx: Contexto): Arena {
     const sol = new THREE.DirectionalLight(T.sol, 1.1);
     sol.position.set(20, 30, 12);
     group.add(sol);
+
+    const solDisco = new THREE.Mesh(
+      new THREE.SphereGeometry(5.2, 14, 10),
+      new THREE.MeshBasicMaterial({ color: 0xffc93c, fog: false })
+    );
+    solDisco.position.set(46, 64, 28);
+    const solHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(7.2, 14, 10),
+      new THREE.MeshBasicMaterial({ color: 0xffefb0, transparent: true, opacity: 0.5, fog: false })
+    );
+    solHalo.position.copy(solDisco.position);
+    group.add(solDisco, solHalo);
+
+    nuvemAlcance = Math.max(M.larg, M.prof) / 2 + 25;
+    const nuvemMat = new THREE.MeshBasicMaterial({ color: 0xfffdf8, transparent: true, opacity: 0.95 });
+    const rngNuvens = mulberry32(0x50fa1a);
+    for (let i = 0; i < 9; i++) {
+      const nuvem = new THREE.Group();
+      const partes = 3 + Math.floor(rngNuvens() * 3);
+      for (let p = 0; p < partes; p++) {
+        const raio = 1.5 + rngNuvens() * 1.7;
+        const bola = new THREE.Mesh(new THREE.SphereGeometry(raio, 10, 8), nuvemMat);
+        bola.scale.y = 0.5;
+        bola.position.set((p - (partes - 1) / 2) * raio * 1.15, rngNuvens() * 0.7, (rngNuvens() - 0.5) * 2.2);
+        nuvem.add(bola);
+      }
+      nuvem.position.set(-nuvemAlcance + rngNuvens() * 2 * nuvemAlcance, 26 + rngNuvens() * 11, -nuvemAlcance + rngNuvens() * 2 * nuvemAlcance);
+      nuvem.userData.baseX = nuvem.position.x + nuvemAlcance;
+      nuvem.userData.vel = 0.5 + rngNuvens() * 0.9;
+      group.add(nuvem);
+      nuvens.push(nuvem);
+    }
   }
 
   function dentroPiscina(x: number, z: number): boolean {
@@ -1081,6 +1116,10 @@ export function criarArena(ctx: Contexto): Arena {
     }
     if (!ctx.motionReduzido) {
       for (const m of aguaMeshes) m.position.y = -0.12 + Math.sin(ts / 700) * 0.02;
+      const faixa = nuvemAlcance * 2;
+      for (const n of nuvens) {
+        n.position.x = ((n.userData.baseX + (ts / 1000) * n.userData.vel) % faixa) - nuvemAlcance;
+      }
     }
   }
 
