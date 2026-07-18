@@ -158,8 +158,9 @@ export interface Kotsooh {
   nascer(): void;
   passo(dt: number): void;
   aparecer(): boolean;
+  provocar(): void;
   ativo(): boolean;
-  posicao(): { x: number; y: number; z: number } | null;
+  fantasmas(): Array<{ x: number; y: number; z: number; cacando: boolean; olhando: boolean }>;
   limpar(): void;
 }
 
