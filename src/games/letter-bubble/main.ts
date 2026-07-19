@@ -494,6 +494,14 @@ export function iniciarJogo() {
   window.addEventListener('keyup', (e) => teclas.delete(e.key));
   window.addEventListener('blur', () => teclas.clear());
 
+  function destravarMusica() {
+    audio.iniciarMusica();
+    window.removeEventListener('pointerdown', destravarMusica);
+    window.removeEventListener('keydown', destravarMusica);
+  }
+  window.addEventListener('pointerdown', destravarMusica);
+  window.addEventListener('keydown', destravarMusica);
+
   for (const btn of Array.from(document.querySelectorAll('[data-dif]'))) {
     btn.addEventListener('click', () => startDifficulty(btn.getAttribute('data-dif') as DifficultyId));
   }
@@ -546,6 +554,7 @@ export function iniciarJogo() {
     progresso,
     teclado,
     ui,
+    audio,
     reduced,
     board: () => board,
     particles: () => particles,

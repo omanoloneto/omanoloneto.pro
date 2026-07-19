@@ -1,10 +1,26 @@
 const MUTE_KEY = 'bolhas-de-letras:mudo';
 const SPEAK_KEY = 'bolhas-de-letras:falar';
+const MUSICA_URL = '/class/audio/bolhas-de-letras/bubble-letter-skies.ogg';
+const MUSICA_VOL = 0.35;
 
 export function criarAudio() {
   let actx: AudioContext | null = null;
   let mudo = localStorage.getItem(MUTE_KEY) === '1';
   let falar = localStorage.getItem(SPEAK_KEY) === '1';
+  let musica: HTMLAudioElement | null = null;
+
+  function iniciarMusica() {
+    if (!musica) {
+      musica = new Audio(MUSICA_URL);
+      musica.loop = true;
+      musica.volume = MUSICA_VOL;
+      musica.preload = 'auto';
+    }
+    if (!mudo) {
+      const pr = musica.play();
+      if (pr && typeof pr.catch === 'function') pr.catch(() => {});
+    }
+  }
 
   function ctx(): AudioContext | null {
     if (mudo) return null;
@@ -46,6 +62,9 @@ export function criarAudio() {
       [523, 659, 784, 1047].forEach((f, i) => beep(f, 0.16, 'triangle', 0.13, undefined, i * 0.13));
     },
     somClique: () => beep(760, 0.05, 'square', 0.05),
+    iniciarMusica,
+    get musicaTocando() { return !!musica && !musica.paused; },
+    get musicaInfo() { return musica ? { loop: musica.loop, volume: musica.volume } : null; },
     falarLetra(id: string) {
       if (!falar || mudo || !('speechSynthesis' in window)) return;
       const u = new SpeechSynthesisUtterance(id);
@@ -58,6 +77,13 @@ export function criarAudio() {
     setMudo(v: boolean) {
       mudo = v;
       localStorage.setItem(MUTE_KEY, v ? '1' : '0');
+      if (musica) {
+        if (v) musica.pause();
+        else {
+          const pr = musica.play();
+          if (pr && typeof pr.catch === 'function') pr.catch(() => {});
+        }
+      }
     },
     get falar() { return falar; },
     setFalar(v: boolean) {
