@@ -97,7 +97,7 @@ export function createBoard(diff: Pick<DifficultyDef, 'radius' | 'cols'>): Board
   }
 
   function novaBolha(letterId: string, lower: boolean, row: number, col: number): Bubble {
-    return { letterId, lower, row, col, popT: 0, shakeT: 0, falling: false, fx: 0, fy: 0, vy: 0 };
+    return { letterId, lower, row, col, popT: 0, shakeT: 0, settleT: 0, falling: false, fx: 0, fy: 0, vy: 0 };
   }
 
   function cellFromPoint(px: number, py: number): [number, number] {
@@ -201,6 +201,7 @@ export function createBoard(diff: Pick<DifficultyDef, 'radius' | 'cols'>): Board
     for (const b of bubbles) {
       if (b.popT > 0) b.popT += dt * 1000;
       if (b.shakeT > 0) b.shakeT = Math.max(0, b.shakeT - dt * 1000);
+      if (b.settleT > 0) b.settleT = Math.max(0, b.settleT - dt * 1000);
       if (b.falling) {
         b.vy += 1400 * dt;
         b.fy += b.vy * dt;

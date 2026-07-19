@@ -1,12 +1,13 @@
-import { config, difficulties, levels, keyboardRounds, scoring, textos } from '../../data/bolhas-de-letras';
+import { config, difficulties, levels, keyboardRounds, scoring, textos, temasBg, juice, letters } from '../../data/bolhas-de-letras';
 import type { DifficultyDef, DifficultyId } from '../../data/bolhas-de-letras';
 import { createBoard, type Board } from './board';
 import { criarRender, type Projectile } from './render';
+import { criarBackground, type Background } from './backgrounds';
 import { criarAudio } from './audio';
 import { criarProgresso } from './progress';
 import { criarModoTeclado } from './keyboard';
 import { criarUi } from './ui';
-import type { Estado, FloatText } from './tipos';
+import type { Estado, FloatText, Particle } from './tipos';
 
 const AIM_MAX = 1.32;
 
@@ -34,6 +35,7 @@ export function iniciarJogo() {
     rodadaTeclado: 0,
   };
 
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let diff: DifficultyDef = difficulties[0];
   let board: Board = createBoard(diff);
   let current: { letterId: string; lower: boolean } | null = null;
@@ -42,16 +44,88 @@ export function iniciarJogo() {
   let proj: Projectile | null = null;
   let aimAngle = 0;
   let floats: FloatText[] = [];
+  let particles: Particle[] = [];
   let matchesNivel = 0;
   let pulseT = 0;
+  let trauma = 0;
+  let shakeX = 0;
+  let shakeY = 0;
+  let recoil = 0;
+  let trailAcc = 0;
+  let tema = temasBg[0];
+  let bg: Background = criarBackground(tema, 1);
   const teclas = new Set<string>();
+
+  const corLetra = new Map<string, string>();
+  for (const l of letters) if (l.easyColor) corLetra.set(l.id, l.easyColor);
+
+  function corParticula(letterId: string, useColors: boolean): string {
+    if (useColors && corLetra.has(letterId)) return corLetra.get(letterId)!;
+    const pal = juice.festivePalette;
+    return pal[letterId.charCodeAt(0) % pal.length];
+  }
+
+  function novoBg(t: (typeof temasBg)[number], seed: number) {
+    tema = t;
+    bg = criarBackground(t, seed);
+  }
+
+  function addTrauma(v: number) {
+    trauma = Math.min(juice.traumaMax, trauma + v);
+  }
+
+  function spawnPop(x: number, y: number, cor: string, extra: number) {
+    if (reduced) return;
+    const n = juice.popShards + extra;
+    for (let i = 0; i < n; i++) {
+      const ang = (i / n) * Math.PI * 2 + Math.random() * 0.5;
+      const sp = 60 + Math.random() * 150;
+      particles.push({
+        x, y,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp - 40,
+        life: 0.5 + Math.random() * 0.4,
+        maxLife: 0.9,
+        r: 2 + Math.random() * 3,
+        cor,
+        kind: 'shard',
+        grav: 520,
+        spin: 0,
+        ang: 0,
+      });
+    }
+    particles.push({ x, y, vx: 0, vy: 0, life: 0.42, maxLife: 0.42, r: board.radius * 2.4, cor, kind: 'ring', grav: 0, spin: 0, ang: 0 });
+  }
+
+  function spawnConfete() {
+    if (reduced) return;
+    const pal = juice.festivePalette;
+    for (let i = 0; i < juice.confete; i++) {
+      particles.push({
+        x: Math.random() * config.canvasW,
+        y: -10 - Math.random() * 60,
+        vx: (Math.random() - 0.5) * 80,
+        vy: 60 + Math.random() * 120,
+        life: 1.6 + Math.random() * 1.2,
+        maxLife: 2.8,
+        r: 3 + Math.random() * 4,
+        cor: pal[i % pal.length],
+        kind: 'confete',
+        grav: 90,
+        spin: (Math.random() - 0.5) * 12,
+        ang: Math.random() * Math.PI,
+      });
+    }
+  }
 
   const teclado = criarModoTeclado({
     onAcerto(b, ms) {
       progresso.acerto(b.letterId, ms);
       estado.pontos += scoring.match;
       const p = teclado.board.posDe(b);
-      floats.push({ texto: textos.feedbackMatch(b.letterId), x: p.x, y: p.y, t: 0, cor: '#1d7a3c' });
+      floats.push({ texto: textos.feedbackMatch(b.letterId), x: p.x, y: p.y, t: 0, cor: '#1d7a3c', grande: false });
+      spawnPop(p.x, p.y, corParticula(b.letterId, false), 0);
+      addTrauma(juice.traumaMatch);
       audio.somMatch();
       audio.falarLetra(b.letterId);
       atualizarHud();
@@ -126,11 +200,14 @@ export function iniciarJogo() {
     current = null;
     next = null;
     floats = [];
+    particles = [];
+    trauma = 0;
     matchesNivel = 0;
     estado.combo = 0;
     estado.shots = 0;
     estado.fase = 'jogando';
     aimAngle = 0;
+    novoBg(temasBg[idx % temasBg.length], 1 + idx * 131);
     refill();
     ui.mostrarModal(null);
     atualizarHud();
@@ -153,6 +230,9 @@ export function iniciarJogo() {
     proj = null;
     current = null;
     floats = [];
+    particles = [];
+    trauma = 0;
+    novoBg('galaxy', 777);
     teclado.start(0);
     ui.mostrarModal(null);
     atualizarHud();
@@ -165,6 +245,7 @@ export function iniciarJogo() {
     const r = progresso.resumo();
     ui.resumo(r.bons, r.praticar);
     ui.mostrarModal(ui.els.win);
+    spawnConfete();
     audio.somVitoria();
   }
 
@@ -178,6 +259,8 @@ export function iniciarJogo() {
     progresso.nivelFeito(estado.nivelIdx);
     const idxs = porDif[levels[estado.nivelIdx].difficulty];
     const pos = idxs.indexOf(estado.nivelIdx);
+    spawnConfete();
+    addTrauma(juice.traumaCluster);
     audio.somVitoria();
     if (pos + 1 < idxs.length) {
       estado.fase = 'nivelFeito';
@@ -200,7 +283,9 @@ export function iniciarJogo() {
       letterId: current.letterId,
       lower: current.lower,
       bounces: 0,
+      trail: [],
     };
+    recoil = 1;
     audio.somLancar();
   }
 
@@ -220,15 +305,27 @@ export function iniciarJogo() {
       if (res.popped.length + 1 >= 3) ganho += scoring.cluster;
       estado.pontos += ganho;
       progresso.acerto(letterId, ms);
+      const cluster = res.popped.length + 1 >= 3;
+      for (const pb of [res.bubble, ...res.popped]) {
+        const pp = board.posDe(pb);
+        spawnPop(pp.x, pp.y, corParticula(letterId, diff.useColors), cluster ? juice.clusterExtra : 0);
+      }
       const p = board.posDe(res.bubble);
-      floats.push({ texto: textos.feedbackMatch(letterId), x: p.x, y: Math.max(60, p.y), t: 0, cor: '#1d7a3c' });
+      const fy = Math.max(60, p.y);
+      floats.push({ texto: textos.feedbackMatch(letterId), x: p.x, y: fy, t: 0, cor: '#1d7a3c', grande: false });
+      if (estado.combo >= 2) {
+        floats.push({ texto: 'Combo x' + estado.combo + '!', x: config.canvasW / 2, y: 150, t: 0, cor: '#e8620e', grande: true });
+      }
+      addTrauma(cluster || estado.combo >= 3 ? juice.traumaCluster : juice.traumaMatch);
       audio.somMatch();
       audio.falarLetra(letterId);
     } else {
       estado.combo = 0;
       const viz = res.vizinhos[0];
       progresso.erro(letterId, viz ? viz.letterId : null, ms);
-      res.bubble.shakeT = config.shakeMs;
+      res.bubble.settleT = config.settleMs;
+      for (const v of res.vizinhos) v.shakeT = Math.max(v.shakeT, config.shakeMs * 0.4);
+      addTrauma(0.12);
       audio.somErro();
       ui.toast(textos.dicaErro(letterId, !lower), 1800);
     }
@@ -256,9 +353,30 @@ export function iniciarJogo() {
   function passo(dt: number) {
     board.update(dt);
     if (estado.fase === 'teclado') teclado.board.update(dt);
+    bg.update(dt, reduced);
     pulseT += dt * 1000;
     for (const f of floats) f.t += dt * 1000;
     floats = floats.filter((f) => f.t < config.feedbackMs);
+
+    for (const p of particles) {
+      p.life -= dt;
+      p.vy += p.grav * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.ang += p.spin * dt;
+    }
+    particles = particles.filter((p) => p.life > 0);
+
+    trauma = Math.max(0, trauma - juice.traumaDecay * dt);
+    const s2 = trauma * trauma;
+    if (reduced || s2 <= 0) {
+      shakeX = 0;
+      shakeY = 0;
+    } else {
+      shakeX = (Math.random() * 2 - 1) * juice.shakeAmpl * s2;
+      shakeY = (Math.random() * 2 - 1) * juice.shakeAmpl * s2;
+    }
+    recoil = Math.max(0, recoil - dt * 6);
 
     if (teclas.has('ArrowLeft')) aimAngle = Math.max(-AIM_MAX, aimAngle - 2.4 * dt);
     if (teclas.has('ArrowRight')) aimAngle = Math.min(AIM_MAX, aimAngle + 2.4 * dt);
@@ -267,6 +385,14 @@ export function iniciarJogo() {
       const r = board.radius;
       proj.x += proj.vx * dt;
       proj.y += proj.vy * dt;
+      if (!reduced) {
+        trailAcc += dt * 1000;
+        if (trailAcc >= juice.trailEveryMs) {
+          trailAcc = 0;
+          proj.trail.push({ x: proj.x, y: proj.y });
+          if (proj.trail.length > 8) proj.trail.shift();
+        }
+      }
       if (proj.x < r) {
         proj.x = r;
         proj.vx = -proj.vx;
@@ -292,8 +418,11 @@ export function iniciarJogo() {
 
   function desenhar() {
     const emTeclado = estado.fase === 'teclado';
+    const alvoBoard = emTeclado ? teclado.board : board;
+    const baixo = alvoBoard.lowestY();
+    const perigo = Math.max(0, Math.min(1, (baixo - (config.dangerY - 120)) / 120));
     render.render({
-      board: emTeclado ? teclado.board : board,
+      board: alvoBoard,
       fase: estado.fase,
       useColors: !emTeclado && diff.useColors,
       aimAngle,
@@ -301,8 +430,15 @@ export function iniciarJogo() {
       current: estado.fase === 'jogando' ? current : null,
       proj,
       floats,
+      particles,
+      bg,
+      shakeX,
+      shakeY,
+      recoil,
+      reduced,
       ativa: emTeclado ? teclado.ativa : null,
       pulseT,
+      perigo,
     });
   }
 
@@ -410,7 +546,11 @@ export function iniciarJogo() {
     progresso,
     teclado,
     ui,
+    reduced,
     board: () => board,
+    particles: () => particles,
+    bgTema: () => tema,
+    shake: () => ({ x: shakeX, y: shakeY, trauma }),
     fila: () => ({ current, next }),
     setFila(c: { letterId: string; lower: boolean }, n?: { letterId: string; lower: boolean }) {
       current = c;

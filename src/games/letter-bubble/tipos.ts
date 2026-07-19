@@ -5,6 +5,7 @@ export interface Bubble {
   col: number;
   popT: number;
   shakeT: number;
+  settleT: number;
   falling: boolean;
   fx: number;
   fy: number;
@@ -30,4 +31,22 @@ export interface FloatText {
   y: number;
   t: number;
   cor: string;
+  grande: boolean;
+}
+
+export type ParticleKind = 'shard' | 'ring' | 'confete' | 'trail';
+
+export interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  maxLife: number;
+  r: number;
+  cor: string;
+  kind: ParticleKind;
+  grav: number;
+  spin: number;
+  ang: number;
 }

@@ -1,6 +1,7 @@
 import { config, letters } from '../../data/bolhas-de-letras';
 import type { Board } from './board';
-import type { Bubble, FloatText } from './tipos';
+import type { Background } from './backgrounds';
+import type { Bubble, FloatText, Particle } from './tipos';
 
 const corDe = new Map<string, string>();
 for (const l of letters) if (l.easyColor) corDe.set(l.id, l.easyColor);
@@ -13,6 +14,7 @@ export interface Projectile {
   letterId: string;
   lower: boolean;
   bounces: number;
+  trail: Array<{ x: number; y: number }>;
 }
 
 export interface RenderState {
@@ -24,8 +26,15 @@ export interface RenderState {
   current: { letterId: string; lower: boolean } | null;
   proj: Projectile | null;
   floats: FloatText[];
+  particles: Particle[];
+  bg: Background;
+  shakeX: number;
+  shakeY: number;
+  recoil: number;
+  reduced: boolean;
   ativa?: Bubble | null;
   pulseT: number;
+  perigo: number;
 }
 
 export function criarRender(canvas: HTMLCanvasElement) {
@@ -35,11 +44,11 @@ export function criarRender(canvas: HTMLCanvasElement) {
   canvas.width = W;
   canvas.height = H;
 
-  function bolha(x: number, y: number, r: number, letterId: string, lower: boolean, useColors: boolean, escala = 1, alfa = 1, aro?: string) {
+  function bolha(x: number, y: number, r: number, letterId: string, lower: boolean, useColors: boolean, ex = 1, ey = 1, alfa = 1, aro?: string) {
     g.save();
     g.globalAlpha = alfa;
     g.translate(x, y);
-    g.scale(escala, escala);
+    g.scale(ex, ey);
     const cor = useColors ? corDe.get(letterId) || config.neutralFill : config.neutralFill;
     const grad = g.createRadialGradient(-r * 0.3, -r * 0.35, r * 0.2, 0, 0, r);
     grad.addColorStop(0, '#ffffff');
@@ -52,6 +61,12 @@ export function criarRender(canvas: HTMLCanvasElement) {
     g.lineWidth = 3;
     g.strokeStyle = aro || (useColors ? 'rgba(30,40,60,0.35)' : config.neutralBorder);
     g.stroke();
+    g.globalAlpha = alfa * 0.5;
+    g.fillStyle = 'rgba(255,255,255,0.7)';
+    g.beginPath();
+    g.ellipse(-r * 0.32, -r * 0.38, r * 0.26, r * 0.16, -0.5, 0, Math.PI * 2);
+    g.fill();
+    g.globalAlpha = alfa;
     const ch = lower ? letterId.toLowerCase() : letterId;
     g.font = '700 ' + Math.round(r * 1.14) + 'px Andika, sans-serif';
     g.textAlign = 'center';
@@ -72,9 +87,11 @@ export function criarRender(canvas: HTMLCanvasElement) {
     let vy = -Math.cos(s.aimAngle);
     let bounces = 0;
     const passo = 9;
+    let fim = { x, y };
+    const marcha = s.reduced ? 0 : (s.pulseT / 34) % 3;
     g.save();
-    g.fillStyle = 'rgba(255,255,255,0.75)';
-    for (let i = 0; i < 220; i++) {
+    g.fillStyle = 'rgba(255,255,255,0.8)';
+    for (let i = 0; i < 240; i++) {
       x += vx * passo;
       y += vy * passo;
       if (x < r || x > W - r) {
@@ -92,74 +109,127 @@ export function criarRender(canvas: HTMLCanvasElement) {
           break;
         }
       }
+      fim = { x, y };
       if (bateu) break;
-      if (i % 3 === 0) {
+      if ((i + marcha) % 3 < 1) {
         g.beginPath();
         g.arc(x, y, 3, 0, Math.PI * 2);
         g.fill();
       }
     }
     g.restore();
+    g.save();
+    g.strokeStyle = 'rgba(255,255,255,0.85)';
+    g.lineWidth = 2.5;
+    const rr = r * 0.7 + (s.reduced ? 0 : Math.sin(s.pulseT / 150) * 2.5);
+    g.beginPath();
+    g.arc(fim.x, fim.y, rr, 0, Math.PI * 2);
+    g.stroke();
+    g.restore();
+  }
+
+  function particula(p: Particle) {
+    const k = p.life / p.maxLife;
+    if (p.kind === 'ring') {
+      g.save();
+      g.globalAlpha = k * 0.7;
+      g.strokeStyle = p.cor;
+      g.lineWidth = 3 * k + 1;
+      g.beginPath();
+      g.arc(p.x, p.y, (1 - k) * p.r, 0, Math.PI * 2);
+      g.stroke();
+      g.restore();
+      return;
+    }
+    g.save();
+    g.globalAlpha = Math.min(1, k * 1.4);
+    g.fillStyle = p.cor;
+    if (p.kind === 'confete') {
+      g.translate(p.x, p.y);
+      g.rotate(p.ang);
+      g.fillRect(-p.r, -p.r * 0.5, p.r * 2, p.r);
+    } else {
+      g.beginPath();
+      g.arc(p.x, p.y, p.r * (p.kind === 'trail' ? k : 1), 0, Math.PI * 2);
+      g.fill();
+    }
+    g.restore();
   }
 
   function render(s: RenderState) {
     const r = s.board.radius;
-    const ceu = g.createLinearGradient(0, 0, 0, H);
-    ceu.addColorStop(0, '#8ec9ef');
-    ceu.addColorStop(0.65, '#bfe3f7');
-    ceu.addColorStop(1, '#e3f3fc');
-    g.fillStyle = ceu;
-    g.fillRect(0, 0, W, H);
-
-    g.fillStyle = 'rgba(30,50,80,0.25)';
-    g.fillRect(0, 0, W, 40);
+    s.bg.draw(g, W, H);
 
     g.save();
     g.setLineDash([10, 8]);
-    g.strokeStyle = 'rgba(226,88,110,0.55)';
-    g.lineWidth = 2;
+    const perigo = s.perigo;
+    const glow = s.reduced ? perigo : perigo * (0.6 + 0.4 * Math.sin(s.pulseT / 120));
+    g.strokeStyle = 'rgba(226,88,110,' + (0.4 + glow * 0.55) + ')';
+    g.lineWidth = 2 + glow * 2;
     g.beginPath();
     g.moveTo(10, config.dangerY);
     g.lineTo(W - 10, config.dangerY);
     g.stroke();
     g.restore();
 
+    g.save();
+    g.translate(s.shakeX, s.shakeY);
+
     if (s.current && s.fase !== 'teclado') guia(s);
 
     for (const b of s.board.bubbles) {
       const p = s.board.posDe(b);
-      let escala = 1;
+      let ex = 1;
+      let ey = 1;
       let alfa = 1;
       let dx = 0;
       if (b.popT > 0) {
         const t = Math.min(1, b.popT / config.popMs);
-        escala = 1 + t * 0.45;
+        ex = ey = 1 + t * 0.45;
         alfa = 1 - t;
+      } else if (b.settleT > 0) {
+        const t = b.settleT / config.settleMs;
+        const q = Math.sin(t * Math.PI * 2) * t * 0.18;
+        ex = 1 + q;
+        ey = 1 - q;
       }
       if (b.shakeT > 0) dx = Math.sin(b.shakeT / 26) * 3.2;
       let aro: string | undefined;
       let extra = 1;
       if (s.ativa === b) {
         aro = '#ffb520';
-        extra = 1 + Math.sin(s.pulseT / 180) * 0.07;
+        extra = 1 + (s.reduced ? 0 : Math.sin(s.pulseT / 180) * 0.07);
       }
-      bolha(p.x + dx, p.y, r, b.letterId, b.lower, s.useColors, escala * extra, alfa, aro);
+      bolha(p.x + dx, p.y, r, b.letterId, b.lower, s.useColors, ex * extra, ey * extra, alfa, aro);
       if (aro) {
         g.save();
         g.lineWidth = 4;
         g.strokeStyle = 'rgba(255,181,32,0.85)';
         g.beginPath();
-        g.arc(p.x, p.y, r + 4 + Math.sin(s.pulseT / 180) * 2, 0, Math.PI * 2);
+        g.arc(p.x, p.y, r + 4 + (s.reduced ? 0 : Math.sin(s.pulseT / 180) * 2), 0, Math.PI * 2);
         g.stroke();
         g.restore();
       }
     }
 
-    if (s.proj) bolha(s.proj.x, s.proj.y, r, s.proj.letterId, s.proj.lower, s.useColors);
+    if (s.proj) {
+      for (let i = 0; i < s.proj.trail.length; i++) {
+        const tp = s.proj.trail[i];
+        const a = (i / s.proj.trail.length) * 0.4;
+        g.save();
+        g.globalAlpha = a;
+        g.fillStyle = s.useColors ? corDe.get(s.proj.letterId) || '#fff' : '#dfe8f5';
+        g.beginPath();
+        g.arc(tp.x, tp.y, r * (0.4 + a), 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+      }
+      bolha(s.proj.x, s.proj.y, r, s.proj.letterId, s.proj.lower, s.useColors);
+    }
 
     if (s.current && s.fase !== 'teclado') {
       const lx = W / 2;
-      const ly = config.launcherY;
+      const ly = config.launcherY + s.recoil * r * 0.5;
       g.save();
       g.translate(lx, ly);
       g.rotate(s.aimAngle);
@@ -172,22 +242,32 @@ export function criarRender(canvas: HTMLCanvasElement) {
       g.closePath();
       g.fill();
       g.restore();
-      bolha(lx, ly - r * 0.1, r, s.current.letterId, s.current.lower, s.useColors);
+      const sq = 1 - s.recoil * 0.25;
+      bolha(lx, ly - r * 0.1, r, s.current.letterId, s.current.lower, s.useColors, 1 / sq, sq);
     }
+
+    for (const p of s.particles) particula(p);
 
     for (const f of s.floats) {
       const t = f.t / config.feedbackMs;
+      const pop = f.grande ? 1 + Math.max(0, 0.4 - t * 2) * (t < 0.2 ? 1 : 0) : 1;
+      const sc = f.grande ? (t < 0.16 ? 0.4 + (t / 0.16) * 0.7 : 1.1 - (t - 0.16) * 0.1) : 1;
       g.save();
       g.globalAlpha = 1 - t;
-      g.font = '700 30px Andika, sans-serif';
+      g.translate(f.x, f.y - t * 46);
+      g.scale(sc * pop, sc * pop);
+      g.font = '700 ' + (f.grande ? 34 : 30) + 'px Andika, sans-serif';
       g.textAlign = 'center';
+      g.textBaseline = 'middle';
       g.lineWidth = 5;
       g.strokeStyle = 'rgba(255,255,255,0.95)';
-      g.strokeText(f.texto, f.x, f.y - t * 46);
+      g.strokeText(f.texto, 0, 0);
       g.fillStyle = f.cor;
-      g.fillText(f.texto, f.x, f.y - t * 46);
+      g.fillText(f.texto, 0, 0);
       g.restore();
     }
+
+    g.restore();
   }
 
   return { render };

@@ -106,7 +106,24 @@ export const config = {
   letterInk: '#1d2b45',
   popMs: 320,
   shakeMs: 420,
+  settleMs: 300,
   feedbackMs: 1300,
+} as const;
+
+export const temasBg = ['candy', 'ocean', 'wind', 'aurora', 'galaxy'] as const;
+export type TemaBg = (typeof temasBg)[number];
+
+export const juice = {
+  popShards: 12,
+  clusterExtra: 8,
+  traumaMatch: 0.32,
+  traumaCluster: 0.55,
+  traumaMax: 1,
+  traumaDecay: 2.6,
+  shakeAmpl: 9,
+  trailEveryMs: 16,
+  confete: 46,
+  festivePalette: ['#F6C945', '#F26B5B', '#65C466', '#9B72CF', '#52C7D9', '#4D7FE8', '#E879B7', '#F39A3D'],
 } as const;
 
 export const textos = {
