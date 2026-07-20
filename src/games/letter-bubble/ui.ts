@@ -22,6 +22,7 @@ export function criarUi() {
     failTexto: q('[data-fail-texto]'),
     toast: q('[data-toast]'),
     tela: q('[data-tela]') as unknown as HTMLCanvasElement,
+    fundo: q('[data-fundo]') as unknown as HTMLCanvasElement,
     badges: Array.from(document.querySelectorAll('[data-dif-feitos]')) as HTMLElement[],
   };
 

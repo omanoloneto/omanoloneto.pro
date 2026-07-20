@@ -16,7 +16,7 @@ export function iniciarJogo() {
   const ui = criarUi();
   const audio = criarAudio();
   const progresso = criarProgresso(levels.length);
-  const render = criarRender(ui.els.tela);
+  const render = criarRender(ui.els.tela, ui.els.fundo);
 
   const porDif: Record<string, number[]> = {};
   levels.forEach((l, i) => {

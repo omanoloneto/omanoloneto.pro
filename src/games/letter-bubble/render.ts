@@ -37,12 +37,26 @@ export interface RenderState {
   perigo: number;
 }
 
-export function criarRender(canvas: HTMLCanvasElement) {
+export function criarRender(canvas: HTMLCanvasElement, canvasFundo: HTMLCanvasElement) {
   const g = canvas.getContext('2d')!;
+  const gf = canvasFundo.getContext('2d')!;
   const W = config.canvasW;
   const H = config.canvasH;
   canvas.width = W;
   canvas.height = H;
+
+  let fW = 0;
+  let fH = 0;
+  let dpr = 1;
+  function ajustarFundo() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    fW = Math.max(1, canvasFundo.clientWidth || window.innerWidth);
+    fH = Math.max(1, canvasFundo.clientHeight || window.innerHeight);
+    canvasFundo.width = Math.round(fW * dpr);
+    canvasFundo.height = Math.round(fH * dpr);
+  }
+  ajustarFundo();
+  window.addEventListener('resize', ajustarFundo);
 
   function bolha(x: number, y: number, r: number, letterId: string, lower: boolean, useColors: boolean, ex = 1, ey = 1, alfa = 1, aro?: string) {
     g.save();
@@ -158,7 +172,10 @@ export function criarRender(canvas: HTMLCanvasElement) {
 
   function render(s: RenderState) {
     const r = s.board.radius;
-    s.bg.draw(g, W, H);
+    gf.setTransform(dpr, 0, 0, dpr, 0, 0);
+    s.bg.draw(gf, fW, fH);
+
+    g.clearRect(0, 0, W, H);
 
     g.save();
     g.setLineDash([10, 8]);
