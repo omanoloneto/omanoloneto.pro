@@ -113,6 +113,9 @@ export const config = {
 export const temasBg = ['candy', 'ocean', 'wind', 'aurora', 'galaxy'] as const;
 export type TemaBg = (typeof temasBg)[number];
 
+export const spriteLetters = ['B', 'C', 'D', 'M', 'O', 'P', 'U', 'Y'];
+export const spriteBase = '/class/games/bolhas-de-letras/sprites';
+
 export const juice = {
   popShards: 12,
   clusterExtra: 8,

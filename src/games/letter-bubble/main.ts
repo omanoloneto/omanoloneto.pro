@@ -436,6 +436,7 @@ export function iniciarJogo() {
       shakeY,
       recoil,
       reduced,
+      useSprites: emTeclado || diff.id !== 'hard',
       ativa: emTeclado ? teclado.ativa : null,
       pulseT,
       perigo,
@@ -524,8 +525,10 @@ export function iniciarJogo() {
     });
   }
 
+  const SOM_ON = '/class/games/bolhas-de-letras/ui/audio-on.png';
+  const SOM_OFF = '/class/games/bolhas-de-letras/ui/audio-off.png';
   function atualizarMute() {
-    ui.els.muteIcon.textContent = audio.mudo ? '🔇' : '🔊';
+    (ui.els.muteIcon as HTMLImageElement).src = audio.mudo ? SOM_OFF : SOM_ON;
     ui.els.mute.setAttribute('aria-pressed', String(audio.mudo));
   }
   ui.els.mute.addEventListener('click', () => {

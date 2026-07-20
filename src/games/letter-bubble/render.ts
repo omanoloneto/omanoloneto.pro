@@ -1,10 +1,25 @@
-import { config, letters } from '../../data/bolhas-de-letras';
+import { config, letters, spriteLetters, spriteBase } from '../../data/bolhas-de-letras';
 import type { Board } from './board';
 import type { Background } from './backgrounds';
 import type { Bubble, FloatText, Particle } from './tipos';
 
 const corDe = new Map<string, string>();
 for (const l of letters) if (l.easyColor) corDe.set(l.id, l.easyColor);
+
+const spriteImgs = new Map<string, HTMLImageElement>();
+if (typeof Image !== 'undefined') {
+  for (const id of spriteLetters) {
+    for (const [suf, lower] of [['lower', true], ['upper', false]] as Array<[string, boolean]>) {
+      const img = new Image();
+      img.src = spriteBase + '/' + id + '-' + suf + '.png';
+      spriteImgs.set(id + (lower ? 'L' : 'U'), img);
+    }
+  }
+}
+function spriteDe(letterId: string, lower: boolean): HTMLImageElement | undefined {
+  const img = spriteImgs.get(letterId + (lower ? 'L' : 'U'));
+  return img && img.complete && img.naturalWidth > 0 ? img : undefined;
+}
 
 export interface Projectile {
   x: number;
@@ -32,6 +47,7 @@ export interface RenderState {
   shakeY: number;
   recoil: number;
   reduced: boolean;
+  useSprites: boolean;
   ativa?: Bubble | null;
   pulseT: number;
   perigo: number;
@@ -58,7 +74,20 @@ export function criarRender(canvas: HTMLCanvasElement, canvasFundo: HTMLCanvasEl
   ajustarFundo();
   window.addEventListener('resize', ajustarFundo);
 
-  function bolha(x: number, y: number, r: number, letterId: string, lower: boolean, useColors: boolean, ex = 1, ey = 1, alfa = 1, aro?: string) {
+  function bolha(x: number, y: number, r: number, letterId: string, lower: boolean, useColors: boolean, ex = 1, ey = 1, alfa = 1, aro?: string, sprite?: HTMLImageElement) {
+    if (sprite) {
+      g.save();
+      g.globalAlpha = alfa;
+      g.translate(x, y);
+      g.scale(ex, ey);
+      const lado = r * 2.12;
+      const rel = sprite.naturalWidth / sprite.naturalHeight;
+      const w2 = rel <= 1 ? lado * rel : lado;
+      const h2 = rel <= 1 ? lado : lado / rel;
+      g.drawImage(sprite, -w2 / 2, -h2 / 2, w2, h2);
+      g.restore();
+      return;
+    }
     g.save();
     g.globalAlpha = alfa;
     g.translate(x, y);
@@ -170,12 +199,42 @@ export function criarRender(canvas: HTMLCanvasElement, canvasFundo: HTMLCanvasEl
     g.restore();
   }
 
+  function barra(x: number, y: number, w: number, h: number, horizontal: boolean) {
+    const gr = horizontal ? g.createLinearGradient(0, y, 0, y + h) : g.createLinearGradient(x, 0, x + w, 0);
+    gr.addColorStop(0, '#7fb0ec');
+    gr.addColorStop(0.5, '#4d7fe8');
+    gr.addColorStop(1, '#33569f');
+    g.fillStyle = gr;
+    g.beginPath();
+    g.roundRect(x, y, w, h, 6);
+    g.fill();
+    g.strokeStyle = 'rgba(15,35,70,0.5)';
+    g.lineWidth = 1.5;
+    g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,0.55)';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.roundRect(x + 2, y + 2, Math.max(1, w - 4), Math.max(1, h - 4), 5);
+    g.stroke();
+  }
+
+  function paredes() {
+    const E = 11;
+    const top = 40;
+    g.save();
+    barra(0, top, W, E, true);
+    barra(0, top, E, H - top, false);
+    barra(W - E, top, E, H - top, false);
+    g.restore();
+  }
+
   function render(s: RenderState) {
     const r = s.board.radius;
     gf.setTransform(dpr, 0, 0, dpr, 0, 0);
     s.bg.draw(gf, fW, fH);
 
     g.clearRect(0, 0, W, H);
+    paredes();
 
     g.save();
     g.setLineDash([10, 8]);
@@ -217,7 +276,8 @@ export function criarRender(canvas: HTMLCanvasElement, canvasFundo: HTMLCanvasEl
         aro = '#ffb520';
         extra = 1 + (s.reduced ? 0 : Math.sin(s.pulseT / 180) * 0.07);
       }
-      bolha(p.x + dx, p.y, r, b.letterId, b.lower, s.useColors, ex * extra, ey * extra, alfa, aro);
+      const spr = s.useSprites ? spriteDe(b.letterId, b.lower) : undefined;
+      bolha(p.x + dx, p.y, r, b.letterId, b.lower, s.useColors, ex * extra, ey * extra, alfa, aro, spr);
       if (aro) {
         g.save();
         g.lineWidth = 4;
@@ -241,7 +301,7 @@ export function criarRender(canvas: HTMLCanvasElement, canvasFundo: HTMLCanvasEl
         g.fill();
         g.restore();
       }
-      bolha(s.proj.x, s.proj.y, r, s.proj.letterId, s.proj.lower, s.useColors);
+      bolha(s.proj.x, s.proj.y, r, s.proj.letterId, s.proj.lower, s.useColors, 1, 1, 1, undefined, s.useSprites ? spriteDe(s.proj.letterId, s.proj.lower) : undefined);
     }
 
     if (s.current && s.fase !== 'teclado') {
@@ -260,7 +320,7 @@ export function criarRender(canvas: HTMLCanvasElement, canvasFundo: HTMLCanvasEl
       g.fill();
       g.restore();
       const sq = 1 - s.recoil * 0.25;
-      bolha(lx, ly - r * 0.1, r, s.current.letterId, s.current.lower, s.useColors, 1 / sq, sq);
+      bolha(lx, ly - r * 0.1, r, s.current.letterId, s.current.lower, s.useColors, 1 / sq, sq, 1, undefined, s.useSprites ? spriteDe(s.current.letterId, s.current.lower) : undefined);
     }
 
     for (const p of s.particles) particula(p);

@@ -15,8 +15,8 @@ const description =
       <div class="hud__bloco hud__bloco--obj"><span class="hud__label">Objetivo</span><strong data-objetivo>—</strong></div>
       <div class="hud__bloco" data-proxima-wrap hidden><span class="hud__label">Próxima</span><strong class="hud__proxima" data-proxima></strong></div>
       <button class="hud__mute" type="button" data-falar aria-pressed="false" aria-label="Falar o nome das letras">🗣️</button>
-      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
-        <span data-mute-icon>🔊</span>
+      <button class="hud__mute hud__mute--som" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <img class="hud__som-img" data-mute-icon src="/class/games/bolhas-de-letras/ui/audio-on.png" alt="Som" width="34" height="34" />
       </button>
     </header>
 
@@ -210,6 +210,18 @@ const description =
   }
   .hud__mute.on {
     outline: 3px solid #ffb520;
+  }
+  .hud__mute--som {
+    background: none;
+    box-shadow: none;
+    padding: 2px;
+  }
+  .hud__som-img {
+    width: 34px;
+    height: 34px;
+    display: block;
+    max-width: none;
+    filter: drop-shadow(0 2px 1px rgba(20, 50, 80, 0.3));
   }
 
   .palco {
