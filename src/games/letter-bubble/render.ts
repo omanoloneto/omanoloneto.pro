@@ -206,21 +206,21 @@ export function criarRender(canvas: HTMLCanvasElement, canvasFundo: HTMLCanvasEl
     gr.addColorStop(1, '#33569f');
     g.fillStyle = gr;
     g.beginPath();
-    g.roundRect(x, y, w, h, 6);
+    g.roundRect(x, y, w, h, 3);
     g.fill();
     g.strokeStyle = 'rgba(15,35,70,0.5)';
-    g.lineWidth = 1.5;
+    g.lineWidth = 1;
     g.stroke();
-    g.strokeStyle = 'rgba(255,255,255,0.55)';
-    g.lineWidth = 2;
+    g.strokeStyle = 'rgba(255,255,255,0.5)';
+    g.lineWidth = 1;
     g.beginPath();
-    g.roundRect(x + 2, y + 2, Math.max(1, w - 4), Math.max(1, h - 4), 5);
+    g.roundRect(x + 1.2, y + 1.2, Math.max(1, w - 2.4), Math.max(1, h - 2.4), 2.5);
     g.stroke();
   }
 
   function paredes() {
-    const E = 11;
-    const top = 40;
+    const E = 6;
+    const top = 44;
     g.save();
     barra(0, top, W, E, true);
     barra(0, top, E, H - top, false);

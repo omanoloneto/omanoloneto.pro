@@ -547,6 +547,27 @@ export function iniciarJogo() {
   atualizarMute();
   atualizarFalar();
 
+  const PRINCESAS = [1, 2, 3, 4].map((n) => '/class/games/bolhas-de-letras/princesas/princesa-' + n + '.png');
+  const elPrincesa = document.querySelector('[data-princesa]') as HTMLImageElement | null;
+  let pIdx = 0;
+  function trocarPrincesa() {
+    if (!elPrincesa) return;
+    const i = pIdx % PRINCESAS.length;
+    const dir = i % 2 === 1;
+    elPrincesa.src = PRINCESAS[i];
+    elPrincesa.classList.toggle('lado-dir', dir);
+    elPrincesa.classList.toggle('lado-esq', !dir);
+    elPrincesa.classList.add('aparece');
+    pIdx++;
+  }
+  if (elPrincesa) {
+    trocarPrincesa();
+    setInterval(() => {
+      elPrincesa.classList.remove('aparece');
+      setTimeout(trocarPrincesa, 460);
+    }, 5000);
+  }
+
   ui.badgesNiveis(progresso.done, porDif);
   ui.mostrarModal(ui.els.intro);
   atualizarHud();
@@ -562,6 +583,7 @@ export function iniciarJogo() {
     board: () => board,
     particles: () => particles,
     bgTema: () => tema,
+    princesa: () => ({ trocas: pIdx, src: elPrincesa?.getAttribute('src') || null, lado: elPrincesa?.classList.contains('lado-dir') ? 'dir' : 'esq' }),
     shake: () => ({ x: shakeX, y: shakeY, trauma }),
     fila: () => ({ current, next }),
     setFila(c: { letterId: string; lower: boolean }, n?: { letterId: string; lower: boolean }) {
