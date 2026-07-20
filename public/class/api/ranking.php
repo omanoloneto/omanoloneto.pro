@@ -22,6 +22,7 @@ header('Cache-Control: no-store');
 const JOGOS = [
   // jogo => [maxPontos, maxNivel] — teto de sanidade contra POST forjado
   'letras-espaciais' => [20000, 30],
+  'letras-espaciais-dificil' => [20000, 30],
   'caca-bandeiras' => [12000, 10],
   'entrega-turbo' => [60000, 20],
   // Trem de Palavras — modo Fácil (arcade endless). nivel = produtos entregues.

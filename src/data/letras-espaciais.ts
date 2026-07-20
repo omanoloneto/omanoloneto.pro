@@ -191,3 +191,15 @@ function gerarNiveis(total: number): Nivel[] {
 }
 
 export const niveis: Nivel[] = gerarNiveis(30);
+
+// Palavras do modo Difícil: reaproveita o banco do Trem de Palavras,
+// tira acento, mantém 3-6 letras e remove repetidas.
+import { palavras as palavrasTrem, palavrasExtras } from './trem-de-palavras';
+
+export const palavras: string[] = Array.from(
+  new Set(
+    [...palavrasTrem, ...palavrasExtras]
+      .map((p) => p.palavra.toUpperCase().normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '').replace(/[^A-Z]/g, ''))
+      .filter((w) => w.length >= 3 && w.length <= 6)
+  )
+);

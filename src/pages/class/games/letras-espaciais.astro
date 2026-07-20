@@ -1,8 +1,8 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import { niveis, config } from '../../../data/letras-espaciais';
+import { niveis, config, palavras } from '../../../data/letras-espaciais';
 
-const dadosJson = JSON.stringify({ niveis, config });
+const dadosJson = JSON.stringify({ niveis, config, palavras });
 const letrasNome = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
 const title = 'Letras Espaciais — aperte a letra e a nave atira! | Manolo Neto';
@@ -153,24 +153,20 @@ const description =
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
         <div class="placa__topo" id="intro-title">🚀 Letras Espaciais</div>
         <div class="placa__corpo">
-          <ol class="regras">
-            <li>Os inimigos descem trazendo uma <b>LETRA</b>. 👾</li>
-            <li><b>Aperte a tecla</b> da letra — a nave atira sozinha! 💥</li>
-            <li>Nave com <b>DUAS ou TRÊS letras</b>? Acerte todas pra derrubar! 💪</li>
-            <li>Cada nível traz <b>letras novas</b> e inimigos mais rápidos.</li>
-          </ol>
-          <p class="escolha__titulo">Como você quer jogar?</p>
-          <div class="escolha">
-            <button class="botao-modo botao-modo--tranquilo" type="button" data-modo="tranquilo">
-              <span class="botao-modo__titulo">😌 Fácil</span>
-              <small>Sem pressa: os inimigos param e esperam você. Ninguém perde!</small>
+          <div class="difs" role="group" aria-label="Escolha a dificuldade">
+            <button class="dif" type="button" data-dif="facil">
+              <span class="dif__emoji">😌</span>
+              <span class="dif__nome">Fácil</span>
             </button>
-            <button class="botao-modo botao-modo--vidas" type="button" data-modo="vidas">
-              <span class="botao-modo__titulo">🎯 Normal</span>
-              <small>Se um inimigo passar, você perde um coração. Derrube inimigos pra ganhar corações de volta! Vale ranking.</small>
+            <button class="dif" type="button" data-dif="medio">
+              <span class="dif__emoji">🎯</span>
+              <span class="dif__nome">Médio</span>
+            </button>
+            <button class="dif" type="button" data-dif="dificil">
+              <span class="dif__emoji">📖</span>
+              <span class="dif__nome">Difícil</span>
             </button>
           </div>
-          <button class="recordes-btn" type="button" data-ver-recordes>🏆 Recordes</button>
         </div>
       </div>
     </div>
@@ -448,6 +444,25 @@ const description =
     .inimigo--dupla { width: 90px; height: 90px; }
     .inimigo--tripla { width: 102px; height: 102px; }
     .inimigo--tripla .inimigo__letra { font-size: 1.2rem; padding: 1px 8px; }
+    /* Modo Difícil: palavra inteira — chips menores lado a lado */
+    .inimigo--palavra { width: 96px; height: 96px; }
+    .inimigo--palavra .inimigo__letras { bottom: -12px; gap: 2px; }
+    .inimigo--palavra .inimigo__letra {
+      font-size: 1.02rem; padding: 1px 5px; border-width: 2px;
+      opacity: 0.55; border-color: rgba(191, 233, 255, 0.4);
+      box-shadow: none; text-shadow: none;
+    }
+    .inimigo--palavra .inimigo__letra--proxima {
+      opacity: 1; color: #fff;
+      border-color: var(--magenta);
+      box-shadow: 0 0 12px rgba(255, 61, 241, 0.75);
+      text-shadow: 0 0 8px rgba(255, 61, 241, 0.9);
+      animation: proxima-pulsa 0.9s ease-in-out infinite;
+    }
+    @keyframes proxima-pulsa {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-2px) scale(1.12); }
+    }
     .inimigo__letra--pop { animation: letra-pop 0.28s ease-out forwards; }
     @keyframes letra-pop {
       to { transform: scale(1.7); opacity: 0; }
@@ -712,38 +727,23 @@ const description =
     .pausa-acoes { display: grid; gap: 10px; }
 
     /* Escolha de modo */
-    .escolha__titulo { font-weight: 800; font-size: 1.05rem; margin-bottom: 10px; }
-    .escolha { display: grid; gap: 10px; }
-    .botao-modo {
-      font-family: inherit; cursor: pointer; text-align: left;
-      display: flex; flex-direction: column; gap: 4px;
-      padding: 12px 16px; border-radius: 14px;
-      border: 3px solid transparent;
-      transition: transform 0.12s ease, filter 0.15s ease;
+    .difs { display: flex; gap: 10px; }
+    .dif {
+      flex: 1; font-family: inherit; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 16px 8px; border-radius: 14px;
+      background: linear-gradient(135deg, rgba(34, 224, 255, 0.12), rgba(255, 61, 241, 0.1));
+      border: 3px solid rgba(34, 224, 255, 0.5);
+      box-shadow: 0 0 10px rgba(34, 224, 255, 0.16);
+      transition: transform 0.12s ease, filter 0.15s ease, border-color 0.15s ease;
     }
-    .botao-modo:hover { transform: translateY(-2px); filter: brightness(1.15); }
-    .botao-modo:focus-visible { outline: 3px solid var(--ciano); outline-offset: 2px; }
-    .botao-modo__titulo { font-size: 1.1rem; font-weight: 800; color: var(--texto); }
-    .botao-modo small { font-size: 0.85rem; line-height: 1.4; color: rgba(191, 233, 255, 0.8); }
-    .botao-modo--vidas {
-      background: linear-gradient(135deg, rgba(255, 61, 241, 0.16), rgba(255, 91, 127, 0.12));
-      border-color: rgba(255, 61, 241, 0.6);
-      box-shadow: 0 0 10px rgba(255, 61, 241, 0.2);
+    .dif:hover, .dif:focus-visible { transform: translateY(-3px); filter: brightness(1.15); border-color: var(--magenta); outline: none; }
+    .dif__emoji { font-size: 2rem; }
+    .dif__nome { font-size: 1.1rem; font-weight: 800; color: var(--texto); }
+    @media (max-width: 420px) {
+      .difs { flex-direction: column; }
+      .dif { flex-direction: row; justify-content: center; gap: 12px; }
     }
-    .botao-modo--tranquilo {
-      background: linear-gradient(135deg, rgba(34, 224, 255, 0.14), rgba(110, 231, 160, 0.1));
-      border-color: rgba(34, 224, 255, 0.55);
-      box-shadow: 0 0 10px rgba(34, 224, 255, 0.18);
-    }
-    .recordes-btn {
-      display: block; margin: 14px auto 0;
-      font-family: inherit; cursor: pointer; font-weight: 800;
-      padding: 8px 18px; border-radius: 10px; font-size: 0.92rem;
-      color: #ffe9a8; background: rgba(16, 12, 48, 0.7);
-      border: 2px solid rgba(255, 210, 63, 0.6);
-      box-shadow: 0 0 10px rgba(255, 210, 63, 0.22);
-    }
-    .recordes-btn:focus-visible { outline: 3px solid #ffd23f; outline-offset: 2px; }
 
     /* Nome arcade + tabela de recordes */
     .nome-slots {
@@ -843,6 +843,7 @@ const description =
     const dados = JSON.parse(document.querySelector('[data-dados]').textContent);
     const NIVEIS = dados.niveis;
     const CFG = dados.config;
+    const PALAVRAS = dados.palavras;
 
     const $ = (s) => document.querySelector(s);
     const campoEl = $('[data-campo]');
@@ -866,7 +867,7 @@ const description =
     const calorFillEl = $('[data-calor-fill]');
     const travaAvisoEl = $('[data-trava-aviso]');
 
-    const RANKING_KEY = 'letras-espaciais:ranking';
+    const ALFABETO = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
     const CORES = ['#ff6ba9', '#4dd9e8', '#ffd23f', '#9b7bff', '#6ee7a0', '#ff9a5c'];
     const VARIANTES = 4;
@@ -876,6 +877,9 @@ const description =
     const estado = {
       fase: 'inicio',   // 'inicio' | 'jogando' | 'pausado' | 'vitoria' | 'fim' | 'nome' | 'recordes'
       modo: null,       // 'vidas' | 'tranquilo'
+      dificuldade: 'medio', // 'facil' | 'medio' | 'dificil'
+      palavras: false,  // difícil: inimigo carrega palavra inteira
+      alvoAtual: null,  // id do inimigo cuja palavra está sendo digitada
       nivelIdx: 0,
       pontos: 0,
       vidas: 0,
@@ -1061,47 +1065,60 @@ const description =
     }
 
     function criarInimigo(nivel) {
-      // Sorteia o tamanho da nave: tripla, dupla ou solo.
-      // Se dupla+tripla somam 1, nave de 1 letra não nasce mais — e o
-      // fallback (quando faltam letras livres) também para no 2.
-      const r = Math.random();
-      let qtd = r < nivel.chanceTripla ? 3 : r < nivel.chanceTripla + nivel.chanceDupla ? 2 : 1;
-      const minimo = nivel.chanceTripla + nivel.chanceDupla >= 1 ? 2 : 1;
-      let letras = null;
-      while (qtd >= minimo) {
-        letras = escolherLetras(nivel, qtd);
-        if (letras) break;
-        qtd--;
+      let letras;
+      let fator;
+      let classe;
+      if (estado.palavras) {
+        // Difícil: o inimigo carrega uma palavra inteira (nave lenta).
+        letras = PALAVRAS[Math.floor(Math.random() * PALAVRAS.length)].split('');
+        fator = CFG.fatorTripla;
+        classe = ' inimigo--palavra';
+      } else {
+        // Sorteia o tamanho da nave: tripla, dupla ou solo.
+        // Se dupla+tripla somam 1, nave de 1 letra não nasce mais — e o
+        // fallback (quando faltam letras livres) também para no 2.
+        const r = Math.random();
+        let qtd = r < nivel.chanceTripla ? 3 : r < nivel.chanceTripla + nivel.chanceDupla ? 2 : 1;
+        const minimo = nivel.chanceTripla + nivel.chanceDupla >= 1 ? 2 : 1;
+        letras = null;
+        while (qtd >= minimo) {
+          letras = escolherLetras(nivel, qtd);
+          if (letras) break;
+          qtd--;
+        }
+        if (!letras) return false;
+        // Velocidade própria: dupla/tripla mais lentas; vogal solta mais
+        // rápida nos níveis com vogaisRapidas
+        fator = 1;
+        if (letras.length === 3) fator = CFG.fatorTripla;
+        else if (letras.length === 2) fator = CFG.fatorDupla;
+        else if (nivel.vogaisRapidas && VOGAIS.has(letras[0])) fator = CFG.fatorVogal;
+        classe = letras.length === 2 ? ' inimigo--dupla' : letras.length === 3 ? ' inimigo--tripla' : '';
       }
-      if (!letras) return false;
-      // Velocidade própria: dupla/tripla mais lentas; vogal solta mais
-      // rápida nos níveis com vogaisRapidas
-      let fator = 1;
-      if (letras.length === 3) fator = CFG.fatorTripla;
-      else if (letras.length === 2) fator = CFG.fatorDupla;
-      else if (nivel.vogaisRapidas && VOGAIS.has(letras[0])) fator = CFG.fatorVogal;
       // x aleatório afastado dos inimigos vivos (até 12 tentativas)
+      const folga = estado.palavras ? 0.24 : 0.14;
       let x = 0.08 + Math.random() * 0.84;
       for (let t = 0; t < 12; t++) {
         const cand = 0.08 + Math.random() * 0.84;
         x = cand;
-        if (estado.inimigos.every((i) => Math.abs(i.x - cand) >= 0.14)) break;
+        if (estado.inimigos.every((i) => Math.abs(i.x - cand) >= folga)) break;
       }
       const id = ++idSeq;
       const mov = document.createElement('div');
       mov.className = 'mov';
       mov.setAttribute('aria-hidden', 'true');
       mov.innerHTML =
-        '<div class="inimigo' + (letras.length === 2 ? ' inimigo--dupla' : letras.length === 3 ? ' inimigo--tripla' : '') + '" style="--cor:' + CORES[id % CORES.length] + '">' +
+        '<div class="inimigo' + classe + '" style="--cor:' + CORES[id % CORES.length] + '">' +
         '<svg class="inimigo__svg" viewBox="0 0 100 100"><use href="#inimigo-' + (1 + (id % VARIANTES)) + '"></use></svg>' +
         '<span class="inimigo__letras">' +
-        letras.map((l) => '<span class="inimigo__letra" data-letra="' + l + '">' + l + '</span>').join('') +
+        letras.map((l, i) => '<span class="inimigo__letra' + (estado.palavras && i === 0 ? ' inimigo__letra--proxima' : '') + '" data-letra="' + l + '" data-idx="' + i + '">' + l + '</span>').join('') +
         '</span>' +
         '</div>';
       inimigosEl.appendChild(mov);
       estado.inimigos.push({
         id,
         letras: letras.map((ch) => ({ ch, mirada: false, viva: true })),
+        idx: 0,
         x,
         y: -0.1,
         fator,
@@ -1116,8 +1133,9 @@ const description =
       if (estado.proximoSpawn > 0) return;
       // Cada leva traz spawnsPorVez inimigos (respeitando os tetos)
       let criou = false;
+      const teto = estado.palavras ? Math.min(nivel.maxInimigos, 3) : nivel.maxInimigos;
       for (let n = 0; n < nivel.spawnsPorVez; n++) {
-        if (estado.inimigos.length >= nivel.maxInimigos) break;
+        if (estado.inimigos.length >= teto) break;
         if (estado.modo === 'tranquilo') {
           const parados = estado.inimigos.filter((i) => i.parado).length;
           if (parados >= CFG.maxInimigosEsperando) break;
@@ -1138,6 +1156,10 @@ const description =
         tremerNave();
         return;
       }
+      if (estado.palavras) {
+        processarLetraPalavra(letra);
+        return;
+      }
       let alvoIdx = -1;
       const inimigo = estado.inimigos.find((i) => {
         alvoIdx = i.letras.findIndex((l) => l.viva && !l.mirada && l.ch === letra);
@@ -1147,6 +1169,49 @@ const description =
         estado.calor = Math.max(0, estado.calor - CFG.resfriarPorAcerto);
         atualizarCalor();
         atirar(inimigo, alvoIdx);
+      } else {
+        registrarErro();
+      }
+    }
+
+    // Difícil: digita a palavra letra a letra, na ordem. A primeira letra
+    // "trava" um alvo; erro de sequência esquenta a arma sem trocar de alvo.
+    function proximoAlvo() {
+      return estado.inimigos.find((i) => i.id === estado.alvoAtual) || null;
+    }
+    function destacarProxima(inimigo) {
+      inimigo.el.querySelectorAll('.inimigo__letra--proxima').forEach((el) => el.classList.remove('inimigo__letra--proxima'));
+      const alvo = inimigo.el.querySelector('.inimigo__letra[data-idx="' + inimigo.idx + '"]');
+      if (alvo) alvo.classList.add('inimigo__letra--proxima');
+    }
+    function mirarNaPalavra(inimigo, letra) {
+      if (inimigo.idx >= inimigo.letras.length) return false;
+      if (inimigo.letras[inimigo.idx].ch !== letra) return false;
+      estado.calor = Math.max(0, estado.calor - CFG.resfriarPorAcerto);
+      atualizarCalor();
+      atirar(inimigo, inimigo.idx);
+      inimigo.idx++;
+      if (inimigo.idx >= inimigo.letras.length) {
+        estado.alvoAtual = null;
+      } else {
+        destacarProxima(inimigo);
+      }
+      return true;
+    }
+    function processarLetraPalavra(letra) {
+      let alvo = proximoAlvo();
+      if (alvo && alvo.idx >= alvo.letras.length) { estado.alvoAtual = null; alvo = null; }
+      if (alvo) {
+        if (!mirarNaPalavra(alvo, letra)) registrarErro();
+        return;
+      }
+      // sem alvo: pega o inimigo mais baixo cuja próxima letra bate
+      const candidatos = estado.inimigos
+        .filter((i) => i.idx < i.letras.length && i.letras[i.idx].ch === letra)
+        .sort((a, b) => b.y - a.y);
+      if (candidatos.length) {
+        estado.alvoAtual = candidatos[0].id;
+        mirarNaPalavra(candidatos[0], letra);
       } else {
         registrarErro();
       }
@@ -1182,8 +1247,9 @@ const description =
       estado.pontos += CFG.pontosPorAcerto;
       atualizarPlacar();
       if (inimigo.letras.some((l) => l.viva)) {
-        // Acerto parcial na nave dupla: a placa pipoca, a nave pisca e segue
-        const placa = inimigo.el.querySelector('[data-letra="' + letra.ch + '"]');
+        // Acerto parcial: a placa (por índice, pra palavra com letra repetida
+        // funcionar) pipoca, a nave pisca e segue
+        const placa = inimigo.el.querySelector('[data-idx="' + letraIdx + '"]');
         if (placa) {
           placa.classList.add('inimigo__letra--pop');
           setTimeout(() => placa.remove(), 280);
@@ -1199,6 +1265,7 @@ const description =
     }
 
     function destruirInimigo(inimigo) {
+      if (inimigo.id === estado.alvoAtual) estado.alvoAtual = null;
       const idx = estado.inimigos.indexOf(inimigo);
       if (idx !== -1) estado.inimigos.splice(idx, 1);
       inimigo.el.remove();
@@ -1236,6 +1303,7 @@ const description =
         return;
       }
       // Modo com vidas: o inimigo foge voando pro lado (nada de bater na nave)
+      if (inimigo.id === estado.alvoAtual) estado.alvoAtual = null;
       const idx = estado.inimigos.indexOf(inimigo);
       if (idx !== -1) estado.inimigos.splice(idx, 1);
       inimigo.el.style.setProperty('--fuga', inimigo.x < 0.5 ? '-1' : '1');
@@ -1268,7 +1336,8 @@ const description =
 
     function montarTeclado(nivel) {
       tecladoEl.innerHTML = '';
-      nivel.letras.forEach((letra) => {
+      const teclas = estado.palavras ? ALFABETO : nivel.letras;
+      teclas.forEach((letra) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'tecla';
@@ -1469,9 +1538,13 @@ const description =
     }
 
     // ===== Fluxo =====
-    function comecarJogo(modo) {
+    function comecarJogo(dif) {
       initAudio();
       if (actx && actx.state === 'suspended') actx.resume();
+      estado.dificuldade = dif;
+      estado.palavras = dif === 'dificil';
+      estado.alvoAtual = null;
+      const modo = dif === 'facil' ? 'tranquilo' : 'vidas';
       estado.modo = modo;
       estado.pontos = 0;
       estado.abatesTotal = 0;
@@ -1504,11 +1577,11 @@ const description =
       estado.abatesTotal = 0;
       atualizarPlacar();
       introModal.hidden = false;
-      setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+      setTimeout(() => $('[data-dif="medio"]').focus(), 60);
     }
 
-    document.querySelectorAll('[data-modo]').forEach((btn) => {
-      btn.addEventListener('click', () => comecarJogo(btn.dataset.modo));
+    document.querySelectorAll('[data-dif]').forEach((btn) => {
+      btn.addEventListener('click', () => comecarJogo(btn.dataset.dif));
     });
     $('[data-replay]').addEventListener('click', reiniciar);
     $('[data-replay-fim]').addEventListener('click', reiniciar);
@@ -1537,21 +1610,24 @@ const description =
 
     // ===== Ranking arcade (online via PHP + cache/fallback localStorage) =====
     const API_RANKING = '/class/api/ranking.php';
-    const JOGO_ID = 'letras-espaciais';
+    // Ranking separado por dificuldade: médio no slug antigo (preserva recordes),
+    // difícil no seu próprio. Fácil (tranquilo) não grava.
+    function jogoId() { return estado.dificuldade === 'dificil' ? 'letras-espaciais-dificil' : 'letras-espaciais'; }
+    function rankKey() { return estado.dificuldade === 'dificil' ? 'letras-espaciais:ranking:dificil' : 'letras-espaciais:ranking'; }
 
     function lerRanking() {
-      try { return JSON.parse(localStorage.getItem(RANKING_KEY) || '[]'); }
+      try { return JSON.parse(localStorage.getItem(rankKey()) || '[]'); }
       catch (_) { return []; }
     }
     function salvarRanking(lista) {
-      try { localStorage.setItem(RANKING_KEY, JSON.stringify(lista)); } catch (_) {}
+      try { localStorage.setItem(rankKey(), JSON.stringify(lista)); } catch (_) {}
     }
 
     // Devolve a lista do servidor ou null (falhou/timeout → cai pro local)
     function fetchRanking(opts) {
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), 4000);
-      const url = opts ? API_RANKING : API_RANKING + '?jogo=' + JOGO_ID;
+      const url = opts ? API_RANKING : API_RANKING + '?jogo=' + jogoId();
       return fetch(url, Object.assign({ signal: ctl.signal }, opts || {}))
         .then((r) => (r.ok ? r.json() : null))
         .then((lista) => (Array.isArray(lista) ? lista : null))
@@ -1562,7 +1638,7 @@ const description =
       return fetchRanking({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jogo: JOGO_ID, nome: entrada.nome, pontos: entrada.pontos, nivel: entrada.nivel }),
+        body: JSON.stringify({ jogo: jogoId(), nome: entrada.nome, pontos: entrada.pontos, nivel: entrada.nivel }),
       });
     }
     function indiceDe(lista, entrada) {
@@ -1670,15 +1746,11 @@ const description =
         }
       });
     }
-    $('[data-ver-recordes]').addEventListener('click', () => {
-      introModal.hidden = true;
-      abrirRecordes(true, null);
-    });
     $('[data-voltar-intro]').addEventListener('click', () => {
       recordesModal.hidden = true;
       estado.fase = 'inicio';
       introModal.hidden = false;
-      setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+      setTimeout(() => $('[data-dif="medio"]').focus(), 60);
     });
     $('[data-recordes-replay]').addEventListener('click', () => {
       recordesModal.hidden = true;
@@ -1733,6 +1805,29 @@ const description =
     document.body.classList.add('is-game');
     linhaEsperaEl.style.top = CFG.linhaEspera * 100 + '%';
     medirCampo();
-    setTimeout(() => $('[data-modo="vidas"]').focus(), 60);
+    setTimeout(() => $('[data-dif="medio"]').focus(), 60);
+
+    window.__le = {
+      estado,
+      dificuldade: () => estado.dificuldade,
+      comecar: (dif) => comecarJogo(dif),
+      resolverProximo() {
+        if (estado.fase !== 'jogando' || !estado.inimigos.length) return null;
+        if (estado.palavras) {
+          const alvo = estado.inimigos.find((i) => i.id === estado.alvoAtual)
+            || estado.inimigos.slice().sort((a, b) => b.y - a.y).find((i) => i.idx < i.letras.length);
+          if (!alvo) return null;
+          const ch = alvo.letras[alvo.idx].ch;
+          processarLetra(ch);
+          return ch;
+        }
+        const alvo = estado.inimigos.slice().sort((a, b) => b.y - a.y)[0];
+        const l = alvo.letras.find((x) => x.viva && !x.mirada);
+        if (!l) return null;
+        processarLetra(l.ch);
+        return l.ch;
+      },
+      teclar: (ch) => processarLetra(ch),
+    };
   </script>
 </Layout>
