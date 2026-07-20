@@ -7,16 +7,24 @@ import { criarAudio } from './audio';
 import { criarProgresso } from './progress';
 import { criarModoTeclado } from './keyboard';
 import { criarUi } from './ui';
+import { criarRanking, sanitizeNome, nomeValido, type Entrada } from './ranking';
+import { ranking as rankingCfg } from '../../data/bolhas-de-letras';
 import type { Estado, FloatText, Particle } from './tipos';
 
 const AIM_MAX = 1.32;
+const NOME_KEY = 'bolhas-de-letras:nome';
 
 export function iniciarJogo() {
   document.body.classList.add('is-game');
   const ui = criarUi();
   const audio = criarAudio();
   const progresso = criarProgresso(levels.length);
+  const rank = criarRanking();
   const render = criarRender(ui.els.tela, ui.els.fundo);
+  let nomeJogador = sanitizeNome(localStorage.getItem(NOME_KEY) || '');
+  let jaSalvou = false;
+  let minhaEntrada: Entrada | undefined;
+  let ultimoOnline = false;
 
   const porDif: Record<string, number[]> = {};
   levels.forEach((l, i) => {
@@ -207,6 +215,8 @@ export function iniciarJogo() {
     estado.shots = 0;
     estado.fase = 'jogando';
     aimAngle = 0;
+    jaSalvou = false;
+    minhaEntrada = undefined;
     novoBg(temasBg[idx % temasBg.length], 1 + idx * 131);
     refill();
     ui.mostrarModal(null);
@@ -214,12 +224,99 @@ export function iniciarJogo() {
   }
 
   function startDifficulty(id: DifficultyId) {
+    const nome = sanitizeNome(ui.els.campoNome?.value || nomeJogador);
+    if (!nomeValido(nome)) {
+      ui.els.campoNome?.classList.remove('treme');
+      void ui.els.campoNome?.offsetWidth;
+      ui.els.campoNome?.classList.add('treme');
+      ui.els.campoNome?.focus();
+      return;
+    }
+    nomeJogador = nome;
+    try { localStorage.setItem(NOME_KEY, nome); } catch { }
     estado.modo = 'arcade';
     estado.pontos = 0;
     const idxs = porDif[id];
     const pendente = idxs.find((i) => !progresso.done[i]);
     startLevel(pendente !== undefined ? pendente : idxs[0]);
     audio.somClique();
+  }
+
+  function pausar() {
+    if (estado.fase !== 'jogando') return;
+    estado.fase = 'pausa';
+    teclas.clear();
+    ui.mostrarModal(ui.els.pausa);
+  }
+  function continuar() {
+    if (estado.fase !== 'pausa') return;
+    estado.fase = 'jogando';
+    ui.mostrarModal(null);
+  }
+  function recomecar() {
+    estado.pontos = 0;
+    startLevel(porDif[levels[estado.nivelIdx].difficulty][0]);
+    audio.somClique();
+  }
+
+  function nivelAlcancado(): number {
+    const idxs = porDif[levels[estado.nivelIdx].difficulty];
+    return idxs.indexOf(estado.nivelIdx) + 1;
+  }
+
+  function renderRanking(lista: Entrada[], destaque: Entrada | undefined, texto: string) {
+    const ol = ui.els.rankLista;
+    ol.innerHTML = '';
+    ui.els.rankVazio.hidden = lista.length > 0;
+    lista.forEach((e, i) => {
+      const li = document.createElement('li');
+      if (destaque && e.nome === destaque.nome && e.pontos === destaque.pontos) li.className = 'novo';
+      li.innerHTML =
+        '<span class="pos">' + (i + 1) + 'º</span>' +
+        '<span class="nome">' + e.nome + '</span>' +
+        '<span class="det">nível ' + e.nivel + '</span>' +
+        '<span class="pts">' + e.pontos + '</span>';
+      ol.appendChild(li);
+    });
+    ui.els.rankFonte.textContent = texto;
+  }
+
+  function fonteTexto(online: boolean) {
+    return online ? '🌐 Ranking online — vale pra turma toda!' : '📴 Sem internet: ranking deste computador.';
+  }
+
+  function enviarRankingBg() {
+    if (estado.modo !== 'arcade' || jaSalvou || !nomeValido(nomeJogador)) return;
+    jaSalvou = true;
+    rank.enviar(diff.id, nomeJogador, estado.pontos, nivelAlcancado()).then((res) => {
+      minhaEntrada = res.entrada;
+      ultimoOnline = res.online;
+    });
+  }
+
+  async function abrirRanking() {
+    const d = diff.id;
+    estado.fase = 'ranking';
+    ui.els.rankTitulo.textContent = '🏆 Ranking — ' + diff.emoji + ' ' + diff.nome;
+    ui.mostrarModal(ui.els.ranking);
+    renderRanking([], minhaEntrada, 'Buscando o ranking…');
+    const res = await rank.buscar(d);
+    if (estado.fase !== 'ranking') return;
+    renderRanking(res.lista, minhaEntrada, fonteTexto(res.online || ultimoOnline));
+  }
+
+  function irParaInicio() {
+    estado.fase = 'intro';
+    ui.badgesNiveis(progresso.done, porDif);
+    if (ui.els.campoNome) ui.els.campoNome.value = nomeJogador;
+    ui.mostrarModal(ui.els.intro);
+    audio.somClique();
+  }
+
+  function sair() {
+    if (estado.fase === 'pausa') estado.fase = 'jogando';
+    enviarRankingBg();
+    abrirRanking();
   }
 
   function startTeclado() {
@@ -245,6 +342,7 @@ export function iniciarJogo() {
     const r = progresso.resumo();
     ui.resumo(r.bons, r.praticar);
     ui.mostrarModal(ui.els.win);
+    enviarRankingBg();
     spawnConfete();
     audio.somVitoria();
   }
@@ -253,6 +351,7 @@ export function iniciarJogo() {
     estado.fase = 'derrota';
     ui.els.failTexto.textContent = textos.derrota(matchesNivel);
     ui.mostrarModal(ui.els.fail);
+    enviarRankingBg();
   }
 
   function nivelCompleto() {
@@ -478,9 +577,9 @@ export function iniciarJogo() {
 
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
-    if (estado.fase === 'teclado') {
-      const r = teclado.tecla(e.key);
-      if (r !== 'ignorada') e.preventDefault();
+    if (e.key === 'Escape') {
+      if (estado.fase === 'jogando') { pausar(); e.preventDefault(); }
+      else if (estado.fase === 'pausa') { continuar(); e.preventDefault(); }
       return;
     }
     if (estado.fase !== 'jogando') return;
@@ -506,7 +605,9 @@ export function iniciarJogo() {
   for (const btn of Array.from(document.querySelectorAll('[data-dif]'))) {
     btn.addEventListener('click', () => startDifficulty(btn.getAttribute('data-dif') as DifficultyId));
   }
-  ui.els.intro.querySelector('[data-modo-teclado]')?.addEventListener('click', startTeclado);
+  ui.els.campoNome?.addEventListener('input', () => {
+    ui.els.campoNome.value = sanitizeNome(ui.els.campoNome.value);
+  });
   document.querySelector('[data-nd-continuar]')?.addEventListener('click', () => {
     const idxs = porDif[levels[estado.nivelIdx].difficulty];
     startLevel(idxs[idxs.indexOf(estado.nivelIdx) + 1]);
@@ -516,14 +617,16 @@ export function iniciarJogo() {
     startLevel(estado.nivelIdx);
     audio.somClique();
   });
-  for (const sel of ['[data-fail-menu]', '[data-win-menu]']) {
-    document.querySelector(sel)?.addEventListener('click', () => {
-      estado.fase = 'intro';
-      ui.badgesNiveis(progresso.done, porDif);
-      ui.mostrarModal(ui.els.intro);
-      audio.somClique();
-    });
+  for (const sel of ['[data-fail-menu]', '[data-win-menu]', '[data-rank-inicio]']) {
+    document.querySelector(sel)?.addEventListener('click', irParaInicio);
   }
+  document.querySelector('[data-win-ranking]')?.addEventListener('click', () => { abrirRanking(); audio.somClique(); });
+  document.querySelector('[data-fail-ranking]')?.addEventListener('click', () => { abrirRanking(); audio.somClique(); });
+  document.querySelector('[data-rank-jogar]')?.addEventListener('click', recomecar);
+  ui.els.pausaBtn?.addEventListener('click', pausar);
+  document.querySelector('[data-pausa-voltar]')?.addEventListener('click', () => { continuar(); audio.somClique(); });
+  document.querySelector('[data-pausa-recomecar]')?.addEventListener('click', recomecar);
+  document.querySelector('[data-pausa-sair]')?.addEventListener('click', () => { sair(); audio.somClique(); });
 
   const SOM_ON = '/class/games/bolhas-de-letras/ui/audio-on.png';
   const SOM_OFF = '/class/games/bolhas-de-letras/ui/audio-off.png';
@@ -560,14 +663,17 @@ export function iniciarJogo() {
     elPrincesa.classList.add('aparece');
     pIdx++;
   }
-  if (elPrincesa) {
+  function cicloPrincesa() {
+    if (!elPrincesa) return;
     trocarPrincesa();
-    setInterval(() => {
+    setTimeout(() => {
       elPrincesa.classList.remove('aparece');
-      setTimeout(trocarPrincesa, 460);
-    }, 5000);
+      setTimeout(cicloPrincesa, 3000);
+    }, 10000);
   }
+  if (elPrincesa) cicloPrincesa();
 
+  if (ui.els.campoNome) ui.els.campoNome.value = nomeJogador;
   ui.badgesNiveis(progresso.done, porDif);
   ui.mostrarModal(ui.els.intro);
   atualizarHud();
@@ -601,7 +707,13 @@ export function iniciarJogo() {
     projetil: () => proj,
     startDifficulty,
     startLevel,
-    startTeclado,
     matchesNivel: () => matchesNivel,
+    nome: () => nomeJogador,
+    difAtual: () => diff.id,
+    pausar,
+    continuar,
+    recomecar,
+    sair,
+    abrirRanking,
   };
 }

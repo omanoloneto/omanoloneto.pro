@@ -29,6 +29,9 @@ const JOGOS = [
   'sugar-splash' => [99999, 99],
   'sugar-splash-multi' => [99999, 99],
   'eco-hero' => [99999, 99],
+  'bubble-pop-facil' => [99999, 99],
+  'bubble-pop-medio' => [99999, 99],
+  'bubble-pop-dificil' => [99999, 99],
 ];
 const MAX_ENTRADAS = 10;
 

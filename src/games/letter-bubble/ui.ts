@@ -20,6 +20,14 @@ export function criarUi() {
     resumoWrap: q('[data-resumo]'),
     fail: q('[data-fail]'),
     failTexto: q('[data-fail-texto]'),
+    pausa: q('[data-pausa]'),
+    pausaBtn: q('[data-pausa-btn]'),
+    ranking: q('[data-ranking]'),
+    rankTitulo: q('[data-rank-titulo]'),
+    rankLista: q('[data-rank-lista]'),
+    rankVazio: q('[data-rank-vazio]'),
+    rankFonte: q('[data-rank-fonte]'),
+    campoNome: q('[data-campo-nome]') as unknown as HTMLInputElement,
     toast: q('[data-toast]'),
     tela: q('[data-tela]') as unknown as HTMLCanvasElement,
     fundo: q('[data-fundo]') as unknown as HTMLCanvasElement,
@@ -29,9 +37,10 @@ export function criarUi() {
   let toastTimer = 0;
 
   function mostrarModal(el: HTMLElement | null) {
-    for (const m of [els.intro, els.nivelDone, els.win, els.fail]) {
+    for (const m of [els.intro, els.nivelDone, els.win, els.fail, els.pausa, els.ranking]) {
       if (m) m.hidden = m !== el;
     }
+    if (els.pausaBtn) els.pausaBtn.hidden = el !== null;
   }
 
   function toast(texto: string, ms = 2200) {

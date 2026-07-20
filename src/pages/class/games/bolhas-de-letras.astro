@@ -18,6 +18,7 @@ const description =
       <div class="hud__bloco hud__bloco--obj"><span class="hud__label">Objetivo</span><strong data-objetivo>—</strong></div>
       <div class="hud__bloco" data-proxima-wrap hidden><span class="hud__label">Próxima</span><strong class="hud__proxima" data-proxima></strong></div>
       <button class="hud__mute" type="button" data-falar aria-pressed="false" aria-label="Falar o nome das letras">🗣️</button>
+      <button class="hud__mute" type="button" data-pausa-btn aria-label="Pausar o jogo" hidden>⏸️</button>
       <button class="hud__mute hud__mute--som" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
         <img class="hud__som-img" data-mute-icon src="/class/games/bolhas-de-letras/ui/audio-on.png" alt="Som" width="34" height="34" />
       </button>
@@ -32,34 +33,48 @@ const description =
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
         <div class="placa__topo" id="intro-title">🫧 Bubble Pop</div>
         <div class="placa__corpo">
-          <div class="demo" aria-hidden="true">
-            <span class="demo__bolha">M</span>
-            <span class="demo__igual">=</span>
-            <span class="demo__bolha demo__bolha--min">m</span>
-          </div>
-          <p class="explica">A letra <b>grande</b> e a letra <b>pequena</b> são a mesma letra! Mire a bolha na sua parceira pra estourar as duas. 🎯</p>
+          <input class="campo-nome" data-campo-nome type="text" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="SEU NOME" aria-label="Seu nome" />
           <div class="difs" role="group" aria-label="Escolha a dificuldade">
             <button class="dif" type="button" data-dif="easy">
               <span class="dif__emoji">🎨</span>
               <span class="dif__nome">Fácil</span>
-              <span class="dif__desc">As cores ajudam a achar o par</span>
               <span class="dif__feitos" data-dif-feitos="easy">0/5</span>
             </button>
             <button class="dif" type="button" data-dif="medium">
               <span class="dif__emoji">⚪</span>
               <span class="dif__nome">Médio</span>
-              <span class="dif__desc">Sem cores: olhe só a letra</span>
               <span class="dif__feitos" data-dif-feitos="medium">0/5</span>
             </button>
             <button class="dif" type="button" data-dif="hard">
               <span class="dif__emoji">🔤</span>
               <span class="dif__nome">Difícil</span>
-              <span class="dif__desc">O alfabeto inteiro te espera</span>
               <span class="dif__feitos" data-dif-feitos="hard">0/5</span>
             </button>
           </div>
-          <button class="botao botao--teclado" type="button" data-modo-teclado>⌨️ Modo Teclado — aperte a tecla da letra!</button>
-          <p class="dica-controles">🖱️ Mire e clique · 📱 arraste e solte · ⌨️ setas + espaço</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-pausa hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="pausa-title">
+        <div class="placa__topo" id="pausa-title">⏸️ Pausa</div>
+        <div class="placa__corpo">
+          <button class="botao botao--go" type="button" data-pausa-voltar>▶️ Voltar a jogar</button>
+          <button class="botao" type="button" data-pausa-recomecar>🔄 Recomeçar</button>
+          <button class="botao" type="button" data-pausa-sair>🚪 Sair do jogo</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-ranking hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="ranking-title">
+        <div class="placa__topo" id="ranking-title" data-rank-titulo>🏆 Ranking</div>
+        <div class="placa__corpo">
+          <ol class="tabela" data-rank-lista></ol>
+          <p class="rank-vazio" data-rank-vazio hidden>Seja o primeiro a gravar o nome! 🫧</p>
+          <p class="rank-fonte" data-rank-fonte></p>
+          <button class="botao botao--go" type="button" data-rank-jogar>🔁 Jogar de novo</button>
+          <button class="botao" type="button" data-rank-inicio>🏠 Início</button>
         </div>
       </div>
     </div>
@@ -82,7 +97,8 @@ const description =
             <p class="resumo__linha resumo__linha--bom">💪 Reconhece bem: <strong data-resumo-bons></strong></p>
             <p class="resumo__linha">📚 Precisa praticar mais: <strong data-resumo-praticar></strong></p>
           </div>
-          <button class="botao botao--go" type="button" data-win-menu>🏠 Voltar ao início</button>
+          <button class="botao botao--go" type="button" data-win-ranking>🏆 Ver ranking</button>
+          <button class="botao" type="button" data-win-menu>🏠 Voltar ao início</button>
         </div>
       </div>
     </div>
@@ -93,6 +109,7 @@ const description =
         <div class="placa__corpo">
           <p class="win-texto" data-fail-texto></p>
           <button class="botao botao--go" type="button" data-fail-retry>🔁 Tentar de novo</button>
+          <button class="botao" type="button" data-fail-ranking>🏆 Ver ranking</button>
           <button class="botao" type="button" data-fail-menu>🏠 Voltar ao início</button>
         </div>
       </div>
@@ -114,6 +131,39 @@ const description =
   body.is-game header,
   body.is-game footer {
     display: none;
+  }
+  .bl .tabela li {
+    display: grid;
+    grid-template-columns: 2.2em 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    background: #eef4fb;
+    border-radius: 10px;
+    padding: 7px 10px;
+    font-size: 0.95rem;
+    color: #2b4562;
+  }
+  .bl .tabela li.novo {
+    background: #d6ecff;
+    outline: 2px solid #4d7fe8;
+  }
+  .bl .tabela .pos {
+    font-weight: 700;
+    color: #4a6685;
+  }
+  .bl .tabela .nome {
+    font-family: 'Andika', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #143250;
+  }
+  .bl .tabela .det {
+    font-size: 0.75rem;
+    color: #7089a5;
+  }
+  .bl .tabela .pts {
+    font-weight: 700;
+    color: #1d7a3c;
   }
 </style>
 
@@ -171,7 +221,7 @@ const description =
     width: auto;
     max-width: none;
     opacity: 0;
-    transition: opacity 0.45s ease;
+    transition: opacity 3s ease;
     animation: princesaFlutua 5.5s ease-in-out infinite;
     will-change: transform, opacity;
   }
@@ -342,36 +392,30 @@ const description =
     gap: 12px;
   }
 
-  .demo {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-  }
-  .demo__bolha {
-    width: 58px;
-    height: 58px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 30%, #fff, #4d7fe8 45%);
-    color: #143250;
-    display: grid;
-    place-items: center;
+  .campo-nome {
     font-family: 'Andika', sans-serif;
     font-weight: 700;
-    font-size: 1.9rem;
-    text-shadow: 0 0 4px rgba(255, 255, 255, 0.9);
-    box-shadow: inset 0 0 0 3px rgba(30, 40, 60, 0.25);
-  }
-  .demo__igual {
-    font-size: 1.7rem;
-    font-weight: 700;
-    color: #143250;
-  }
-  .explica {
-    margin: 0;
+    font-size: 1.4rem;
     text-align: center;
-    color: #2b4562;
-    font-size: 0.98rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #143250;
+    background: #eef4fb;
+    border: 3px solid #c7d8ec;
+    border-radius: 14px;
+    padding: 12px;
+    outline: none;
+  }
+  .campo-nome:focus {
+    border-color: #4d7fe8;
+  }
+  .campo-nome.treme {
+    animation: campoTreme 0.4s ease;
+  }
+  @keyframes campoTreme {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
   }
 
   .difs {
@@ -405,12 +449,6 @@ const description =
     color: #143250;
     font-size: 1.02rem;
   }
-  .dif__desc {
-    font-size: 0.7rem;
-    color: #4a6685;
-    text-align: center;
-    line-height: 1.25;
-  }
   .dif__feitos {
     font-size: 0.72rem;
     background: #143250;
@@ -439,17 +477,31 @@ const description =
     border-color: #1d7a3c;
     color: #fff;
   }
-  .botao--teclado {
-    background: linear-gradient(135deg, #f6c945, #f39a3d);
-    border-color: #c07b1d;
-    color: #4a3208;
-  }
 
-  .dica-controles {
+  .tabela {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 46vh;
+    overflow-y: auto;
+  }
+  .rank-vazio {
+    margin: 0;
+    text-align: center;
+    color: #4a6685;
+  }
+  .rank-vazio[hidden] {
+    display: none;
+  }
+  .rank-fonte {
     margin: 0;
     text-align: center;
     font-size: 0.78rem;
-    color: #4a6685;
+    color: #7089a5;
+    min-height: 1em;
   }
 
   .win-texto {
@@ -490,12 +542,8 @@ const description =
     }
     .dif {
       flex-direction: row;
-      justify-content: flex-start;
+      justify-content: center;
       gap: 10px;
-    }
-    .dif__desc {
-      text-align: left;
-      flex: 1;
     }
   }
 </style>

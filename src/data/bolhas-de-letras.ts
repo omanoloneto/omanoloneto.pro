@@ -113,8 +113,22 @@ export const config = {
 export const temasBg = ['candy', 'ocean', 'wind', 'aurora', 'galaxy'] as const;
 export type TemaBg = (typeof temasBg)[number];
 
-export const spriteLetters = ['B', 'C', 'D', 'M', 'O', 'P', 'U', 'Y'];
+export const spriteLetters = ['B', 'C', 'D', 'M', 'O', 'P', 'U', 'V', 'X', 'Y'];
 export const spriteBase = '/class/games/bolhas-de-letras/sprites';
+
+export const ranking = {
+  api: '/class/api/ranking.php',
+  jogoBase: 'bubble-pop',
+  max: 10,
+  nomeMin: 2,
+  nomeMax: 6,
+} as const;
+
+export const difSlug: Record<DifficultyId, string> = {
+  easy: 'facil',
+  medium: 'medio',
+  hard: 'dificil',
+};
 
 export const juice = {
   popShards: 12,

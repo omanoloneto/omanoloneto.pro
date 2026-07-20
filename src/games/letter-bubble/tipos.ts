@@ -12,7 +12,7 @@ export interface Bubble {
   vy: number;
 }
 
-export type Fase = 'intro' | 'jogando' | 'teclado' | 'nivelFeito' | 'vitoria' | 'derrota';
+export type Fase = 'intro' | 'jogando' | 'teclado' | 'pausa' | 'nivelFeito' | 'vitoria' | 'derrota' | 'ranking';
 
 export interface Estado {
   fase: Fase;
