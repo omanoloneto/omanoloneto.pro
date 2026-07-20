@@ -1,13 +1,13 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 
-const title = 'Bolhas de Letras — combine maiúsculas e minúsculas! | Manolo Neto';
+const title = 'Bubble Pop — combine maiúsculas e minúsculas! | Manolo Neto';
 const description =
-  'Jogo educativo de estourar bolhas: mire a letra maiúscula na minúscula certa (M com m) e limpe o quadro! Três dificuldades, modo teclado e progressão do alfabeto inteiro. Em português.';
+  'Bubble Pop: jogo educativo de estourar bolhas: mire a letra maiúscula na minúscula certa (M com m) e limpe o quadro! Três dificuldades, modo teclado e progressão do alfabeto inteiro. Em português.';
 ---
 
 <Layout title={title} description={description}>
-  <main id="conteudo" class="bl" data-game role="application" aria-label="Bolhas de Letras: combine a letra maiúscula com a minúscula">
+  <main id="conteudo" class="bl" data-game role="application" aria-label="Bubble Pop: combine a letra maiúscula com a minúscula">
     <canvas class="fundo" data-fundo aria-hidden="true"></canvas>
     <header class="hud" data-hud role="status" aria-live="polite">
       <div class="hud__bloco"><span class="hud__label">Pontos</span><strong data-pontos>0</strong></div>
@@ -27,7 +27,7 @@ const description =
 
     <div class="modal" data-intro>
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="intro-title">
-        <div class="placa__topo" id="intro-title">🫧 Bolhas de Letras</div>
+        <div class="placa__topo" id="intro-title">🫧 Bubble Pop</div>
         <div class="placa__corpo">
           <div class="demo" aria-hidden="true">
             <span class="demo__bolha">M</span>
