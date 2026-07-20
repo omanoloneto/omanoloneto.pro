@@ -221,6 +221,7 @@ export function iniciarJogo() {
     ctx.camera3.passo();
     ctx.mira.passo();
     ctx.ceu.passo(dt);
+    ctx.audio.passoMusica(dt);
     ctx.mob.passo(dt, !sync.emSala() || sync.souAnfitriao());
     ctx.kotsooh.passo(dt);
     ctx.malha.reconstruirSujos();
@@ -561,6 +562,7 @@ export function iniciarJogo() {
     bonecos: ctx.bonecos,
     metas: ctx.metas,
     ceu: ctx.ceu,
+    audio: ctx.audio,
     mob: ctx.mob,
     kotsooh: ctx.kotsooh,
     ui: ctx.ui,

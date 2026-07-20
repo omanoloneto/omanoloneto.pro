@@ -61,6 +61,8 @@ export interface Audio {
   init(): void;
   retomar(): void;
   suspender(): void;
+  passoMusica(dt: number): void;
+  musInfo(): { tocando: boolean; nivelNoite: number; volDia: number; volNoite: number };
   bindMute(btn: HTMLElement, icone: HTMLElement): void;
   somQuebrar(id: number): void;
   somColocar(): void;

@@ -1,9 +1,52 @@
-// Áudio: Web Audio sintetizado (sem arquivos) + mute em localStorage.
+// Áudio: Web Audio sintetizado (sem arquivos) pros SFX + duas faixas de
+// música (dia/noite) em HTMLAudioElement com crossfade pelo ciclo do céu.
 import type { Audio, Contexto } from './tipos';
+import { DIA_S } from './ceu';
+
+const MUS_VOL = 0.3;
+const FADE_S = 3;
 
 export function criarAudio(ctx: Contexto): Audio {
   let actx: AudioContext | null = null;
   let ruidoBuf: AudioBuffer | null = null;
+
+  let musDia: HTMLAudioElement | null = null;
+  let musNoite: HTMLAudioElement | null = null;
+  let nivelNoite = 0;
+  let tocando = false;
+
+  function eNoite() {
+    return !!ctx.ceu && ctx.ceu.tempo() >= DIA_S;
+  }
+  function aplicarVol() {
+    if (!musDia || !musNoite) return;
+    musDia.volume = MUS_VOL * (1 - nivelNoite);
+    musNoite.volume = MUS_VOL * nivelNoite;
+  }
+  function iniciarMusica() {
+    if (!musDia) {
+      musDia = new window.Audio('/class/audio/mineblocks/dia.mp3');
+      musDia.loop = true;
+      musDia.preload = 'auto';
+      musNoite = new window.Audio('/class/audio/mineblocks/noite.mp3');
+      musNoite.loop = true;
+      musNoite.preload = 'auto';
+      nivelNoite = eNoite() ? 1 : 0;
+    }
+    aplicarVol();
+    if (!ctx.estado.mudo) {
+      const p1 = musDia.play();
+      if (p1 && typeof p1.catch === 'function') p1.catch(() => {});
+      const p2 = musNoite!.play();
+      if (p2 && typeof p2.catch === 'function') p2.catch(() => {});
+      tocando = true;
+    }
+  }
+  function pausarMusica() {
+    if (musDia) musDia.pause();
+    if (musNoite) musNoite.pause();
+    tocando = false;
+  }
 
   function init() {
     if (actx) return;
@@ -85,9 +128,27 @@ export function criarAudio(ctx: Contexto): Audio {
     retomar() {
       init();
       if (actx && actx.state === 'suspended') actx.resume();
+      iniciarMusica();
     },
     suspender() {
       if (actx) actx.suspend();
+    },
+    passoMusica(dt) {
+      if (!tocando || !musDia) return;
+      const alvo = eNoite() ? 1 : 0;
+      if (nivelNoite !== alvo) {
+        const passo = Math.min(dt / FADE_S, Math.abs(alvo - nivelNoite));
+        nivelNoite += Math.sign(alvo - nivelNoite) * passo;
+        aplicarVol();
+      }
+    },
+    musInfo() {
+      return {
+        tocando,
+        nivelNoite,
+        volDia: musDia ? musDia.volume : 0,
+        volNoite: musNoite ? musNoite.volume : 0,
+      };
     },
     bindMute(btn, icone) {
       const aplicar = () => {
@@ -101,6 +162,8 @@ export function criarAudio(ctx: Contexto): Audio {
         ctx.estado.mudo = !ctx.estado.mudo;
         localStorage.setItem('mineblocks:mudo', ctx.estado.mudo ? '1' : '0');
         aplicar();
+        if (ctx.estado.mudo) pausarMusica();
+        else iniciarMusica();
       });
     },
     somQuebrar(id) {

@@ -905,6 +905,21 @@ const description =
       const AC = window.AudioContext || window.webkitAudioContext;
       if (AC) actx = new AC();
     }
+
+    // Música de fundo (arquivo, em loop) — respeita o mesmo mute dos efeitos
+    let musica = null;
+    function iniciarMusica() {
+      if (!musica) {
+        musica = new Audio('/class/audio/letras-espaciais/musica.mp3');
+        musica.loop = true;
+        musica.volume = 0.35;
+        musica.preload = 'auto';
+      }
+      if (!estado.mudo) {
+        const pr = musica.play();
+        if (pr && typeof pr.catch === 'function') pr.catch(() => {});
+      }
+    }
     function tom(freq, inicio, dur, tipo, vol) {
       if (!actx) return;
       const o = actx.createOscillator();
@@ -949,6 +964,10 @@ const description =
       estado.mudo = !estado.mudo;
       localStorage.setItem('letras-espaciais:mudo', estado.mudo ? '1' : '0');
       aplicarMudo();
+      if (musica) {
+        if (estado.mudo) musica.pause();
+        else { const pr = musica.play(); if (pr && typeof pr.catch === 'function') pr.catch(() => {}); }
+      }
     });
 
     // ===== Utilidades =====
@@ -1541,6 +1560,7 @@ const description =
     function comecarJogo(dif) {
       initAudio();
       if (actx && actx.state === 'suspended') actx.resume();
+      iniciarMusica();
       estado.dificuldade = dif;
       estado.palavras = dif === 'dificil';
       estado.alvoAtual = null;
@@ -1811,6 +1831,8 @@ const description =
       estado,
       dificuldade: () => estado.dificuldade,
       comecar: (dif) => comecarJogo(dif),
+      get musicaTocando() { return !!musica && !musica.paused; },
+      get musicaInfo() { return musica ? { loop: musica.loop, volume: musica.volume } : null; },
       resolverProximo() {
         if (estado.fase !== 'jogando' || !estado.inimigos.length) return null;
         if (estado.palavras) {
