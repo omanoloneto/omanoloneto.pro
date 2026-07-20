@@ -9,6 +9,12 @@ const description =
 <Layout title={title} description={description}>
   <main id="conteudo" class="bl" data-game role="application" aria-label="Bubble Pop: combine a letra maiúscula com a minúscula">
     <canvas class="fundo" data-fundo aria-hidden="true"></canvas>
+    <div class="princesas" data-princesas aria-hidden="true">
+      <img class="princesa princesa--et" src="/class/games/bolhas-de-letras/princesas/princesa-1.png" alt="" width="252" height="420" loading="lazy" />
+      <img class="princesa princesa--eb" src="/class/games/bolhas-de-letras/princesas/princesa-3.png" alt="" width="252" height="420" loading="lazy" />
+      <img class="princesa princesa--dt" src="/class/games/bolhas-de-letras/princesas/princesa-2.png" alt="" width="252" height="420" loading="lazy" />
+      <img class="princesa princesa--db" src="/class/games/bolhas-de-letras/princesas/princesa-4.png" alt="" width="252" height="420" loading="lazy" />
+    </div>
     <header class="hud" data-hud role="status" aria-live="polite">
       <div class="hud__bloco"><span class="hud__label">Pontos</span><strong data-pontos>0</strong></div>
       <div class="hud__bloco"><span class="hud__label">Nível</span><strong data-nivel>—</strong></div>
@@ -152,6 +158,41 @@ const description =
     height: 100%;
     z-index: 0;
     display: block;
+  }
+
+  .princesas {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .princesa {
+    position: absolute;
+    height: clamp(180px, 27vh, 290px);
+    width: auto;
+    max-width: none;
+    filter: drop-shadow(0 8px 12px rgba(20, 40, 80, 0.35));
+    animation: princesaFlutua 5.5s ease-in-out infinite;
+    will-change: transform;
+  }
+  .princesa--et { left: 6px; top: 7%; animation-duration: 5.4s; }
+  .princesa--eb { left: 16px; bottom: 5%; animation-duration: 6.3s; animation-delay: -1.6s; }
+  .princesa--dt { right: 6px; top: 7%; transform: scaleX(-1); animation-name: princesaFlutuaEsp; animation-duration: 5.9s; animation-delay: -0.9s; }
+  .princesa--db { right: 16px; bottom: 5%; transform: scaleX(-1); animation-name: princesaFlutuaEsp; animation-duration: 6.7s; animation-delay: -2.3s; }
+  @keyframes princesaFlutua {
+    0%, 100% { transform: translateY(0) rotate(-2.5deg); }
+    50% { transform: translateY(-22px) rotate(2.5deg); }
+  }
+  @keyframes princesaFlutuaEsp {
+    0%, 100% { transform: scaleX(-1) translateY(0) rotate(-2.5deg); }
+    50% { transform: scaleX(-1) translateY(-22px) rotate(2.5deg); }
+  }
+  @media (max-width: 1040px) {
+    .princesas { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .princesa { animation: none; }
   }
 
   .hud {
