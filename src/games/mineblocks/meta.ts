@@ -91,6 +91,7 @@ function normalizada(m: Meta): Meta {
     tipo: 'bau',
     dono: m.dono,
     itens: Array.from(m.itens, (n) => (typeof n === 'number' && n > 0 ? Math.min(999, n | 0) : 0)),
+    publico: m.publico === true,
   };
 }
 

@@ -58,6 +58,9 @@ const MAX_Y = 80;
 const MAX_Z = 384;
 const MAX_BLOCO = 29;   // maior id da tabela do cliente (ar..tijolos de pedra)
 const MAX_BICHOS = 16;  // teto de Winpups no blackboard (só posição)
+// ciclo dia/noite (casa com DIA_S+NOITE_S do ceu.ts): a sala ancora o horário
+// e todo cliente deriva a mesma fase de (agora - cicloInicioMs) % CICLO_S
+const CICLO_S = 365;
 
 function arquivoFoto(string $codigo): string {
   return DIR_SALAS . '/sala-' . $codigo . '-foto.json';
@@ -76,7 +79,7 @@ function metaLimpa($m) {
     if (!isset($m['dono']) || !is_string($m['dono']) || strlen($m['dono']) > 16) return false;
     if (!isset($m['itens']) || !is_array($m['itens']) || count($m['itens']) > 64) return false;
     foreach ($m['itens'] as $n) if (!is_int($n) || $n < 0 || $n > 999) return false;
-    return ['tipo' => 'bau', 'dono' => $m['dono'], 'itens' => array_values($m['itens'])];
+    return ['tipo' => 'bau', 'dono' => $m['dono'], 'itens' => array_values($m['itens']), 'publico' => !empty($m['publico'])];
   }
   if ($tipo === 'placa') {
     if (!isset($m['autor'], $m['texto']) || !is_string($m['autor']) || !is_string($m['texto'])) return false;
@@ -202,10 +205,15 @@ if ($acao === 'criar') {
 
   $token = newToken();
   $agora = nowMs();
+  // âncora do ciclo dia/noite: recua o "início" pelo horário que o criador
+  // mandou (ceu.tempo()), pra sala nascer na mesma hora do céu dele
+  $tempoIni = (int)($corpo['tempo'] ?? 0);
+  if ($tempoIni < 0 || $tempoIni >= CICLO_S) $tempoIni = 0;
   writeJson(arquivoFoto($codigo), $foto);
   writeJson(salaFile($codigo), [
     'codigo' => $codigo,
     'criadoMs' => $agora,
+    'cicloInicioMs' => $agora - $tempoIni * 1000,
     'dono' => $token,
     'snapshotSeq' => 0,
     'proxSeq' => 1,
@@ -261,6 +269,8 @@ if ($acao === 'entrar') {
       'metaSeq' => $sala['snapshotMetaSeq'] ?? 0,
       'donoNome' => nomeDoDono($sala),
       'jogadores' => listaJogadores($sala, $token),
+      'agora' => $agora,
+      'cicloInicioMs' => $sala['cicloInicioMs'] ?? $sala['criadoMs'],
     ];
   });
   echo json_encode($resp, JSON_UNESCAPED_UNICODE);
@@ -346,6 +356,12 @@ if ($acao === 'sync') {
     }
 
     $anfitriao = activeHost($sala, $agora, ATIVO_S) === $token;
+    // dono saiu/sumiu: persiste o novo host (o mais antigo ativo) pra
+    // nomeDoDono/entregas de logout seguirem a autoridade
+    if (!isset($sala['jogadores'][$sala['dono']])) {
+      $novoDono = activeHost($sala, $agora, ATIVO_S);
+      if ($novoDono !== null) $sala['dono'] = $novoDono;
+    }
     // blackboard dos Winpups: SÓ o anfitrião escreve (os outros só leem)
     if ($anfitriao && $bichosIn !== null) {
       $sala['bichos'] = bichosLimpos($bichosIn);
@@ -393,6 +409,8 @@ if ($acao === 'sync') {
       return [
         'reset' => true,
         'foto' => $foto,
+        'agora' => $agora,
+        'cicloInicioMs' => $sala['cicloInicioMs'] ?? $sala['criadoMs'],
         'seq' => $sala['snapshotSeq'],
         'metaSeq' => $sala['snapshotMetaSeq'],
         'jogadores' => listaJogadores($sala, $token),
@@ -418,6 +436,8 @@ if ($acao === 'sync') {
     return [
       'seq' => $seqAtual,
       'metaSeq' => $metaSeqAtual,
+      'agora' => $agora,
+      'cicloInicioMs' => $sala['cicloInicioMs'] ?? $sala['criadoMs'],
       'edicoes' => $novas,
       'metasNovas' => $metasNovas,
       'jogadores' => listaJogadores($sala, $token),
@@ -481,6 +501,10 @@ if ($acao === 'sair') {
     if ($sala === null) return;
     $saindo = $sala['jogadores'][$token] ?? null;
     unset($sala['jogadores'][$token]);
+    // dono saindo passa o host na hora (não espera os 12s de inatividade)
+    if ($token === ($sala['dono'] ?? '') && count($sala['jogadores']) > 0) {
+      $sala['dono'] = activeHost($sala, nowMs(), ATIVO_S) ?? array_key_first($sala['jogadores']);
+    }
     // guarda a entrega só se o visitante NÃO for o dono e tiver itens
     if ($invLimpo !== null && $saindo !== null && $token !== $sala['dono']) {
       $sala['pendentes'] = $sala['pendentes'] ?? [];

@@ -22,6 +22,7 @@ export interface Bloco {
   durezaFerro?: number;
   precisaPicareta?: boolean;
   ferramenta?: boolean;
+  madeira?: boolean; // o machado quebra mais rápido
   // ícone PNG (public/class/games/mineblocks/icones/<icone>.png) usado no
   // inventário/hotbar no lugar do recorte do atlas
   icone?: string;
@@ -33,11 +34,11 @@ export const blocos: Bloco[] = [
   { id: 2, nome: 'terra', tiles: [2, 2, 2], solido: true, render: 'cubo', dureza: 500 },
   { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo', drop: 10, dureza: 1300, durezaPicareta: 400, durezaFerro: 150 },
   { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo', dureza: 450 },
-  { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo', dureza: 800 },
-  { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo', dureza: 800, icone: 'tabuas' },
+  { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo', dureza: 800, madeira: true },
+  { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo', dureza: 800, icone: 'tabuas', madeira: true },
   // folhas opacas de propósito (estilo "fast graphics"): cull entre vizinhas, zero blend.
   // Naturais (id 7): dropam folhas E às vezes uma muda; DECAEM sem tronco conectado.
-  { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', dropSorte: { id: 15, chance: 0.3 }, dureza: 300 },
+  { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', dropSorte: { id: 15, chance: 0.3 }, dureza: 300, madeira: true },
   { id: 8, nome: 'vidro', tiles: [9, 9, 9], solido: true, render: 'recorte', dureza: 350, icone: 'vidro' },
   { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
   { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo', dureza: 1100, durezaPicareta: 350, durezaFerro: 150 },
@@ -50,7 +51,7 @@ export const blocos: Bloco[] = [
   { id: 15, nome: 'muda de árvore', tiles: [16, 16, 16], solido: false, render: 'cruz', dureza: 350 },
   // folhas COLOCADAS pela criança: mesma cara, mas nunca decaem e devolvem
   // o item ao quebrar (sem sorte de muda — anti-farm infinita)
-  { id: 16, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 7, dureza: 300 },
+  { id: 16, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 7, dureza: 300, madeira: true },
   // baú: guarda itens, pertence a quem colocou (metadata por posição)
   { id: 17, nome: 'baú', tiles: [20, 21, 21], solido: true, render: 'cubo', dureza: 800 },
   // porta: painel fino de 2 blocos (as 2 metades compartilham o id; a
@@ -66,17 +67,23 @@ export const blocos: Bloco[] = [
   { id: 21, nome: 'lã', tiles: [25, 25, 25], solido: false, render: 'cruz', drop: 21, dureza: 200, icone: 'la' },
   { id: 22, nome: 'carvão', tiles: [26, 26, 26], solido: true, render: 'cubo', drop: 23, dureza: 600, durezaFerro: 250, precisaPicareta: true },
   { id: 23, nome: 'carvão', tiles: [27, 27, 27], solido: false, render: 'cruz' },
-  { id: 24, nome: 'picareta de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true },
+  { id: 24, nome: 'picareta de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true, icone: 'picareta-madeira' },
   { id: 25, nome: 'minério de ferro', tiles: [29, 29, 29], solido: true, render: 'cubo', dureza: 900, durezaFerro: 350, precisaPicareta: true },
   { id: 26, nome: 'barra de ferro', tiles: [30, 30, 30], solido: false, render: 'cruz' },
   { id: 27, nome: 'fornalha', tiles: [3, 31, 3], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
-  { id: 28, nome: 'picareta de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true },
+  { id: 28, nome: 'picareta de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true, icone: 'picareta-ferro' },
   { id: 29, nome: 'tijolos de pedra', tiles: [33, 33, 33], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
+  // ferramentas de combate: espada bate no Kotsooh (madeira 3 golpes, ferro 1)
+  // e espanta o Winpup; machado quebra madeira mais rápido. Nunca colocáveis.
+  { id: 30, nome: 'espada de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true, icone: 'espada-madeira' },
+  { id: 31, nome: 'espada de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true, icone: 'espada-ferro' },
+  { id: 32, nome: 'machado de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true, icone: 'machado-madeira' },
+  { id: 33, nome: 'machado de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true, icone: 'machado-ferro' },
 ];
 
 // tipos de item coletáveis (grade do inventário/E); a hotbar agora é
 // dinâmica: 9 slots vazios que enchem conforme a criança coleta
-export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29];
+export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33];
 
 // materiais = recursos SÓ-coletáveis (não colocáveis): o jogador junta e
 // fabrica coisas depois. Aparecem numa seção própria do inventário.
@@ -107,6 +114,10 @@ export const receitas: Receita[] = [
   { de: 10, qtd: 1, para: 3, ganha: 1, fornalha: true }, // 1 pedregulho → 1 pedra
   { de: 25, qtd: 1, de2: 23, qtd2: 1, para: 26, ganha: 1, fornalha: true },
   { de: 26, qtd: 3, de2: 6, qtd2: 2, para: 28, ganha: 1, fornalha: true },
+  { de: 6, qtd: 2, para: 30, ganha: 1 }, // 2 tábuas → espada de madeira
+  { de: 6, qtd: 3, para: 32, ganha: 1 }, // 3 tábuas → machado de madeira
+  { de: 26, qtd: 2, de2: 6, qtd2: 1, para: 31, ganha: 1, fornalha: true }, // barra+tábua → espada de ferro
+  { de: 26, qtd: 3, de2: 6, qtd2: 2, para: 33, ganha: 1, fornalha: true }, // barra+tábuas → machado de ferro
 ];
 
 export const config = {

@@ -1,15 +1,16 @@
 // Céu com ciclo dia/noite. Mundo é MeshBasicMaterial (SwiftShader, sem luz
 // dinâmica), então nada de shadow map: o dia/noite é um domo de gradiente +
 // sol/lua cruzando em arco + um tint global nos materiais do mundo.
-// Dia = 3 min, noite = 3 min (encurtado a pedido do Manolo pra testar o ciclo
-// em aula; pra mudar, mexa SÓ em DIA_S/NOITE_S — o resto deriva).
+// Dia = 3 min 5 s, noite = 3 min (a pedido do Manolo; pra mudar, mexa SÓ em
+// DIA_S/NOITE_S — o resto deriva). No multiplayer o relógio vem do servidor
+// (sync.ts chama definirTempo), então a sala inteira vê o mesmo horário.
 // Pausa/reduced-motion congela.
 import * as THREE from 'three';
 import type { Contexto, Ceu } from './tipos';
 
-export const DIA_S = 180;
+export const DIA_S = 185;
 export const NOITE_S = 180;
-const CICLO_S = DIA_S + NOITE_S;
+export const CICLO_S = DIA_S + NOITE_S;
 const R = 250; // raio do domo (< far 260); recentrado na câmera todo frame
 
 // Paletas por segundo do ciclo: cor do zênite, do horizonte e tint do mundo.

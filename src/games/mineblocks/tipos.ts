@@ -125,13 +125,15 @@ export interface Mob {
   passo(dt: number, simular: boolean): void;
   atualizarRede(bichos: BichoRede[]): void; // visita: posições do anfitrião
   estadoRede(): BichoRede[]; // anfitrião: manda pro blackboard
+  // golpe de espada: o Winpup mais perto no cone à frente foge pra longe
+  assustar(ox: number, oy: number, oz: number, fx: number, fy: number, fz: number, alcance: number, cone: number): boolean;
   limpar(): void;
   quantos(): number;
 }
 
 // metadata por posição (não cabe no Uint8Array do mundo)
 export type Meta =
-  | { tipo: 'bau'; dono: string; itens: number[] }
+  | { tipo: 'bau'; dono: string; itens: number[]; publico?: boolean }
   | { tipo: 'placa'; autor: string; texto: string };
 
 export interface Metas {
@@ -162,6 +164,9 @@ export interface Kotsooh {
   provocar(): void;
   ativo(): boolean;
   fantasmas(): Array<{ x: number; y: number; z: number; cacando: boolean; olhando: boolean }>;
+  // golpe de espada: acerta o fantasma mais perto no cone à frente; `dano`
+  // vem da espada (madeira 1, ferro 3); ao zerar o hp ele evapora
+  atingir(ox: number, oy: number, oz: number, fx: number, fy: number, fz: number, alcance: number, cone: number, dano: number): { acertou: boolean; evaporou: boolean };
   limpar(): void;
 }
 
@@ -219,8 +224,9 @@ export interface UI {
   alternarCraft(abrir?: boolean): void; // abre/fecha o painel do inventário
   mostrarSalvando(estado: 'salvando' | 'salvo' | 'erro' | 'nada'): void;
   flashSusto(): void;
-  // baú: painel de troca de itens (conteúdo ↔ inventário)
-  abrirBau(chave: number, titulo: string, editavel: boolean): void;
+  // baú: painel de troca de itens (conteúdo ↔ inventário). souDono libera o
+  // botão de liberar/bloquear o baú pra outros jogadores
+  abrirBau(chave: number, titulo: string, souDono: boolean): void;
   fecharBau(): void;
   bauAberto(): number; // -1 = nenhum; senão a chave do baú aberto
   atualizarBau(): void; // re-renderiza o painel se o baú aberto mudou
@@ -228,6 +234,9 @@ export interface UI {
   pedirTextoPlaca(aoConfirmar: (texto: string | null) => void): void;
   mostrarPlaca(texto: string, autor: string): void;
   painelModalAberto(): boolean; // inventário/baú/placa aberto (não pausar no ESC do lock)
+  // lista de jogadores (TAB): mostrar enquanto segura; conteúdo vem do sync
+  mostrarJogadores(mostrar: boolean): void;
+  atualizarTabJogadores(eu: string, dono: string, lista: JogadorRemoto[]): void;
 }
 
 export interface Fluxo {

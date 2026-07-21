@@ -41,6 +41,11 @@ export function ligarInput(ctx: Contexto) {
       }
       return;
     }
+    if (e.key === 'Tab') {
+      e.preventDefault(); // não sai do jogo pra focar botão nenhum
+      if (estado.fase === 'jogando') ctx.ui.mostrarJogadores(true);
+      return;
+    }
     if (estado.fase !== 'jogando' || e.repeat) return;
     if (e.key === ' ') {
       e.preventDefault();
@@ -60,6 +65,7 @@ export function ligarInput(ctx: Contexto) {
     if (/^[eEcC]$/.test(e.key)) { e.preventDefault(); alternarInventario(); }
   });
   window.addEventListener('keyup', (e) => {
+    if (e.key === 'Tab') { e.preventDefault(); ctx.ui.mostrarJogadores(false); return; }
     if (e.key === ' ') input.pulo = false;
     const acao = TECLAS[e.key];
     if (acao) input[acao] = false;

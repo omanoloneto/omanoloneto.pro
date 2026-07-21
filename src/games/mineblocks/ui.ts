@@ -40,9 +40,12 @@ export function criarUI(ctx: Contexto): UI {
     // baú (painel de troca de itens)
     bauPainel: $('[data-bau]'),
     bauTitulo: $('[data-bau-titulo]'),
+    bauTrava: $('[data-bau-trava]'),
     bauConteudo: $('[data-bau-conteudo]'),
     bauInventario: $('[data-bau-inv]'),
     bauFechar: $('[data-bau-fechar]'),
+    // lista de jogadores (TAB)
+    tabJogadores: $('[data-tab-jogadores]'),
     // placa: form de escrever na colocação (leitura é via toast)
     placaForm: $('[data-placa-form]'),
     placaInput: $('[data-placa-input]'),
@@ -299,6 +302,23 @@ export function criarUI(ctx: Contexto): UI {
   els.bauInventario.addEventListener('click', onBauClick);
   els.bauFechar.addEventListener('click', () => fecharBau());
 
+  function rotuloTrava() {
+    const m = ctx.metas.todos().get(bauChave);
+    const publico = !!(m && m.tipo === 'bau' && m.publico);
+    els.bauTrava.textContent = publico ? '🔓 Liberado pra todos' : '🔒 Só eu abro';
+    els.bauTrava.setAttribute('aria-pressed', String(publico));
+  }
+  els.bauTrava.addEventListener('click', () => {
+    const m = ctx.metas.todos().get(bauChave);
+    if (!m || m.tipo !== 'bau') return;
+    m.publico = !m.publico;
+    ctx.metas.tocar(bauChave); // mesmo caminho de sync dos itens
+    ctx.salvar.agendar();
+    rotuloTrava();
+    ctx.audio.somUI();
+    api.anunciar(m.publico ? 'Baú liberado pra todos abrirem.' : 'Baú bloqueado, só você abre.');
+  });
+
   function fecharBau() {
     if (bauChave < 0) return;
     bauChave = -1;
@@ -325,10 +345,12 @@ export function criarUI(ctx: Contexto): UI {
 
   const api: UI = {
     els,
-    abrirBau(chave, titulo) {
+    abrirBau(chave, titulo, souDono) {
       api.alternarCraft(false); // fecha o inventário se estava aberto
       bauChave = chave;
       els.bauTitulo.textContent = titulo;
+      els.bauTrava.hidden = !souDono;
+      if (souDono) rotuloTrava();
       els.bauPainel.hidden = false;
       renderBau();
       soltarLockPainel();
@@ -349,6 +371,25 @@ export function criarUI(ctx: Contexto): UI {
       api.mostrarToast('📜 <b>' + esc(texto || '(placa em branco)') + '</b>' + (autor ? ' <span class="placa__autor">— ' + esc(autor) + '</span>' : ''), 'info', 4200);
     },
     painelModalAberto: () => !els.invPainel.hidden || !els.bauPainel.hidden || !els.placaForm.hidden,
+    mostrarJogadores(mostrar) {
+      if (mostrar && !ctx.sync.emSala()) {
+        els.tabJogadores.innerHTML =
+          '<h3 class="tabj__titulo">👥 Jogadores (1)</h3><ul class="tabj__lista"><li><span class="tabj__nome">Você</span> <span class="tabj__eu">(sozinho)</span></li></ul>';
+      }
+      els.tabJogadores.hidden = !mostrar;
+    },
+    atualizarTabJogadores(eu, dono, lista) {
+      const nomes = [eu].concat(lista.map((j) => j.nome));
+      const linhas = nomes
+        .map((n) => {
+          const coroa = n && n === dono ? '<span class="tabj__coroa">👑</span>' : '';
+          const marca = n === eu ? ' <span class="tabj__eu">(você)</span>' : '';
+          return '<li>' + coroa + '<span class="tabj__nome">' + esc(n) + '</span>' + marca + '</li>';
+        })
+        .join('');
+      els.tabJogadores.innerHTML =
+        '<h3 class="tabj__titulo">👥 Jogadores (' + nomes.length + ')</h3><ul class="tabj__lista">' + linhas + '</ul>';
+    },
     anunciar(msg) {
       // rate-limit: leitor de tela não pode virar metralhadora
       const agora = performance.now();

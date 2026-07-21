@@ -14,6 +14,7 @@
 // diário engorda, e o servidor poda as edições antigas.
 import { apiJson, beaconOrKeepalive, createGenerationGuard, createPoller } from '../../lib/net';
 import { encodeRLE, decodeRLE } from '../../lib/rle';
+import { CICLO_S } from './ceu';
 import type { Contexto, JogadorRemoto, Meta, Sync } from './tipos';
 
 interface FotoSala {
@@ -181,6 +182,7 @@ export function criarSync(ctx: Contexto): Sync {
     nomesVistos = agora;
     atualizarChip(lista.length + 1);
     atualizarListaPausa(lista);
+    ctx.ui.atualizarTabJogadores(meuNome, donoNome, lista);
   }
 
   function atualizarChip(total: number) {
@@ -336,6 +338,11 @@ export function criarSync(ctx: Contexto): Sync {
       tratarJogadores(Array.isArray(d.jogadores) ? d.jogadores : []);
       // Winpups: quem NÃO é anfitrião segue as posições do blackboard
       if (!anfitriao && Array.isArray(d.bichos)) ctx.mob.atualizarRede(d.bichos);
+      // ciclo dia/noite compartilhado: a fase vem do relógio do servidor,
+      // então a sala inteira vê o mesmo horário (o rel local só suaviza entre polls)
+      if (typeof d.agora === 'number' && typeof d.cicloInicioMs === 'number') {
+        ctx.ceu.definirTempo((((d.agora - d.cicloInicioMs) / 1000) % CICLO_S + CICLO_S) % CICLO_S);
+      }
 
       // compactação: anfitrião manda foto quando QUALQUER diário engorda —
       // e NA HORA se lotou (destrava a sala; o de metadata não some sozinho)
@@ -399,7 +406,9 @@ export function criarSync(ctx: Contexto): Sync {
       if (poller.running()) return null;
       const foto = fotoAtual();
       if (foto.blocos.length > ctx.cfg.salvar.maxPayload) return '😅 O mundo ficou grande demais pra abrir sala!';
-      const r = await api({ acao: 'criar', codigo: cod, nome: nomeJogador, foto });
+      // manda o horário atual do céu: a sala ancora o ciclo nele (mundo novo
+      // começa de manhã; save reaberto mantém a hora)
+      const r = await api({ acao: 'criar', codigo: cod, nome: nomeJogador, foto, tempo: Math.round(ctx.ceu.tempo()) });
       if (!r.ok) return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
       codigo = cod;
       token = r.json.token;
@@ -434,6 +443,10 @@ export function criarSync(ctx: Contexto): Sync {
       token = r.json.token;
       meuNome = r.json.nome || nomeJogador;
       donoNome = typeof r.json.donoNome === 'string' ? r.json.donoNome : '';
+      // já entra no horário da sala (sem esperar o 1º poll pra alinhar o céu)
+      if (typeof r.json.agora === 'number' && typeof r.json.cicloInicioMs === 'number') {
+        ctx.ceu.definirTempo((((r.json.agora - r.json.cicloInicioMs) / 1000) % CICLO_S + CICLO_S) % CICLO_S);
+      }
       modo = 'visita';
       anfitriao = false;
       seqVisto = typeof r.json.seq === 'number' ? r.json.seq : 0;

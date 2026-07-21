@@ -85,11 +85,15 @@ type Ghost = {
   noTriggerS: number;
   shelterS: number;
   hitCdMs: number;
+  hp: number;
+  evaporado: boolean;
   bobPhase: number;
   looking: boolean;
   mat: THREE.MeshBasicMaterial;
   mesh: THREE.Mesh;
 };
+
+const GHOST_HP = 3;
 
 export function criarKotsooh(ctx: Contexto): Kotsooh {
   const K = ctx.cfg.kotsooh;
@@ -111,7 +115,8 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
     ghosts.push({
       x: 0, y: 0, z: 0, faceX: 1, faceZ: 0, yawVis: 0, tx: 0, tz: 0,
       state: 'wander', retargetMs: 0, freezeMs: 0, gazeS: 0, noTriggerS: 0,
-      shelterS: 0, hitCdMs: 0, bobPhase: rand(0, Math.PI * 2), looking: false,
+      shelterS: 0, hitCdMs: 0, hp: GHOST_HP, evaporado: false,
+      bobPhase: rand(0, Math.PI * 2), looking: false,
       mat, mesh,
     });
   }
@@ -203,6 +208,8 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
       g.noTriggerS = 0;
       g.shelterS = 0;
       g.hitCdMs = 0;
+      g.hp = GHOST_HP;
+      g.evaporado = false;
       g.freezeMs = 0;
       g.looking = false;
       g.mat.opacity = 0;
@@ -414,6 +421,30 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
         g.tz = g.z;
         g.freezeMs = 4000;
       }
+    },
+    atingir(ox, oy, oz, fx, fy, fz, alcance, cone, dano) {
+      let melhor: Ghost | null = null;
+      let melhorD = Infinity;
+      for (const g of ghosts) {
+        if (!g.mesh.visible || g.evaporado) continue;
+        const dx = g.x - ox;
+        const dy = g.y - oy;
+        const dz = g.z - oz;
+        const d = Math.hypot(dx, dy, dz);
+        if (d > alcance || d < 0.001) continue;
+        if ((fx * dx + fy * dy + fz * dz) / d < cone) continue;
+        if (d < melhorD) { melhorD = d; melhor = g; }
+      }
+      if (!melhor) return { acertou: false, evaporou: false };
+      melhor.hp -= dano;
+      if (melhor.hp <= 0) {
+        melhor.evaporado = true;
+        melhor.mesh.visible = false;
+        melhor.mat.opacity = 0;
+        return { acertou: true, evaporou: true };
+      }
+      stopChase(melhor, true);
+      return { acertou: true, evaporou: false };
     },
     ativo: () => ghosts.some((g) => g.state === 'chase' && g.mesh.visible),
     fantasmas: () =>

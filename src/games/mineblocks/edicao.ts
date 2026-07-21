@@ -19,6 +19,13 @@ const PORTA_ABERTA = 19;
 const PLACA = 20;
 const PICKAXE = 24;
 const IRON_PICKAXE = 28;
+const SWORD_WOOD = 30;
+const SWORD_IRON = 31;
+const AXE_WOOD = 32;
+const AXE_IRON = 33;
+const MELEE = 3.2; // alcance do golpe de espada (blocos)
+const CONE = 0.6; // cosseno do cone à frente pra mirar bicho/fantasma
+const SWING_MS = 350; // intervalo entre golpes segurando a espada
 const ehPorta = (id: number) => id === PORTA_FECHADA || id === PORTA_ABERTA;
 
 export function criarEdicao(ctx: Contexto): Edicao {
@@ -34,6 +41,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
   let alvoGolpe: Alvo | null = null;
   let estaGolpeando = false;
   let ultimoToc = 0;
+  let meleeCdMs = SWING_MS; // pronto: o 1º golpe sai na hora
 
   // mesh de rachadura: cubo levinho por cima do bloco golpeado,
   // trocando o tile (17→19) conforme o progresso
@@ -207,6 +215,20 @@ export function criarEdicao(ctx: Contexto): Edicao {
     return h === PICKAXE || h === IRON_PICKAXE;
   }
 
+  function holdingSword(): boolean {
+    const h = heldItem();
+    return h === SWORD_WOOD || h === SWORD_IRON;
+  }
+
+  function holdingAxe(): boolean {
+    const h = heldItem();
+    return h === AXE_WOOD || h === AXE_IRON;
+  }
+
+  function danoEspada(): number {
+    return heldItem() === SWORD_IRON ? 3 : 1; // ferro mata o Kotsooh num golpe
+  }
+
   function podeQuebrar(a: Alvo): boolean {
     if (a.id === 14 || porId(a.id).dureza === undefined) {
       avisar('🪨 Essa rocha do fundo não quebra!');
@@ -237,9 +259,43 @@ export function criarEdicao(ctx: Contexto): Edicao {
   }
 
   // gameplay real: segurar golpeia até quebrar
+  // espada: em vez de minerar, golpeia o fantasma/bicho mais perto à frente
+  function golpearComEspada(dt: number) {
+    esconderRachadura();
+    meleeCdMs += dt * 1000;
+    if (meleeCdMs < SWING_MS) return;
+    meleeCdMs = 0;
+    const ex = jogador.x;
+    const ey = jogador.y + cfg.jogador.olho;
+    const ez = jogador.z;
+    const fx = -Math.sin(jogador.yaw) * Math.cos(jogador.pitch);
+    const fy = Math.sin(jogador.pitch);
+    const fz = -Math.cos(jogador.yaw) * Math.cos(jogador.pitch);
+    const g = ctx.kotsooh.atingir(ex, ey, ez, fx, fy, fz, MELEE, CONE, danoEspada());
+    if (g.acertou) {
+      ctx.ui.flashSusto();
+      if (g.evaporou) {
+        ctx.audio.somFantasma();
+        ctx.ui.mostrarToast('👻 Puff! O Kotsooh evaporou!', 'ok', 1800);
+      } else {
+        ctx.audio.somSusto();
+      }
+      ctx.fluxo.aoPrimeiroInput();
+      return;
+    }
+    if (ctx.mob.assustar(ex, ey, ez, fx, fy, fz, MELEE, CONE)) {
+      ctx.audio.somSalvo();
+      ctx.ui.mostrarToast('🐾 O Winpup fugiu assustado!', 'info', 1500);
+      ctx.fluxo.aoPrimeiroInput();
+      return;
+    }
+    ctx.audio.somPulo(); // golpe no ar
+  }
+
   function golpear(dt: number) {
     if (ctx.estado.fase !== 'jogando') { esconderRachadura(); return; }
     estaGolpeando = true;
+    if (holdingSword()) { golpearComEspada(dt); return; }
     const a = ctx.mira.alvo();
     if (!a || !podeQuebrar(a)) { esconderRachadura(); return; }
     // mudou de alvo: progresso zera (Minecraft moderno) e o 1º toc só
@@ -252,9 +308,10 @@ export function criarEdicao(ctx: Contexto): Edicao {
     progresso += dt * 1000;
     const defAlvo = porId(a.id);
     const tool = heldItem();
-    const dureza = tool === IRON_PICKAXE && defAlvo.durezaFerro !== undefined ? defAlvo.durezaFerro
+    let dureza = tool === IRON_PICKAXE && defAlvo.durezaFerro !== undefined ? defAlvo.durezaFerro
       : holdingPickaxe() && defAlvo.durezaPicareta !== undefined ? defAlvo.durezaPicareta
         : defAlvo.dureza!;
+    if (defAlvo.madeira && holdingAxe()) dureza /= tool === AXE_IRON ? 3.5 : 2;
     if (progresso >= dureza) {
       removerBloco(a); // o som cheio vem daqui — sem toc empilhado
       esconderRachadura();
@@ -275,6 +332,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
 
   function soltarGolpe() {
     estaGolpeando = false;
+    meleeCdMs = SWING_MS; // solta e re-arma: o próximo golpe sai na hora
     esconderRachadura();
   }
 
@@ -290,7 +348,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     }
     const def = porId(id);
     if (def.ferramenta) {
-      if (avisar('⛏ A picareta é ferramenta! Segure ela e bata na pedra pra minerar rapidinho.')) ctx.audio.somErro();
+      if (avisar('🛠 ' + def.nome + ' é ferramenta! Segure e bata pra usar — não dá pra colocar no chão.')) ctx.audio.somErro();
       return false;
     }
     if ((ctx.estado.inventario[id] || 0) <= 0) {
@@ -398,13 +456,16 @@ export function criarEdicao(ctx: Contexto): Edicao {
   function abrirBau(a: Alvo) {
     const m = ctx.metas.obter(a.x, a.y, a.z);
     if (!m || m.tipo !== 'bau') return;
-    if (!podeUsar(m.dono)) {
+    // baú liberado (publico) qualquer um abre; senão só o dono
+    if (!m.publico && !podeUsar(m.dono)) {
       avisar('🔒 Esse baú é do(a) ' + (m.dono || 'dono') + '! Só ele(a) pode abrir.');
       ctx.audio.somErro();
       return;
     }
     ctx.fluxo.soltarInputs();
-    ctx.ui.abrirBau(ctx.metas.chaveDe(a.x, a.y, a.z), m.dono === '*' ? '💎 Baú do tesouro!' : m.dono ? 'Baú de ' + m.dono : 'Seu baú', true);
+    const souDono = ctx.sync.emSala() && m.dono !== '*' && podeUsar(m.dono);
+    const titulo = m.dono === '*' ? '💎 Baú do tesouro!' : (m.publico ? '🔓 ' : '') + (m.dono ? 'Baú de ' + m.dono : 'Seu baú');
+    ctx.ui.abrirBau(ctx.metas.chaveDe(a.x, a.y, a.z), titulo, souDono);
     ctx.fluxo.aoPrimeiroInput();
   }
 

@@ -24,6 +24,7 @@ interface Winpup {
   alvoX: number; alvoZ: number;
   trocaMs: number; // quando repensar o destino
   dropMs: number; // quando soltar a próxima lã
+  fleeMs: number; // >0: fugindo de uma espada (corre mais rápido)
   fase: number; // offset do bob (dessincroniza os bichos)
   // interpolação do visitante (alvo vindo da rede)
   rx: number; ry: number; rz: number; ryaw: number;
@@ -113,7 +114,7 @@ export function criarMob(ctx: Contexto): Mob {
     return {
       grupo, x, y, z, yaw: rng() * Math.PI * 2,
       ox: x, oz: z, alvoX: x, alvoZ: z,
-      trocaMs: 0, dropMs: 1500 + rng() * 4000,
+      trocaMs: 0, dropMs: 1500 + rng() * 4000, fleeMs: 0,
       fase: rng() * Math.PI * 2,
       rx: x, ry: y, rz: z, ryaw: 0,
     };
@@ -188,12 +189,14 @@ export function criarMob(ctx: Contexto): Mob {
         w.alvoZ = Math.max(2, Math.min(SZ - 2, w.oz + Math.sin(ang) * r));
         w.trocaMs = tempoMs + B.trocaAlvoMin + Math.random() * (B.trocaAlvoMax - B.trocaAlvoMin);
       }
-      // caminha rumo ao alvo
+      // caminha rumo ao alvo (fugindo de espada = mais rápido)
+      if (w.fleeMs > 0) w.fleeMs = Math.max(0, w.fleeMs - dtMs);
+      const vel = w.fleeMs > 0 ? B.passeio * 3.2 : B.passeio;
       const dx = w.alvoX - w.x;
       const dz = w.alvoZ - w.z;
       const dist = Math.hypot(dx, dz);
       if (dist > 0.05) {
-        const passo = Math.min(dist, B.passeio * dt);
+        const passo = Math.min(dist, vel * dt);
         w.x += (dx / dist) * passo;
         w.z += (dz / dist) * passo;
         w.yaw = Math.atan2(-dx, -dz); // olha pra onde vai (-Z na frente → atan2(-dx,-dz))
@@ -283,6 +286,35 @@ export function criarMob(ctx: Contexto): Mob {
       return vivos.map((w, i) => ({
         i, x: +w.x.toFixed(2), y: +w.y.toFixed(2), z: +w.z.toFixed(2), yaw: +w.yaw.toFixed(2),
       }));
+    },
+    assustar(ox, oy, oz, fx, fy, fz, alcance, cone) {
+      let melhor: Winpup | null = null;
+      let melhorD = Infinity;
+      for (const w of vivos) {
+        const dx = w.x - ox;
+        const dy = w.y - oy;
+        const dz = w.z - oz;
+        const d = Math.hypot(dx, dy, dz);
+        if (d > alcance || d < 0.001) continue;
+        if ((fx * dx + fy * dy + fz * dz) / d < cone) continue;
+        if (d < melhorD) { melhorD = d; melhor = w; }
+      }
+      if (!melhor) return false;
+      // foge na direção contrária ao jogador; muda a origem do passeio pra
+      // longe (o anfitrião simula → todo mundo vê; visitante corrige no poll)
+      const j = ctx.jogador;
+      let ax = melhor.x - j.x;
+      let az = melhor.z - j.z;
+      const al = Math.hypot(ax, az) || 1;
+      ax /= al;
+      az /= al;
+      melhor.ox = Math.max(2, Math.min(SX - 2, melhor.x + ax * 24));
+      melhor.oz = Math.max(2, Math.min(SZ - 2, melhor.z + az * 24));
+      melhor.alvoX = melhor.ox;
+      melhor.alvoZ = melhor.oz;
+      melhor.trocaMs = tempoMs + 6000;
+      melhor.fleeMs = 6000;
+      return true;
     },
     limpar,
     quantos: () => vivos.length,
