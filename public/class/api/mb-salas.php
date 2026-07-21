@@ -88,7 +88,9 @@ function metaLimpa($m) {
   }
   if ($tipo === 'caixa') {
     if (!isset($m['dono']) || !is_string($m['dono']) || strlen($m['dono']) > 16) return false;
-    return ['tipo' => 'caixa', 'dono' => $m['dono']];
+    $out = ['tipo' => 'caixa', 'dono' => $m['dono']];
+    if (isset($m['casa']) && is_int($m['casa']) && validarChave($m['casa'])) $out['casa'] = $m['casa'];
+    return $out;
   }
   if ($tipo === 'drop') {
     if (!isset($m['item'], $m['n']) || !is_int($m['item']) || !is_int($m['n'])) return false;

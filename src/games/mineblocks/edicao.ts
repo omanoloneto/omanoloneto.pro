@@ -289,21 +289,23 @@ export function criarEdicao(ctx: Contexto): Edicao {
     return false;
   }
   // colunas (x,z) protegidas por uma caixa; memo por caixa (o flood roda por
-  // caixa, não por alvo). ok = contorno fechado E com porta.
+  // caixa, não por alvo). ok = contorno fechado E com porta. `seedKey` é a
+  // cela INTERNA da casa (pode ser diferente da caixa se pregada por fora).
   const casaMemo = new Map<number, { ms: number; ok: boolean; colunas: Set<number> }>();
-  function casaDaCaixa(caixaKey: number): { ok: boolean; colunas: Set<number> } {
+  function casaDaCaixa(memoKey: number, seedKey: number): { ok: boolean; colunas: Set<number> } {
     const agora = performance.now();
-    const cache = casaMemo.get(caixaKey);
+    const cache = casaMemo.get(memoKey);
     if (cache && agora - cache.ms < 500) return cache;
-    const cx = caixaKey % SX;
-    const cz = Math.floor(caixaKey / SX) % SZ;
-    const cy = Math.floor(caixaKey / (SX * SZ));
+    const cx = seedKey % SX;
+    const cz = Math.floor(seedKey / SX) % SZ;
+    const cy = Math.floor(seedKey / (SX * SZ));
     const r = casaDe(cx, cy, cz);
     const colunas = new Set<number>([...r.dentro, ...r.casca]);
     const res = { ms: agora, ok: r.fechada && r.hasPorta, colunas };
-    casaMemo.set(caixaKey, res);
+    casaMemo.set(memoKey, res);
     return res;
   }
+  const seedDaCaixa = (ck: number, m: { casa?: number }) => (typeof m.casa === 'number' ? m.casa : ck);
   // memo curto: podeQuebrar roda todo frame enquanto segura o golpe
   let protMemoK = -1;
   let protMemoMs = -1e9;
@@ -317,7 +319,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     let dono: string | null = null;
     for (const [ck, m] of ctx.metas.todos()) {
       if (m.tipo !== 'caixa') continue;
-      const casa = casaDaCaixa(ck);
+      const casa = casaDaCaixa(ck, seedDaCaixa(ck, m));
       if (casa.ok && casa.colunas.has(col)) { dono = m.dono; break; }
     }
     protMemoK = k;
@@ -624,7 +626,17 @@ export function criarEdicao(ctx: Contexto): Edicao {
       if (avisar('📮 Você não tem caixa de correio! Fabrique com 4 tábuas.')) ctx.audio.somErro();
       return false;
     }
-    const r = casaDe(mx, my, mz);
+    // a casa pode estar do lado de DENTRO (M) ou do lado de FORA (a caixa
+    // pregada na parede externa, tipo caixa de rua) — testa os dois lados
+    let r = casaDe(mx, my, mz);
+    let seedX = mx;
+    let seedZ = mz;
+    if (!(r.fechada && r.hasPorta)) {
+      const ox = a.x - a.nx;
+      const oz = a.z - a.nz;
+      const rO = casaDe(ox, my, oz);
+      if ((rO.fechada && rO.hasPorta) || (!r.fechada && rO.fechada)) { r = rO; seedX = ox; seedZ = oz; }
+    }
     if (!r.fechada) {
       if (avisar('🏠 Faça um contorno fechado de paredes ao redor (não precisa de teto)!')) ctx.audio.somErro();
       return false;
@@ -635,14 +647,16 @@ export function criarEdicao(ctx: Contexto): Edicao {
     }
     const colunas = new Set<number>([...r.dentro, ...r.casca]);
     for (const [ck, m] of ctx.metas.todos()) {
-      if (m.tipo === 'caixa' && colunas.has(chave2(ck % SX, Math.floor(ck / SX) % SZ))) {
+      if (m.tipo !== 'caixa') continue;
+      const sk = typeof m.casa === 'number' ? m.casa : ck;
+      if (colunas.has(chave2(sk % SX, Math.floor(sk / SX) % SZ))) {
         if (avisar('📮 Essa casa já tem uma caixa de correio!')) ctx.audio.somErro();
         return false;
       }
     }
     mundo.definir(mx, my, mz, CAIXA);
     ctx.estado.inventario[CAIXA]--;
-    ctx.metas.definir(mx, my, mz, { tipo: 'caixa', dono: meuNome() });
+    ctx.metas.definir(mx, my, mz, { tipo: 'caixa', dono: meuNome(), casa: ctx.metas.chaveDe(seedX, my, seedZ) });
     ctx.ui.atualizarContagens();
     ctx.audio.somColocar();
     ctx.ui.mostrarToast('📮 Caixa pregada! Agora só você quebra os blocos dessa casa.', 'ok', 2600);
