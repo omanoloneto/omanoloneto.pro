@@ -14,7 +14,7 @@ import { criarMob } from './mob';
 import { criarFisica } from './fisica';
 import { criarCamera } from './camera';
 import { criarMira } from './mira';
-import { criarEdicao } from './edicao';
+import { createEditing } from './edicao';
 import { criarSalvar } from './salvar';
 import { criarSync } from './sync';
 import { criarBonecos } from './boneco';
@@ -91,7 +91,7 @@ export function startGame() {
   ctx.kotsooh = criarKotsooh(ctx);
   ctx.camera3 = criarCamera(ctx);
   ctx.aim = criarMira(ctx);
-  ctx.editing = criarEdicao(ctx);
+  ctx.editing = createEditing(ctx);
   ctx.save = criarSalvar(ctx);
   ctx.avatars = criarBonecos(ctx);
   ctx.sync = criarSync(ctx);
