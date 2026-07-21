@@ -237,11 +237,23 @@ export function criarEdicao(ctx: Contexto): Edicao {
   const chave2 = (x: number, z: number) => x + z * SX;
   const NEI4 = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 
-  // BFS 2D no nível y0: anda pelas celas passáveis; parede (sólido) e porta
-  // barram (viram `casca`). fechada=false se vazar; hasPorta = tocou porta.
-  function casaDe(x0: number, y0: number, z0: number): { fechada: boolean; hasPorta: boolean; dentro: Set<number>; casca: Set<number> } {
+  // desce da altura da caixa até o nível LOGO ACIMA do chão — é ali que ficam
+  // a base das paredes e da porta, então o contorno é testado nesse nível
+  // (a caixa pode estar pregada bem alto numa parede de vários blocos).
+  function nivelDoChao(x: number, yTopo: number, z: number): number {
+    for (let y = yTopo; y > 1 && y > yTopo - 16; y--) {
+      const abaixo = mundo.obter(x, y - 1, z);
+      if (abaixo !== 0 && porId(abaixo).solido) return y;
+    }
+    return yTopo;
+  }
+  // BFS 2D no nível do contorno (chão+1): anda pelas celas passáveis; parede
+  // (sólido) e porta barram (viram `casca`). fechada=false se vazar; hasPorta
+  // = tocou porta. yHint = altura da caixa; o nível real é derivado do chão.
+  function casaDe(x0: number, yHint: number, z0: number): { fechada: boolean; hasPorta: boolean; dentro: Set<number>; casca: Set<number> } {
     const CAP = 1500;
     const RAIO = 24;
+    const y0 = nivelDoChao(x0, yHint, z0);
     const dentro = new Set<number>();
     const casca = new Set<number>();
     const primeiro = mundo.obter(x0, y0, z0);
