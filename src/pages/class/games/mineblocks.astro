@@ -22,13 +22,6 @@ const description =
         <span class="salvando" data-salvando hidden></span>
         <span class="sala-chip" data-sala-chip hidden></span>
       </div>
-      <div class="hud-botoes">
-        <button class="hud__mute" type="button" data-pause aria-label="Pausar o jogo" hidden>⏸</button>
-        <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
-          <span data-mute-icon>🔊</span>
-        </button>
-      </div>
-
       <div class="reticula" data-reticula aria-hidden="true" hidden>+</div>
       <div class="agua-overlay" data-agua aria-hidden="true" hidden></div>
       <div class="susto" data-susto aria-hidden="true"></div>
@@ -175,6 +168,13 @@ const description =
         </div>
       </div>
     </div>
+
+    <div class="hud-botoes">
+      <button class="hud__mute" type="button" data-pause aria-label="Pausar o jogo" hidden>⏸</button>
+      <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som" hidden>
+        <span data-mute-icon>🔊</span>
+      </button>
+    </div>
   </main>
 
   <style is:global>
@@ -239,10 +239,10 @@ const description =
     }
     .pill--nome { font-weight: 700; font-size: 0.95rem; }
     .hud-botoes {
-      position: absolute;
+      position: fixed;
       top: max(8px, env(safe-area-inset-top));
       right: max(10px, env(safe-area-inset-right));
-      z-index: 31; display: flex; gap: 8px;
+      z-index: 51; display: flex; gap: 8px;
     }
     .hud__mute {
       width: 46px; height: 46px; border-radius: 12px; cursor: pointer;

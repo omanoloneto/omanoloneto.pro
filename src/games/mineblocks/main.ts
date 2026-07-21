@@ -219,6 +219,7 @@ export function startGame() {
       ui.els.hotbar.hidden = false;
       ui.els.reticle.hidden = false;
       ui.els.pauseBtn.hidden = false;
+      ui.els.muteBtn.hidden = false;
       ui.els.craftBtn.hidden = false;
       ui.els.ghostHint.hidden = false;
       ui.els.touchControls.hidden = !inputRefs.isTouchMode();
@@ -239,6 +240,7 @@ export function startGame() {
     pause() {
       if (state.phase !== 'playing') return;
       state.phase = 'paused';
+      ui.els.pauseBtn.hidden = true;
       ui.toggleCraftPanel(false);
       flow.releaseInputs();
       inputRefs.releaseLock();
@@ -263,6 +265,7 @@ export function startGame() {
       if (state.phase !== 'paused') return;
       ui.els.pauseModal.hidden = true;
       ui.els.introModal.hidden = true;
+      ui.els.pauseBtn.hidden = false;
       state.phase = 'playing';
       requestGameFullscreen();
       measure();

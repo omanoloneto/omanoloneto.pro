@@ -14,8 +14,8 @@ export function bindInput(ctx: Ctx) {
 
   let locked = false;
   let touchMode = window.matchMedia('(pointer: coarse)').matches;
-  let hintAt = -1e9;
   let panelClosedAt = -1e9;
+  let autoLockAt = -1e9;
 
   function tryLock() {
     try {
@@ -23,24 +23,16 @@ export function bindInput(ctx: Ctx) {
     } catch { }
   }
 
-  function scheduleLockHint() {
-    window.setTimeout(() => {
-      if (locked || touchMode || state.phase !== 'playing' || ctx.ui.isPanelOpen()) return;
-      const now = performance.now();
-      if (now - hintAt < 4000) return;
-      hintAt = now;
-      ctx.ui.showToast('🖱 Clique na tela pra voltar a mirar!', 'info', 1800);
-    }, 350);
+  function canAutoLock() {
+    return state.phase === 'playing' && !locked && !touchMode && !ctx.ui.isPanelOpen();
   }
 
   function requestLock() {
     if (touchMode || state.phase !== 'playing') return;
     panelClosedAt = performance.now();
     tryLock();
-    window.setTimeout(() => {
-      if (!locked && state.phase === 'playing' && !ctx.ui.isPanelOpen()) tryLock();
-    }, 80);
-    scheduleLockHint();
+    window.setTimeout(() => { if (canAutoLock()) tryLock(); }, 80);
+    window.setTimeout(() => { if (canAutoLock()) tryLock(); }, 500);
   }
 
   function releaseLock() {
@@ -52,9 +44,19 @@ export function bindInput(ctx: Ctx) {
   canvas.addEventListener('click', () => {
     if (state.phase === 'playing' && !locked && !touchMode) tryLock();
   });
-  document.addEventListener('pointerlockerror', () => scheduleLockHint());
+  canvas.addEventListener('mousemove', () => {
+    if (!canAutoLock()) return;
+    const now = performance.now();
+    if (now - autoLockAt < 400) return;
+    autoLockAt = now;
+    tryLock();
+  });
   document.addEventListener('pointerlockchange', () => {
     locked = document.pointerLockElement === canvas;
+    if (locked && (ctx.ui.isPanelOpen() || state.phase !== 'playing')) {
+      document.exitPointerLock();
+      return;
+    }
     if (!locked) {
       stopRepeat();
       if (performance.now() - panelClosedAt < 400) return;
@@ -70,9 +72,18 @@ export function bindInput(ctx: Ctx) {
         ctx.flow.resume();
         return;
       }
-      if (state.phase === 'playing' && ctx.ui.closeTopPanel()) e.preventDefault();
+      if (state.phase !== 'playing') return;
+      if (ctx.ui.closeTopPanel()) {
+        e.preventDefault();
+        return;
+      }
+      if (!locked) {
+        e.preventDefault();
+        ctx.flow.pause();
+      }
       return;
     }
+    if (canAutoLock()) tryLock();
     if ((e.target as HTMLElement).tagName === 'INPUT') return;
     if (e.key === 'Tab') {
       e.preventDefault();
