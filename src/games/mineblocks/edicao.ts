@@ -29,7 +29,6 @@ const SWING_MS = 350; // intervalo entre golpes segurando a espada
 const FORNALHA = 27;
 const CAIXA = 34;
 const PACOTE = 35;
-const VIZ6 = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] as const;
 const ehPorta = (id: number) => id === PORTA_FECHADA || id === PORTA_ABERTA;
 
 export function criarEdicao(ctx: Contexto): Edicao {
@@ -233,50 +232,65 @@ export function criarEdicao(ctx: Contexto): Edicao {
     return heldItem() === SWORD_IRON ? 3 : 1; // ferro mata o Kotsooh num golpe
   }
 
-  // ----- caixa de correio: casa fechada = só o dono quebra os blocos dela -----
-  function ehSolido(x: number, y: number, z: number): boolean {
-    const id = mundo.obter(x, y, z);
-    return id !== 0 && porId(id).solido;
-  }
-  // BFS pelo AR interno a partir de um seed; `casca` = sólidos que cercam.
-  // fechada=false se o ar vazar além do raio/teto (casa aberta = céu livre).
-  function casaFechada(x0: number, y0: number, z0: number): { fechada: boolean; casca: Set<number> } {
-    const CAP = 2000;
-    const RAIO = 16;
+  // ----- caixa de correio: casa = contorno 2D fechado COM porta (sem teto) -----
+  const { SX, SZ } = cfg.mundo;
+  const chave2 = (x: number, z: number) => x + z * SX;
+  const NEI4 = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+
+  // BFS 2D no nível y0: anda pelas celas passáveis; parede (sólido) e porta
+  // barram (viram `casca`). fechada=false se vazar; hasPorta = tocou porta.
+  function casaDe(x0: number, y0: number, z0: number): { fechada: boolean; hasPorta: boolean; dentro: Set<number>; casca: Set<number> } {
+    const CAP = 1500;
+    const RAIO = 24;
+    const dentro = new Set<number>();
     const casca = new Set<number>();
-    if (ehSolido(x0, y0, z0)) return { fechada: false, casca };
-    const visto = new Set<number>([ctx.metas.chaveDe(x0, y0, z0)]);
-    let borda: Array<[number, number, number]> = [[x0, y0, z0]];
+    const primeiro = mundo.obter(x0, y0, z0);
+    if ((primeiro !== 0 && porId(primeiro).solido) || ehPorta(primeiro)) return { fechada: false, hasPorta: false, dentro, casca };
+    let hasPorta = false;
+    const visto = new Set<number>([chave2(x0, z0)]);
+    let borda: Array<[number, number]> = [[x0, z0]];
     let contados = 1;
     while (borda.length) {
-      const prox: Array<[number, number, number]> = [];
-      for (const [x, y, z] of borda) {
-        for (const [dx, dy, dz] of VIZ6) {
+      const prox: Array<[number, number]> = [];
+      for (const [x, z] of borda) {
+        dentro.add(chave2(x, z));
+        for (const [dx, dz] of NEI4) {
           const nx = x + dx;
-          const ny = y + dy;
           const nz = z + dz;
-          if (ehSolido(nx, ny, nz)) { casca.add(ctx.metas.chaveDe(nx, ny, nz)); continue; }
-          if (Math.abs(nx - x0) > RAIO || Math.abs(ny - y0) > RAIO || Math.abs(nz - z0) > RAIO) return { fechada: false, casca };
-          const k = ctx.metas.chaveDe(nx, ny, nz);
+          const id = mundo.obter(nx, y0, nz);
+          if (ehPorta(id)) { casca.add(chave2(nx, nz)); hasPorta = true; continue; }
+          if (id !== 0 && porId(id).solido) { casca.add(chave2(nx, nz)); continue; }
+          if (Math.abs(nx - x0) > RAIO || Math.abs(nz - z0) > RAIO) return { fechada: false, hasPorta, dentro, casca };
+          const k = chave2(nx, nz);
           if (visto.has(k)) continue;
           visto.add(k);
-          if (++contados > CAP) return { fechada: false, casca };
-          prox.push([nx, ny, nz]);
+          if (++contados > CAP) return { fechada: false, hasPorta, dentro, casca };
+          prox.push([nx, nz]);
         }
       }
       borda = prox;
     }
-    return { fechada: true, casca };
+    return { fechada: true, hasPorta, dentro, casca };
   }
   function temAlgumaCaixa(): boolean {
     for (const m of ctx.metas.todos().values()) if (m.tipo === 'caixa') return true;
     return false;
   }
-  function caixaDaCasa(casca: Set<number>): string | null {
-    for (const m of ctx.metas.todos().values()) {
-      if (m.tipo === 'caixa' && casca.has(m.parede)) return m.dono;
-    }
-    return null;
+  // colunas (x,z) protegidas por uma caixa; memo por caixa (o flood roda por
+  // caixa, não por alvo). ok = contorno fechado E com porta.
+  const casaMemo = new Map<number, { ms: number; ok: boolean; colunas: Set<number> }>();
+  function casaDaCaixa(caixaKey: number): { ok: boolean; colunas: Set<number> } {
+    const agora = performance.now();
+    const cache = casaMemo.get(caixaKey);
+    if (cache && agora - cache.ms < 500) return cache;
+    const cx = caixaKey % SX;
+    const cz = Math.floor(caixaKey / SX) % SZ;
+    const cy = Math.floor(caixaKey / (SX * SZ));
+    const r = casaDe(cx, cy, cz);
+    const colunas = new Set<number>([...r.dentro, ...r.casca]);
+    const res = { ms: agora, ok: r.fechada && r.hasPorta, colunas };
+    casaMemo.set(caixaKey, res);
+    return res;
   }
   // memo curto: podeQuebrar roda todo frame enquanto segura o golpe
   let protMemoK = -1;
@@ -287,16 +301,12 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const k = ctx.metas.chaveDe(a.x, a.y, a.z);
     const agora = performance.now();
     if (k === protMemoK && agora - protMemoMs < 200) return protMemoDono;
+    const col = chave2(a.x, a.z);
     let dono: string | null = null;
-    for (const [dx, dy, dz] of VIZ6) {
-      const sx = a.x + dx;
-      const sy = a.y + dy;
-      const sz = a.z + dz;
-      if (ehSolido(sx, sy, sz)) continue;
-      const r = casaFechada(sx, sy, sz);
-      if (!r.fechada) continue;
-      const d = caixaDaCasa(r.casca);
-      if (d !== null) { dono = d; break; }
+    for (const [ck, m] of ctx.metas.todos()) {
+      if (m.tipo !== 'caixa') continue;
+      const casa = casaDaCaixa(ck);
+      if (casa.ok && casa.colunas.has(col)) { dono = m.dono; break; }
     }
     protMemoK = k;
     protMemoMs = agora;
@@ -602,18 +612,25 @@ export function criarEdicao(ctx: Contexto): Edicao {
       if (avisar('📮 Você não tem caixa de correio! Fabrique com 4 tábuas.')) ctx.audio.somErro();
       return false;
     }
-    const r = casaFechada(mx, my, mz);
+    const r = casaDe(mx, my, mz);
     if (!r.fechada) {
-      if (avisar('🏠 A casa precisa estar FECHADA (paredes e teto) pra ter dono!')) ctx.audio.somErro();
+      if (avisar('🏠 Faça um contorno fechado de paredes ao redor (não precisa de teto)!')) ctx.audio.somErro();
       return false;
     }
-    if (caixaDaCasa(r.casca) !== null) {
-      if (avisar('📮 Essa casa já tem uma caixa de correio!')) ctx.audio.somErro();
+    if (!r.hasPorta) {
+      if (avisar('🚪 A casa precisa de uma porta pra ter dono!')) ctx.audio.somErro();
       return false;
+    }
+    const colunas = new Set<number>([...r.dentro, ...r.casca]);
+    for (const [ck, m] of ctx.metas.todos()) {
+      if (m.tipo === 'caixa' && colunas.has(chave2(ck % SX, Math.floor(ck / SX) % SZ))) {
+        if (avisar('📮 Essa casa já tem uma caixa de correio!')) ctx.audio.somErro();
+        return false;
+      }
     }
     mundo.definir(mx, my, mz, CAIXA);
     ctx.estado.inventario[CAIXA]--;
-    ctx.metas.definir(mx, my, mz, { tipo: 'caixa', dono: meuNome(), parede: ctx.metas.chaveDe(a.x, a.y, a.z) });
+    ctx.metas.definir(mx, my, mz, { tipo: 'caixa', dono: meuNome() });
     ctx.ui.atualizarContagens();
     ctx.audio.somColocar();
     ctx.ui.mostrarToast('📮 Caixa pregada! Agora só você quebra os blocos dessa casa.', 'ok', 2600);

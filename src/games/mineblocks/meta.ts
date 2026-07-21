@@ -105,7 +105,7 @@ export function metaValida(m: any): m is Meta {
     return typeof m.autor === 'string' && typeof m.texto === 'string';
   }
   if (m.tipo === 'caixa') {
-    return typeof m.dono === 'string' && typeof m.parede === 'number';
+    return typeof m.dono === 'string';
   }
   if (m.tipo === 'drop') {
     return typeof m.item === 'number' && typeof m.n === 'number';
