@@ -90,6 +90,14 @@ function metaLimpa($m) {
     if (!isset($m['dono']) || !is_string($m['dono']) || strlen($m['dono']) > 16) return false;
     $out = ['tipo' => 'caixa', 'dono' => $m['dono']];
     if (isset($m['casa']) && is_int($m['casa']) && validarChave($m['casa'])) $out['casa'] = $m['casa'];
+    if (isset($m['cols']) && is_array($m['cols']) && count($m['cols']) <= 2048) {
+      $cols = [];
+      foreach ($m['cols'] as $c) {
+        if (!is_int($c) || $c < 0 || $c >= MAX_X * MAX_Z) { $cols = null; break; }
+        $cols[] = $c;
+      }
+      if ($cols !== null) $out['cols'] = $cols;
+    }
     return $out;
   }
   if ($tipo === 'drop') {
@@ -111,6 +119,32 @@ function metasLimpas($metas): array {
     }
   }
   return $out;
+}
+
+// índices de proteção da casa: caixa de correio congela as colunas dela
+// (`cols`) e o servidor recusa edição/meta de não-dono — cliente velho ou
+// trapaceiro não consegue quebrar a casa de outro jogador
+function indicesDeProtecao(array $metas): array {
+  $caixas = [];
+  $drops = [];
+  foreach ($metas as $k => $m) {
+    $tipo = $m['tipo'] ?? '';
+    if ($tipo === 'caixa') $caixas[(string)$k] = ['dono' => $m['dono'], 'cols' => array_values($m['cols'] ?? [])];
+    elseif ($tipo === 'drop') $drops[(string)$k] = true;
+  }
+  return [$caixas, $drops];
+}
+
+// sala antiga sem os índices: reconstrói do estado corrente (foto + diário)
+function protecaoDaSala(string $codigo, array $sala): array {
+  $foto = readJson(arquivoFoto($codigo));
+  $metas = is_array($foto) ? metasLimpas($foto['metas'] ?? null) : [];
+  foreach (($sala['metasDiario'] ?? []) as $e) {
+    [, $k, $m] = $e;
+    if ($m === null) unset($metas[(string)$k]);
+    else $metas[(string)$k] = $m;
+  }
+  return indicesDeProtecao($metas);
 }
 
 // foto = {seed:int, blocos:'<RLE base64>', metas:{chave: meta}}
@@ -220,6 +254,7 @@ if ($acao === 'criar') {
   // mandou (ceu.tempo()), pra sala nascer na mesma hora do céu dele
   $tempoIni = (int)($corpo['tempo'] ?? 0);
   if ($tempoIni < 0 || $tempoIni >= CICLO_S) $tempoIni = 0;
+  [$caixas, $drops] = indicesDeProtecao($foto['metas']);
   writeJson(arquivoFoto($codigo), $foto);
   writeJson(salaFile($codigo), [
     'codigo' => $codigo,
@@ -232,6 +267,8 @@ if ($acao === 'criar') {
     'snapshotMetaSeq' => 0,
     'proxMetaSeq' => 1,
     'metasDiario' => [],
+    'caixas' => $caixas,
+    'drops' => $drops,
     'pendentes' => [], // entregas de logout aguardando o dono resolver
     'proxPendenteId' => 1,
     'jogadores' => [
@@ -318,6 +355,10 @@ if ($acao === 'sync') {
     $sala['proxMetaSeq'] = $sala['proxMetaSeq'] ?? 1;
     $sala['snapshotMetaSeq'] = $sala['snapshotMetaSeq'] ?? 0;
     $sala['pendentes'] = $sala['pendentes'] ?? [];
+    if (!isset($sala['caixas']) || !isset($sala['drops'])) {
+      [$sala['caixas'], $sala['drops']] = protecaoDaSala($codigo, $sala);
+    }
+    $nomeJ = $j['nome'];
 
     // lote já visto = resposta do sync anterior se perdeu no caminho e o
     // cliente re-enviou: as edições JÁ estão no diário, não duplica
@@ -328,12 +369,26 @@ if ($acao === 'sync') {
         // avisa — o anfitrião manda uma foto e destrava a sala
         $cheio = true;
       } else {
+        // casa com caixa de correio: só o dono edita as colunas dela.
+        // Exceções: porta abrindo/fechando (18/19) e pacote largado no chão
+        // (meta drop) — esses continuam pra todo mundo
+        $protCols = [];
+        $protCels = [];
+        foreach ($sala['caixas'] as $ck => $cxm) {
+          $protCels[(int)$ck] = $cxm['dono'];
+          foreach ($cxm['cols'] as $c) $protCols[$c] = $cxm['dono'];
+        }
         foreach ($edicoes as $e) {
           if (!is_array($e) || count($e) !== 4) fail(400, 'edição inválida');
           [$x, $y, $z, $b] = array_values($e);
           if (!is_int($x) || !is_int($y) || !is_int($z) || !is_int($b)) fail(400, 'edição inválida');
           if ($x < 0 || $x >= MAX_X || $y < 0 || $y >= MAX_Y || $z < 0 || $z >= MAX_Z) fail(400, 'edição fora do mundo');
           if ($b < 0 || $b > MAX_BLOCO) fail(400, 'bloco inválido');
+          $cel = $x + $z * MAX_X + $y * MAX_X * MAX_Z;
+          $dCel = $protCels[$cel] ?? null;
+          if ($dCel !== null && $dCel !== $nomeJ) continue;
+          $dCol = $protCols[$x + $z * MAX_X] ?? null;
+          if ($dCol !== null && $dCol !== $nomeJ && $b !== 18 && $b !== 19 && !isset($sala['drops'][(string)$cel])) continue;
           $sala['edicoes'][] = [$sala['proxSeq']++, $x, $y, $z, $b];
         }
         if ($loteN >= 0) $loteVisto = $loteN;
@@ -355,11 +410,21 @@ if ($acao === 'sync') {
           if (!is_array($mm) || count($mm) !== 2) continue;
           [$k, $meta] = array_values($mm);
           if (!validarChave($k)) continue;
+          $ks = (string)$k;
+          // meta de caixa de correio: só o dono apaga/sobrescreve, e caixa
+          // nova só entra com dono = quem mandou (ninguém forja dono)
+          $donoCaixa = $sala['caixas'][$ks]['dono'] ?? null;
+          if ($donoCaixa !== null && $donoCaixa !== $nomeJ) continue;
           if ($meta === null) {
+            unset($sala['caixas'][$ks], $sala['drops'][$ks]);
             $sala['metasDiario'][] = [$sala['proxMetaSeq']++, $k, null];
           } else {
             $lm = metaLimpa($meta);
             if ($lm === false) continue;
+            if ($lm['tipo'] === 'caixa' && $lm['dono'] !== $nomeJ) continue;
+            unset($sala['caixas'][$ks], $sala['drops'][$ks]);
+            if ($lm['tipo'] === 'caixa') $sala['caixas'][$ks] = ['dono' => $lm['dono'], 'cols' => array_values($lm['cols'] ?? [])];
+            elseif ($lm['tipo'] === 'drop') $sala['drops'][$ks] = true;
             $sala['metasDiario'][] = [$sala['proxMetaSeq']++, $k, $lm];
           }
         }
@@ -490,6 +555,13 @@ if ($acao === 'foto') {
     $sala['snapshotMetaSeq'] = $ateMetaSeq;
     $sala['edicoes'] = array_values(array_filter($sala['edicoes'], fn($e) => $e[0] > $ateSeq));
     $sala['metasDiario'] = array_values(array_filter($sala['metasDiario'], fn($e) => $e[0] > $ateMetaSeq));
+    $metasBase = $foto['metas'];
+    foreach ($sala['metasDiario'] as $e) {
+      [, $k, $m] = $e;
+      if ($m === null) unset($metasBase[(string)$k]);
+      else $metasBase[(string)$k] = $m;
+    }
+    [$sala['caixas'], $sala['drops']] = indicesDeProtecao($metasBase);
     writeJson(salaFile($codigo), $sala);
   });
   echo json_encode(['ok' => true]);

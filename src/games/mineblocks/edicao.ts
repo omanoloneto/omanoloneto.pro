@@ -236,6 +236,9 @@ export function criarEdicao(ctx: Contexto): Edicao {
   const { SX, SZ } = cfg.mundo;
   const chave2 = (x: number, z: number) => x + z * SX;
   const NEI4 = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+  // as QUINAS da casa não são 4-vizinhas de nenhuma cela interna — sem as
+  // diagonais elas ficariam fora da casca e qualquer um quebraria os cantos
+  const DIAG4 = [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const;
 
   // desce da altura da caixa até o nível LOGO ACIMA do chão — é ali que ficam
   // a base das paredes e da porta, então o contorno é testado nesse nível
@@ -279,6 +282,12 @@ export function criarEdicao(ctx: Contexto): Edicao {
           if (++contados > CAP) return { fechada: false, hasPorta, dentro, casca };
           prox.push([nx, nz]);
         }
+        for (const [dx, dz] of DIAG4) {
+          const nx = x + dx;
+          const nz = z + dz;
+          const id = mundo.obter(nx, y0, nz);
+          if (ehPorta(id) || (id !== 0 && porId(id).solido)) casca.add(chave2(nx, nz));
+        }
       }
       borda = prox;
     }
@@ -306,26 +315,53 @@ export function criarEdicao(ctx: Contexto): Edicao {
     return res;
   }
   const seedDaCaixa = (ck: number, m: { casa?: number }) => (typeof m.casa === 'number' ? m.casa : ck);
+  // as colunas protegidas ficam CONGELADAS na meta (`cols`) na hora da
+  // colocação — a proteção não pode ser desligada por edição posterior do
+  // mundo (encher a casa de blocos, empilhar na semente etc.). O flood ao
+  // vivo é só fallback de meta legada sem `cols`.
+  const colsMemo = new Map<number, { fonte: number[]; set: Set<number> }>();
+  function colunasGravadas(ck: number, cols: number[]): Set<number> {
+    const cache = colsMemo.get(ck);
+    if (cache && cache.fonte === cols) return cache.set;
+    const set = new Set<number>(cols);
+    colsMemo.set(ck, { fonte: cols, set });
+    return set;
+  }
+  function curarCaixaLegada(ck: number, m: { dono: string; casa?: number }, colunas: Set<number>) {
+    if (!podeUsar(m.dono)) return;
+    const cx = ck % SX;
+    const cz = Math.floor(ck / SX) % SZ;
+    const cy = Math.floor(ck / (SX * SZ));
+    ctx.metas.definir(cx, cy, cz, { tipo: 'caixa', dono: m.dono, casa: m.casa, cols: [...colunas] });
+  }
   // memo curto: podeQuebrar roda todo frame enquanto segura o golpe
   let protMemoK = -1;
   let protMemoMs = -1e9;
   let protMemoDono: string | null = null;
-  function donoQueProtege(a: Alvo): string | null {
+  function protetorEm(x: number, y: number, z: number): string | null {
     if (!temAlgumaCaixa()) return null;
-    const k = ctx.metas.chaveDe(a.x, a.y, a.z);
+    const k = ctx.metas.chaveDe(x, y, z);
     const agora = performance.now();
     if (k === protMemoK && agora - protMemoMs < 200) return protMemoDono;
-    const col = chave2(a.x, a.z);
+    const col = chave2(x, z);
     let dono: string | null = null;
     for (const [ck, m] of ctx.metas.todos()) {
       if (m.tipo !== 'caixa') continue;
+      if (Array.isArray(m.cols)) {
+        if (colunasGravadas(ck, m.cols).has(col)) { dono = m.dono; break; }
+        continue;
+      }
       const casa = casaDaCaixa(ck, seedDaCaixa(ck, m));
+      if (casa.ok) curarCaixaLegada(ck, m, casa.colunas);
       if (casa.ok && casa.colunas.has(col)) { dono = m.dono; break; }
     }
     protMemoK = k;
     protMemoMs = agora;
     protMemoDono = dono;
     return dono;
+  }
+  function donoQueProtege(a: Alvo): string | null {
+    return protetorEm(a.x, a.y, a.z);
   }
 
   function podeQuebrar(a: Alvo): boolean {
@@ -478,6 +514,22 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const { SX, SZ, tetoConstrucao } = ctx.cfg.mundo;
     if (cx < 0 || cx >= SX || cz < 0 || cz >= SZ || cy < 1 || cy > tetoConstrucao) return false;
     const ocupante = mundo.obter(cx, cy, cz);
+    // a caixa de correio é cruz e seria SUBSTITUÍVEL por qualquer bloco —
+    // isso apagaria a meta e a casa perderia o dono; só o dono mexe nela
+    if (ocupante === CAIXA) {
+      const mc = ctx.metas.obter(cx, cy, cz);
+      if (mc && mc.tipo === 'caixa' && !podeUsar(mc.dono)) {
+        if (avisar('🔒 Essa caixa é do(a) ' + (mc.dono || 'dono') + '! Só ele(a) mexe aqui.')) ctx.audio.somErro();
+        return false;
+      }
+    }
+    // casa com dono: não-dono também não COLOCA bloco nela (colocar na cela
+    // interna matava o flood e desligava a proteção; portas abrem no `usar`)
+    const protetorColoca = protetorEm(cx, cy, cz);
+    if (protetorColoca !== null && !podeUsar(protetorColoca)) {
+      if (avisar('🔒 Essa casa é do(a) ' + protetorColoca + '! Só ele(a) mexe aqui.')) ctx.audio.somErro();
+      return false;
+    }
     if (ocupante !== 0 && porId(ocupante).render === 'cubo') return false;
     if (ocupante !== 0 && porId(ocupante).render === 'recorte') return false;
     if (ocupante !== 0 && porId(ocupante).render === 'porta') return false; // não sobrescreve porta
@@ -656,7 +708,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     }
     mundo.definir(mx, my, mz, CAIXA);
     ctx.estado.inventario[CAIXA]--;
-    ctx.metas.definir(mx, my, mz, { tipo: 'caixa', dono: meuNome(), casa: ctx.metas.chaveDe(seedX, my, seedZ) });
+    ctx.metas.definir(mx, my, mz, { tipo: 'caixa', dono: meuNome(), casa: ctx.metas.chaveDe(seedX, my, seedZ), cols: [...colunas] });
     ctx.ui.atualizarContagens();
     ctx.audio.somColocar();
     ctx.ui.mostrarToast('📮 Caixa pregada! Agora só você quebra os blocos dessa casa.', 'ok', 2600);
@@ -675,6 +727,11 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const tx = Math.floor(jogador.x + fx * 1.2);
     const tz = Math.floor(jogador.z + fz * 1.2);
     const ty = mundo.chaoMaisAlto(tx, tz) + 1;
+    const protetor = protetorEm(tx, ty, tz);
+    if (protetor !== null && !podeUsar(protetor)) {
+      if (avisar('🔒 Essa casa é do(a) ' + protetor + '! Largue o pacote fora dela.')) ctx.audio.somErro();
+      return;
+    }
     if (mundo.obter(tx, ty, tz) !== 0) {
       if (avisar('🎁 Sem espaço pra largar aqui — vire pra um lugar aberto!')) ctx.audio.somErro();
       return;

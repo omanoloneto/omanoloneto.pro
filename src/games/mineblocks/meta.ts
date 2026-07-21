@@ -105,7 +105,9 @@ export function metaValida(m: any): m is Meta {
     return typeof m.autor === 'string' && typeof m.texto === 'string';
   }
   if (m.tipo === 'caixa') {
-    return typeof m.dono === 'string';
+    if (typeof m.dono !== 'string') return false;
+    return m.cols === undefined
+      || (Array.isArray(m.cols) && m.cols.length <= 2048 && m.cols.every((c: unknown) => typeof c === 'number'));
   }
   if (m.tipo === 'drop') {
     return typeof m.item === 'number' && typeof m.n === 'number';

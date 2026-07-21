@@ -135,7 +135,7 @@ export interface Mob {
 export type Meta =
   | { tipo: 'bau'; dono: string; itens: number[]; publico?: boolean }
   | { tipo: 'placa'; autor: string; texto: string }
-  | { tipo: 'caixa'; dono: string; casa?: number }
+  | { tipo: 'caixa'; dono: string; casa?: number; cols?: number[] }
   | { tipo: 'drop'; item: number; n: number };
 
 export interface Metas {
