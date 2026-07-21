@@ -79,11 +79,16 @@ export const blocos: Bloco[] = [
   { id: 31, nome: 'espada de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true, icone: 'espada-ferro' },
   { id: 32, nome: 'machado de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true, icone: 'machado-madeira' },
   { id: 33, nome: 'machado de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true, icone: 'machado-ferro' },
+  // caixa de correio: pregada na parede de uma casa fechada, marca o dono —
+  // só ele quebra os blocos da casa. Uma caixa por casa.
+  { id: 34, nome: 'caixa de correio', tiles: [34, 34, 34], solido: false, render: 'cruz', dureza: 400 },
+  // pacote: item largado no chão (tecla Q); qualquer um pega passando por cima
+  { id: 35, nome: 'pacote', tiles: [35, 35, 35], solido: false, render: 'cruz' },
 ];
 
 // tipos de item coletáveis (grade do inventário/E); a hotbar agora é
 // dinâmica: 9 slots vazios que enchem conforme a criança coleta
-export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33];
+export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34];
 
 // materiais = recursos SÓ-coletáveis (não colocáveis): o jogador junta e
 // fabrica coisas depois. Aparecem numa seção própria do inventário.
@@ -116,6 +121,7 @@ export const receitas: Receita[] = [
   { de: 26, qtd: 3, de2: 6, qtd2: 2, para: 28, ganha: 1, fornalha: true },
   { de: 6, qtd: 2, para: 30, ganha: 1 }, // 2 tábuas → espada de madeira
   { de: 6, qtd: 3, para: 32, ganha: 1 }, // 3 tábuas → machado de madeira
+  { de: 6, qtd: 4, para: 34, ganha: 1 }, // 4 tábuas → caixa de correio
   { de: 26, qtd: 2, de2: 6, qtd2: 1, para: 31, ganha: 1, fornalha: true }, // barra+tábua → espada de ferro
   { de: 26, qtd: 3, de2: 6, qtd2: 2, para: 33, ganha: 1, fornalha: true }, // barra+tábuas → machado de ferro
 ];

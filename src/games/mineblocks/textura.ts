@@ -320,6 +320,42 @@ export function criarTextura(_ctx: Contexto): Textura {
     for (const y of [1, 5, 9, 13]) g.fillRect(ox, oy + y, TILE, 1);
   }
 
+  // --- 34 caixa de correio: caixinha azul com bandeirinha vermelha ---
+  {
+    const ox = (34 % GRADE) * TILE;
+    const oy = Math.floor(34 / GRADE) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#3a6ea5'; // corpo
+    g.fillRect(ox + 3, oy + 6, 9, 7);
+    g.fillStyle = '#2b527c'; // sombra/base
+    g.fillRect(ox + 3, oy + 12, 9, 1);
+    g.fillStyle = '#5a8fd0'; // tampa arredondada (topo)
+    g.fillRect(ox + 3, oy + 5, 9, 2);
+    g.fillStyle = '#12233a'; // fresta/porta
+    g.fillRect(ox + 5, oy + 8, 5, 3);
+    g.fillStyle = '#d33a2c'; // bandeirinha
+    g.fillRect(ox + 12, oy + 4, 3, 3);
+    g.fillStyle = '#7c5a30'; // poste da bandeira
+    g.fillRect(ox + 12, oy + 4, 1, 6);
+    g.fillStyle = '#7c5a30'; // poste da caixa
+    g.fillRect(ox + 7, oy + 13, 2, 2);
+  }
+  // --- 35 pacote: caixote de papelão com fita em cruz ---
+  {
+    const ox = (35 % GRADE) * TILE;
+    const oy = Math.floor(35 / GRADE) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#c9955a'; // papelão
+    g.fillRect(ox + 3, oy + 4, 10, 9);
+    g.fillStyle = '#a9793f'; // sombra
+    g.fillRect(ox + 3, oy + 11, 10, 2);
+    g.fillStyle = '#e0b578'; // brilho no topo
+    g.fillRect(ox + 3, oy + 4, 10, 1);
+    g.fillStyle = '#efe6d2'; // fita (cruz)
+    g.fillRect(ox + 7, oy + 4, 2, 9);
+    g.fillRect(ox + 3, oy + 7, 10, 2);
+  }
+
   // --- 17/18/19 rachaduras (overlay de quebra, cutout) ---
   {
     const riscos: Array<Array<[number, number, number, number]>> = [

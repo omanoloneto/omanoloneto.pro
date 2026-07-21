@@ -106,25 +106,11 @@ export function iniciarJogo() {
   ui.montarInventario();
   ui.montarHotbar();
 
-  // craft simples: tocou na receita, transformou
-  function nearFurnace(): boolean {
-    const px = Math.floor(jogador.x);
-    const py = Math.floor(jogador.y);
-    const pz = Math.floor(jogador.z);
-    for (let dy = -3; dy <= 3; dy++) {
-      for (let dz = -4; dz <= 4; dz++) {
-        for (let dx = -4; dx <= 4; dx++) {
-          if (ctx.mundo.obter(px + dx, py + dy, pz + dz) === 27) return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  ui.els.craftPainel.addEventListener('click', (e) => {
-    const btn = (e.target as HTMLElement).closest('.receita') as HTMLElement | null;
-    if (!btn) return;
+  // craft simples: tocou na receita, transformou. As receitas de fogo só
+  // aparecem no painel da fornalha (abrir já prova que está na fornalha).
+  function fabricarReceita(btn: HTMLElement) {
     const rec = dados.receitas[+btn.dataset.receita!];
+    if (!rec) return;
     const inv = estado.inventario;
     const de = ctx.porId(rec.de);
     const para = ctx.porId(rec.para);
@@ -138,11 +124,6 @@ export function iniciarJogo() {
       ctx.audio.somErro();
       return;
     }
-    if (rec.fornalha && !nearFurnace()) {
-      ui.mostrarToast('🔥 Essa receita precisa de fogo! Fique perto de uma fornalha (8 pedregulhos no craft).', 'info', 2600);
-      ctx.audio.somErro();
-      return;
-    }
     inv[rec.de] -= rec.qtd;
     if (rec.de2) inv[rec.de2] -= rec.qtd2 || 1;
     inv[rec.para] = Math.min(999, (inv[rec.para] || 0) + rec.ganha);
@@ -151,7 +132,13 @@ export function iniciarJogo() {
     ctx.audio.somSalvo();
     ui.anunciar('Fabricou ' + rec.ganha + ' ' + para.nome + '!');
     salvar.agendar();
-  });
+  }
+  const cliqueReceita = (e: Event) => {
+    const btn = (e.target as HTMLElement).closest('.receita') as HTMLElement | null;
+    if (btn) fabricarReceita(btn);
+  };
+  ui.els.craftPainel.addEventListener('click', cliqueReceita);
+  ui.els.fornalhaPainelLista.addEventListener('click', cliqueReceita);
   ui.els.craftBtn.addEventListener('click', () => inputRefs.alternarInventario());
   (document.querySelector('[data-inv-fechar]') as HTMLElement).addEventListener('click', () => inputRefs.alternarInventario());
 
@@ -545,7 +532,7 @@ export function iniciarJogo() {
   (window as any).__mc = {
     jogador, estado, input,
     receitas: dados.receitas,
-    fabricar: (i: number) => (ui.els.craftPainel.querySelectorAll('.receita')[i] as HTMLElement)?.click(),
+    fabricar: (i: number) => (document.querySelector('.receita[data-receita="' + i + '"]') as HTMLElement)?.click(),
     crescerMudas: () => ctx.edicao.crescerMudasAgora(),
     iniciarMudas: () => ctx.edicao.iniciarMudas(),
     decairAgora: () => ctx.edicao.decairAgora(),
@@ -566,6 +553,7 @@ export function iniciarJogo() {
     mob: ctx.mob,
     kotsooh: ctx.kotsooh,
     ui: ctx.ui,
+    edicao: ctx.edicao,
     // teste: interage/quebra numa célula exata sem depender da mira
     // (retorna o boolean do interagir: true = colocou bloco)
     usar: (x: number, y: number, z: number) =>

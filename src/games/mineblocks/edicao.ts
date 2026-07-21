@@ -26,6 +26,10 @@ const AXE_IRON = 33;
 const MELEE = 3.2; // alcance do golpe de espada (blocos)
 const CONE = 0.6; // cosseno do cone à frente pra mirar bicho/fantasma
 const SWING_MS = 350; // intervalo entre golpes segurando a espada
+const FORNALHA = 27;
+const CAIXA = 34;
+const PACOTE = 35;
+const VIZ6 = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] as const;
 const ehPorta = (id: number) => id === PORTA_FECHADA || id === PORTA_ABERTA;
 
 export function criarEdicao(ctx: Contexto): Edicao {
@@ -229,6 +233,77 @@ export function criarEdicao(ctx: Contexto): Edicao {
     return heldItem() === SWORD_IRON ? 3 : 1; // ferro mata o Kotsooh num golpe
   }
 
+  // ----- caixa de correio: casa fechada = só o dono quebra os blocos dela -----
+  function ehSolido(x: number, y: number, z: number): boolean {
+    const id = mundo.obter(x, y, z);
+    return id !== 0 && porId(id).solido;
+  }
+  // BFS pelo AR interno a partir de um seed; `casca` = sólidos que cercam.
+  // fechada=false se o ar vazar além do raio/teto (casa aberta = céu livre).
+  function casaFechada(x0: number, y0: number, z0: number): { fechada: boolean; casca: Set<number> } {
+    const CAP = 2000;
+    const RAIO = 16;
+    const casca = new Set<number>();
+    if (ehSolido(x0, y0, z0)) return { fechada: false, casca };
+    const visto = new Set<number>([ctx.metas.chaveDe(x0, y0, z0)]);
+    let borda: Array<[number, number, number]> = [[x0, y0, z0]];
+    let contados = 1;
+    while (borda.length) {
+      const prox: Array<[number, number, number]> = [];
+      for (const [x, y, z] of borda) {
+        for (const [dx, dy, dz] of VIZ6) {
+          const nx = x + dx;
+          const ny = y + dy;
+          const nz = z + dz;
+          if (ehSolido(nx, ny, nz)) { casca.add(ctx.metas.chaveDe(nx, ny, nz)); continue; }
+          if (Math.abs(nx - x0) > RAIO || Math.abs(ny - y0) > RAIO || Math.abs(nz - z0) > RAIO) return { fechada: false, casca };
+          const k = ctx.metas.chaveDe(nx, ny, nz);
+          if (visto.has(k)) continue;
+          visto.add(k);
+          if (++contados > CAP) return { fechada: false, casca };
+          prox.push([nx, ny, nz]);
+        }
+      }
+      borda = prox;
+    }
+    return { fechada: true, casca };
+  }
+  function temAlgumaCaixa(): boolean {
+    for (const m of ctx.metas.todos().values()) if (m.tipo === 'caixa') return true;
+    return false;
+  }
+  function caixaDaCasa(casca: Set<number>): string | null {
+    for (const m of ctx.metas.todos().values()) {
+      if (m.tipo === 'caixa' && casca.has(m.parede)) return m.dono;
+    }
+    return null;
+  }
+  // memo curto: podeQuebrar roda todo frame enquanto segura o golpe
+  let protMemoK = -1;
+  let protMemoMs = -1e9;
+  let protMemoDono: string | null = null;
+  function donoQueProtege(a: Alvo): string | null {
+    if (!temAlgumaCaixa()) return null;
+    const k = ctx.metas.chaveDe(a.x, a.y, a.z);
+    const agora = performance.now();
+    if (k === protMemoK && agora - protMemoMs < 200) return protMemoDono;
+    let dono: string | null = null;
+    for (const [dx, dy, dz] of VIZ6) {
+      const sx = a.x + dx;
+      const sy = a.y + dy;
+      const sz = a.z + dz;
+      if (ehSolido(sx, sy, sz)) continue;
+      const r = casaFechada(sx, sy, sz);
+      if (!r.fechada) continue;
+      const d = caixaDaCasa(r.casca);
+      if (d !== null) { dono = d; break; }
+    }
+    protMemoK = k;
+    protMemoMs = agora;
+    protMemoDono = dono;
+    return dono;
+  }
+
   function podeQuebrar(a: Alvo): boolean {
     if (a.id === 14 || porId(a.id).dureza === undefined) {
       avisar('🪨 Essa rocha do fundo não quebra!');
@@ -245,6 +320,21 @@ export function criarEdicao(ctx: Contexto): Edicao {
         avisar('🔒 Esse baú é do(a) ' + (m.dono || 'dono') + '! Só ele(a) pode quebrar.');
         return false;
       }
+    }
+    // a própria caixa de correio: só o dono a quebra (e assim tira a proteção)
+    if (a.id === CAIXA) {
+      const m = ctx.metas.obter(a.x, a.y, a.z);
+      if (m && m.tipo === 'caixa' && !podeUsar(m.dono)) {
+        avisar('🔒 Essa caixa é do(a) ' + (m.dono || 'dono') + '!');
+        return false;
+      }
+      return true;
+    }
+    // casa com caixa de correio: só o dono quebra os blocos de dentro
+    const protetor = donoQueProtege(a);
+    if (protetor !== null && !podeUsar(protetor)) {
+      avisar('🔒 Essa casa é do(a) ' + protetor + '! Só ele(a) mexe aqui.');
+      return false;
     }
     return true;
   }
@@ -351,6 +441,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
       if (avisar('🛠 ' + def.nome + ' é ferramenta! Segure e bata pra usar — não dá pra colocar no chão.')) ctx.audio.somErro();
       return false;
     }
+    if (id === CAIXA) return colocarCaixa(a);
     if ((ctx.estado.inventario[id] || 0) <= 0) {
       if (avisar('🎒 Você não tem ' + def.nome + '! Quebre blocos pra ganhar.')) ctx.audio.somErro();
       return false;
@@ -447,6 +538,8 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const a = alvoForcado || ctx.mira.alvo();
     if (!a) return colocar();
     if (a.id === BAU) { abrirBau(a); return false; }
+    if (a.id === FORNALHA) { ctx.fluxo.soltarInputs(); ctx.ui.abrirFornalha(); ctx.fluxo.aoPrimeiroInput(); return false; }
+    if (a.id === CAIXA) { lerCaixa(a); return false; }
     if (a.id === PORTA_FECHADA) { alternarPorta(a, PORTA_ABERTA); return false; }
     if (a.id === PORTA_ABERTA) { alternarPorta(a, PORTA_FECHADA); return false; }
     if (a.id === PLACA) { lerPlaca(a); return false; }
@@ -484,6 +577,71 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const m = ctx.metas.obter(a.x, a.y, a.z);
     if (!m || m.tipo !== 'placa') return;
     ctx.ui.mostrarPlaca(m.texto, m.autor);
+    ctx.fluxo.aoPrimeiroInput();
+  }
+
+  function lerCaixa(a: Alvo) {
+    const m = ctx.metas.obter(a.x, a.y, a.z);
+    if (!m || m.tipo !== 'caixa') return;
+    ctx.ui.mostrarToast('🏠 Casa de <b>' + (m.dono || 'ninguém') + '</b> — só o dono mexe nos blocos daqui.', 'info', 2800);
+    ctx.fluxo.aoPrimeiroInput();
+  }
+
+  // caixa de correio: pregada numa parede de casa FECHADA, marca o dono
+  function colocarCaixa(a: Alvo): boolean {
+    if (!(a.ny === 0 && (a.nx !== 0 || a.nz !== 0))) {
+      if (avisar('📮 Pregue a caixa de correio numa PAREDE (do lado, não no chão)!')) ctx.audio.somErro();
+      return false;
+    }
+    const mx = a.x + a.nx;
+    const my = a.y;
+    const mz = a.z + a.nz;
+    if (mundo.obter(mx, my, mz) !== 0) { avisar('📮 Não tem espaço vazio nessa parede!'); return false; }
+    if (intersectaJogador(mx, my, mz)) return false;
+    if ((ctx.estado.inventario[CAIXA] || 0) <= 0) {
+      if (avisar('📮 Você não tem caixa de correio! Fabrique com 4 tábuas.')) ctx.audio.somErro();
+      return false;
+    }
+    const r = casaFechada(mx, my, mz);
+    if (!r.fechada) {
+      if (avisar('🏠 A casa precisa estar FECHADA (paredes e teto) pra ter dono!')) ctx.audio.somErro();
+      return false;
+    }
+    if (caixaDaCasa(r.casca) !== null) {
+      if (avisar('📮 Essa casa já tem uma caixa de correio!')) ctx.audio.somErro();
+      return false;
+    }
+    mundo.definir(mx, my, mz, CAIXA);
+    ctx.estado.inventario[CAIXA]--;
+    ctx.metas.definir(mx, my, mz, { tipo: 'caixa', dono: meuNome(), parede: ctx.metas.chaveDe(a.x, a.y, a.z) });
+    ctx.ui.atualizarContagens();
+    ctx.audio.somColocar();
+    ctx.ui.mostrarToast('📮 Caixa pregada! Agora só você quebra os blocos dessa casa.', 'ok', 2600);
+    ctx.salvar.agendar();
+    ctx.fluxo.aoPrimeiroInput();
+    return false;
+  }
+
+  // tecla Q: larga 1 do item selecionado como um "pacote" no chão à frente
+  function soltarItemSelecionado() {
+    if (ctx.estado.fase !== 'jogando') return;
+    const id = heldItem();
+    if (!id || (ctx.estado.inventario[id] || 0) <= 0) return;
+    const fx = -Math.sin(jogador.yaw);
+    const fz = -Math.cos(jogador.yaw);
+    const tx = Math.floor(jogador.x + fx * 1.2);
+    const tz = Math.floor(jogador.z + fz * 1.2);
+    const ty = mundo.chaoMaisAlto(tx, tz) + 1;
+    if (mundo.obter(tx, ty, tz) !== 0) {
+      if (avisar('🎁 Sem espaço pra largar aqui — vire pra um lugar aberto!')) ctx.audio.somErro();
+      return;
+    }
+    ctx.estado.inventario[id]--;
+    mundo.definir(tx, ty, tz, PACOTE);
+    ctx.metas.definir(tx, ty, tz, { tipo: 'drop', item: id, n: 1 });
+    ctx.ui.atualizarContagens();
+    ctx.audio.somColocar();
+    ctx.salvar.agendar();
     ctx.fluxo.aoPrimeiroInput();
   }
 
@@ -657,6 +815,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     ganharItemPublico,
     interagir,
     podeUsar,
+    soltarItemSelecionado,
     aoEdicaoRemota,
     crescerMudasAgora() {
       for (const m of mudas) m.quandoMs = tempoMs;

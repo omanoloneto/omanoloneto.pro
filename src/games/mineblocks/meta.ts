@@ -104,5 +104,11 @@ export function metaValida(m: any): m is Meta {
   if (m.tipo === 'placa') {
     return typeof m.autor === 'string' && typeof m.texto === 'string';
   }
+  if (m.tipo === 'caixa') {
+    return typeof m.dono === 'string' && typeof m.parede === 'number';
+  }
+  if (m.tipo === 'drop') {
+    return typeof m.item === 'number' && typeof m.n === 'number';
+  }
   return false;
 }

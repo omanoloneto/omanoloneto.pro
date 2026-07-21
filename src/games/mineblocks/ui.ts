@@ -46,6 +46,10 @@ export function criarUI(ctx: Contexto): UI {
     bauFechar: $('[data-bau-fechar]'),
     // lista de jogadores (TAB)
     tabJogadores: $('[data-tab-jogadores]'),
+    // fornalha (bancada só de receitas de fogo)
+    fornalhaPainel: $('[data-fornalha]'),
+    fornalhaPainelLista: $('[data-fornalha-painel]'),
+    fornalhaFechar: $('[data-fornalha-fechar]'),
     // placa: form de escrever na colocação (leitura é via toast)
     placaForm: $('[data-placa-form]'),
     placaInput: $('[data-placa-input]'),
@@ -150,12 +154,16 @@ export function criarUI(ctx: Contexto): UI {
       s.classList.toggle('tem', id !== 0);
       s.classList.toggle('sel', id !== 0 && id === ctx.estado.hotbarSlots[ctx.estado.sel]);
     });
-    // receitas acendem/apagam conforme o material disponível
-    els.craftPainel.querySelectorAll<HTMLElement>('.receita').forEach((r, i) => {
-      const rec = ctx.receitas[i];
+    // receitas acendem/apagam conforme o material disponível (índice ORIGINAL
+    // em dataset.receita — os painéis filtram, então posição ≠ índice)
+    const acender = (r: HTMLElement) => {
+      const rec = ctx.receitas[+(r.dataset.receita || 0)];
+      if (!rec) return;
       const tem = (inv[rec.de] || 0) >= rec.qtd && (!rec.de2 || (inv[rec.de2] || 0) >= (rec.qtd2 || 1));
       r.classList.toggle('pode', tem);
-    });
+    };
+    els.craftPainel.querySelectorAll<HTMLElement>('.receita').forEach(acender);
+    els.fornalhaPainelLista.querySelectorAll<HTMLElement>('.receita').forEach(acender);
   }
 
   // grade do inventário estilo Minecraft: 3 linhas de 9 slots, mostrando SÓ
@@ -187,24 +195,35 @@ export function criarUI(ctx: Contexto): UI {
     }
   }
 
+  // uma linha de receita (índice ORIGINAL em dataset.receita — o clique e o
+  // acender por material dependem dele)
+  function linhaReceita(rec: (typeof ctx.receitas)[number], i: number): HTMLButtonElement {
+    const de = ctx.porId(rec.de);
+    const para = ctx.porId(rec.para);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'receita';
+    btn.dataset.receita = String(i);
+    const extras = rec.de2 ? ' e ' + (rec.qtd2 || 1) + ' ' + ctx.porId(rec.de2).nome : '';
+    btn.setAttribute('aria-label', 'Fabricar: ' + rec.qtd + ' ' + de.nome + extras + ' vira ' + rec.ganha + ' ' + para.nome);
+    btn.innerHTML =
+      '<span class="receita__lado">' + rec.qtd + '× ' + imgDoBloco(rec.de) +
+      (rec.de2 ? ' + ' + (rec.qtd2 || 1) + '× ' + imgDoBloco(rec.de2) : '') + '</span>' +
+      '<span class="receita__seta">' + (rec.fornalha ? '🔥' : '→') + '</span>' +
+      '<span class="receita__lado">' + rec.ganha + '× ' + imgDoBloco(rec.para) + '</span>';
+    return btn;
+  }
+
+  // mochila: só as receitas SEM fogo (as de fogo vão pra fornalha)
   function montarCraft() {
     els.craftPainel.innerHTML = '';
-    ctx.receitas.forEach((rec, i) => {
-      const de = ctx.porId(rec.de);
-      const para = ctx.porId(rec.para);
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'receita';
-      btn.dataset.receita = String(i);
-      const extras = (rec.de2 ? ' e ' + (rec.qtd2 || 1) + ' ' + ctx.porId(rec.de2).nome : '') + (rec.fornalha ? ' (perto de uma fornalha)' : '');
-      btn.setAttribute('aria-label', 'Fabricar: ' + rec.qtd + ' ' + de.nome + extras + ' vira ' + rec.ganha + ' ' + para.nome);
-      btn.innerHTML =
-        '<span class="receita__lado">' + rec.qtd + '× ' + imgDoBloco(rec.de) +
-        (rec.de2 ? ' + ' + (rec.qtd2 || 1) + '× ' + imgDoBloco(rec.de2) : '') + '</span>' +
-        '<span class="receita__seta">' + (rec.fornalha ? '🔥' : '→') + '</span>' +
-        '<span class="receita__lado">' + rec.ganha + '× ' + imgDoBloco(rec.para) + '</span>';
-      els.craftPainel.appendChild(btn);
-    });
+    ctx.receitas.forEach((rec, i) => { if (!rec.fornalha) els.craftPainel.appendChild(linhaReceita(rec, i)); });
+  }
+
+  // fornalha: só as receitas que precisam de fogo
+  function montarFornalha() {
+    els.fornalhaPainelLista.innerHTML = '';
+    ctx.receitas.forEach((rec, i) => { if (rec.fornalha) els.fornalhaPainelLista.appendChild(linhaReceita(rec, i)); });
   }
 
   function selecionarSlot(i: number, anunciarSel: boolean) {
@@ -283,14 +302,17 @@ export function criarUI(ctx: Contexto): UI {
     if (!m || m.tipo !== 'bau') return;
     const id = +btn.dataset.id!;
     const inv = ctx.estado.inventario;
+    const tudo = (e as MouseEvent).shiftKey; // SHIFT+clique = pilha inteira
     if (btn.dataset.dir === 'dep') {
-      if ((inv[id] || 0) <= 0) return;
-      inv[id]--;
-      m.itens[id] = Math.min(999, (m.itens[id] || 0) + 1);
+      const mover = tudo ? Math.min(inv[id] || 0, 999 - (m.itens[id] || 0)) : Math.min(1, inv[id] || 0);
+      if (mover <= 0) return;
+      inv[id] -= mover;
+      m.itens[id] = Math.min(999, (m.itens[id] || 0) + mover);
     } else {
-      if ((m.itens[id] || 0) <= 0) return;
-      m.itens[id]--;
-      ctx.edicao.ganharItemPublico(id, 1);
+      const mover = tudo ? Math.min(m.itens[id] || 0, 999 - (inv[id] || 0)) : Math.min(1, m.itens[id] || 0);
+      if (mover <= 0) return;
+      m.itens[id] -= mover;
+      ctx.edicao.ganharItemPublico(id, mover);
     }
     ctx.metas.tocar(bauChave); // avisa o sync (o objeto mudou no lugar)
     ctx.salvar.agendar();
@@ -326,6 +348,22 @@ export function criarUI(ctx: Contexto): UI {
     reTravarPainel();
   }
 
+  function abrirFornalha() {
+    api.alternarCraft(false); // fecha o inventário se estava aberto
+    montarFornalha();
+    els.fornalhaPainel.hidden = false;
+    api.atualizarContagens(); // acende as receitas que dá pra fazer
+    soltarLockPainel();
+    ctx.audio.somUI();
+    api.anunciar('Fornalha aberta — receitas que precisam de fogo.');
+  }
+  function fecharFornalha() {
+    if (els.fornalhaPainel.hidden) return;
+    els.fornalhaPainel.hidden = true;
+    reTravarPainel();
+  }
+  els.fornalhaFechar.addEventListener('click', () => fecharFornalha());
+
   // placa: form de escrever (na colocação)
   function fecharPlacaForm(texto: string | null) {
     if (!placaCb) return;
@@ -360,6 +398,9 @@ export function criarUI(ctx: Contexto): UI {
     fecharBau,
     bauAberto: () => bauChave,
     atualizarBau() { if (bauChave >= 0) renderBau(); },
+    abrirFornalha,
+    fecharFornalha,
+    fornalhaAberta: () => !els.fornalhaPainel.hidden,
     pedirTextoPlaca(cb) {
       placaCb = cb;
       (els.placaInput as HTMLInputElement).value = '';
@@ -370,7 +411,7 @@ export function criarUI(ctx: Contexto): UI {
     mostrarPlaca(texto, autor) {
       api.mostrarToast('📜 <b>' + esc(texto || '(placa em branco)') + '</b>' + (autor ? ' <span class="placa__autor">— ' + esc(autor) + '</span>' : ''), 'info', 4200);
     },
-    painelModalAberto: () => !els.invPainel.hidden || !els.bauPainel.hidden || !els.placaForm.hidden,
+    painelModalAberto: () => !els.invPainel.hidden || !els.bauPainel.hidden || !els.placaForm.hidden || !els.fornalhaPainel.hidden,
     mostrarJogadores(mostrar) {
       if (mostrar && !ctx.sync.emSala()) {
         els.tabJogadores.innerHTML =

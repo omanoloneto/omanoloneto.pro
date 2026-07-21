@@ -134,7 +134,9 @@ export interface Mob {
 // metadata por posição (não cabe no Uint8Array do mundo)
 export type Meta =
   | { tipo: 'bau'; dono: string; itens: number[]; publico?: boolean }
-  | { tipo: 'placa'; autor: string; texto: string };
+  | { tipo: 'placa'; autor: string; texto: string }
+  | { tipo: 'caixa'; dono: string; parede: number }
+  | { tipo: 'drop'; item: number; n: number };
 
 export interface Metas {
   aoMudar?: (chave: number, meta: Meta | null) => void;
@@ -199,6 +201,7 @@ export interface Edicao {
   // true só se colocou bloco (o input só repete segurando quando colocou)
   interagir(alvoForcado?: Alvo): boolean;
   podeUsar(dono: string): boolean; // dono do baú/autor da placa × quem sou eu
+  soltarItemSelecionado(): void; // tecla Q: larga 1 do slot atual como pacote no chão
 }
 
 export interface Salvar {
@@ -224,6 +227,10 @@ export interface UI {
   alternarCraft(abrir?: boolean): void; // abre/fecha o painel do inventário
   mostrarSalvando(estado: 'salvando' | 'salvo' | 'erro' | 'nada'): void;
   flashSusto(): void;
+  // fornalha: bancada só das receitas que precisam de fogo
+  abrirFornalha(): void;
+  fecharFornalha(): void;
+  fornalhaAberta(): boolean;
   // baú: painel de troca de itens (conteúdo ↔ inventário). souDono libera o
   // botão de liberar/bloquear o baú pra outros jogadores
   abrirBau(chave: number, titulo: string, souDono: boolean): void;

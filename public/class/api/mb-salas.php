@@ -56,7 +56,7 @@ const SUMIU_S = 120;            // visto há >120s sai da sala sozinho
 const MAX_X = 384;
 const MAX_Y = 80;
 const MAX_Z = 384;
-const MAX_BLOCO = 29;   // maior id da tabela do cliente (ar..tijolos de pedra)
+const MAX_BLOCO = 35;   // maior id colocável no mundo (inclui caixa 34 e pacote 35)
 const MAX_BICHOS = 16;  // teto de Winpups no blackboard (só posição)
 // ciclo dia/noite (casa com DIA_S+NOITE_S do ceu.ts): a sala ancora o horário
 // e todo cliente deriva a mesma fase de (agora - cicloInicioMs) % CICLO_S
@@ -85,6 +85,16 @@ function metaLimpa($m) {
     if (!isset($m['autor'], $m['texto']) || !is_string($m['autor']) || !is_string($m['texto'])) return false;
     if (strlen($m['autor']) > 16 || mb_strlen($m['texto']) > 64) return false;
     return ['tipo' => 'placa', 'autor' => $m['autor'], 'texto' => $m['texto']];
+  }
+  if ($tipo === 'caixa') {
+    if (!isset($m['dono']) || !is_string($m['dono']) || strlen($m['dono']) > 16) return false;
+    if (!isset($m['parede']) || !is_int($m['parede']) || !validarChave($m['parede'])) return false;
+    return ['tipo' => 'caixa', 'dono' => $m['dono'], 'parede' => $m['parede']];
+  }
+  if ($tipo === 'drop') {
+    if (!isset($m['item'], $m['n']) || !is_int($m['item']) || !is_int($m['n'])) return false;
+    if ($m['item'] < 0 || $m['item'] > MAX_BLOCO || $m['n'] < 1 || $m['n'] > 999) return false;
+    return ['tipo' => 'drop', 'item' => $m['item'], 'n' => $m['n']];
   }
   return false;
 }

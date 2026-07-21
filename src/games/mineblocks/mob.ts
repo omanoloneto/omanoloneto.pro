@@ -15,6 +15,7 @@ import { DIA_S } from './ceu';
 import type { BichoRede, Contexto, Mob } from './tipos';
 
 const LA = 21;
+const PACOTE = 35; // item largado no chão (tecla Q); anda por cima e pega
 
 interface Winpup {
   grupo: THREE.Group;
@@ -251,8 +252,20 @@ export function criarMob(ctx: Contexto): Mob {
     let n = 0;
     for (let y = y0; y <= y1; y++)
       for (let z = z0; z <= z1; z++)
-        for (let x = x0; x <= x1; x++)
-          if (mundo.obter(x, y, z) === LA) { mundo.definir(x, y, z, 0); n++; }
+        for (let x = x0; x <= x1; x++) {
+          const id = mundo.obter(x, y, z);
+          if (id === LA) { mundo.definir(x, y, z, 0); n++; }
+          else if (id === PACOTE) {
+            const m = ctx.metas.obter(x, y, z);
+            mundo.definir(x, y, z, 0);
+            ctx.metas.remover(x, y, z);
+            if (m && m.tipo === 'drop') {
+              ctx.edicao.ganharItemPublico(m.item, m.n);
+              ctx.audio.somSalvo();
+              ctx.ui.mostrarToast('🎁 Pegou ' + m.n + '× ' + ctx.porId(m.item).nome + '!', 'ok', 1400);
+            }
+          }
+        }
     if (n > 0) {
       ctx.edicao.ganharItemPublico(LA, n); // 1 concessão agregada (guard tira da hotbar)
       ctx.audio.somSalvo();

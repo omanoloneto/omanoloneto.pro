@@ -75,6 +75,18 @@ const description =
         </div>
       </div>
 
+      <!-- fornalha: só as receitas que precisam de fogo -->
+      <div class="inv" data-fornalha hidden>
+        <div class="inv__caixa" role="dialog" aria-modal="false" aria-label="Fornalha">
+          <div class="inv__topo">
+            <span>🔥 Fornalha</span>
+            <button class="inv__fechar" type="button" data-fornalha-fechar aria-label="Fechar a fornalha">✖</button>
+          </div>
+          <p class="craft__titulo">Coisas que precisam de fogo</p>
+          <div class="craft__lista" data-fornalha-painel></div>
+        </div>
+      </div>
+
       <!-- placa: escrever a mensagem ao colocar -->
       <div class="inv" data-placa-form hidden>
         <div class="inv__caixa inv__caixa--mini" role="dialog" aria-modal="true" aria-label="Escrever na placa">

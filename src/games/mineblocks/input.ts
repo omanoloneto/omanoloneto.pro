@@ -33,6 +33,10 @@ export function ligarInput(ctx: Contexto) {
         e.preventDefault();
         ctx.ui.fecharBau();
       }
+      else if (estado.fase === 'jogando' && ctx.ui.fornalhaAberta()) {
+        e.preventDefault();
+        ctx.ui.fecharFornalha();
+      }
       else if (estado.fase === 'jogando' && !ctx.ui.els.invPainel.hidden) {
         e.preventDefault();
         // sem relock: o keyup deste ESC soltaria o lock recém-pedido e o
@@ -63,6 +67,8 @@ export function ligarInput(ctx: Contexto) {
     if (/^[1-9]$/.test(e.key)) ctx.ui.selecionarSlot(+e.key - 1, true);
     // E = inventário (igual Minecraft); C também, de "craft"
     if (/^[eEcC]$/.test(e.key)) { e.preventDefault(); alternarInventario(); }
+    // Q = larga o item selecionado no chão (vira pacote que qualquer um pega)
+    if (/^[qQ]$/.test(e.key)) { e.preventDefault(); ctx.edicao.soltarItemSelecionado(); }
   });
   window.addEventListener('keyup', (e) => {
     if (e.key === 'Tab') { e.preventDefault(); ctx.ui.mostrarJogadores(false); return; }
