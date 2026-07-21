@@ -9,7 +9,7 @@
 // só o save manual, com confirmação da criança, passa por cima.
 import { encodeRLE, decodeRLE } from '../../lib/rle';
 import { gerarMundo } from './geracao';
-import type { Contexto, Salvar } from './tipos';
+import type { Ctx, Save } from './types';
 
 // gerações antigas de mundo, da mais recente pra mais antiga (o load tenta
 // decodificar em ordem); o recorte antigo sobe SY - sy (a superfície velha
@@ -20,7 +20,7 @@ const LEGADOS = [
 ];
 type Legado = (typeof LEGADOS)[number];
 
-export function criarSalvar(ctx: Contexto): Salvar {
+export function criarSalvar(ctx: Ctx): Save {
   const S = ctx.cfg.salvar;
   let codigo = '';
   let baseSalvoEm = 0; // versão do servidor que este cliente conhece
@@ -40,7 +40,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
     const { SX, SZ } = ctx.cfg.mundo;
     const { offX, offZ, offY } = offsetsLegado(L);
     gerarMundo(ctx, seed);
-    const out = new Uint8Array(ctx.mundo.dados);
+    const out = new Uint8Array(ctx.world.data);
     for (let y = 0; y < L.sy; y++) {
       for (let z = 0; z < L.sz; z++) {
         const src = z * L.sx + y * L.sx * L.sz;
@@ -73,17 +73,17 @@ export function criarSalvar(ctx: Contexto): Salvar {
   }
 
   function payloadAtual(): string {
-    const p = ctx.jogador;
+    const p = ctx.player;
     return JSON.stringify({
       v: 7, // v7 = mundo 384×384×80 (saves 192/96 migram no load); v6 = 192×192; v5 = hora do dia; v4 = metadata; v3-v1 ainda carregam
-      seed: ctx.estado.seed,
-      tempoDia: Math.round(ctx.ceu.tempo()),
+      seed: ctx.state.seed,
+      tempoDia: Math.round(ctx.sky.time()),
       jogador: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(3), pitch: +p.pitch.toFixed(3) },
-      sel: ctx.estado.sel,
-      inv: ctx.estado.inventario,
-      slots: ctx.estado.hotbarSlots,
-      metas: ctx.metas.serializar(),
-      blocos: encodeRLE(ctx.mundo.dados),
+      sel: ctx.state.sel,
+      inv: ctx.state.inventory,
+      slots: ctx.state.hotbarSlots,
+      metas: ctx.metas.serialize(),
+      blocos: encodeRLE(ctx.world.data),
     });
   }
 
@@ -116,7 +116,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
     if (conflito && motivo !== 'manual') return false;
     const payload = payloadAtual();
     if (payload.length > S.maxPayload) {
-      ctx.ui.mostrarToast('😅 O mundo ficou grande demais pra salvar!', 'err', 3000);
+      ctx.ui.showToast('😅 O mundo ficou grande demais pra salvar!', 'err', 3000);
       return false;
     }
     clearTimeout(debounce);
@@ -136,7 +136,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
       return true;
     }
     salvandoAgora = true;
-    ctx.ui.mostrarSalvando('salvando');
+    ctx.ui.showSaving('salvando');
     let r = await enviarSave(payload, false);
     // outro save mais novo no servidor (amigo/outra aba)
     if (r.status === 409 && r.json.erro === 'conflito') {
@@ -150,14 +150,14 @@ export function criarSalvar(ctx: Contexto): Salvar {
         } else {
           conflito = true;
           salvandoAgora = false;
-          ctx.ui.mostrarSalvando('nada');
+          ctx.ui.showSaving('nada');
           return false;
         }
       } else {
         conflito = true;
         salvandoAgora = false;
-        ctx.ui.mostrarSalvando('nada');
-        ctx.ui.mostrarToast('⚠️ Outra pessoa está salvando este mundo também! Salve pelo menu de pausa pra escolher o que fazer.', 'err', 4000);
+        ctx.ui.showSaving('nada');
+        ctx.ui.showToast('⚠️ Outra pessoa está salvando este mundo também! Salve pelo menu de pausa pra escolher o que fazer.', 'err', 4000);
         return false;
       }
     }
@@ -168,16 +168,16 @@ export function criarSalvar(ctx: Contexto): Salvar {
       baseSalvoEm = r.json.salvoEm || baseSalvoEm;
       ultimoSaveMs = performance.now();
       sujoDesdeUltimoSave = false;
-      ctx.ui.mostrarSalvando('salvo');
+      ctx.ui.showSaving('salvo');
       if (motivo === 'manual') {
-        ctx.audio.somSalvo();
-        ctx.ui.anunciar('Mundo salvo!');
+        ctx.audio.soundSaved();
+        ctx.ui.announce('World salvo!');
       }
       return true;
     }
-    ctx.ui.mostrarSalvando('erro');
+    ctx.ui.showSaving('erro');
     if (r.status !== 429) {
-      ctx.ui.mostrarToast('📡 Não consegui salvar agora — vou tentar de novo!', 'err', 2600);
+      ctx.ui.showToast('📡 Não consegui salvar agora — vou tentar de novo!', 'err', 2600);
     }
     agendar(); // re-tenta no próximo ciclo
     return false;
@@ -190,7 +190,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
   }
 
   return {
-    async criarMundo() {
+    async createWorld() {
       const r = await api({ acao: 'criar' });
       if (!r.ok || typeof r.json.codigo !== 'string') return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
       codigo = r.json.codigo;
@@ -200,7 +200,7 @@ export function criarSalvar(ctx: Contexto): Salvar {
       sujoDesdeUltimoSave = true;
       return null;
     },
-    async carregarMundo(cod) {
+    async loadWorld(cod: string) {
       const r = await api({ acao: 'carregar', codigo: cod });
       if (!r.ok) return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
       const p = r.json.payload;
@@ -214,13 +214,13 @@ export function criarSalvar(ctx: Contexto): Salvar {
       }
       let migrado: Legado | null = null;
       let genMetas: Record<string, unknown> = {};
-      let blocos = decodeRLE(p.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
+      let blocos = decodeRLE(p.blocos, ctx.world.data.length, ctx.blocks.length - 1);
       if (!blocos) {
         for (const L of LEGADOS) {
-          const legado = decodeRLE(p.blocos, L.sx * L.sz * L.sy, ctx.blocos.length - 1);
+          const legado = decodeRLE(p.blocos, L.sx * L.sz * L.sy, ctx.blocks.length - 1);
           if (legado) {
             blocos = expandLegacyWorld(legado, p.seed >>> 0, L);
-            genMetas = ctx.metas.serializar() as Record<string, unknown>;
+            genMetas = ctx.metas.serialize() as Record<string, unknown>;
             migrado = L;
             break;
           }
@@ -231,53 +231,53 @@ export function criarSalvar(ctx: Contexto): Salvar {
       baseSalvoEm = r.json.salvoEm || 0;
       conflito = false;
       forcarProximo = false;
-      ctx.mundo.dados.set(blocos);
-      ctx.estado.seed = p.seed >>> 0;
-      if (typeof p.tempoDia === 'number') ctx.ceu.definirTempo(p.tempoDia); // v<5 → fica de manhã
-      ctx.metas.carregar(migrado ? Object.assign(genMetas, remapLegacyMetas(p.metas, migrado)) : p.metas); // v<4 (sem metas) → mapa vazio
+      ctx.world.data.set(blocos);
+      ctx.state.seed = p.seed >>> 0;
+      if (typeof p.tempoDia === 'number') ctx.sky.setTime(p.tempoDia); // v<5 → fica de manhã
+      ctx.metas.load(migrado ? Object.assign(genMetas, remapLegacyMetas(p.metas, migrado)) : p.metas); // v<4 (sem metas) → mapa vazio
       const NSLOTS = ctx.cfg.hotbarTamanho;
-      ctx.estado.sel = Math.max(0, Math.min(NSLOTS - 1, p.sel | 0));
+      ctx.state.sel = Math.max(0, Math.min(NSLOTS - 1, p.sel | 0));
       // inventário: v2+ traz salvo; v1 (criativo antigo) migra vazio —
       // a criança re-minera os próprios blocos, nada quebra
-      const inv = new Array(ctx.blocos.length).fill(0);
+      const inv = new Array(ctx.blocks.length).fill(0);
       if (Array.isArray(p.inv)) {
         for (let i = 0; i < inv.length; i++) {
           const n = p.inv[i];
           if (typeof n === 'number' && n > 0) inv[i] = Math.min(999, Math.floor(n));
         }
       }
-      ctx.estado.inventario = inv;
+      ctx.state.inventory = inv;
       // hotbar: v3 traz os slots; v2 migra (primeiros tipos que a criança
       // tem viram atalhos); v1 fica vazia
       const slots = new Array(NSLOTS).fill(0);
       if (Array.isArray(p.slots)) {
         for (let i = 0; i < NSLOTS; i++) {
           const id = p.slots[i] | 0;
-          if (id > 0 && id < ctx.blocos.length && ctx.itens.includes(id)) slots[i] = id;
+          if (id > 0 && id < ctx.blocks.length && ctx.items.includes(id)) slots[i] = id;
         }
       } else {
         let s = 0;
-        for (const id of ctx.itens) {
+        for (const id of ctx.items) {
           if (s >= NSLOTS) break;
           if (inv[id] > 0) slots[s++] = id;
         }
       }
-      ctx.estado.hotbarSlots = slots;
+      ctx.state.hotbarSlots = slots;
       const j = p.jogador || {};
       const off = migrado ? offsetsLegado(migrado) : { offX: 0, offZ: 0, offY: 0 };
-      ctx.jogador.x = typeof j.x === 'number' ? j.x + off.offX : ctx.cfg.mundo.SX / 2;
-      ctx.jogador.y = typeof j.y === 'number' ? j.y + off.offY : ctx.cfg.mundo.SY;
-      ctx.jogador.z = typeof j.z === 'number' ? j.z + off.offZ : ctx.cfg.mundo.SZ / 2;
-      ctx.jogador.yaw = typeof j.yaw === 'number' ? j.yaw : 0;
-      ctx.jogador.pitch = typeof j.pitch === 'number' ? j.pitch : 0;
+      ctx.player.x = typeof j.x === 'number' ? j.x + off.offX : ctx.cfg.mundo.SX / 2;
+      ctx.player.y = typeof j.y === 'number' ? j.y + off.offY : ctx.cfg.mundo.SY;
+      ctx.player.z = typeof j.z === 'number' ? j.z + off.offZ : ctx.cfg.mundo.SZ / 2;
+      ctx.player.yaw = typeof j.yaw === 'number' ? j.yaw : 0;
+      ctx.player.pitch = typeof j.pitch === 'number' ? j.pitch : 0;
       sujoDesdeUltimoSave = migrado !== null;
       if (migrado) {
         agendar();
-        ctx.ui.mostrarToast('🗺️ Seu mundo cresceu! Tem terras novas (e uma dungeon…) além das bordas antigas.', 'ok', 4200);
+        ctx.ui.showToast('🗺️ Seu mundo cresceu! Tem terras novas (e uma dungeon…) além das bordas antigas.', 'ok', 4200);
       }
       return null;
     },
-    adotarMundo(cod) {
+    adoptWorld(cod) {
       if (codigo === cod) return;
       codigo = cod;
       baseSalvoEm = 0;
@@ -285,10 +285,10 @@ export function criarSalvar(ctx: Contexto): Salvar {
       forcarProximo = true;
       sujoDesdeUltimoSave = true;
     },
-    salvarAgora,
-    agendar,
-    temMundo: () => codigo !== '',
-    codigoMundo: () => codigo,
-    sujo: () => sujoDesdeUltimoSave,
+    saveNow: salvarAgora,
+    schedule: agendar,
+    hasWorld: () => codigo !== '',
+    worldCode: () => codigo,
+    dirty: () => sujoDesdeUltimoSave,
   };
 }

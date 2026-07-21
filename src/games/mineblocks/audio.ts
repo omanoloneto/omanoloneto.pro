@@ -1,12 +1,12 @@
 // Áudio: Web Audio sintetizado (sem arquivos) pros SFX + duas faixas de
 // música (dia/noite) em HTMLAudioElement com crossfade pelo ciclo do céu.
-import type { Audio, Contexto } from './tipos';
+import type { Audio, Ctx } from './types';
 import { DIA_S } from './ceu';
 
 const MUS_VOL = 0.3;
 const FADE_S = 3;
 
-export function criarAudio(ctx: Contexto): Audio {
+export function criarAudio(ctx: Ctx): Audio {
   let actx: AudioContext | null = null;
   let ruidoBuf: AudioBuffer | null = null;
 
@@ -16,7 +16,7 @@ export function criarAudio(ctx: Contexto): Audio {
   let tocando = false;
 
   function eNoite() {
-    return !!ctx.ceu && ctx.ceu.tempo() >= DIA_S;
+    return !!ctx.sky && ctx.sky.time() >= DIA_S;
   }
   function aplicarVol() {
     if (!musDia || !musNoite) return;
@@ -34,7 +34,7 @@ export function criarAudio(ctx: Contexto): Audio {
       nivelNoite = eNoite() ? 1 : 0;
     }
     aplicarVol();
-    if (!ctx.estado.mudo) {
+    if (!ctx.state.muted) {
       const p1 = musDia.play();
       if (p1 && typeof p1.catch === 'function') p1.catch(() => {});
       const p2 = musNoite!.play();
@@ -121,19 +121,19 @@ export function criarAudio(ctx: Contexto): Audio {
     lfo.stop(t + dur + 0.05);
   }
 
-  const mudo = () => ctx.estado.mudo;
+  const mudo = () => ctx.state.muted;
 
   return {
     init,
-    retomar() {
+    resume() {
       init();
       if (actx && actx.state === 'suspended') actx.resume();
       iniciarMusica();
     },
-    suspender() {
+    suspend() {
       if (actx) actx.suspend();
     },
-    passoMusica(dt) {
+    musicStep(dt) {
       if (!tocando || !musDia) return;
       const alvo = eNoite() ? 1 : 0;
       if (nivelNoite !== alvo) {
@@ -142,7 +142,7 @@ export function criarAudio(ctx: Contexto): Audio {
         aplicarVol();
       }
     },
-    musInfo() {
+    musicInfo() {
       return {
         tocando,
         nivelNoite,
@@ -152,34 +152,34 @@ export function criarAudio(ctx: Contexto): Audio {
     },
     bindMute(btn, icone) {
       const aplicar = () => {
-        btn.setAttribute('aria-pressed', String(ctx.estado.mudo));
-        icone.textContent = ctx.estado.mudo ? '🔈' : '🔊';
+        btn.setAttribute('aria-pressed', String(ctx.state.muted));
+        icone.textContent = ctx.state.muted ? '🔈' : '🔊';
       };
       const salvo = localStorage.getItem('mineblocks:mudo');
-      ctx.estado.mudo = salvo === null ? !ctx.cfg.somLigadoInicial : salvo === '1';
+      ctx.state.muted = salvo === null ? !ctx.cfg.somLigadoInicial : salvo === '1';
       aplicar();
       btn.addEventListener('click', () => {
-        ctx.estado.mudo = !ctx.estado.mudo;
-        localStorage.setItem('mineblocks:mudo', ctx.estado.mudo ? '1' : '0');
+        ctx.state.muted = !ctx.state.muted;
+        localStorage.setItem('mineblocks:mudo', ctx.state.muted ? '1' : '0');
         aplicar();
-        if (ctx.estado.mudo) pausarMusica();
+        if (ctx.state.muted) pausarMusica();
         else iniciarMusica();
       });
     },
-    somQuebrar(id) {
+    soundBreak(id) {
       if (mudo()) return;
       // timbre por material: pedra grave, terra média, folha/areia aguda
       const grave = id === 3 || id === 9 || id === 10;
       const agudo = id === 7 || id === 4 || id === 11 || id === 12;
       croc(grave ? 300 : agudo ? 1400 : 700, 0.22);
     },
-    somColocar() { if (mudo()) return; croc(900, 0.14, 0.07); tom(220, 0, 0.06, 'square', 0.06); },
-    somPulo() { if (mudo()) return; tom(300, 0, 0.07, 'sine', 0.05); },
-    somSplash() { if (mudo()) return; croc(600, 0.2, 0.25); },
-    somUI() { if (mudo()) return; tom(660, 0, 0.06, 'triangle', 0.1); },
-    somSalvo() { if (mudo()) return; tom(523, 0, 0.1, 'triangle', 0.12); tom(784, 0.09, 0.14, 'triangle', 0.12); },
-    somErro() { if (mudo()) return; tom(220, 0, 0.15, 'square', 0.08); },
-    somFantasma() { if (mudo()) return; howl(180, 118, 1.1, 0.09); },
-    somSusto() { if (mudo()) return; howl(300, 150, 0.35, 0.14); croc(250, 0.2, 0.18); },
+    soundPlace() { if (mudo()) return; croc(900, 0.14, 0.07); tom(220, 0, 0.06, 'square', 0.06); },
+    soundJump() { if (mudo()) return; tom(300, 0, 0.07, 'sine', 0.05); },
+    soundSplash() { if (mudo()) return; croc(600, 0.2, 0.25); },
+    soundUI() { if (mudo()) return; tom(660, 0, 0.06, 'triangle', 0.1); },
+    soundSaved() { if (mudo()) return; tom(523, 0, 0.1, 'triangle', 0.12); tom(784, 0.09, 0.14, 'triangle', 0.12); },
+    soundError() { if (mudo()) return; tom(220, 0, 0.15, 'square', 0.08); },
+    soundGhost() { if (mudo()) return; howl(180, 118, 1.1, 0.09); },
+    soundScare() { if (mudo()) return; howl(300, 150, 0.35, 0.14); croc(250, 0.2, 0.18); },
   };
 }

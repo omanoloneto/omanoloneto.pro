@@ -3,7 +3,7 @@
 // ~1,2s o cliente manda as edições locais + posição e recebe as dos
 // colegas — sem websocket, funciona de qualquer casa pela internet.
 //
-// O gancho mundo.aoMudar captura TODA escrita local (quebrar, colocar,
+// O gancho mundo.onChange captura TODA escrita local (quebrar, colocar,
 // flor caindo, decay, árvore crescendo) enquanto a sala está ativa; a
 // flag aplicandoRemoto evita eco. Aplicar edição remota = definir puro
 // (sem inventário/som); o eco da própria edição é no-op (obter === id).
@@ -15,7 +15,7 @@
 import { apiJson, beaconOrKeepalive, createGenerationGuard, createPoller } from '../../lib/net';
 import { encodeRLE, decodeRLE } from '../../lib/rle';
 import { CICLO_S } from './ceu';
-import type { Contexto, JogadorRemoto, Meta, Sync } from './tipos';
+import type { Ctx, RemotePlayer, Meta, Sync } from './types';
 
 interface FotoSala {
   seed: number;
@@ -23,7 +23,7 @@ interface FotoSala {
   metas?: Record<string, Meta>;
 }
 
-export function criarSync(ctx: Contexto): Sync {
+export function criarSync(ctx: Ctx): Sync {
   const S = ctx.cfg.sala;
   let codigo = '';
   let token = '';
@@ -64,12 +64,12 @@ export function criarSync(ctx: Contexto): Sync {
   }
 
   function instalarGancho() {
-    ctx.mundo.aoMudar = aoMudar;
-    ctx.metas.aoMudar = aoMudarMeta;
+    ctx.world.onChange = aoMudar;
+    ctx.metas.onChange = aoMudarMeta;
   }
   function removerGancho() {
-    ctx.mundo.aoMudar = undefined;
-    ctx.metas.aoMudar = undefined;
+    ctx.world.onChange = undefined;
+    ctx.metas.onChange = undefined;
   }
 
   // ----- rede -----
@@ -82,16 +82,16 @@ export function criarSync(ctx: Contexto): Sync {
   const api = (corpo: Record<string, unknown>) => apiJson(S.api, corpo);
 
   function fotoAtual(): FotoSala {
-    return { seed: ctx.estado.seed >>> 0, blocos: encodeRLE(ctx.mundo.dados), metas: ctx.metas.serializar() };
+    return { seed: ctx.state.seed >>> 0, blocos: encodeRLE(ctx.world.data), metas: ctx.metas.serialize() };
   }
 
   // ----- aplicar o que veio do servidor -----
   function aplicarFoto(foto: FotoSala): boolean {
-    const blocos = decodeRLE(foto.blocos, ctx.mundo.dados.length, ctx.blocos.length - 1);
+    const blocos = decodeRLE(foto.blocos, ctx.world.data.length, ctx.blocks.length - 1);
     if (!blocos) return false;
-    ctx.mundo.dados.set(blocos);
-    ctx.estado.seed = foto.seed >>> 0;
-    ctx.metas.carregar(foto.metas || {});
+    ctx.world.data.set(blocos);
+    ctx.state.seed = foto.seed >>> 0;
+    ctx.metas.load(foto.metas || {});
     return true;
   }
 
@@ -108,12 +108,12 @@ export function criarSync(ctx: Contexto): Sync {
       if (mseq <= metaSeqVisto) continue;
       metaSeqVisto = mseq;
       if (filaMeta.has(chave)) continue; // tenho escrita local mais nova pra essa célula
-      ctx.metas.aplicar(chave, meta);
+      ctx.metas.apply(chave, meta);
       mudou = true;
     }
     if (mudou) {
-      ctx.ui.atualizarBau(); // um baú aberto pode ter mudado
-      if (ctx.salvar.temMundo()) ctx.salvar.agendar();
+      ctx.ui.updateChest(); // um baú aberto pode ter mudado
+      if (ctx.save.hasWorld()) ctx.save.schedule();
     }
   }
 
@@ -124,17 +124,17 @@ export function criarSync(ctx: Contexto): Sync {
       const n = itens[id] | 0;
       if (n > 0) bau.itens[id] = Math.min(999, (bau.itens[id] || 0) + n);
     }
-    ctx.metas.tocar(chave); // broadcast do baú atualizado
-    ctx.ui.atualizarBau();
+    ctx.metas.touch(chave); // broadcast do baú atualizado
+    ctx.ui.updateChest();
   }
   function resolverEntrega(nome: string, itens: number[]): boolean {
-    const meu = ctx.metas.acharBau((b) => b.dono === nome);
+    const meu = ctx.metas.findChest((b) => b.dono === nome);
     if (meu) { depositarNoBau(meu.chave, meu.bau, itens); return true; }
-    const doDono = ctx.metas.acharBau((b) => b.dono === '' || b.dono === donoNome);
+    const doDono = ctx.metas.findChest((b) => b.dono === '' || b.dono === donoNome);
     if (doDono) { depositarNoBau(doDono.chave, doDono.bau, itens); return true; }
     // sem baú: só o próprio dono coloca no próprio inventário
     if (modo === 'dono') {
-      for (let id = 0; id < itens.length; id++) ctx.edicao.ganharItemPublico(id, itens[id] | 0);
+      for (let id = 0; id < itens.length; id++) ctx.editing.gainItem(id, itens[id] | 0);
       return true;
     }
     return false; // anfitrião promovido sem dono presente: espera o dono voltar
@@ -159,41 +159,41 @@ export function criarSync(ctx: Contexto): Sync {
       seqVisto = s;
       // cinto e suspensório: id fora da tabela não entra no mundo
       // (envenenaria o save do dono — decodeRLE recusa no load)
-      if (!Number.isInteger(b) || b < 0 || b >= ctx.blocos.length) continue;
+      if (!Number.isInteger(b) || b < 0 || b >= ctx.blocks.length) continue;
       // eco da própria edição (ou no-op): nada a fazer, nem remesh
-      if (ctx.mundo.obter(x, y, z) === b) continue;
-      ctx.mundo.definir(x, y, z, b);
+      if (ctx.world.get(x, y, z) === b) continue;
+      ctx.world.set(x, y, z, b);
       mudouAlgo = true;
-      if (anfitriao) ctx.edicao.aoEdicaoRemota(x, y, z, b);
+      if (anfitriao) ctx.editing.onRemoteEdit(x, y, z, b);
     }
     aplicandoRemoto = false;
-    if (mudouAlgo && ctx.salvar.temMundo()) ctx.salvar.agendar();
+    if (mudouAlgo && ctx.save.hasWorld()) ctx.save.schedule();
   }
 
-  function tratarJogadores(lista: JogadorRemoto[]) {
-    ctx.bonecos.atualizarLista(lista);
+  function tratarJogadores(lista: RemotePlayer[]) {
+    ctx.avatars.updateList(lista);
     const agora = new Set(lista.map((j) => j.nome));
     for (const n of agora) {
-      if (!nomesVistos.has(n)) ctx.ui.mostrarToast('🙋 <b>' + n + '</b> entrou!', 'ok', 2200);
+      if (!nomesVistos.has(n)) ctx.ui.showToast('🙋 <b>' + n + '</b> entrou!', 'ok', 2200);
     }
     for (const n of nomesVistos) {
-      if (!agora.has(n)) ctx.ui.mostrarToast('👋 <b>' + n + '</b> saiu.', 'info', 2200);
+      if (!agora.has(n)) ctx.ui.showToast('👋 <b>' + n + '</b> saiu.', 'info', 2200);
     }
     nomesVistos = agora;
     atualizarChip(lista.length + 1);
     atualizarListaPausa(lista);
-    ctx.ui.atualizarTabJogadores(meuNome, donoNome, lista);
+    ctx.ui.updatePlayersTab(meuNome, donoNome, lista);
   }
 
   function atualizarChip(total: number) {
-    const chip = ctx.ui.els.salaChip;
+    const chip = ctx.ui.els.roomChip;
     if (!chip) return;
     chip.hidden = !poller.running();
     chip.textContent = '👥 ' + total + ' · ' + codigo;
   }
 
-  function atualizarListaPausa(lista: JogadorRemoto[]) {
-    const el = ctx.ui.els.salaLista;
+  function atualizarListaPausa(lista: RemotePlayer[]) {
+    const el = ctx.ui.els.roomList;
     if (!el) return;
     const nomes = [meuNome + ' (você)'].concat(lista.map((j) => j.nome));
     el.textContent = '👥 Na sala: ' + nomes.join(', ');
@@ -220,7 +220,7 @@ export function criarSync(ctx: Contexto): Sync {
         loteMeta = [...filaMeta.entries()].slice(0, S.maxMetasPorSync);
         for (const [k] of loteMeta) filaMeta.delete(k);
       }
-      const p = ctx.jogador;
+      const p = ctx.player;
       // yaw normalizado pra [-π, π]: ele acumula sem wrap no cliente e o
       // servidor satura — sem isso o boneco congela depois de umas voltas
       const yawN = Math.atan2(Math.sin(p.yaw), Math.cos(p.yaw));
@@ -235,7 +235,7 @@ export function criarSync(ctx: Contexto): Sync {
         metas: loteMeta,
         pendentesAck: ackPendentes,
         // blackboard dos Winpups: só o anfitrião publica (o servidor ignora dos outros)
-        bichos: anfitriao ? ctx.mob.estadoRede() : undefined,
+        bichos: anfitriao ? ctx.mob.netState() : undefined,
         pos: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +yawN.toFixed(3), pitch: +p.pitch.toFixed(3) },
       });
       if (!poller.running() || gen.stale(g)) return;
@@ -270,7 +270,7 @@ export function criarSync(ctx: Contexto): Sync {
           loteMeta = null;
         }
         falhas++;
-        if (falhas === 3) ctx.ui.mostrarToast('📡 Reconectando…', 'info', 2000);
+        if (falhas === 3) ctx.ui.showToast('📡 Reconectando…', 'info', 2000);
         agendarPoll();
         return;
       }
@@ -301,13 +301,13 @@ export function criarSync(ctx: Contexto): Sync {
           metaSeqVisto = typeof d.metaSeq === 'number' ? d.metaSeq : metaSeqVisto;
           // edições/metadata locais ainda não confirmadas voltam por cima
           aplicandoRemoto = true;
-          for (const [x, y, z, b] of (loteAtual || []).concat(fila)) ctx.mundo.definir(x, y, z, b);
-          for (const [k, m] of metaEnviada) ctx.metas.aplicar(k, m);
-          for (const [k, m] of filaMeta) ctx.metas.aplicar(k, m);
+          for (const [x, y, z, b] of (loteAtual || []).concat(fila)) ctx.world.set(x, y, z, b);
+          for (const [k, m] of metaEnviada) ctx.metas.apply(k, m);
+          for (const [k, m] of filaMeta) ctx.metas.apply(k, m);
           aplicandoRemoto = false;
-          ctx.mundo.sujos.clear();
-          ctx.malha.construirTudo();
-          ctx.ui.atualizarBau();
+          ctx.world.dirty.clear();
+          ctx.meshes.buildAll();
+          ctx.ui.updateChest();
         }
       } else {
         aplicarEdicoes(d.edicoes || []);
@@ -321,12 +321,12 @@ export function criarSync(ctx: Contexto): Sync {
       const eraAnfitriao = anfitriao;
       anfitriao = d.anfitriao === true;
       if (anfitriao && !eraAnfitriao) {
-        ctx.edicao.iniciarMudas();
+        ctx.editing.startSaplings();
         ultimaFotoMs = performance.now();
-        if (!ctx.salvar.temMundo()) {
-          ctx.salvar.adotarMundo(codigo);
-          ctx.salvar.agendar();
-          ctx.ui.mostrarToast('👑 Agora o mundo está com você — e continua salvando!', 'ok', 3000);
+        if (!ctx.save.hasWorld()) {
+          ctx.save.adoptWorld(codigo);
+          ctx.save.schedule();
+          ctx.ui.showToast('👑 Agora o mundo está com você — e continua salvando!', 'ok', 3000);
         }
       }
       // NÃO limpo ackPendentes ao perder o posto: se eu resolvi uma
@@ -337,11 +337,11 @@ export function criarSync(ctx: Contexto): Sync {
 
       tratarJogadores(Array.isArray(d.jogadores) ? d.jogadores : []);
       // Winpups: quem NÃO é anfitrião segue as posições do blackboard
-      if (!anfitriao && Array.isArray(d.bichos)) ctx.mob.atualizarRede(d.bichos);
+      if (!anfitriao && Array.isArray(d.bichos)) ctx.mob.applyNet(d.bichos);
       // ciclo dia/noite compartilhado: a fase vem do relógio do servidor,
       // então a sala inteira vê o mesmo horário (o rel local só suaviza entre polls)
       if (typeof d.agora === 'number' && typeof d.cicloInicioMs === 'number') {
-        ctx.ceu.definirTempo((((d.agora - d.cicloInicioMs) / 1000) % CICLO_S + CICLO_S) % CICLO_S);
+        ctx.sky.setTime((((d.agora - d.cicloInicioMs) / 1000) % CICLO_S + CICLO_S) % CICLO_S);
       }
 
       // compactação: anfitrião manda foto quando QUALQUER diário engorda —
@@ -381,34 +381,34 @@ export function criarSync(ctx: Contexto): Sync {
     modo = '';
     anfitriao = false;
     seqVisto = 0;
-    ctx.bonecos.limpar();
-    if (ctx.ui.els.salaChip) ctx.ui.els.salaChip.hidden = true;
-    if (aviso) ctx.ui.mostrarToast(aviso, 'info', 3200);
+    ctx.avatars.clear();
+    if (ctx.ui.els.roomChip) ctx.ui.els.roomChip.hidden = true;
+    if (aviso) ctx.ui.showToast(aviso, 'info', 3200);
   }
 
   // inventário do visitante pra "entregar" ao sair (baú dele → baú do
   // dono → inventário do dono). Só faz sentido pra visita com itens.
   function invParaEntrega(): number[] | null {
     if (modo !== 'visita') return null;
-    const inv = ctx.estado.inventario;
+    const inv = ctx.state.inventory;
     if (!inv.some((n) => n > 0)) return null;
     return inv.map((n) => Math.max(0, Math.min(999, n | 0)));
   }
 
   const api2: Sync = {
-    emSala: () => poller.running(),
-    emVisita: () => poller.running() && modo === 'visita',
-    souAnfitriao: () => anfitriao,
-    codigoSala: () => codigo,
-    meuNomeNaSala: () => (poller.running() ? meuNome : ''),
+    inRoom: () => poller.running(),
+    isVisiting: () => poller.running() && modo === 'visita',
+    isHost: () => anfitriao,
+    roomCode: () => codigo,
+    myRoomName: () => (poller.running() ? meuNome : ''),
 
-    async criarSala(nomeJogador, cod) {
+    async createRoom(nomeJogador: string, cod: string) {
       if (poller.running()) return null;
       const foto = fotoAtual();
       if (foto.blocos.length > ctx.cfg.salvar.maxPayload) return '😅 O mundo ficou grande demais pra abrir sala!';
       // manda o horário atual do céu: a sala ancora o ciclo nele (mundo novo
       // começa de manhã; save reaberto mantém a hora)
-      const r = await api({ acao: 'criar', codigo: cod, nome: nomeJogador, foto, tempo: Math.round(ctx.ceu.tempo()) });
+      const r = await api({ acao: 'criar', codigo: cod, nome: nomeJogador, foto, tempo: Math.round(ctx.sky.time()) });
       if (!r.ok) return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
       codigo = cod;
       token = r.json.token;
@@ -434,7 +434,7 @@ export function criarSync(ctx: Contexto): Sync {
       return null;
     },
 
-    async entrarSala(cod, nomeJogador) {
+    async joinRoom(cod: string, nomeJogador: string) {
       if (poller.running()) return null;
       const r = await api({ acao: 'entrar', codigo: cod, nome: nomeJogador });
       if (!r.ok) return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
@@ -445,7 +445,7 @@ export function criarSync(ctx: Contexto): Sync {
       donoNome = typeof r.json.donoNome === 'string' ? r.json.donoNome : '';
       // já entra no horário da sala (sem esperar o 1º poll pra alinhar o céu)
       if (typeof r.json.agora === 'number' && typeof r.json.cicloInicioMs === 'number') {
-        ctx.ceu.definirTempo((((r.json.agora - r.json.cicloInicioMs) / 1000) % CICLO_S + CICLO_S) % CICLO_S);
+        ctx.sky.setTime((((r.json.agora - r.json.cicloInicioMs) / 1000) % CICLO_S + CICLO_S) % CICLO_S);
       }
       modo = 'visita';
       anfitriao = false;
@@ -459,18 +459,18 @@ export function criarSync(ctx: Contexto): Sync {
       ackPendentes = [];
       fotoPendente = r.json.foto;
       // quem já estava não ganha toast de "entrou"
-      nomesVistos = new Set((r.json.jogadores || []).map((j: JogadorRemoto) => j.nome));
+      nomesVistos = new Set((r.json.jogadores || []).map((j: RemotePlayer) => j.nome));
       return null;
     },
 
-    aplicarFotoInicial() {
+    applyInitialSnapshot() {
       if (!fotoPendente) return false;
       const ok = aplicarFoto(fotoPendente);
       fotoPendente = null;
       return ok;
     },
 
-    ligarPoll() {
+    startPoll() {
       if (poller.running() || modo === '') return;
       ultimaFotoMs = performance.now();
       instalarGancho();
@@ -479,7 +479,7 @@ export function criarSync(ctx: Contexto): Sync {
       pollLogo(80); // 1º sync já — presença + edições que chegaram no meio
     },
 
-    async sairDaSala() {
+    async leaveRoom() {
       if (!poller.running()) return;
       // beacon e não fetch: o "sair" costuma vir colado numa navegação,
       // que abortaria o fetch — e o boneco ficaria 2min parado na sala.
@@ -489,12 +489,12 @@ export function criarSync(ctx: Contexto): Sync {
       await beaconOrKeepalive(S.api, corpo);
     },
 
-    flushSair() {
+    flushLeave() {
       if (!poller.running()) return;
       beaconOrKeepalive(S.api, JSON.stringify({ acao: 'sair', codigo, token, inventario: invParaEntrega() }));
     },
 
-    pollAgora: () => pollLogo(0),
+    pollNow: () => pollLogo(0),
   };
   return api2;
 }

@@ -2,7 +2,7 @@
 // estilo pixelado (NearestFilter, sem mipmaps). Nenhum asset externo.
 import * as THREE from 'three';
 import { mulberry32 } from '../../lib/rng';
-import type { Contexto, Textura } from './tipos';
+import type { Ctx, Texture } from './types';
 
 const TILE = 16;
 const GRADE = 4;      // colunas
@@ -10,7 +10,7 @@ const LINHAS = 10;     // linhas (com folga pra novos tiles)
 const LADO = TILE * GRADE; // 64
 const ALTO = TILE * LINHAS; // 128
 
-export function criarTextura(_ctx: Contexto): Textura {
+export function criarTextura(_ctx: Ctx): Texture {
   const canvas = document.createElement('canvas');
   canvas.width = LADO;
   canvas.height = ALTO;

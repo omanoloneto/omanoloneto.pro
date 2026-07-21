@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { DIA_S } from './ceu';
-import type { Contexto, Kotsooh } from './tipos';
+import type { Ctx, Kotsooh } from './types';
 
 const NIGHT_START = DIA_S;
 
@@ -95,7 +95,7 @@ type Ghost = {
 
 const GHOST_HP = 3;
 
-export function criarKotsooh(ctx: Contexto): Kotsooh {
+export function criarKotsooh(ctx: Ctx): Kotsooh {
   const K = ctx.cfg.kotsooh;
   const { SX, SZ, SY, nivelAgua } = ctx.cfg.mundo;
 
@@ -127,25 +127,25 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
   let bobT = 0;
 
   function isNight() {
-    return ctx.ceu.tempo() >= NIGHT_START;
+    return ctx.sky.time() >= NIGHT_START;
   }
 
   function isCovered(x: number, y: number, z: number): boolean {
     const cx = Math.floor(x);
     const cz = Math.floor(z);
     for (let cy = Math.floor(y) + 1; cy < SY; cy++) {
-      const id = ctx.mundo.obter(cx, cy, cz);
-      if (id !== 0 && ctx.porId(id).solido) return true;
+      const id = ctx.world.get(cx, cy, cz);
+      if (id !== 0 && ctx.byId(id).solido) return true;
     }
     return false;
   }
 
   function playerCovered(): boolean {
-    return isCovered(ctx.jogador.x, ctx.jogador.y + 1.6, ctx.jogador.z);
+    return isCovered(ctx.player.x, ctx.player.y + 1.6, ctx.player.z);
   }
 
   function hoverY(x: number, z: number): number {
-    const ground = ctx.mundo.chaoMaisAlto(Math.floor(x), Math.floor(z));
+    const ground = ctx.world.highestGround(Math.floor(x), Math.floor(z));
     return Math.max(ground, nivelAgua) + 1 + K.alturaVoo;
   }
 
@@ -157,8 +157,8 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
     const steps = Math.ceil(dist);
     for (let i = 1; i < steps; i++) {
       const t = i / steps;
-      const id = ctx.mundo.obter(Math.floor(x0 + dx * t), Math.floor(y0 + dy * t), Math.floor(z0 + dz * t));
-      if (id !== 0 && ctx.porId(id).solido) return false;
+      const id = ctx.world.get(Math.floor(x0 + dx * t), Math.floor(y0 + dy * t), Math.floor(z0 + dz * t));
+      if (id !== 0 && ctx.byId(id).solido) return false;
     }
     return true;
   }
@@ -167,7 +167,7 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
     for (let t = 0; t < 8; t++) {
       let ang = Math.random() * Math.PI * 2;
       if (awayFromPlayer) {
-        const j = ctx.jogador;
+        const j = ctx.player;
         ang = Math.atan2(g.z - j.z, g.x - j.x) + rand(-0.7, 0.7);
       }
       const d = rand(K.passeioMin, K.passeioMax) * (awayFromPlayer ? 1.6 : 1);
@@ -183,7 +183,7 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
   }
 
   function materialize(): boolean {
-    const j = ctx.jogador;
+    const j = ctx.player;
     let ok = false;
     for (const g of ghosts) {
       let placed = false;
@@ -268,7 +268,7 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
       return;
     }
 
-    const j = ctx.jogador;
+    const j = ctx.player;
     const eyeY = j.y + 1.62;
     const fwdX = -Math.sin(j.yaw) * Math.cos(j.pitch);
     const fwdY = Math.sin(j.pitch);
@@ -278,7 +278,7 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
     howlMs -= dt * 1000;
     if (howlMs <= 0) {
       howlMs = rand(K.uivoMinMs, K.uivoMaxMs);
-      ctx.audio.somFantasma();
+      ctx.audio.soundGhost();
     }
 
     for (const g of ghosts) {
@@ -334,12 +334,12 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
           if (g.gazeS >= K.encararS) {
             g.state = 'chase';
             g.shelterS = 0;
-            ctx.audio.somSusto();
+            ctx.audio.soundScare();
             if (!toldOnce) {
               toldOnce = true;
-              ctx.ui.mostrarToast('👻 Você encarou o Kotsooh e ele NÃO gostou! Corre pra um teto!', 'err', 3400);
+              ctx.ui.showToast('👻 Você encarou o Kotsooh e ele NÃO gostou! Corre pra um teto!', 'err', 3400);
             }
-            ctx.ui.anunciar('O Kotsooh percebeu seu olhar e vem atrás de você!');
+            ctx.ui.announce('O Kotsooh percebeu seu olhar e vem atrás de você!');
           }
         } else {
           g.gazeS = Math.max(0, g.gazeS - dt * 2);
@@ -350,7 +350,7 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
           g.shelterS += dt;
           if (g.shelterS >= K.abrigoS) {
             stopChase(g, true);
-            ctx.ui.mostrarToast('👻 O Kotsooh desistiu — lugar com teto é seguro!', 'ok', 3000);
+            ctx.ui.showToast('👻 O Kotsooh desistiu — lugar com teto é seguro!', 'ok', 3000);
           }
         } else {
           g.shelterS = 0;
@@ -381,11 +381,11 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
           if (dist3 < K.alcanceBatida && g.hitCdMs <= 0 && !abrigado) {
             g.hitCdMs = K.cooldownBatidaMs;
             const n = Math.max(0.001, distH);
-            ctx.fisica.empurrar((dxp / n) * K.empurrao, (dzp / n) * K.empurrao);
+            ctx.physics.push((dxp / n) * K.empurrao, (dzp / n) * K.empurrao);
             j.vy = Math.max(j.vy, K.pulinho);
-            ctx.ui.flashSusto();
-            ctx.audio.somSusto();
-            ctx.ui.anunciar('O Kotsooh te assustou!');
+            ctx.ui.flashScare();
+            ctx.audio.soundScare();
+            ctx.ui.announce('O Kotsooh te assustou!');
           }
         }
       }
@@ -397,7 +397,7 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
   }
 
   return {
-    nascer() {
+    spawn() {
       materialized = false;
       toldOnce = false;
       for (const g of ghosts) {
@@ -406,12 +406,12 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
         g.mat.opacity = 0;
       }
     },
-    passo,
-    aparecer() {
+    step: passo,
+    appear() {
       return materialize();
     },
-    provocar() {
-      const j = ctx.jogador;
+    taunt() {
+      const j = ctx.player;
       for (const g of ghosts) {
         const d = Math.hypot(j.x - g.x, j.z - g.z) || 1;
         g.faceX = (j.x - g.x) / d;
@@ -422,7 +422,7 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
         g.freezeMs = 4000;
       }
     },
-    atingir(ox, oy, oz, fx, fy, fz, alcance, cone, dano) {
+    hit(ox, oy, oz, fx, fy, fz, alcance, cone, dano) {
       let melhor: Ghost | null = null;
       let melhorD = Infinity;
       for (const g of ghosts) {
@@ -446,12 +446,12 @@ export function criarKotsooh(ctx: Contexto): Kotsooh {
       stopChase(melhor, true);
       return { acertou: true, evaporou: false };
     },
-    ativo: () => ghosts.some((g) => g.state === 'chase' && g.mesh.visible),
-    fantasmas: () =>
+    active: () => ghosts.some((g) => g.state === 'chase' && g.mesh.visible),
+    ghosts: () =>
       ghosts
         .filter((g) => g.mesh.visible)
         .map((g) => ({ x: g.x, y: g.y, z: g.z, cacando: g.state === 'chase', olhando: g.looking })),
-    limpar() {
+    clear() {
       materialized = false;
       for (const g of ghosts) g.mesh.visible = false;
     },

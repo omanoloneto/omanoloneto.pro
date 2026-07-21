@@ -8,7 +8,7 @@
 // (checagem exata — o pillar-up depende dela).
 import * as THREE from 'three';
 import { brotarArvore } from './geracao';
-import type { Alvo, Contexto, Edicao } from './tipos';
+import type { Target, Ctx, Editing } from './types';
 
 const FOLHA_NATURAL = 7;
 const FOLHA_COLOCADA = 16;
@@ -31,8 +31,8 @@ const CAIXA = 34;
 const PACOTE = 35;
 const ehPorta = (id: number) => id === PORTA_FECHADA || id === PORTA_ABERTA;
 
-export function criarEdicao(ctx: Contexto): Edicao {
-  const { mundo, jogador, porId, cfg } = ctx;
+export function criarEdicao(ctx: Ctx): Editing {
+  const { world: mundo, player: jogador, byId: porId, cfg } = ctx;
   const meia = cfg.jogador.largura / 2;
   let avisoTimer = 0;
   // relógio de simulação compartilhado: mudas + decay congelam na pausa
@@ -41,7 +41,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
 
   // ----- golpe (quebra com tempo) -----
   let progresso = 0; // ms acumulados no alvo atual
-  let alvoGolpe: Alvo | null = null;
+  let alvoGolpe: Target | null = null;
   let estaGolpeando = false;
   let ultimoToc = 0;
   let meleeCdMs = SWING_MS; // pronto: o 1º golpe sai na hora
@@ -49,7 +49,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
   // mesh de rachadura: cubo levinho por cima do bloco golpeado,
   // trocando o tile (17→19) conforme o progresso
   const matRachadura = new THREE.MeshBasicMaterial({
-    map: ctx.textura.atlas,
+    map: ctx.texture.atlas,
     alphaTest: 0.4,
     transparent: true,
     polygonOffset: true,
@@ -67,7 +67,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
   function aplicarTileRachadura(tile: number) {
     if (tile === tileRachadura) return;
     tileRachadura = tile;
-    const [u0, v0, u1, v1] = ctx.textura.uv(tile);
+    const [u0, v0, u1, v1] = ctx.texture.uv(tile);
     const uv = geoRachadura.attributes.uv as THREE.BufferAttribute;
     // BoxGeometry: 6 faces × 4 verts com uv padrão (0..1); remapeia pro tile
     for (let i = 0; i < uv.count; i++) {
@@ -95,7 +95,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const agora = performance.now();
     if (agora - avisoTimer < 1200) return false;
     avisoTimer = agora;
-    ctx.ui.mostrarToast(msg, 'info', 1600);
+    ctx.ui.showToast(msg, 'info', 1600);
     return true;
   }
 
@@ -111,8 +111,8 @@ export function criarEdicao(ctx: Contexto): Edicao {
   function registrarItemNaHotbar(item: number): boolean {
     // materiais (lã etc.) não são colocáveis → nunca viram atalho da hotbar
     // (true = "nada a fazer", sem aviso de hotbar cheia)
-    if (!ctx.itens.includes(item)) return true;
-    const slots = ctx.estado.hotbarSlots;
+    if (!ctx.items.includes(item)) return true;
+    const slots = ctx.state.hotbarSlots;
     if (slots.includes(item)) return true;
     const vazio = slots.indexOf(0);
     if (vazio >= 0) { slots[vazio] = item; return true; }
@@ -121,28 +121,28 @@ export function criarEdicao(ctx: Contexto): Edicao {
 
   // ----- dono/permissão (baú e placa) -----
   function meuNome(): string {
-    return ctx.sync.emSala() ? ctx.sync.meuNomeNaSala() : '';
+    return ctx.sync.inRoom() ? ctx.sync.myRoomName() : '';
   }
   // dono do baú/autor da placa × quem sou eu agora
   function podeUsar(dono: string): boolean {
     if (dono === '*') return true;
-    if (!ctx.sync.emSala()) return true; // solo: tudo é seu
-    if (ctx.sync.emVisita()) return dono === ctx.sync.meuNomeNaSala();
-    return dono === '' || dono === ctx.sync.meuNomeNaSala(); // dono do mundo
+    if (!ctx.sync.inRoom()) return true; // solo: tudo é seu
+    if (ctx.sync.isVisiting()) return dono === ctx.sync.myRoomName();
+    return dono === '' || dono === ctx.sync.myRoomName(); // dono do mundo
   }
 
   // deposita item(ns) direto no inventário (transferência de logout, baú
   // quebrado): sem drop, sem som repetido
   function ganharItemPublico(id: number, n = 1) {
-    if (id <= 0 || id >= ctx.blocos.length || n <= 0) return;
-    const inv = ctx.estado.inventario;
+    if (id <= 0 || id >= ctx.blocks.length || n <= 0) return;
+    const inv = ctx.state.inventory;
     inv[id] = Math.min(999, (inv[id] || 0) + n);
     registrarItemNaHotbar(id);
-    ctx.ui.atualizarContagens();
+    ctx.ui.updateCounts();
   }
 
   function ganharItem(idQuebrado: number) {
-    const inv = ctx.estado.inventario;
+    const inv = ctx.state.inventory;
     const def = porId(idQuebrado);
     const item = def.drop ?? idQuebrado;
     if (item !== 0) {
@@ -150,67 +150,67 @@ export function criarEdicao(ctx: Contexto): Edicao {
       if (!registrarItemNaHotbar(item)) {
         avisar('🎒 Hotbar cheia! O item foi pro inventário — aperte E pra ver.');
       }
-      ctx.ui.atualizarContagens();
-      ctx.ui.anunciar('Pegou ' + porId(item).nome + '! Você tem ' + inv[item] + '.');
+      ctx.ui.updateCounts();
+      ctx.ui.announce('Pegou ' + porId(item).nome + '! Você tem ' + inv[item] + '.');
     }
     // drop de sorte: das folhas naturais às vezes cai uma muda
     if (def.dropSorte && Math.random() < def.dropSorte.chance) {
       const s = def.dropSorte.id;
       inv[s] = Math.min(999, (inv[s] || 0) + 1);
       registrarItemNaHotbar(s);
-      ctx.ui.atualizarContagens();
-      ctx.ui.mostrarToast('🌱 Caiu uma ' + porId(s).nome + '! Plante em grama ou terra.', 'ok', 2200);
-      ctx.audio.somSalvo();
+      ctx.ui.updateCounts();
+      ctx.ui.showToast('🌱 Caiu uma ' + porId(s).nome + '! Plante em grama ou terra.', 'ok', 2200);
+      ctx.audio.soundSaved();
     }
   }
 
   // baú/placa quebrado limpa a metadata; baú despeja o conteúdo no dono
   function limparMetaAoQuebrar(x: number, y: number, z: number) {
-    const m = ctx.metas.obter(x, y, z);
+    const m = ctx.metas.get(x, y, z);
     if (!m) return;
     if (m.tipo === 'bau') {
       for (let id = 0; id < m.itens.length; id++) ganharItemPublico(id, m.itens[id] | 0);
     }
-    ctx.metas.remover(x, y, z);
+    ctx.metas.remove(x, y, z);
   }
 
   // ----- quebrar (comum ao golpe e ao backdoor instantâneo) -----
-  function removerBloco(a: Alvo): boolean {
+  function removerBloco(a: Target): boolean {
     limparMetaAoQuebrar(a.x, a.y, a.z); // ANTES do definir(0) — usa o id ainda
     // porta ocupa 2 blocos: quebrar qualquer metade some com as duas e
     // devolve 1 porta só (drop → 18)
     if (ehPorta(a.id)) {
-      const oy = ehPorta(mundo.obter(a.x, a.y + 1, a.z)) ? a.y + 1
-        : ehPorta(mundo.obter(a.x, a.y - 1, a.z)) ? a.y - 1 : null;
-      mundo.definir(a.x, a.y, a.z, 0);
-      if (oy !== null) mundo.definir(a.x, oy, a.z, 0);
+      const oy = ehPorta(mundo.get(a.x, a.y + 1, a.z)) ? a.y + 1
+        : ehPorta(mundo.get(a.x, a.y - 1, a.z)) ? a.y - 1 : null;
+      mundo.set(a.x, a.y, a.z, 0);
+      if (oy !== null) mundo.set(a.x, oy, a.z, 0);
       ganharItem(a.id);
-      ctx.audio.somQuebrar(a.id);
-      ctx.salvar.agendar();
-      ctx.fluxo.aoPrimeiroInput();
+      ctx.audio.soundBreak(a.id);
+      ctx.save.schedule();
+      ctx.flow.onFirstInput();
       return true;
     }
-    mundo.definir(a.x, a.y, a.z, 0);
+    mundo.set(a.x, a.y, a.z, 0);
     ganharItem(a.id);
     // flor/muda em cima perdeu o chão? cai junto (e vai pro bolso)
-    const acima = mundo.obter(a.x, a.y + 1, a.z);
+    const acima = mundo.get(a.x, a.y + 1, a.z);
     if (acima !== 0 && porId(acima).render === 'cruz') {
-      mundo.definir(a.x, a.y + 1, a.z, 0);
+      mundo.set(a.x, a.y + 1, a.z, 0);
       ganharItem(acima);
-      ctx.metas.remover(a.x, a.y + 1, a.z); // placa derrubada não deixa meta órfã
+      ctx.metas.remove(a.x, a.y + 1, a.z); // placa derrubada não deixa meta órfã
     }
     // tronco/folha removida: folhas vizinhas podem ter ficado órfãs
     if (a.id === TRONCO || a.id === FOLHA_NATURAL || a.id === FOLHA_COLOCADA) {
       enfileirarVizinhas(a.x, a.y, a.z);
     }
-    ctx.audio.somQuebrar(a.id);
-    ctx.salvar.agendar();
-    ctx.fluxo.aoPrimeiroInput();
+    ctx.audio.soundBreak(a.id);
+    ctx.save.schedule();
+    ctx.flow.onFirstInput();
     return true;
   }
 
   function heldItem(): number {
-    return ctx.estado.hotbarSlots[ctx.estado.sel] || 0;
+    return ctx.state.hotbarSlots[ctx.state.sel] || 0;
   }
 
   function holdingPickaxe(): boolean {
@@ -245,7 +245,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
   // (a caixa pode estar pregada bem alto numa parede de vários blocos).
   function nivelDoChao(x: number, yTopo: number, z: number): number {
     for (let y = yTopo; y > 1 && y > yTopo - 16; y--) {
-      const abaixo = mundo.obter(x, y - 1, z);
+      const abaixo = mundo.get(x, y - 1, z);
       if (abaixo !== 0 && porId(abaixo).solido) return y;
     }
     return yTopo;
@@ -259,7 +259,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const y0 = nivelDoChao(x0, yHint, z0);
     const dentro = new Set<number>();
     const casca = new Set<number>();
-    const primeiro = mundo.obter(x0, y0, z0);
+    const primeiro = mundo.get(x0, y0, z0);
     if ((primeiro !== 0 && porId(primeiro).solido) || ehPorta(primeiro)) return { fechada: false, hasPorta: false, dentro, casca };
     let hasPorta = false;
     const visto = new Set<number>([chave2(x0, z0)]);
@@ -272,7 +272,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
         for (const [dx, dz] of NEI4) {
           const nx = x + dx;
           const nz = z + dz;
-          const id = mundo.obter(nx, y0, nz);
+          const id = mundo.get(nx, y0, nz);
           if (ehPorta(id)) { casca.add(chave2(nx, nz)); hasPorta = true; continue; }
           if (id !== 0 && porId(id).solido) { casca.add(chave2(nx, nz)); continue; }
           if (Math.abs(nx - x0) > RAIO || Math.abs(nz - z0) > RAIO) return { fechada: false, hasPorta, dentro, casca };
@@ -285,7 +285,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
         for (const [dx, dz] of DIAG4) {
           const nx = x + dx;
           const nz = z + dz;
-          const id = mundo.obter(nx, y0, nz);
+          const id = mundo.get(nx, y0, nz);
           if (ehPorta(id) || (id !== 0 && porId(id).solido)) casca.add(chave2(nx, nz));
         }
       }
@@ -294,7 +294,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     return { fechada: true, hasPorta, dentro, casca };
   }
   function temAlgumaCaixa(): boolean {
-    for (const m of ctx.metas.todos().values()) if (m.tipo === 'caixa') return true;
+    for (const m of ctx.metas.all().values()) if (m.tipo === 'caixa') return true;
     return false;
   }
   // colunas (x,z) protegidas por uma caixa; memo por caixa (o flood roda por
@@ -332,7 +332,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const cx = ck % SX;
     const cz = Math.floor(ck / SX) % SZ;
     const cy = Math.floor(ck / (SX * SZ));
-    ctx.metas.definir(cx, cy, cz, { tipo: 'caixa', dono: m.dono, casa: m.casa, cols: [...colunas] });
+    ctx.metas.set(cx, cy, cz, { tipo: 'caixa', dono: m.dono, casa: m.casa, cols: [...colunas] });
   }
   // memo curto: podeQuebrar roda todo frame enquanto segura o golpe
   let protMemoK = -1;
@@ -340,12 +340,12 @@ export function criarEdicao(ctx: Contexto): Edicao {
   let protMemoDono: string | null = null;
   function protetorEm(x: number, y: number, z: number): string | null {
     if (!temAlgumaCaixa()) return null;
-    const k = ctx.metas.chaveDe(x, y, z);
+    const k = ctx.metas.keyOf(x, y, z);
     const agora = performance.now();
     if (k === protMemoK && agora - protMemoMs < 200) return protMemoDono;
     const col = chave2(x, z);
     let dono: string | null = null;
-    for (const [ck, m] of ctx.metas.todos()) {
+    for (const [ck, m] of ctx.metas.all()) {
       if (m.tipo !== 'caixa') continue;
       if (Array.isArray(m.cols)) {
         if (colunasGravadas(ck, m.cols).has(col)) { dono = m.dono; break; }
@@ -360,11 +360,11 @@ export function criarEdicao(ctx: Contexto): Edicao {
     protMemoDono = dono;
     return dono;
   }
-  function donoQueProtege(a: Alvo): string | null {
+  function donoQueProtege(a: Target): string | null {
     return protetorEm(a.x, a.y, a.z);
   }
 
-  function podeQuebrar(a: Alvo): boolean {
+  function podeQuebrar(a: Target): boolean {
     if (a.id === 14 || porId(a.id).dureza === undefined) {
       avisar('🪨 Essa rocha do fundo não quebra!');
       return false;
@@ -375,7 +375,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     }
     // baú é protegido: só o dono quebra (senão qualquer um roubava o conteúdo)
     if (a.id === BAU) {
-      const m = ctx.metas.obter(a.x, a.y, a.z);
+      const m = ctx.metas.get(a.x, a.y, a.z);
       if (m && m.tipo === 'bau' && !podeUsar(m.dono)) {
         avisar('🔒 Esse baú é do(a) ' + (m.dono || 'dono') + '! Só ele(a) pode quebrar.');
         return false;
@@ -383,7 +383,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     }
     // a própria caixa de correio: só o dono a quebra (e assim tira a proteção)
     if (a.id === CAIXA) {
-      const m = ctx.metas.obter(a.x, a.y, a.z);
+      const m = ctx.metas.get(a.x, a.y, a.z);
       if (m && m.tipo === 'caixa' && !podeUsar(m.dono)) {
         avisar('🔒 Essa caixa é do(a) ' + (m.dono || 'dono') + '!');
         return false;
@@ -400,9 +400,9 @@ export function criarEdicao(ctx: Contexto): Edicao {
   }
 
   // backdoor de teste/depuração: quebra na hora, sem golpe
-  function quebrar(alvoForcado?: Alvo): boolean {
-    if (ctx.estado.fase !== 'jogando') return false;
-    const a = alvoForcado || ctx.mira.alvo();
+  function quebrar(alvoForcado?: Target): boolean {
+    if (ctx.state.phase !== 'playing') return false;
+    const a = alvoForcado || ctx.aim.target();
     if (!a) return false;
     if (!podeQuebrar(a)) return false;
     return removerBloco(a);
@@ -421,32 +421,32 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const fx = -Math.sin(jogador.yaw) * Math.cos(jogador.pitch);
     const fy = Math.sin(jogador.pitch);
     const fz = -Math.cos(jogador.yaw) * Math.cos(jogador.pitch);
-    const g = ctx.kotsooh.atingir(ex, ey, ez, fx, fy, fz, MELEE, CONE, danoEspada());
+    const g = ctx.kotsooh.hit(ex, ey, ez, fx, fy, fz, MELEE, CONE, danoEspada());
     if (g.acertou) {
-      ctx.ui.flashSusto();
+      ctx.ui.flashScare();
       if (g.evaporou) {
-        ctx.audio.somFantasma();
-        ctx.ui.mostrarToast('👻 Puff! O Kotsooh evaporou!', 'ok', 1800);
+        ctx.audio.soundGhost();
+        ctx.ui.showToast('👻 Puff! O Kotsooh evaporou!', 'ok', 1800);
       } else {
-        ctx.audio.somSusto();
+        ctx.audio.soundScare();
       }
-      ctx.fluxo.aoPrimeiroInput();
+      ctx.flow.onFirstInput();
       return;
     }
-    if (ctx.mob.assustar(ex, ey, ez, fx, fy, fz, MELEE, CONE)) {
-      ctx.audio.somSalvo();
-      ctx.ui.mostrarToast('🐾 O Winpup fugiu assustado!', 'info', 1500);
-      ctx.fluxo.aoPrimeiroInput();
+    if (ctx.mob.scare(ex, ey, ez, fx, fy, fz, MELEE, CONE)) {
+      ctx.audio.soundSaved();
+      ctx.ui.showToast('🐾 O Winpup fugiu assustado!', 'info', 1500);
+      ctx.flow.onFirstInput();
       return;
     }
-    ctx.audio.somPulo(); // golpe no ar
+    ctx.audio.soundJump(); // golpe no ar
   }
 
   function golpear(dt: number) {
-    if (ctx.estado.fase !== 'jogando') { esconderRachadura(); return; }
+    if (ctx.state.phase !== 'playing') { esconderRachadura(); return; }
     estaGolpeando = true;
     if (holdingSword()) { golpearComEspada(dt); return; }
-    const a = ctx.mira.alvo();
+    const a = ctx.aim.target();
     if (!a || !podeQuebrar(a)) { esconderRachadura(); return; }
     // mudou de alvo: progresso zera (Minecraft moderno) e o 1º toc só
     // vem depois de segurar de verdade (flick de olhar não faz croc)
@@ -470,7 +470,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     // toc-toc enquanto bate
     if (tempoMs - ultimoToc > 240) {
       ultimoToc = tempoMs;
-      ctx.audio.somQuebrar(a.id);
+      ctx.audio.soundBreak(a.id);
     }
     const frac = progresso / dureza;
     trocarTile(frac < 0.34 ? 17 : frac < 0.67 ? 18 : 19);
@@ -487,23 +487,23 @@ export function criarEdicao(ctx: Contexto): Edicao {
   }
 
   // ----- colocar -----
-  function colocar(alvoForcado?: Alvo): boolean {
-    if (ctx.estado.fase !== 'jogando') return false;
-    const a = alvoForcado || ctx.mira.alvo();
+  function colocar(alvoForcado?: Target): boolean {
+    if (ctx.state.phase !== 'playing') return false;
+    const a = alvoForcado || ctx.aim.target();
     if (!a) return false;
-    const id = ctx.estado.hotbarSlots[ctx.estado.sel];
+    const id = ctx.state.hotbarSlots[ctx.state.sel];
     if (!id) {
-      if (avisar('🎒 Esse espaço da hotbar está vazio! Escolha um item no inventário (E).')) ctx.audio.somErro();
+      if (avisar('🎒 Esse espaço da hotbar está vazio! Escolha um item no inventário (E).')) ctx.audio.soundError();
       return false;
     }
     const def = porId(id);
     if (def.ferramenta) {
-      if (avisar('🛠 ' + def.nome + ' é ferramenta! Segure e bata pra usar — não dá pra colocar no chão.')) ctx.audio.somErro();
+      if (avisar('🛠 ' + def.nome + ' é ferramenta! Segure e bata pra usar — não dá pra colocar no chão.')) ctx.audio.soundError();
       return false;
     }
     if (id === CAIXA) return colocarCaixa(a);
-    if ((ctx.estado.inventario[id] || 0) <= 0) {
-      if (avisar('🎒 Você não tem ' + def.nome + '! Quebre blocos pra ganhar.')) ctx.audio.somErro();
+    if ((ctx.state.inventory[id] || 0) <= 0) {
+      if (avisar('🎒 Você não tem ' + def.nome + '! Quebre blocos pra ganhar.')) ctx.audio.soundError();
       return false;
     }
     // flor mirada é SUBSTITUÍDA no lugar; bloco normal vai na face
@@ -513,13 +513,13 @@ export function criarEdicao(ctx: Contexto): Edicao {
     const cz = alvoDireto ? a.z : a.z + a.nz;
     const { SX, SZ, tetoConstrucao } = ctx.cfg.mundo;
     if (cx < 0 || cx >= SX || cz < 0 || cz >= SZ || cy < 1 || cy > tetoConstrucao) return false;
-    const ocupante = mundo.obter(cx, cy, cz);
+    const ocupante = mundo.get(cx, cy, cz);
     // a caixa de correio é cruz e seria SUBSTITUÍVEL por qualquer bloco —
     // isso apagaria a meta e a casa perderia o dono; só o dono mexe nela
     if (ocupante === CAIXA) {
-      const mc = ctx.metas.obter(cx, cy, cz);
+      const mc = ctx.metas.get(cx, cy, cz);
       if (mc && mc.tipo === 'caixa' && !podeUsar(mc.dono)) {
-        if (avisar('🔒 Essa caixa é do(a) ' + (mc.dono || 'dono') + '! Só ele(a) mexe aqui.')) ctx.audio.somErro();
+        if (avisar('🔒 Essa caixa é do(a) ' + (mc.dono || 'dono') + '! Só ele(a) mexe aqui.')) ctx.audio.soundError();
         return false;
       }
     }
@@ -527,20 +527,20 @@ export function criarEdicao(ctx: Contexto): Edicao {
     // interna matava o flood e desligava a proteção; portas abrem no `usar`)
     const protetorColoca = protetorEm(cx, cy, cz);
     if (protetorColoca !== null && !podeUsar(protetorColoca)) {
-      if (avisar('🔒 Essa casa é do(a) ' + protetorColoca + '! Só ele(a) mexe aqui.')) ctx.audio.somErro();
+      if (avisar('🔒 Essa casa é do(a) ' + protetorColoca + '! Só ele(a) mexe aqui.')) ctx.audio.soundError();
       return false;
     }
     if (ocupante !== 0 && porId(ocupante).render === 'cubo') return false;
     if (ocupante !== 0 && porId(ocupante).render === 'recorte') return false;
     if (ocupante !== 0 && porId(ocupante).render === 'porta') return false; // não sobrescreve porta
     if (def.solido && intersectaJogador(cx, cy, cz)) return false;
-    if (def.render === 'cruz' && !porId(mundo.obter(cx, cy - 1, cz)).solido) {
+    if (def.render === 'cruz' && !porId(mundo.get(cx, cy - 1, cz)).solido) {
       avisar('🌼 Isso precisa de um chão pra plantar!');
       return false;
     }
     // muda só pega em grama ou terra
     if (id === 15) {
-      const solo = mundo.obter(cx, cy - 1, cz);
+      const solo = mundo.get(cx, cy - 1, cz);
       if (solo !== 1 && solo !== 2) {
         avisar('🌱 A muda só pega em grama ou terra!');
         return false;
@@ -555,52 +555,52 @@ export function criarEdicao(ctx: Contexto): Edicao {
     // a metadata dela (senão a placa deixa a mensagem órfã na célula)
     if (ocupante !== 0 && porId(ocupante).render === 'cruz') {
       ganharItem(ocupante);
-      ctx.metas.remover(cx, cy, cz);
+      ctx.metas.remove(cx, cy, cz);
     }
     // porta ocupa 2 blocos: exige o topo livre e escreve a metade de cima
     // (a base cai no fluxo comum abaixo — consome 1 item só)
     if (id === PORTA_FECHADA) {
-      if (cy + 1 > ctx.cfg.mundo.tetoConstrucao || mundo.obter(cx, cy + 1, cz) !== 0) {
+      if (cy + 1 > ctx.cfg.mundo.tetoConstrucao || mundo.get(cx, cy + 1, cz) !== 0) {
         avisar('🚪 Precisa de 2 blocos de altura livre pra porta!');
         return false;
       }
-      mundo.definir(cx, cy + 1, cz, PORTA_FECHADA);
+      mundo.set(cx, cy + 1, cz, PORTA_FECHADA);
     }
     // o item "folhas" colocado vira FOLHA COLOCADA (nunca decai)
     const idFinal = id === FOLHA_NATURAL ? FOLHA_COLOCADA : id;
-    mundo.definir(cx, cy, cz, idFinal);
-    ctx.estado.inventario[id]--;
+    mundo.set(cx, cy, cz, idFinal);
+    ctx.state.inventory[id]--;
     if (id === 15) {
       const C = ctx.cfg.crescimento;
       mudas.push({ x: cx, y: cy, z: cz, quandoMs: tempoMs + C.minMs + Math.random() * (C.maxMs - C.minMs) });
     }
     // baú nasce vazio e com dono (só ele abre depois)
-    if (idFinal === BAU) ctx.metas.definir(cx, cy, cz, { tipo: 'bau', dono: meuNome(), itens: [] });
-    ctx.ui.atualizarContagens();
-    ctx.audio.somColocar();
-    ctx.salvar.agendar();
-    ctx.fluxo.aoPrimeiroInput();
+    if (idFinal === BAU) ctx.metas.set(cx, cy, cz, { tipo: 'bau', dono: meuNome(), itens: [] });
+    ctx.ui.updateCounts();
+    ctx.audio.soundPlace();
+    ctx.save.schedule();
+    ctx.flow.onFirstInput();
     return true;
   }
 
   // placa: abre o form de texto; confirmar coloca o bloco + grava a mensagem
   function colocarPlaca(cx: number, cy: number, cz: number) {
-    ctx.ui.pedirTextoPlaca((texto) => {
+    ctx.ui.askSignText((texto) => {
       if (texto === null) return; // cancelou: nada colocado, item intacto
       // revalida no confirm (o mundo pode ter mudado enquanto digitava)
-      if ((ctx.estado.inventario[PLACA] || 0) <= 0) return;
-      if (mundo.obter(cx, cy, cz) !== 0) return;
-      if (!porId(mundo.obter(cx, cy - 1, cz)).solido) {
+      if ((ctx.state.inventory[PLACA] || 0) <= 0) return;
+      if (mundo.get(cx, cy, cz) !== 0) return;
+      if (!porId(mundo.get(cx, cy - 1, cz)).solido) {
         avisar('🌼 A placa precisa de um chão embaixo!');
         return;
       }
-      mundo.definir(cx, cy, cz, PLACA);
-      ctx.estado.inventario[PLACA]--;
-      ctx.metas.definir(cx, cy, cz, { tipo: 'placa', autor: meuNome(), texto });
-      ctx.ui.atualizarContagens();
-      ctx.audio.somColocar();
-      ctx.salvar.agendar();
-      ctx.fluxo.aoPrimeiroInput();
+      mundo.set(cx, cy, cz, PLACA);
+      ctx.state.inventory[PLACA]--;
+      ctx.metas.set(cx, cy, cz, { tipo: 'placa', autor: meuNome(), texto });
+      ctx.ui.updateCounts();
+      ctx.audio.soundPlace();
+      ctx.save.schedule();
+      ctx.flow.onFirstInput();
     });
   }
 
@@ -609,12 +609,12 @@ export function criarEdicao(ctx: Contexto): Edicao {
   // Retorna true SÓ se colocou um bloco — o input só repete (segurar)
   // quando colocou, senão segurar o direito numa placa/porta ficaria
   // abrindo/fechando ou substituindo o bloco por baixo
-  function interagir(alvoForcado?: Alvo): boolean {
-    if (ctx.estado.fase !== 'jogando') return false;
-    const a = alvoForcado || ctx.mira.alvo();
+  function interagir(alvoForcado?: Target): boolean {
+    if (ctx.state.phase !== 'playing') return false;
+    const a = alvoForcado || ctx.aim.target();
     if (!a) return colocar();
     if (a.id === BAU) { abrirBau(a); return false; }
-    if (a.id === FORNALHA) { ctx.fluxo.soltarInputs(); ctx.ui.abrirFornalha(); ctx.fluxo.aoPrimeiroInput(); return false; }
+    if (a.id === FORNALHA) { ctx.flow.releaseInputs(); ctx.ui.openFurnace(); ctx.flow.onFirstInput(); return false; }
     if (a.id === CAIXA) { lerCaixa(a); return false; }
     if (a.id === PORTA_FECHADA) { alternarPorta(a, PORTA_ABERTA); return false; }
     if (a.id === PORTA_ABERTA) { alternarPorta(a, PORTA_FECHADA); return false; }
@@ -622,60 +622,60 @@ export function criarEdicao(ctx: Contexto): Edicao {
     return colocar();
   }
 
-  function abrirBau(a: Alvo) {
-    const m = ctx.metas.obter(a.x, a.y, a.z);
+  function abrirBau(a: Target) {
+    const m = ctx.metas.get(a.x, a.y, a.z);
     if (!m || m.tipo !== 'bau') return;
     // baú liberado (publico) qualquer um abre; senão só o dono
     if (!m.publico && !podeUsar(m.dono)) {
       avisar('🔒 Esse baú é do(a) ' + (m.dono || 'dono') + '! Só ele(a) pode abrir.');
-      ctx.audio.somErro();
+      ctx.audio.soundError();
       return;
     }
-    ctx.fluxo.soltarInputs();
-    const souDono = ctx.sync.emSala() && m.dono !== '*' && podeUsar(m.dono);
+    ctx.flow.releaseInputs();
+    const souDono = ctx.sync.inRoom() && m.dono !== '*' && podeUsar(m.dono);
     const titulo = m.dono === '*' ? '💎 Baú do tesouro!' : (m.publico ? '🔓 ' : '') + (m.dono ? 'Baú de ' + m.dono : 'Seu baú');
-    ctx.ui.abrirBau(ctx.metas.chaveDe(a.x, a.y, a.z), titulo, souDono);
-    ctx.fluxo.aoPrimeiroInput();
+    ctx.ui.openChest(ctx.metas.keyOf(a.x, a.y, a.z), titulo, souDono);
+    ctx.flow.onFirstInput();
   }
 
-  function alternarPorta(a: Alvo, novo: number) {
+  function alternarPorta(a: Target, novo: number) {
     // porta = 2 metades: abre/fecha as duas juntas (qualquer um; o sync leva)
-    const oy = ehPorta(mundo.obter(a.x, a.y + 1, a.z)) ? a.y + 1
-      : ehPorta(mundo.obter(a.x, a.y - 1, a.z)) ? a.y - 1 : null;
-    mundo.definir(a.x, a.y, a.z, novo);
-    if (oy !== null) mundo.definir(a.x, oy, a.z, novo);
-    ctx.audio.somUI();
-    ctx.fluxo.aoPrimeiroInput();
-    ctx.salvar.agendar();
+    const oy = ehPorta(mundo.get(a.x, a.y + 1, a.z)) ? a.y + 1
+      : ehPorta(mundo.get(a.x, a.y - 1, a.z)) ? a.y - 1 : null;
+    mundo.set(a.x, a.y, a.z, novo);
+    if (oy !== null) mundo.set(a.x, oy, a.z, novo);
+    ctx.audio.soundUI();
+    ctx.flow.onFirstInput();
+    ctx.save.schedule();
   }
 
-  function lerPlaca(a: Alvo) {
-    const m = ctx.metas.obter(a.x, a.y, a.z);
+  function lerPlaca(a: Target) {
+    const m = ctx.metas.get(a.x, a.y, a.z);
     if (!m || m.tipo !== 'placa') return;
-    ctx.ui.mostrarPlaca(m.texto, m.autor);
-    ctx.fluxo.aoPrimeiroInput();
+    ctx.ui.showSign(m.texto, m.autor);
+    ctx.flow.onFirstInput();
   }
 
-  function lerCaixa(a: Alvo) {
-    const m = ctx.metas.obter(a.x, a.y, a.z);
+  function lerCaixa(a: Target) {
+    const m = ctx.metas.get(a.x, a.y, a.z);
     if (!m || m.tipo !== 'caixa') return;
-    ctx.ui.mostrarToast('🏠 Casa de <b>' + (m.dono || 'ninguém') + '</b> — só o dono mexe nos blocos daqui.', 'info', 2800);
-    ctx.fluxo.aoPrimeiroInput();
+    ctx.ui.showToast('🏠 Casa de <b>' + (m.dono || 'ninguém') + '</b> — só o dono mexe nos blocos daqui.', 'info', 2800);
+    ctx.flow.onFirstInput();
   }
 
   // caixa de correio: pregada numa parede de casa FECHADA, marca o dono
-  function colocarCaixa(a: Alvo): boolean {
+  function colocarCaixa(a: Target): boolean {
     if (!(a.ny === 0 && (a.nx !== 0 || a.nz !== 0))) {
-      if (avisar('📮 Pregue a caixa de correio numa PAREDE (do lado, não no chão)!')) ctx.audio.somErro();
+      if (avisar('📮 Pregue a caixa de correio numa PAREDE (do lado, não no chão)!')) ctx.audio.soundError();
       return false;
     }
     const mx = a.x + a.nx;
     const my = a.y;
     const mz = a.z + a.nz;
-    if (mundo.obter(mx, my, mz) !== 0) { avisar('📮 Não tem espaço vazio nessa parede!'); return false; }
+    if (mundo.get(mx, my, mz) !== 0) { avisar('📮 Não tem espaço vazio nessa parede!'); return false; }
     if (intersectaJogador(mx, my, mz)) return false;
-    if ((ctx.estado.inventario[CAIXA] || 0) <= 0) {
-      if (avisar('📮 Você não tem caixa de correio! Fabrique com 4 tábuas.')) ctx.audio.somErro();
+    if ((ctx.state.inventory[CAIXA] || 0) <= 0) {
+      if (avisar('📮 Você não tem caixa de correio! Fabrique com 4 tábuas.')) ctx.audio.soundError();
       return false;
     }
     // a casa pode estar do lado de DENTRO (M) ou do lado de FORA (a caixa
@@ -690,59 +690,59 @@ export function criarEdicao(ctx: Contexto): Edicao {
       if ((rO.fechada && rO.hasPorta) || (!r.fechada && rO.fechada)) { r = rO; seedX = ox; seedZ = oz; }
     }
     if (!r.fechada) {
-      if (avisar('🏠 Faça um contorno fechado de paredes ao redor (não precisa de teto)!')) ctx.audio.somErro();
+      if (avisar('🏠 Faça um contorno fechado de paredes ao redor (não precisa de teto)!')) ctx.audio.soundError();
       return false;
     }
     if (!r.hasPorta) {
-      if (avisar('🚪 A casa precisa de uma porta pra ter dono!')) ctx.audio.somErro();
+      if (avisar('🚪 A casa precisa de uma porta pra ter dono!')) ctx.audio.soundError();
       return false;
     }
     const colunas = new Set<number>([...r.dentro, ...r.casca]);
-    for (const [ck, m] of ctx.metas.todos()) {
+    for (const [ck, m] of ctx.metas.all()) {
       if (m.tipo !== 'caixa') continue;
       const sk = typeof m.casa === 'number' ? m.casa : ck;
       if (colunas.has(chave2(sk % SX, Math.floor(sk / SX) % SZ))) {
-        if (avisar('📮 Essa casa já tem uma caixa de correio!')) ctx.audio.somErro();
+        if (avisar('📮 Essa casa já tem uma caixa de correio!')) ctx.audio.soundError();
         return false;
       }
     }
-    mundo.definir(mx, my, mz, CAIXA);
-    ctx.estado.inventario[CAIXA]--;
-    ctx.metas.definir(mx, my, mz, { tipo: 'caixa', dono: meuNome(), casa: ctx.metas.chaveDe(seedX, my, seedZ), cols: [...colunas] });
-    ctx.ui.atualizarContagens();
-    ctx.audio.somColocar();
-    ctx.ui.mostrarToast('📮 Caixa pregada! Agora só você quebra os blocos dessa casa.', 'ok', 2600);
-    ctx.salvar.agendar();
-    ctx.fluxo.aoPrimeiroInput();
+    mundo.set(mx, my, mz, CAIXA);
+    ctx.state.inventory[CAIXA]--;
+    ctx.metas.set(mx, my, mz, { tipo: 'caixa', dono: meuNome(), casa: ctx.metas.keyOf(seedX, my, seedZ), cols: [...colunas] });
+    ctx.ui.updateCounts();
+    ctx.audio.soundPlace();
+    ctx.ui.showToast('📮 Caixa pregada! Agora só você quebra os blocos dessa casa.', 'ok', 2600);
+    ctx.save.schedule();
+    ctx.flow.onFirstInput();
     return false;
   }
 
   // tecla Q: larga 1 do item selecionado como um "pacote" no chão à frente
   function soltarItemSelecionado() {
-    if (ctx.estado.fase !== 'jogando') return;
+    if (ctx.state.phase !== 'playing') return;
     const id = heldItem();
-    if (!id || (ctx.estado.inventario[id] || 0) <= 0) return;
+    if (!id || (ctx.state.inventory[id] || 0) <= 0) return;
     const fx = -Math.sin(jogador.yaw);
     const fz = -Math.cos(jogador.yaw);
     const tx = Math.floor(jogador.x + fx * 1.2);
     const tz = Math.floor(jogador.z + fz * 1.2);
-    const ty = mundo.chaoMaisAlto(tx, tz) + 1;
+    const ty = mundo.highestGround(tx, tz) + 1;
     const protetor = protetorEm(tx, ty, tz);
     if (protetor !== null && !podeUsar(protetor)) {
-      if (avisar('🔒 Essa casa é do(a) ' + protetor + '! Largue o pacote fora dela.')) ctx.audio.somErro();
+      if (avisar('🔒 Essa casa é do(a) ' + protetor + '! Largue o pacote fora dela.')) ctx.audio.soundError();
       return;
     }
-    if (mundo.obter(tx, ty, tz) !== 0) {
-      if (avisar('🎁 Sem espaço pra largar aqui — vire pra um lugar aberto!')) ctx.audio.somErro();
+    if (mundo.get(tx, ty, tz) !== 0) {
+      if (avisar('🎁 Sem espaço pra largar aqui — vire pra um lugar aberto!')) ctx.audio.soundError();
       return;
     }
-    ctx.estado.inventario[id]--;
-    mundo.definir(tx, ty, tz, PACOTE);
-    ctx.metas.definir(tx, ty, tz, { tipo: 'drop', item: id, n: 1 });
-    ctx.ui.atualizarContagens();
-    ctx.audio.somColocar();
-    ctx.salvar.agendar();
-    ctx.fluxo.aoPrimeiroInput();
+    ctx.state.inventory[id]--;
+    mundo.set(tx, ty, tz, PACOTE);
+    ctx.metas.set(tx, ty, tz, { tipo: 'drop', item: id, n: 1 });
+    ctx.ui.updateCounts();
+    ctx.audio.soundPlace();
+    ctx.save.schedule();
+    ctx.flow.onFirstInput();
   }
 
   // ----- leaf decay: folhas naturais sem tronco conectado caem -----
@@ -759,7 +759,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
       const nx = x + dx;
       const ny = y + dy;
       const nz = z + dz;
-      if (mundo.obter(nx, ny, nz) !== FOLHA_NATURAL) continue;
+      if (mundo.get(nx, ny, nz) !== FOLHA_NATURAL) continue;
       const k = chave(nx, ny, nz);
       if (naFila.has(k)) continue;
       naFila.add(k);
@@ -780,7 +780,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
           const nx = x + dx;
           const ny = y + dy;
           const nz = z + dz;
-          const id = mundo.obter(nx, ny, nz);
+          const id = mundo.get(nx, ny, nz);
           if (id === TRONCO) return true;
           if (id !== FOLHA_NATURAL) continue;
           const k = chave(nx, ny, nz);
@@ -804,7 +804,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
       const k = chave(x, y, z);
       naFila.delete(k);
       if (agendadas.has(k)) continue; // já tem queda marcada
-      if (mundo.obter(x, y, z) !== FOLHA_NATURAL) continue;
+      if (mundo.get(x, y, z) !== FOLHA_NATURAL) continue;
       if (temTroncoConectado(x, y, z)) continue;
       // atraso em lotes de 300ms: quedas agrupadas = menos remesh de chunk
       const atraso = D.atrasoMinMs + Math.random() * (D.atrasoMaxMs - D.atrasoMinMs);
@@ -817,22 +817,22 @@ export function criarEdicao(ctx: Contexto): Edicao {
       if (!tudo && agoraMs < d.quandoMs) continue;
       decaindo.splice(i, 1);
       agendadas.delete(chave(d.x, d.y, d.z));
-      if (mundo.obter(d.x, d.y, d.z) !== FOLHA_NATURAL) continue;
+      if (mundo.get(d.x, d.y, d.z) !== FOLHA_NATURAL) continue;
       // re-checa: a criança pode ter recolocado um tronco
       if (temTroncoConectado(d.x, d.y, d.z)) continue;
-      mundo.definir(d.x, d.y, d.z, 0);
+      mundo.set(d.x, d.y, d.z, 0);
       enfileirarVizinhas(d.x, d.y, d.z); // cascata
       if (Math.random() < D.chanceMuda) {
-        const inv = ctx.estado.inventario;
+        const inv = ctx.state.inventory;
         inv[15] = Math.min(999, (inv[15] || 0) + 1);
         registrarItemNaHotbar(15);
-        ctx.ui.atualizarContagens();
+        ctx.ui.updateCounts();
         if (tempoMs - mudaDecayToastMs > 4000) {
           mudaDecayToastMs = tempoMs;
-          ctx.ui.mostrarToast('🌱 Caiu uma muda da árvore!', 'ok', 2000);
+          ctx.ui.showToast('🌱 Caiu uma muda da árvore!', 'ok', 2000);
         }
       }
-      ctx.salvar.agendar();
+      ctx.save.schedule();
     }
   }
 
@@ -847,20 +847,20 @@ export function criarEdicao(ctx: Contexto): Edicao {
       const m = mudas[i];
       if (tempoMs < m.quandoMs) continue;
       mudas.splice(i, 1);
-      if (mundo.obter(m.x, m.y, m.z) !== 15) continue; // quebraram a muda
+      if (mundo.get(m.x, m.y, m.z) !== 15) continue; // quebraram a muda
       crescer(m.x, m.y, m.z);
     }
     if (paraChecar.length || decaindo.length) processarDecay(tempoMs, false);
   }
 
   function crescer(x: number, y: number, z: number) {
-    mundo.definir(x, y, z, 0);
+    mundo.set(x, y, z, 0);
     brotarArvore(ctx, x, y - 1, z, Math.random);
-    ctx.audio.somSalvo();
-    ctx.salvar.agendar();
+    ctx.audio.soundSaved();
+    ctx.save.schedule();
     const d = Math.hypot(x - jogador.x, z - jogador.z);
-    if (d < 24) ctx.ui.mostrarToast('🌳 Sua muda virou uma árvore!', 'ok', 2400);
-    ctx.ui.anunciar('Uma muda cresceu e virou árvore!');
+    if (d < 24) ctx.ui.showToast('🌳 Sua muda virou uma árvore!', 'ok', 2400);
+    ctx.ui.announce('Uma muda cresceu e virou árvore!');
   }
 
   function iniciarMudas() {
@@ -875,7 +875,7 @@ export function criarEdicao(ctx: Contexto): Edicao {
     for (let y = 0; y < SY; y++) {
       for (let z = 0; z < SZ; z++) {
         for (let x = 0; x < SX; x++) {
-          const id = mundo.obter(x, y, z);
+          const id = mundo.get(x, y, z);
           if (id === 15) {
             mudas.push({ x, y, z, quandoMs: C.minMs + Math.random() * (C.maxMs - C.minMs) });
           } else if (id === FOLHA_NATURAL) {
@@ -904,24 +904,24 @@ export function criarEdicao(ctx: Contexto): Edicao {
   }
 
   return {
-    quebrar,
-    colocar,
-    golpear,
-    soltarGolpe,
-    golpeando: () => estaGolpeando,
-    passo,
-    iniciarMudas,
-    registrarItemNaHotbar,
-    ganharItemPublico,
-    interagir,
-    podeUsar,
-    soltarItemSelecionado,
-    aoEdicaoRemota,
-    crescerMudasAgora() {
+    breakBlock: quebrar,
+    place: colocar,
+    strike: golpear,
+    releaseStrike: soltarGolpe,
+    striking: () => estaGolpeando,
+    step: passo,
+    startSaplings: iniciarMudas,
+    addItemToHotbar: registrarItemNaHotbar,
+    gainItem: ganharItemPublico,
+    interact: interagir,
+    canUse: podeUsar,
+    dropSelectedItem: soltarItemSelecionado,
+    onRemoteEdit: aoEdicaoRemota,
+    growSaplingsNow() {
       for (const m of mudas) m.quandoMs = tempoMs;
       passo(0);
     },
-    decairAgora() {
+    decayNow() {
       // teste: roda checagens+quedas até secar (cascata completa)
       let guarda = 0;
       while ((paraChecar.length || decaindo.length) && guarda++ < 200) {

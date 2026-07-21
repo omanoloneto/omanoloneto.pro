@@ -2,7 +2,7 @@
 // grama/terra/pedra, praia, lagos, árvores e flores. Funções puras
 // (mesma seed = mesmo mundo).
 import { mulberry32 } from '../../lib/rng';
-import type { Contexto } from './tipos';
+import type { Ctx } from './types';
 
 // hash inteiro determinístico do ponto da grade (independente de Math.sin)
 function hash2(ix: number, iz: number, seed: number): number {
@@ -36,27 +36,27 @@ function relevo(x: number, z: number, seed: number, escala: number): number {
 
 // cria uma árvore com a base do tronco em (x, h+1, z) — usada na geração
 // E no crescimento das mudas plantadas. Folhas só ocupam células de ar.
-export function brotarArvore(ctx: Contexto, x: number, h: number, z: number, rng: () => number) {
-  const { mundo } = ctx;
+export function brotarArvore(ctx: Ctx, x: number, h: number, z: number, rng: () => number) {
+  const { world: mundo } = ctx;
   const alt = 4 + Math.floor(rng() * 2);
-  for (let y = 1; y <= alt; y++) mundo.definir(x, h + y, z, 5);
+  for (let y = 1; y <= alt; y++) mundo.set(x, h + y, z, 5);
   // copa: caixa 5×5 em 2 camadas (cantos ralos) + cruz no topo
   for (const dy of [alt - 1, alt]) {
     for (let dx = -2; dx <= 2; dx++) {
       for (let dz = -2; dz <= 2; dz++) {
         if (dx === 0 && dz === 0 && dy === alt - 1) continue; // tronco
         if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && rng() > 0.4) continue;
-        if (mundo.obter(x + dx, h + dy + 1, z + dz) === 0) mundo.definir(x + dx, h + dy + 1, z + dz, 7);
+        if (mundo.get(x + dx, h + dy + 1, z + dz) === 0) mundo.set(x + dx, h + dy + 1, z + dz, 7);
       }
     }
   }
   for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-    if (mundo.obter(x + dx, h + alt + 2, z + dz) === 0) mundo.definir(x + dx, h + alt + 2, z + dz, 7);
+    if (mundo.get(x + dx, h + alt + 2, z + dz) === 0) mundo.set(x + dx, h + alt + 2, z + dz, 7);
   }
 }
 
-function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: number) => number) {
-  const { mundo, cfg } = ctx;
+function digDungeon(ctx: Ctx, rng: () => number, heightAt: (x: number, z: number) => number) {
+  const { world: mundo, cfg } = ctx;
   const { SX, SZ, nivelAgua } = cfg.mundo;
   const D = cfg.geracao.dungeon;
   const midX = SX / 2;
@@ -79,7 +79,7 @@ function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: n
   }
 
   function setCell(x: number, y: number, z: number, id: number) {
-    mundo.dados[x + z * SX + y * SX * SZ] = id;
+    mundo.data[x + z * SX + y * SX * SZ] = id;
   }
 
   function carveBox(x0: number, x1: number, z0: number, z1: number, yTop: number) {
@@ -154,7 +154,7 @@ function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: n
         else if (face === 2) z = z0 - 1;
         else if (face === 3) z = z1 + 1;
         else y = ROOM_TOP + 1;
-        if (mundo.obter(x, y, z) === 3) {
+        if (mundo.get(x, y, z) === 3) {
           setCell(x, y, z, oreId);
           placed++;
         }
@@ -174,13 +174,13 @@ function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: n
 
     const last = rooms[rooms.length - 1];
     setCell(last.x, FLOOR_Y + 1, last.z, 17);
-    const loot = new Array(ctx.blocos.length).fill(0);
+    const loot = new Array(ctx.blocks.length).fill(0);
     loot[6] = 8;
     loot[8] = 4;
     loot[9] = 6;
     loot[23] = 6;
     loot[26] = 2;
-    ctx.metas.definir(last.x, FLOOR_Y + 1, last.z, { tipo: 'bau', dono: '*', itens: loot });
+    ctx.metas.set(last.x, FLOOR_Y + 1, last.z, { tipo: 'bau', dono: '*', itens: loot });
 
     const first = rooms[0];
     const stepX = Math.abs(first.x - midX) >= Math.abs(first.z - midZ) ? Math.sign(first.x - midX) : 0;
@@ -218,12 +218,12 @@ function digDungeon(ctx: Contexto, rng: () => number, heightAt: (x: number, z: n
   for (let d = 0; d < D.n; d++) digOne(baseGlobal + (d * Math.PI * 2) / D.n);
 }
 
-export function gerarMundo(ctx: Contexto, seed: number) {
-  const { mundo, cfg } = ctx;
+export function gerarMundo(ctx: Ctx, seed: number) {
+  const { world: mundo, cfg } = ctx;
   const { SX, SZ, SY, nivelAgua } = cfg.mundo;
   const G = cfg.geracao;
   const rng = mulberry32(seed ^ 0xc0ffee);
-  mundo.limpar();
+  mundo.clear();
 
   const meioX = SX / 2;
   const meioZ = SZ / 2;
@@ -249,18 +249,18 @@ export function gerarMundo(ctx: Contexto, seed: number) {
         else if (y === h) id = 1; // grama
         else if (y >= h - 2) id = 2; // terra
         else id = 3; // pedra
-        mundo.dados[x + z * SX + y * SX * SZ] = id;
+        mundo.data[x + z * SX + y * SX * SZ] = id;
       }
       // água até o nível do mar
       for (let y = h + 1; y <= nivelAgua; y++) {
-        mundo.dados[x + z * SX + y * SX * SZ] = 13;
+        mundo.data[x + z * SX + y * SX * SZ] = 13;
       }
     }
   }
 
   const alturaEm = (x: number, z: number) => alturas[x + z * SX];
   const ehGrama = (x: number, z: number) =>
-    mundo.obter(x, alturaEm(x, z), z) === 1;
+    mundo.get(x, alturaEm(x, z), z) === 1;
 
   digDungeon(ctx, rng, alturaEm);
 
@@ -274,8 +274,8 @@ export function gerarMundo(ctx: Contexto, seed: number) {
       let y = v.yMin + Math.floor(rng() * (teto - v.yMin + 1));
       const tam = v.sizeMin + Math.floor(rng() * (v.sizeMax - v.sizeMin + 1));
       for (let b = 0; b < tam; b++) {
-        if (mundo.dados[x + z * SX + y * SX * SZ] === 3) {
-          mundo.dados[x + z * SX + y * SX * SZ] = oreId;
+        if (mundo.data[x + z * SX + y * SX * SZ] === 3) {
+          mundo.data[x + z * SX + y * SX * SZ] = oreId;
         }
         const eixo = Math.floor(rng() * 3);
         const passo = rng() < 0.5 ? -1 : 1;
@@ -310,9 +310,9 @@ export function gerarMundo(ctx: Contexto, seed: number) {
     const z = 1 + Math.floor(rng() * (SZ - 2));
     const h = alturaEm(x, z);
     if (!ehGrama(x, z) || h <= nivelAgua) continue;
-    if (mundo.obter(x, h + 1, z) !== 0) continue;
-    mundo.definir(x, h + 1, z, rng() > 0.5 ? 11 : 12);
+    if (mundo.get(x, h + 1, z) !== 0) continue;
+    mundo.set(x, h + 1, z, rng() > 0.5 ? 11 : 12);
   }
 
-  mundo.sujos.clear(); // construirTudo vem a seguir; nada pendente
+  mundo.dirty.clear(); // construirTudo vem a seguir; nada pendente
 }

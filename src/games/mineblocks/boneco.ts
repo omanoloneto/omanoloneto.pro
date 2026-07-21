@@ -5,7 +5,7 @@
 // alvo; salto grande (>8 blocos) teleporta em vez de deslizar.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import type { Bonecos, Contexto, JogadorRemoto } from './tipos';
+import type { Avatars, Ctx, RemotePlayer } from './types';
 
 interface BonecoVivo {
   grupo: THREE.Group;
@@ -21,7 +21,7 @@ function corDoNome(nome: string): number {
   return h % 360;
 }
 
-export function criarBonecos(ctx: Contexto): Bonecos {
+export function criarBonecos(ctx: Ctx): Avatars {
   const vivos = new Map<string, BonecoVivo>();
   const material = new THREE.MeshBasicMaterial({ vertexColors: true });
 
@@ -90,7 +90,7 @@ export function criarBonecos(ctx: Contexto): Bonecos {
     return sprite;
   }
 
-  function nascer(j: JogadorRemoto): BonecoVivo {
+  function nascer(j: RemotePlayer): BonecoVivo {
     const grupo = criarCorpo(j.nome);
     const nametag = criarNametag(j.nome);
     grupo.add(nametag);
@@ -109,7 +109,7 @@ export function criarBonecos(ctx: Contexto): Bonecos {
   }
 
   return {
-    atualizarLista(jogadores) {
+    updateList(jogadores) {
       const presentes = new Set<string>();
       for (const j of jogadores) {
         if (!j || typeof j.nome !== 'string') continue;
@@ -132,7 +132,7 @@ export function criarBonecos(ctx: Contexto): Bonecos {
       }
     },
 
-    passo(dt) {
+    step(dt) {
       if (!vivos.size) return;
       const k = 1 - Math.exp(-dt * 5); // perseguição macia do alvo do poll
       for (const b of vivos.values()) {
@@ -154,18 +154,18 @@ export function criarBonecos(ctx: Contexto): Bonecos {
         b.yaw += dyaw * k;
         b.grupo.rotation.y = b.yaw;
         // nome some de longe (30 blocos): menos poluição, menos overdraw
-        const cx = ctx.jogador.x - p.x;
-        const cz = ctx.jogador.z - p.z;
+        const cx = ctx.player.x - p.x;
+        const cz = ctx.player.z - p.z;
         b.nametag.visible = cx * cx + cz * cz < 900;
       }
     },
 
-    limpar() {
+    clear() {
       for (const b of vivos.values()) despedir(b);
       vivos.clear();
     },
 
-    quantos: () => vivos.size,
-    nomes: () => Array.from(vivos.keys()),
+    count: () => vivos.size,
+    names: () => Array.from(vivos.keys()),
   };
 }

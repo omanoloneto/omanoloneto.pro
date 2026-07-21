@@ -1,7 +1,7 @@
-// Mira: raycast voxel DDA (Amanatides & Woo) do olho na direção da
+// Aim: raycast voxel DDA (Amanatides & Woo) do olho na direção da
 // câmera + wireframe de highlight no bloco mirado.
 import * as THREE from 'three';
-import type { Alvo, Contexto, Mira } from './tipos';
+import type { Target, Ctx, Aim } from './types';
 
 // função pura e testável: percorre células até bater num id ≠ 0
 export function lancarRaio(
@@ -9,7 +9,7 @@ export function lancarRaio(
   ox: number, oy: number, oz: number,
   dx: number, dy: number, dz: number,
   maxDist: number
-): Alvo | null {
+): Target | null {
   let x = Math.floor(ox);
   let y = Math.floor(oy);
   let z = Math.floor(oz);
@@ -43,8 +43,8 @@ export function lancarRaio(
   return null;
 }
 
-export function criarMira(ctx: Contexto): Mira {
-  const { scene, camera, jogador, mundo } = ctx;
+export function criarMira(ctx: Ctx): Aim {
+  const { scene, camera, player: jogador, world: mundo } = ctx;
 
   // wireframe do cubo mirado (12 arestas)
   const geo = new THREE.BufferGeometry();
@@ -74,11 +74,11 @@ export function criarMira(ctx: Contexto): Mira {
   const { SX, SZ } = ctx.cfg.mundo;
   const obterSemAgua = (x: number, y: number, z: number) => {
     if (x < 0 || x >= SX || z < 0 || z >= SZ) return 0;
-    const id = mundo.obter(x, y, z);
-    return ctx.porId(id).render === 'agua' ? 0 : id;
+    const id = mundo.get(x, y, z);
+    return ctx.byId(id).render === 'agua' ? 0 : id;
   };
 
-  function alvo(): Alvo | null {
+  function alvo(): Target | null {
     camera.getWorldDirection(dir);
     return lancarRaio(
       obterSemAgua,
@@ -89,9 +89,9 @@ export function criarMira(ctx: Contexto): Mira {
   }
 
   return {
-    alvo,
-    passo() {
-      const a = ctx.estado.fase === 'jogando' ? alvo() : null;
+    target: alvo,
+    step() {
+      const a = ctx.state.phase === 'playing' ? alvo() : null;
       highlight.visible = !!a;
       if (a) highlight.position.set(a.x, a.y, a.z);
     },

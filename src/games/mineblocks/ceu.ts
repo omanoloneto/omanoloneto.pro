@@ -1,4 +1,4 @@
-// Céu com ciclo dia/noite. Mundo é MeshBasicMaterial (SwiftShader, sem luz
+// Céu com ciclo dia/noite. World é MeshBasicMaterial (SwiftShader, sem luz
 // dinâmica), então nada de shadow map: o dia/noite é um domo de gradiente +
 // sol/lua cruzando em arco + um tint global nos materiais do mundo.
 // Dia = 3 min 5 s, noite = 3 min (a pedido do Manolo; pra mudar, mexa SÓ em
@@ -6,7 +6,7 @@
 // (sync.ts chama definirTempo), então a sala inteira vê o mesmo horário.
 // Pausa/reduced-motion congela.
 import * as THREE from 'three';
-import type { Contexto, Ceu } from './tipos';
+import type { Ctx, Sky } from './types';
 
 export const DIA_S = 185;
 export const NOITE_S = 180;
@@ -35,10 +35,10 @@ const CHAVES: Chave[] = [
   { s: noite(0.9), zen: 0x101d40, hor: 0x24335c, tint: [0.3, 0.33, 0.48], vis: 0.6 }, // pré-amanhecer
 ];
 
-export function criarCeu(ctx: Contexto): Ceu {
-  const { scene, cfg, camera, malha } = ctx;
+export function criarCeu(ctx: Ctx): Sky {
+  const { scene, cfg, camera, meshes: malha } = ctx;
   const { SX, SZ } = cfg.mundo;
-  const parado = ctx.motionReduzido;
+  const parado = ctx.reducedMotion;
 
   // relógio do ciclo (segundos). Começa de manhã; save/mundo novo ajustam.
   let rel = dia(0.13);
@@ -121,7 +121,7 @@ export function criarCeu(ctx: Contexto): Ceu {
   }
 
   // fog só em GPU de verdade (SwiftShader é fill-rate); cor atualiza no ciclo
-  if (!ctx.tierBaixo) scene.fog = new THREE.Fog(0x87c6ea, 90, 240);
+  if (!ctx.lowTier) scene.fog = new THREE.Fog(0x87c6ea, 90, 240);
   scene.background = new THREE.Color(0x87c6ea);
 
   // ----- cores por hora: interpola entre as chaves (com wrap no fim) -----
@@ -173,7 +173,7 @@ export function criarCeu(ctx: Contexto): Ceu {
   function aplicarCores() {
     corPorTempo(rel);
     pintarDomo();
-    malha.tingir(cTint);
+    malha.tint(cTint);
     nuvemMat.color.copy(cTint).lerp(new THREE.Color(0xffffff), 0.25); // nuvem menos escura que o chão
     (scene.background as THREE.Color).copy(cHor);
     if (scene.fog) {
@@ -212,7 +212,7 @@ export function criarCeu(ctx: Contexto): Ceu {
   domo.position.copy(camera.position);
 
   return {
-    passo(dt: number) {
+    step(dt: number) {
       // domo/sol/lua acompanham a câmera pra parecerem infinitamente longe
       domo.position.copy(camera.position);
       if (!parado) {
@@ -226,8 +226,8 @@ export function criarCeu(ctx: Contexto): Ceu {
       }
       atualizarCorpos(); // posição do sol/lua todo frame (barato, movimento liso)
     },
-    tempo: () => rel,
-    definirTempo(s: number) {
+    time: () => rel,
+    setTime(s: number) {
       rel = ((s % CICLO_S) + CICLO_S) % CICLO_S;
       aplicarCores();
       atualizarCorpos();

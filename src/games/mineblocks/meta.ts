@@ -4,64 +4,64 @@
 // A chave é a MESMA de edicao.ts (x + z*SX + y*SX*SZ).
 // O gancho aoMudar leva a metadata pro multiplayer (sync.ts instala só
 // com sala ativa; a flag aplicandoRemoto evita eco ao aplicar remotas).
-import type { Contexto, Meta, Metas } from './tipos';
+import type { Ctx, Meta, MetaStore } from './types';
 
-export function criarMetas(ctx: Contexto): Metas {
+export function criarMetas(ctx: Ctx): MetaStore {
   const { SX, SZ } = ctx.cfg.mundo;
   const mapa = new Map<number, Meta>();
 
   const chave = (x: number, y: number, z: number) => x + z * SX + y * SX * SZ;
 
-  const api: Metas = {
-    aoMudar: undefined,
+  const api: MetaStore = {
+    onChange: undefined,
 
-    chaveDe: chave,
+    keyOf: chave,
 
-    obter(x, y, z) {
+    get(x, y, z) {
       return mapa.get(chave(x, y, z));
     },
 
-    definir(x, y, z, meta) {
+    set(x, y, z, meta) {
       const k = chave(x, y, z);
       mapa.set(k, normalizada(meta));
-      api.aoMudar?.(k, mapa.get(k)!);
+      api.onChange?.(k, mapa.get(k)!);
     },
 
-    remover(x, y, z) {
+    remove(x, y, z) {
       const k = chave(x, y, z);
-      if (mapa.delete(k)) api.aoMudar?.(k, null);
+      if (mapa.delete(k)) api.onChange?.(k, null);
     },
 
     // aplica uma metadata vinda da REDE por chave (sem re-emitir)
-    aplicar(k, meta) {
+    apply(k, meta) {
       if (meta === null) mapa.delete(k);
       else mapa.set(k, normalizada(meta));
     },
 
     // a UI/entrega mutou o objeto no lugar (itens do baú) → normaliza e
     // re-emite pro sync
-    tocar(k) {
+    touch(k) {
       const m = mapa.get(k);
       if (!m) return;
       mapa.set(k, normalizada(m));
-      api.aoMudar?.(k, mapa.get(k)!);
+      api.onChange?.(k, mapa.get(k)!);
     },
 
     // procura o primeiro baú que satisfaz o filtro (dono, etc.)
-    acharBau(filtro) {
+    findChest(filtro) {
       for (const [k, m] of mapa) {
         if (m.tipo === 'bau' && filtro(m, k)) return { chave: k, bau: m };
       }
       return null;
     },
 
-    serializar() {
+    serialize() {
       const obj: Record<string, Meta> = {};
       for (const [k, m] of mapa) obj[k] = m;
       return obj;
     },
 
-    carregar(obj) {
+    load(obj) {
       mapa.clear();
       if (obj && typeof obj === 'object') {
         for (const k of Object.keys(obj as Record<string, unknown>)) {
@@ -71,11 +71,11 @@ export function criarMetas(ctx: Contexto): Metas {
       }
     },
 
-    limpar() {
+    clear() {
       mapa.clear();
     },
 
-    todos() {
+    all() {
       return mapa;
     },
   };

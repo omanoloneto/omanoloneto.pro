@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32 } from '../../lib/rng';
 import { DIA_S } from './ceu';
-import type { BichoRede, Contexto, Mob } from './tipos';
+import type { RemoteMob, Ctx, Mob } from './types';
 
 const LA = 21;
 const PACOTE = 35; // item largado no chão (tecla Q); anda por cima e pega
@@ -77,8 +77,8 @@ function geometriaWinpup(): THREE.BufferGeometry {
   return geo;
 }
 
-export function criarMob(ctx: Contexto): Mob {
-  const { cfg, mundo } = ctx;
+export function criarMob(ctx: Ctx): Mob {
+  const { cfg, world: mundo } = ctx;
   const B = cfg.bichos;
   const { SX, SZ } = cfg.mundo;
   const material = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -93,7 +93,7 @@ export function criarMob(ctx: Contexto): Mob {
 
   // altura do chão sólido em (x,z) — pra flutuar acompanhando o relevo
   const chao = (x: number, z: number) =>
-    mundo.chaoMaisAlto(Math.floor(x), Math.floor(z));
+    mundo.highestGround(Math.floor(x), Math.floor(z));
 
   function hoverY(x: number, z: number): number {
     return chao(x, z) + 1 + B.altura;
@@ -129,7 +129,7 @@ export function criarMob(ctx: Contexto): Mob {
     for (let y = 1; y < cfg.mundo.SY; y++)
       for (let z = 0; z < SZ; z++)
         for (let x = 0; x < SX; x++)
-          if (mundo.obter(x, y, z) === LA) dropped.set(woolKey(x, y, z), B.woolDespawnMs);
+          if (mundo.get(x, y, z) === LA) dropped.set(woolKey(x, y, z), B.woolDespawnMs);
     const rng = mulberry32((seed ^ 0x7712bb) >>> 0);
     let tentativas = 0;
     while (vivos.length < B.quantos && tentativas < 400) {
@@ -138,7 +138,7 @@ export function criarMob(ctx: Contexto): Mob {
       const z = 6 + Math.floor(rng() * (SZ - 12)) + 0.5;
       const h = chao(x, z);
       // nasce só sobre grama seca (id 1) — não no mar nem na areia da praia
-      if (mundo.obter(Math.floor(x), h, Math.floor(z)) !== 1) continue;
+      if (mundo.get(Math.floor(x), h, Math.floor(z)) !== 1) continue;
       vivos.push(novo(x, z, rng));
     }
   }
@@ -148,7 +148,7 @@ export function criarMob(ctx: Contexto): Mob {
     let n = 0;
     for (let dz = -5; dz <= 5; dz++) {
       for (let dx = -5; dx <= 5; dx++) {
-        if (mundo.obter(cx + dx, surf + 1, cz + dz) === LA) n++;
+        if (mundo.get(cx + dx, surf + 1, cz + dz) === LA) n++;
       }
     }
     return n;
@@ -160,9 +160,9 @@ export function criarMob(ctx: Contexto): Mob {
     const surf = chao(cx, cz);
     if (surf < 1) return; // fora do mundo/no mar fundo
     // só sobre chão sólido "de verdade" e com ar em cima
-    if (mundo.obter(cx, surf + 1, cz) !== 0) return;
+    if (mundo.get(cx, surf + 1, cz) !== 0) return;
     if (laPerto(cx, cz, surf) >= B.maxLaPerto) return;
-    mundo.definir(cx, surf + 1, cz, LA); // vira bloco → sincroniza sozinho
+    mundo.set(cx, surf + 1, cz, LA); // vira bloco → sincroniza sozinho
     dropped.set(woolKey(cx, surf + 1, cz), tempoMs + B.woolDespawnMs);
   }
 
@@ -172,7 +172,7 @@ export function criarMob(ctx: Contexto): Mob {
       const x = key % SX;
       const z = Math.floor(key / SX) % SZ;
       const y = Math.floor(key / (SX * SZ));
-      if (mundo.obter(x, y, z) === LA) mundo.definir(x, y, z, 0);
+      if (mundo.get(x, y, z) === LA) mundo.set(x, y, z, 0);
       dropped.delete(key);
     }
   }
@@ -180,7 +180,7 @@ export function criarMob(ctx: Contexto): Mob {
   // simulação (anfitrião/solo): wander + bob + drop de dia
   function simular(dt: number) {
     const dtMs = dt * 1000;
-    const deDia = ctx.ceu.tempo() < DIA_S; // dropa só de dia
+    const deDia = ctx.sky.time() < DIA_S; // dropa só de dia
     for (const w of vivos) {
       // repensa o destino de vez em quando
       if (tempoMs >= w.trocaMs) {
@@ -244,7 +244,7 @@ export function criarMob(ctx: Contexto): Mob {
   // local). Aceito de propósito: lã é recurso cosmético e finito (o Winpup
   // limita o drop), então a "duplicação" no máximo é generosa, nunca farm.
   function coletar() {
-    const j = ctx.jogador;
+    const j = ctx.player;
     const meia = 0.32; // meia-largura do corpo
     const x0 = Math.floor(j.x - meia), x1 = Math.floor(j.x + meia);
     const z0 = Math.floor(j.z - meia), z1 = Math.floor(j.z + meia);
@@ -253,29 +253,29 @@ export function criarMob(ctx: Contexto): Mob {
     for (let y = y0; y <= y1; y++)
       for (let z = z0; z <= z1; z++)
         for (let x = x0; x <= x1; x++) {
-          const id = mundo.obter(x, y, z);
-          if (id === LA) { mundo.definir(x, y, z, 0); n++; }
+          const id = mundo.get(x, y, z);
+          if (id === LA) { mundo.set(x, y, z, 0); n++; }
           else if (id === PACOTE) {
-            const m = ctx.metas.obter(x, y, z);
-            mundo.definir(x, y, z, 0);
-            ctx.metas.remover(x, y, z);
+            const m = ctx.metas.get(x, y, z);
+            mundo.set(x, y, z, 0);
+            ctx.metas.remove(x, y, z);
             if (m && m.tipo === 'drop') {
-              ctx.edicao.ganharItemPublico(m.item, m.n);
-              ctx.audio.somSalvo();
-              ctx.ui.mostrarToast('🎁 Pegou ' + m.n + '× ' + ctx.porId(m.item).nome + '!', 'ok', 1400);
+              ctx.editing.gainItem(m.item, m.n);
+              ctx.audio.soundSaved();
+              ctx.ui.showToast('🎁 Pegou ' + m.n + '× ' + ctx.byId(m.item).nome + '!', 'ok', 1400);
             }
           }
         }
     if (n > 0) {
-      ctx.edicao.ganharItemPublico(LA, n); // 1 concessão agregada (guard tira da hotbar)
-      ctx.audio.somSalvo();
-      ctx.ui.mostrarToast(n > 1 ? '🧶 Peguei ' + n + ' lãs!' : '🧶 Peguei lã!', 'ok', 1200);
+      ctx.editing.gainItem(LA, n); // 1 concessão agregada (guard tira da hotbar)
+      ctx.audio.soundSaved();
+      ctx.ui.showToast(n > 1 ? '🧶 Peguei ' + n + ' lãs!' : '🧶 Peguei lã!', 'ok', 1200);
     }
   }
 
   return {
-    nascer,
-    passo(dt, simularBichos) {
+    spawn: nascer,
+    step(dt, simularBichos) {
       tempoMs += dt * 1000;
       if (simularBichos) {
         despawnMs += dt * 1000;
@@ -288,19 +288,19 @@ export function criarMob(ctx: Contexto): Mob {
       coletaMs += dt * 1000;
       if (coletaMs >= 120) { coletaMs = 0; coletar(); }
     },
-    atualizarRede(bichos) {
+    applyNet(bichos) {
       for (const b of bichos) {
         const w = vivos[b.i];
         if (!w) continue;
         w.rx = b.x; w.ry = b.y; w.rz = b.z; w.ryaw = b.yaw;
       }
     },
-    estadoRede(): BichoRede[] {
+    netState(): RemoteMob[] {
       return vivos.map((w, i) => ({
         i, x: +w.x.toFixed(2), y: +w.y.toFixed(2), z: +w.z.toFixed(2), yaw: +w.yaw.toFixed(2),
       }));
     },
-    assustar(ox, oy, oz, fx, fy, fz, alcance, cone) {
+    scare(ox, oy, oz, fx, fy, fz, alcance, cone) {
       let melhor: Winpup | null = null;
       let melhorD = Infinity;
       for (const w of vivos) {
@@ -315,7 +315,7 @@ export function criarMob(ctx: Contexto): Mob {
       if (!melhor) return false;
       // foge na direção contrária ao jogador; muda a origem do passeio pra
       // longe (o anfitrião simula → todo mundo vê; visitante corrige no poll)
-      const j = ctx.jogador;
+      const j = ctx.player;
       let ax = melhor.x - j.x;
       let az = melhor.z - j.z;
       const al = Math.hypot(ax, az) || 1;
@@ -329,7 +329,7 @@ export function criarMob(ctx: Contexto): Mob {
       melhor.fleeMs = 6000;
       return true;
     },
-    limpar,
-    quantos: () => vivos.length,
+    clear: limpar,
+    count: () => vivos.length,
   };
 }

@@ -3,7 +3,7 @@
 // Sem luz na cena, sem shadow map: MeshBasicMaterial puro (SwiftShader).
 // 3 camadas por chunk: opaca / recorte (alphaTest: vidro+flores) / água.
 import * as THREE from 'three';
-import type { Contexto, Malha } from './tipos';
+import type { Ctx, Meshes } from './types';
 
 // sombreado por direção (o "sol" vem de cima)
 const SOMBRA_FACE = [0.66, 0.66, 1.0, 0.5, 0.8, 0.8]; // +x -x +y -y +z -z
@@ -31,8 +31,8 @@ interface Camada {
   idx: number[];
 }
 
-export function criarMalha(ctx: Contexto): Malha {
-  const { scene, mundo, textura, porId, cfg } = ctx;
+export function criarMalha(ctx: Ctx): Meshes {
+  const { scene, world: mundo, texture: textura, byId: porId, cfg } = ctx;
   const { SX, SY, CHUNK } = cfg.mundo;
   const NCX = SX / CHUNK;
 
@@ -55,7 +55,7 @@ export function criarMalha(ctx: Contexto): Malha {
   // do mapa ganharia cantos escuros cozidos)
   const SZt = cfg.mundo.SZ;
   const obterAO = (x: number, y: number, z: number) =>
-    x < 0 || x >= SX || z < 0 || z >= SZt ? 0 : mundo.obter(x, y, z);
+    x < 0 || x >= SX || z < 0 || z >= SZt ? 0 : mundo.get(x, y, z);
   const oclui = (id: number) => id !== 0 && porId(id).render === 'cubo';
 
   function empurrarFace(
@@ -132,8 +132,8 @@ export function criarMalha(ctx: Contexto): Malha {
     const def = porId(id);
     const [u0, v0, u1, v1] = textura.uv(def.tiles[1]);
     const ehP = (v: number) => v === 18 || v === 19;
-    const topo = ehP(mundo.obter(bx, by - 1, bz)); // porta embaixo → sou o topo
-    const base = ehP(mundo.obter(bx, by + 1, bz)); // porta em cima → sou a base
+    const topo = ehP(mundo.get(bx, by - 1, bz)); // porta embaixo → sou o topo
+    const base = ehP(mundo.get(bx, by + 1, bz)); // porta em cima → sou a base
     // UV vertical: base amostra a metade de baixo do tile, topo a de cima;
     // porta solta (1 bloco, save antigo) usa o tile inteiro
     const vm = (v0 + v1) / 2;
@@ -141,7 +141,7 @@ export function criarMalha(ctx: Contexto): Malha {
     const vHi = base && !topo ? vm : v1;
     // orientação: parede sólida nos lados define o eixo do batente
     const parede = (x: number, y: number, z: number) => {
-      const w = mundo.obter(x, y, z);
+      const w = mundo.get(x, y, z);
       return w !== 0 && porId(w).solido;
     };
     const eixoZ = parede(bx, by, bz - 1) && parede(bx, by, bz + 1);
@@ -186,7 +186,7 @@ export function criarMalha(ctx: Contexto): Malha {
     for (let y = 0; y < SY; y++) {
       for (let z = z0; z < z0 + CHUNK; z++) {
         for (let x = x0; x < x0 + CHUNK; x++) {
-          const id = mundo.obter(x, y, z);
+          const id = mundo.get(x, y, z);
           if (id === 0) continue;
           const def = porId(id);
           if (!def) continue; // id desconhecido (save de versão futura?): pula
@@ -201,10 +201,10 @@ export function criarMalha(ctx: Contexto): Malha {
           const camada = def.render === 'agua' ? camadas[2] : def.render === 'recorte' ? camadas[1] : camadas[0];
           const comAO = def.render === 'cubo';
           // topo da água rebaixado quando tem ar em cima (linha d'água)
-          const superficie = def.render === 'agua' && mundo.obter(x, y + 1, z) === 0 ? 0.12 : 0;
+          const superficie = def.render === 'agua' && mundo.get(x, y + 1, z) === 0 ? 0.12 : 0;
           for (let f = 0; f < 6; f++) {
             const n = FACES[f].n;
-            const viz = mundo.obter(x + n[0], y + n[1], z + n[2]);
+            const viz = mundo.get(x + n[0], y + n[1], z + n[2]);
             if (!faceVisivel(id, viz)) continue;
             const tile = f === 2 ? def.tiles[0] : f === 3 ? def.tiles[2] : def.tiles[1];
             const vizDef = viz === 0 ? null : porId(viz);
@@ -239,18 +239,18 @@ export function criarMalha(ctx: Contexto): Malha {
   }
 
   return {
-    construirTudo() {
+    buildAll() {
       for (let ci = 0; ci < NCX * NCX; ci++) reconstruirChunk(ci);
-      mundo.sujos.clear();
+      mundo.dirty.clear();
     },
-    reconstruirSujos() {
-      if (!mundo.sujos.size) return;
-      for (const ci of mundo.sujos) reconstruirChunk(ci);
-      mundo.sujos.clear();
+    rebuildDirty() {
+      if (!mundo.dirty.size) return;
+      for (const ci of mundo.dirty) reconstruirChunk(ci);
+      mundo.dirty.clear();
     },
     // tint dia/noite: MeshBasicMaterial.color multiplica map × vertexColor,
     // então uma cor por material escurece/tinge o mundo inteiro de graça
-    tingir(cor: THREE.Color) {
+    tint(cor: THREE.Color) {
       matOpaca.color.copy(cor);
       matRecorte.color.copy(cor);
       matAgua.color.copy(cor);

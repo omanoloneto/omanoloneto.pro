@@ -1,10 +1,10 @@
 // Física do jogador: AABB 0.6×1.8 contra a grade voxel, passo por eixo
 // com subpassos anti-tunneling, pulo com coyote, água com empuxo.
 // SEM voo — construir alto é pillar-up (pular + colocar embaixo).
-import type { Contexto, Fisica } from './tipos';
+import type { Ctx, Physics } from './types';
 
-export function criarFisica(ctx: Contexto): Fisica {
-  const { jogador, input, mundo, porId } = ctx;
+export function criarFisica(ctx: Ctx): Physics {
+  const { player: jogador, input, world: mundo, byId: porId } = ctx;
   const F = ctx.cfg.fisica;
   const J = ctx.cfg.jogador;
   const meia = J.largura / 2;
@@ -21,7 +21,7 @@ export function criarFisica(ctx: Contexto): Fisica {
     for (let y = y0; y <= y1; y++) {
       for (let z = z0; z <= z1; z++) {
         for (let x = x0; x <= x1; x++) {
-          const id = mundo.obter(x, y, z);
+          const id = mundo.get(x, y, z);
           if (id !== 0 && porId(id).solido) return true;
         }
       }
@@ -60,8 +60,8 @@ export function criarFisica(ctx: Contexto): Fisica {
     const { SX, SZ, SY } = ctx.cfg.mundo;
 
     // ----- intenção de movimento (câmera-relativa) -----
-    const digX = (input.dir ? 1 : 0) - (input.esq ? 1 : 0);
-    const digY = (input.frente ? 1 : 0) - (input.tras ? 1 : 0);
+    const digX = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    const digY = (input.forward ? 1 : 0) - (input.back ? 1 : 0);
     let mx = digX + input.joyX;
     let my = digY + input.joyY;
     const len = Math.hypot(mx, my);
@@ -70,7 +70,7 @@ export function criarFisica(ctx: Contexto): Fisica {
     const fz = -Math.cos(p.yaw);
     const rx = Math.cos(p.yaw);
     const rz = -Math.sin(p.yaw);
-    const fator = p.naAgua ? F.aguaFator : 1;
+    const fator = p.inWater ? F.aguaFator : 1;
     p.vx = (fx * my + rx * mx) * F.andar * fator + kbX;
     p.vz = (fz * my + rz * mx) * F.andar * fator + kbZ;
     const kbDecay = Math.exp(-dt * 5);
@@ -80,20 +80,20 @@ export function criarFisica(ctx: Contexto): Fisica {
     if (Math.abs(kbZ) < 0.02) kbZ = 0;
 
     // ----- na água? (bloco do tronco) -----
-    p.naAgua = porId(mundo.obter(Math.floor(p.x), Math.floor(p.y + 0.9), Math.floor(p.z))).render === 'agua';
+    p.inWater = porId(mundo.get(Math.floor(p.x), Math.floor(p.y + 0.9), Math.floor(p.z))).render === 'agua';
 
     // ----- vertical -----
-    if (p.naAgua) {
+    if (p.inWater) {
       p.vy -= F.aguaGravidade * dt;
       if (p.vy < -F.aguaAfundaMax) p.vy = -F.aguaAfundaMax;
-      if (input.pulo) p.vy = F.aguaNado; // segurar pulo = nadar pra cima
+      if (input.jump) p.vy = F.aguaNado; // segurar pulo = nadar pra cima
     } else {
       // pulo com coyote; segurar pulo re-pula ao pousar (criança adora)
-      if (input.pulo && (p.noChao || p.coyoteMs > 0)) {
+      if (input.jump && (p.onGround || p.coyoteMs > 0)) {
         p.vy = F.pulo;
-        p.noChao = false;
+        p.onGround = false;
         p.coyoteMs = 0;
-        ctx.audio.somPulo();
+        ctx.audio.soundJump();
       }
       p.vy -= F.gravidade * dt;
       if (p.vy < -F.quedaTerminal) p.vy = -F.quedaTerminal;
@@ -103,27 +103,27 @@ export function criarFisica(ctx: Contexto): Fisica {
     const desloc = Math.max(Math.abs(p.vx * dt), Math.abs(p.vy * dt), Math.abs(p.vz * dt));
     const n = Math.min(4, Math.max(1, Math.ceil(desloc / F.subpassoMax)));
     const sdt = dt / n;
-    let estavaNoChao = p.noChao;
-    p.noChao = false;
+    let estavaNoChao = p.onGround;
+    p.onGround = false;
     for (let i = 0; i < n; i++) {
       const bateuX = moverEixo(0, p.vx * sdt);
       const bateuY = moverEixo(1, p.vy * sdt);
       const bateuZ = moverEixo(2, p.vz * sdt);
       if (bateuY) {
         if (p.vy < 0) {
-          p.noChao = true;
-          if (p.vy < -12 && !ctx.estado.mudo) ctx.audio.somSplash(); // tumbo de queda alta
+          p.onGround = true;
+          if (p.vy < -12 && !ctx.state.muted) ctx.audio.soundSplash(); // tumbo de queda alta
         }
         p.vy = 0;
       }
       // pulinho pra sair da água na beirada
-      if ((bateuX || bateuZ) && p.naAgua && input.pulo) p.vy = F.aguaPuloBorda;
+      if ((bateuX || bateuZ) && p.inWater && input.jump) p.vy = F.aguaPuloBorda;
     }
 
     // coyote: uma janelinha de pulo depois de sair da beirada
-    if (p.noChao) p.coyoteMs = F.coyoteMs;
+    if (p.onGround) p.coyoteMs = F.coyoteMs;
     else p.coyoteMs = Math.max(0, p.coyoteMs - dt * 1000);
-    if (p.noChao && !estavaNoChao && p.naAgua) ctx.audio.somSplash();
+    if (p.onGround && !estavaNoChao && p.inWater) ctx.audio.soundSplash();
 
     // ----- cerca do mundo -----
     p.x = Math.max(meia + EPS, Math.min(SX - meia - EPS, p.x));
@@ -133,17 +133,17 @@ export function criarFisica(ctx: Contexto): Fisica {
   }
 
   return {
-    passo,
-    empurrar(dx: number, dz: number) {
+    step: passo,
+    push(dx: number, dz: number) {
       kbX += dx;
       kbZ += dz;
     },
-    assentar() {
+    settle() {
       const p = jogador;
-      const topo = mundo.chaoMaisAlto(Math.floor(p.x), Math.floor(p.z));
+      const topo = mundo.highestGround(Math.floor(p.x), Math.floor(p.z));
       p.y = topo + 1 + EPS;
       p.vx = p.vy = p.vz = 0;
-      p.noChao = true;
+      p.onGround = true;
     },
   };
 }
