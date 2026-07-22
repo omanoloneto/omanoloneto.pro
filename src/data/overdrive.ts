@@ -24,10 +24,10 @@ export interface Carro {
 
 export const carros: Carro[] = [
   {
-    id: 'neon-gt',
-    nome: 'Neon GT',
-    cor: '#7a2ff0',
-    corCabine: '#14091f',
+    id: 'gts-81',
+    nome: 'GTS 81',
+    cor: '#c9b78c',
+    corCabine: '#131118',
     neon: '#00e5ff',
     fisica: {
       accel: 13,
