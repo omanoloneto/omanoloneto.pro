@@ -1,0 +1,246 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { config, mapa, carros } from '../../../data/sao-leo-racing';
+
+const dadosJson = JSON.stringify({ config, mapa, carros });
+
+const title = 'São Léo Racing — corrida arcade à noite em São Leopoldo! | Manolo Neto';
+const description =
+  'Jogo de corrida arcade no navegador: acelere e derrape pelas ruas de São Leopoldo à noite, passando pela Rua Grande, Trensurb, Rio dos Sinos e Unisinos.';
+---
+
+<Layout title={title} description={description}>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="slr" data-game role="application" aria-label="São Léo Racing: dirija um carro de corrida por São Leopoldo à noite">
+    <div class="cena" data-cena>
+
+      <div class="lugar" data-lugar hidden></div>
+
+      <div class="painel-vel" aria-label="Velocidade">
+        <strong data-vel>0</strong>
+        <span>km/h</span>
+      </div>
+
+      <button class="hud-btn hud-btn--pause" type="button" data-pause aria-label="Pausar o jogo" hidden>⏸</button>
+      <button class="hud-btn hud-btn--mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
+        <span data-mute-icon>🔊</span>
+      </button>
+
+      <div class="controles" data-controles hidden>
+        <div class="controles__esq">
+          <button class="ctl" type="button" data-ctl="left" aria-label="Virar à esquerda">◀</button>
+          <button class="ctl" type="button" data-ctl="right" aria-label="Virar à direita">▶</button>
+        </div>
+        <div class="controles__dir">
+          <button class="ctl ctl--drift" type="button" data-ctl="handbrake" aria-label="Derrapar">💨</button>
+          <button class="ctl" type="button" data-ctl="brake" aria-label="Frear ou dar ré">▼</button>
+          <button class="ctl ctl--acel" type="button" data-ctl="accel" aria-label="Acelerar">▲</button>
+        </div>
+      </div>
+
+      <div class="fantasma" data-fantasma hidden>
+        <span class="fantasma__desktop">W A S D ou setas dirigem · ESPAÇO derrapa · ESC pausa</span>
+        <span class="fantasma__touch">◀ ▶ viram · ▲ acelera · 💨 derrapa</span>
+      </div>
+    </div>
+
+    <p class="sr-only" data-anuncio aria-live="assertive"></p>
+
+    <div class="modal" data-inicio>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="slr-title">
+        <div class="placa__topo" id="slr-title">🏎️ São Léo Racing</div>
+        <div class="placa__corpo">
+          <p class="chamada">Noite fechada em <b>São Leopoldo</b>. As ruas são suas: da <b>Rua Grande</b> até a <b>Unisinos</b>, cruzando o <b>Rio dos Sinos</b>.</p>
+          <p class="dica">Dirija com <b>W A S D</b> ou setas · segure <b>ESPAÇO</b> pra derrapar nas curvas</p>
+          <button class="botao botao--go" type="button" data-acelerar>🏁 Acelerar</button>
+          <a class="voltar" href="/class/games/">← voltar pros jogos</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-pausa hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="slr-pausa">
+        <div class="placa__topo" id="slr-pausa">⏸ Pausa</div>
+        <div class="placa__corpo">
+          <button class="botao botao--go" type="button" data-continuar>▶ Continuar</button>
+          <button class="botao botao--sec" type="button" data-sair>🚪 Sair do jogo</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  body.is-game { overflow: hidden; }
+  .slr {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    background: #05070f;
+    font-family: 'Oxanium', Verdana, sans-serif;
+    color: #e8ecf8;
+    overflow: clip;
+  }
+  .cena { position: relative; z-index: 10; flex: 1; min-height: 0; }
+  .cena canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  .lugar {
+    position: absolute; top: 14px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    padding: 8px 18px;
+    background: rgba(8, 10, 24, 0.72);
+    border: 1px solid rgba(0, 229, 255, 0.5);
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 1.02rem;
+    letter-spacing: 0.04em;
+    text-shadow: 0 0 12px rgba(0, 229, 255, 0.65);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .lugar[hidden] { display: none; }
+
+  .painel-vel {
+    position: absolute; right: 18px; bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 30;
+    display: flex; align-items: baseline; gap: 6px;
+    padding: 8px 16px;
+    background: rgba(8, 10, 24, 0.72);
+    border: 1px solid rgba(255, 63, 164, 0.5);
+    border-radius: 14px;
+    pointer-events: none;
+  }
+  .painel-vel strong {
+    font-size: 2.3rem;
+    font-weight: 800;
+    line-height: 1;
+    min-width: 3ch;
+    text-align: right;
+    color: #fff;
+    text-shadow: 0 0 14px rgba(255, 63, 164, 0.8);
+    font-variant-numeric: tabular-nums;
+  }
+  .painel-vel span { font-size: 0.8rem; opacity: 0.75; }
+
+  .hud-btn {
+    position: absolute; top: 12px;
+    z-index: 40;
+    width: 42px; height: 42px;
+    border: 1px solid rgba(122, 47, 240, 0.6);
+    border-radius: 12px;
+    background: rgba(8, 10, 24, 0.72);
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+  }
+  .hud-btn--mute { right: 12px; }
+  .hud-btn--pause { right: 62px; }
+  .hud-btn[hidden] { display: none; }
+
+  .controles {
+    position: absolute; inset: 0;
+    z-index: 35;
+    pointer-events: none;
+  }
+  .controles[hidden] { display: none; }
+  .controles__esq, .controles__dir {
+    position: absolute; bottom: max(14px, env(safe-area-inset-bottom));
+    display: flex; gap: 10px;
+    pointer-events: auto;
+  }
+  .controles__esq { left: 14px; }
+  .controles__dir { right: 14px; flex-direction: row; align-items: flex-end; }
+  .ctl {
+    width: 64px; height: 64px;
+    border-radius: 16px;
+    border: 1px solid rgba(0, 229, 255, 0.45);
+    background: rgba(8, 10, 24, 0.6);
+    color: #fff;
+    font-size: 1.5rem;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .ctl.on { background: rgba(122, 47, 240, 0.55); }
+  .ctl--acel { width: 76px; height: 76px; }
+  .controles__dir .painel-vel { right: 110px; }
+  @media (pointer: coarse) { .painel-vel { bottom: calc(96px + env(safe-area-inset-bottom)); } }
+
+  .fantasma {
+    position: absolute; left: 50%; bottom: 22%;
+    transform: translateX(-50%);
+    z-index: 30;
+    padding: 10px 16px;
+    background: rgba(8, 10, 24, 0.75);
+    border-radius: 12px;
+    font-size: 0.95rem;
+    text-align: center;
+    pointer-events: none;
+    max-width: 90%;
+  }
+  .fantasma[hidden] { display: none; }
+  @media (pointer: fine) { .fantasma__touch { display: none; } }
+  @media (pointer: coarse) { .fantasma__desktop { display: none; } }
+
+  .modal {
+    position: fixed; inset: 0;
+    z-index: 60;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(3, 4, 12, 0.78);
+    padding: 14px;
+  }
+  .modal[hidden] { display: none; }
+  .placa {
+    width: min(440px, 94vw);
+    background: linear-gradient(160deg, #12142a, #0a0c1e);
+    border: 1px solid rgba(122, 47, 240, 0.55);
+    border-radius: 18px;
+    box-shadow: 0 0 42px rgba(122, 47, 240, 0.35);
+    overflow: hidden;
+  }
+  .placa__topo {
+    padding: 14px 18px;
+    font-size: 1.3rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, rgba(122, 47, 240, 0.4), rgba(255, 63, 164, 0.28));
+    text-shadow: 0 0 14px rgba(0, 229, 255, 0.55);
+  }
+  .placa__corpo { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .chamada { margin: 0; line-height: 1.5; }
+  .dica { margin: 0; font-size: 0.9rem; opacity: 0.8; }
+  .botao {
+    padding: 13px 18px;
+    border: 0;
+    border-radius: 12px;
+    font-family: inherit;
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .botao--go {
+    background: linear-gradient(135deg, #7a2ff0, #d81f8f);
+    color: #fff;
+    box-shadow: 0 0 22px rgba(216, 31, 143, 0.5);
+  }
+  .botao--sec { background: rgba(255, 255, 255, 0.12); color: #fff; }
+  .voltar { color: #7fd8ff; font-size: 0.9rem; text-align: center; }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .placa { box-shadow: none; }
+  }
+</style>
+
+<script>
+  import { startGame } from '../../../games/sao-leo-racing/main';
+  startGame();
+</script>
