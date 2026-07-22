@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32 } from '../../lib/rng';
 import { DIA_S } from './ceu';
+import { SHED_SIGN_AUTHOR, BENCH_FROM_SIGN, PATROL_FROM_SIGN } from './galpao';
 import type { RemoteMob, Ctx, Mob } from './types';
 
 const CANDY = 21;
@@ -160,6 +161,91 @@ const BUB_STRUCT: BubPart[] = [
   { w: 0.14, h: 0.05, d: 0.1, x: 0, y: -0.12, z: -0.32, tones: { top: BUB.beakShadow, side: BUB.beakShadow, front: BUB.beakShadow, bottom: BUB.beakShadow } },
 ];
 
+interface Yujack {
+  group: THREE.Group;
+  x: number; y: number; z: number;
+  yaw: number;
+  sitting: boolean;
+  sitUntilMs: number;
+  patrolIdx: number;
+  restUntilMs: number;
+  benchX: number; benchY: number; benchZ: number;
+  patrol: Array<{ x: number; z: number }>;
+  phase: number;
+}
+
+const YU = {
+  furLight: new THREE.Color('#b49a7a'),
+  furDark: new THREE.Color('#8c7456'),
+  vestLight: new THREE.Color('#4fbfa5'),
+  vestDark: new THREE.Color('#2e8c7b'),
+  scarf: new THREE.Color('#2ecc71'),
+  scarfDark: new THREE.Color('#1e8e5e'),
+  hat: new THREE.Color('#4ea6bb'),
+  belt: new THREE.Color('#38616f'),
+  gold: new THREE.Color('#e0c35a'),
+  axeMetal: new THREE.Color('#a7d5d4'),
+  axeHandle: new THREE.Color('#7e8c4a'),
+  white: new THREE.Color('#d7d7d7'),
+  eye: new THREE.Color('#2ecc71'),
+  pupil: new THREE.Color('#1a1e24'),
+  nose: new THREE.Color('#d98a5f'),
+};
+
+const YU_FUR: FaceTones = { top: YU.furLight, side: YU.furLight, sideLow: YU.furDark, bottom: YU.furDark };
+const YU_VEST: FaceTones = { top: YU.vestLight, side: YU.vestDark, bottom: YU.belt };
+
+const YU_STRUCT: BubPart[] = [
+  { w: 0.22, h: 0.34, d: 0.26, x: -0.15, y: 0.17, z: 0.02, tones: YU_FUR },
+  { w: 0.22, h: 0.34, d: 0.26, x: 0.15, y: 0.17, z: 0.02, tones: YU_FUR },
+  { w: 0.62, h: 0.52, d: 0.42, x: 0, y: 0.62, z: 0, tones: YU_VEST },
+  { w: 0.64, h: 0.09, d: 0.44, x: 0, y: 0.4, z: 0, tones: { top: YU.belt, side: YU.belt, bottom: YU.belt } },
+  { w: 0.16, h: 0.44, d: 0.2, x: -0.4, y: 0.66, z: 0.02, tones: YU_FUR },
+  { w: 0.16, h: 0.44, d: 0.2, x: 0.4, y: 0.66, z: 0.02, tones: YU_FUR },
+  { w: 0.16, h: 0.3, d: 0.18, x: 0.4, y: 1.0, z: -0.08, tones: YU_FUR },
+  { w: 0.56, h: 0.14, d: 0.48, x: 0, y: 0.94, z: 0, tones: { top: YU.scarf, side: YU.scarf, sideLow: YU.scarfDark, bottom: YU.scarfDark } },
+  { w: 0.26, h: 0.09, d: 0.3, x: -0.34, y: 0.9, z: 0.3, tones: { top: YU.scarf, side: YU.scarfDark, bottom: YU.scarfDark } },
+  { w: 0.2, h: 0.08, d: 0.24, x: -0.44, y: 0.78, z: 0.44, tones: { top: YU.scarfDark, side: YU.scarfDark, bottom: YU.scarfDark } },
+  { w: 0.5, h: 0.42, d: 0.44, x: 0, y: 1.24, z: 0, tones: YU_FUR },
+  { w: 0.26, h: 0.18, d: 0.12, x: 0, y: 1.16, z: -0.26, tones: YU_FUR },
+  { w: 0.1, h: 0.1, d: 0.08, x: -0.2, y: 1.48, z: 0.04, tones: YU_FUR },
+  { w: 0.1, h: 0.1, d: 0.08, x: 0.2, y: 1.48, z: 0.04, tones: YU_FUR },
+  { w: 0.48, h: 0.09, d: 0.42, x: 0, y: 1.5, z: -0.02, tones: { top: YU.hat, side: YU.hat, bottom: YU.hat } },
+  { w: 0.3, h: 0.07, d: 0.26, x: 0, y: 1.57, z: -0.02, tones: { top: YU.hat, side: YU.hat, bottom: YU.hat } },
+  { w: 0.36, h: 0.09, d: 0.52, x: 0, y: 0.08, z: 0.5, tones: { top: YU.furDark, side: YU.furDark, bottom: YU.furDark } },
+  { w: 0.07, h: 0.62, d: 0.07, x: 0.42, y: 1.28, z: -0.06, tones: { top: YU.axeHandle, side: YU.axeHandle, bottom: YU.axeHandle } },
+  { w: 0.2, h: 0.28, d: 0.09, x: 0.42, y: 1.66, z: -0.06, tones: { top: YU.axeMetal, side: YU.axeMetal, bottom: YU.axeMetal } },
+];
+
+function yujackGeometry(): THREE.BufferGeometry {
+  const p: THREE.BufferGeometry[] = YU_STRUCT.map((b) => shadedPart(b.w, b.h, b.d, b.x, b.y, b.z, b.tones));
+  p.push(
+    part(0.12, 0.14, 0.04, -0.13, 1.32, -0.235, YU.white),
+    part(0.12, 0.14, 0.04, 0.13, 1.32, -0.235, YU.white),
+    part(0.08, 0.1, 0.03, -0.13, 1.31, -0.245, YU.eye),
+    part(0.08, 0.1, 0.03, 0.13, 1.31, -0.245, YU.eye),
+    part(0.04, 0.05, 0.02, -0.12, 1.3, -0.255, YU.pupil),
+    part(0.04, 0.05, 0.02, 0.14, 1.3, -0.255, YU.pupil),
+    part(0.14, 0.04, 0.04, -0.13, 1.41, -0.24, YU.furDark),
+    part(0.14, 0.04, 0.04, 0.13, 1.41, -0.24, YU.furDark),
+    part(0.12, 0.06, 0.04, 0, 1.23, -0.31, YU.nose),
+    part(0.1, 0.12, 0.03, 0, 1.06, -0.315, YU.white),
+    part(0.16, 0.14, 0.03, 0, 0.52, -0.215, YU.gold),
+    part(0.05, 0.05, 0.02, -0.15, 0.72, -0.212, YU.gold),
+    part(0.05, 0.05, 0.02, -0.15, 0.6, -0.212, YU.gold),
+  );
+  const geo = mergeGeometries(p)!;
+  p.forEach((g) => g.dispose());
+  return geo;
+}
+
+function yujackOutlineGeometry(): THREE.BufferGeometry {
+  const p = YU_STRUCT.map((b) => outlinePart(b.w, b.h, b.d, b.x, b.y, b.z));
+  const geo = mergeGeometries(p)!;
+  p.forEach((g) => g.dispose());
+  return geo;
+}
+
 const PLOVER = {
   back: new THREE.Color('#9aa5a0'),
   backLow: new THREE.Color('#7c8781'),
@@ -233,6 +319,9 @@ export function criarMob(ctx: Ctx): Mob {
   const fishOutlineGeo = bubbishOutlineGeometry();
   const ploverGeo = ploverGeometry();
   const ploverOutlineGeo = ploverOutlineGeometry();
+  const yujackGeo = yujackGeometry();
+  const yujackOutlineGeo = yujackOutlineGeometry();
+  let yujack: Yujack | null = null;
   const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1e24, side: THREE.BackSide });
   const alive: Winpup[] = [];
   const fish: (Bubbish | null)[] = new Array(FISH_WIRE_BASE).fill(null);
@@ -264,6 +353,86 @@ export function criarMob(ctx: Ctx): Mob {
     }
     for (const p of plovers) ctx.scene.remove(p.group);
     plovers.length = 0;
+    if (yujack) {
+      ctx.scene.remove(yujack.group);
+      yujack = null;
+    }
+  }
+
+  function spawnYujack() {
+    const { SX: sx, SZ: sz } = cfg.mundo;
+    let sign: { x: number; y: number; z: number } | null = null;
+    for (const [key, m] of ctx.metas.all()) {
+      if (m.tipo === 'placa' && m.autor === SHED_SIGN_AUTHOR) {
+        const x = key % sx;
+        const z = Math.floor(key / sx) % sz;
+        const y = Math.floor(key / (sx * sz));
+        sign = { x, y, z };
+        break;
+      }
+    }
+    if (!sign) return;
+    const benchX = sign.x + BENCH_FROM_SIGN.x + 0.5;
+    const benchY = sign.y + BENCH_FROM_SIGN.y;
+    const benchZ = sign.z + BENCH_FROM_SIGN.z + 0.5;
+    const patrol = PATROL_FROM_SIGN.map((p) => ({ x: sign!.x + p.x + 0.5, z: sign!.z + p.z + 0.5 }));
+    const group = new THREE.Group();
+    group.add(new THREE.Mesh(yujackGeo, material));
+    group.add(new THREE.Mesh(yujackOutlineGeo, outlineMaterial));
+    ctx.scene.add(group);
+    const start = patrol[0];
+    const y = groundAt(start.x, start.z) + 1;
+    group.position.set(start.x, y, start.z);
+    yujack = {
+      group, x: start.x, y, z: start.z, yaw: 0,
+      sitting: false, sitUntilMs: 0,
+      patrolIdx: 1, restUntilMs: 0,
+      benchX, benchY, benchZ, patrol,
+      phase: Math.random() * Math.PI * 2,
+    };
+  }
+
+  function stepYujack(dt: number) {
+    const b = yujack;
+    if (!b) return;
+    if (b.sitting) {
+      if (timeMs >= b.sitUntilMs) {
+        b.sitting = false;
+        b.restUntilMs = 0;
+        b.patrolIdx = 0;
+      }
+    } else if (timeMs >= b.restUntilMs) {
+      const target = b.patrolIdx < 0
+        ? { x: b.benchX, z: b.benchZ }
+        : b.patrol[b.patrolIdx];
+      const dx = target.x - b.x;
+      const dz = target.z - b.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 0.08) {
+        const step = Math.min(dist, 0.9 * dt);
+        b.x += (dx / dist) * step;
+        b.z += (dz / dist) * step;
+        b.yaw = Math.atan2(-dx, -dz);
+        b.y = groundAt(b.x, b.z) + 1;
+      } else if (b.patrolIdx < 0) {
+        b.sitting = true;
+        b.sitUntilMs = timeMs + 8000 + Math.random() * 10000;
+        b.x = b.benchX;
+        b.z = b.benchZ;
+        b.y = b.benchY + 0.45;
+        b.yaw = 0;
+      } else {
+        b.restUntilMs = timeMs + 1200 + Math.random() * 2600;
+        if (Math.random() < 0.35) {
+          b.patrolIdx = -1;
+        } else {
+          b.patrolIdx = (b.patrolIdx + 1) % b.patrol.length;
+        }
+      }
+    }
+    const bob = b.sitting ? 0 : Math.sin(timeMs / 1000 * Math.PI * 2 * 0.9 + b.phase) * 0.025;
+    b.group.position.set(b.x, b.y + bob, b.z);
+    b.group.rotation.y = b.yaw;
   }
 
   function spawnPlovers(rng: () => number) {
@@ -544,6 +713,7 @@ export function criarMob(ctx: Ctx): Mob {
           if (world.get(x, y, z) === CANDY) dropped.set(candyKey(x, y, z), B.woolDespawnMs);
     const rng = mulberry32((seed ^ 0x7712bb) >>> 0);
     spawnPlovers(mulberry32((seed ^ 0x51e77) >>> 0));
+    spawnYujack();
     let tries = 0;
     while (alive.length < B.quantos && tries < 400) {
       tries++;
@@ -674,6 +844,7 @@ export function criarMob(ctx: Ctx): Mob {
     step(dt, simulateMobs) {
       timeMs += dt * 1000;
       if (plovers.length) stepPlovers(dt);
+      stepYujack(dt);
       if (simulateMobs) {
         despawnMs += dt * 1000;
         if (despawnMs >= 1000) { despawnMs = 0; despawnCandy(); }
@@ -767,5 +938,6 @@ export function criarMob(ctx: Ctx): Mob {
     spawnFishAt: (x, z) => trySpawnFish(x, z),
     ploverCount: () => plovers.length,
     ploverState: () => plovers.map((b) => ({ x: b.x, y: b.y, z: b.z, flying: b.flying })),
+    yujackState: () => (yujack ? { x: yujack.x, y: yujack.y, z: yujack.z, sitting: yujack.sitting } : null),
   };
 }

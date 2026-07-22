@@ -119,6 +119,7 @@ export interface Mob {
   spawnFishAt(x: number, z: number): boolean;
   ploverCount(): number;
   ploverState(): Array<{ x: number; y: number; z: number; flying: boolean }>;
+  yujackState(): { x: number; y: number; z: number; sitting: boolean } | null;
 }
 
 export type Meta =

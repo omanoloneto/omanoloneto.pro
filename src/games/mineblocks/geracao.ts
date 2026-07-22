@@ -2,6 +2,7 @@
 // grama/terra/pedra, praia, lagos, árvores e flores. Funções puras
 // (mesma seed = mesmo mundo).
 import { mulberry32 } from '../../lib/rng';
+import { buildShed } from './galpao';
 import type { Ctx } from './types';
 
 // hash inteiro determinístico do ponto da grade (independente de Math.sin)
@@ -348,6 +349,8 @@ export function gerarMundo(ctx: Ctx, seed: number) {
     const z = Math.max(2, Math.min(SZ - 3, Math.floor(P.z - P.raio + rng() * P.raio * 2)));
     return { x, z };
   };
+  buildShed(ctx, mulberry32((seed ^ 0x6a19a0) >>> 0), pampaTop);
+
   for (let i = 0; i < P.capim; i++) {
     const { x, z } = pampaSpot();
     const h = pampaTop(x, z);
