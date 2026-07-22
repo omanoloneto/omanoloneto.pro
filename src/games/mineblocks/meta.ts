@@ -87,10 +87,12 @@ export function criarMetas(ctx: Ctx): MetaStore {
 // Array.from converte buraco/undefined/null em 0.
 function normalizada(m: Meta): Meta {
   if (m.tipo !== 'bau') return m;
+  const itens = Array.from(m.itens, (n) => (typeof n === 'number' && n > 0 ? Math.min(999, n | 0) : 0));
+  if (itens.length > 7) itens[7] = 0;
   return {
     tipo: 'bau',
     dono: m.dono,
-    itens: Array.from(m.itens, (n) => (typeof n === 'number' && n > 0 ? Math.min(999, n | 0) : 0)),
+    itens,
     publico: m.publico === true,
   };
 }

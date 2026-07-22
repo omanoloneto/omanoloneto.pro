@@ -4,7 +4,9 @@ import type { Target, Ctx, Editing } from './types';
 
 const LEAF_NATURAL = 7;
 const LEAF_PLACED = 16;
+const LEAF_LUCKY = 37;
 const TRUNK = 5;
+const isDecayLeaf = (id: number) => id === LEAF_NATURAL || id === LEAF_LUCKY;
 const CHEST = 17;
 const DOOR_CLOSED = 18;
 const DOOR_OPEN = 19;
@@ -171,7 +173,7 @@ export function createEditing(ctx: Ctx): Editing {
       gainItem(above);
       ctx.metas.remove(a.x, a.y + 1, a.z);
     }
-    if (a.id === TRUNK || a.id === LEAF_NATURAL || a.id === LEAF_PLACED) {
+    if (a.id === TRUNK || isDecayLeaf(a.id) || a.id === LEAF_PLACED) {
       queueNeighbors(a.x, a.y, a.z);
     }
     ctx.audio.soundBreak(a.id);
@@ -497,14 +499,13 @@ export function createEditing(ctx: Ctx): Editing {
       }
       world.set(cx, cy + 1, cz, DOOR_CLOSED);
     }
-    const finalId = id === LEAF_NATURAL ? LEAF_PLACED : id;
-    world.set(cx, cy, cz, finalId);
+    world.set(cx, cy, cz, id);
     ctx.state.inventory[id]--;
     if (id === 15) {
       const C = ctx.cfg.crescimento;
       saplings.push({ x: cx, y: cy, z: cz, quandoMs: timeMs + C.minMs + Math.random() * (C.maxMs - C.minMs) });
     }
-    if (finalId === CHEST) ctx.metas.set(cx, cy, cz, { tipo: 'bau', dono: myName(), itens: [] });
+    if (id === CHEST) ctx.metas.set(cx, cy, cz, { tipo: 'bau', dono: myName(), itens: [] });
     ctx.ui.updateCounts();
     ctx.audio.soundPlace();
     ctx.save.schedule();
@@ -682,7 +683,7 @@ export function createEditing(ctx: Ctx): Editing {
       const nx = x + dx;
       const ny = y + dy;
       const nz = z + dz;
-      if (world.get(nx, ny, nz) !== LEAF_NATURAL) continue;
+      if (!isDecayLeaf(world.get(nx, ny, nz))) continue;
       const k = key3(nx, ny, nz);
       if (queued.has(k)) continue;
       queued.add(k);
@@ -703,7 +704,7 @@ export function createEditing(ctx: Ctx): Editing {
           const nz = z + dz;
           const id = world.get(nx, ny, nz);
           if (id === TRUNK) return true;
-          if (id !== LEAF_NATURAL) continue;
+          if (!isDecayLeaf(id)) continue;
           const k = key3(nx, ny, nz);
           if (visited.has(k)) continue;
           visited.add(k);
@@ -724,7 +725,7 @@ export function createEditing(ctx: Ctx): Editing {
       const k = key3(x, y, z);
       queued.delete(k);
       if (scheduled.has(k)) continue;
-      if (world.get(x, y, z) !== LEAF_NATURAL) continue;
+      if (!isDecayLeaf(world.get(x, y, z))) continue;
       if (hasConnectedTrunk(x, y, z)) continue;
       const delay = D.atrasoMinMs + Math.random() * (D.atrasoMaxMs - D.atrasoMinMs);
       scheduled.add(k);
@@ -735,11 +736,12 @@ export function createEditing(ctx: Ctx): Editing {
       if (!flushAll && nowMs < d.quandoMs) continue;
       decaying.splice(i, 1);
       scheduled.delete(key3(d.x, d.y, d.z));
-      if (world.get(d.x, d.y, d.z) !== LEAF_NATURAL) continue;
+      const fallenId = world.get(d.x, d.y, d.z);
+      if (!isDecayLeaf(fallenId)) continue;
       if (hasConnectedTrunk(d.x, d.y, d.z)) continue;
       world.set(d.x, d.y, d.z, 0);
       queueNeighbors(d.x, d.y, d.z);
-      if (Math.random() < D.chanceMuda) {
+      if (fallenId === LEAF_LUCKY || Math.random() < D.chanceMuda) {
         const inv = ctx.state.inventory;
         inv[15] = Math.min(999, (inv[15] || 0) + 1);
         addToHotbar(15);
@@ -791,7 +793,7 @@ export function createEditing(ctx: Ctx): Editing {
           const id = world.get(x, y, z);
           if (id === 15) {
             saplings.push({ x, y, z, quandoMs: C.minMs + Math.random() * (C.maxMs - C.minMs) });
-          } else if (id === LEAF_NATURAL) {
+          } else if (isDecayLeaf(id)) {
             const k = key3(x, y, z);
             queued.add(k);
             toCheck.push([x, y, z]);

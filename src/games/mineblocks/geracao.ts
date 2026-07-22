@@ -34,25 +34,36 @@ function relevo(x: number, z: number, seed: number, escala: number): number {
   );
 }
 
-// cria uma árvore com a base do tronco em (x, h+1, z) — usada na geração
-// E no crescimento das mudas plantadas. Folhas só ocupam células de ar.
 export function brotarArvore(ctx: Ctx, x: number, h: number, z: number, rng: () => number) {
   const { world: mundo } = ctx;
   const alt = 4 + Math.floor(rng() * 2);
   for (let y = 1; y <= alt; y++) mundo.set(x, h + y, z, 5);
-  // copa: caixa 5×5 em 2 camadas (cantos ralos) + cruz no topo
+  const leaves: Array<[number, number, number]> = [];
+  const putLeaf = (lx: number, ly: number, lz: number) => {
+    if (mundo.get(lx, ly, lz) === 0) {
+      mundo.set(lx, ly, lz, 7);
+      leaves.push([lx, ly, lz]);
+    }
+  };
   for (const dy of [alt - 1, alt]) {
     for (let dx = -2; dx <= 2; dx++) {
       for (let dz = -2; dz <= 2; dz++) {
-        if (dx === 0 && dz === 0 && dy === alt - 1) continue; // tronco
+        if (dx === 0 && dz === 0 && dy === alt - 1) continue;
         if (Math.abs(dx) === 2 && Math.abs(dz) === 2 && rng() > 0.4) continue;
-        if (mundo.get(x + dx, h + dy + 1, z + dz) === 0) mundo.set(x + dx, h + dy + 1, z + dz, 7);
+        putLeaf(x + dx, h + dy + 1, z + dz);
       }
     }
   }
   for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
-    if (mundo.get(x + dx, h + alt + 2, z + dz) === 0) mundo.set(x + dx, h + alt + 2, z + dz, 7);
+    putLeaf(x + dx, h + alt + 2, z + dz);
   }
+  for (let i = leaves.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [leaves[i], leaves[j]] = [leaves[j], leaves[i]];
+  }
+  leaves.forEach(([lx, ly, lz], i) => {
+    if (i < 2 || rng() < 0.1) mundo.set(lx, ly, lz, 37);
+  });
 }
 
 function digDungeon(ctx: Ctx, rng: () => number, heightAt: (x: number, z: number) => number) {

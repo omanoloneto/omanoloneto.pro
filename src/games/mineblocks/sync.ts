@@ -121,6 +121,7 @@ export function criarSync(ctx: Ctx): Sync {
   // dele → baú do dono → inventário do dono. SÓ o anfitrião resolve.
   function depositarNoBau(chave: number, bau: Meta & { tipo: 'bau' }, itens: number[]) {
     for (let id = 0; id < itens.length; id++) {
+      if (id === 7) continue;
       const n = itens[id] | 0;
       if (n > 0) bau.itens[id] = Math.min(999, (bau.itens[id] || 0) + n);
     }
@@ -392,7 +393,9 @@ export function criarSync(ctx: Ctx): Sync {
     if (modo !== 'visita') return null;
     const inv = ctx.state.inventory;
     if (!inv.some((n) => n > 0)) return null;
-    return inv.map((n) => Math.max(0, Math.min(999, n | 0)));
+    const out = inv.map((n) => Math.max(0, Math.min(999, n | 0)));
+    out[7] = 0;
+    return out;
   }
 
   const api2: Sync = {

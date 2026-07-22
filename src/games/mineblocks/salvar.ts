@@ -228,6 +228,7 @@ export function criarSalvar(ctx: Ctx): Save {
           if (typeof n === 'number' && n > 0) inv[i] = Math.min(999, Math.floor(n));
         }
       }
+      inv[7] = 0;
       ctx.state.inventory = inv;
       const slots = new Array(NSLOTS).fill(0);
       if (Array.isArray(p.slots)) {

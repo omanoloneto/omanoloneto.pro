@@ -26,7 +26,7 @@ export const blocos: Bloco[] = [
   { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo', dureza: 450 },
   { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo', dureza: 800, madeira: true },
   { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo', dureza: 800, icone: 'tabuas', madeira: true },
-  { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', dropSorte: { id: 15, chance: 0.3 }, dureza: 300, madeira: true },
+  { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 0, dropSorte: { id: 15, chance: 0.1 }, dureza: 300, madeira: true },
   { id: 8, nome: 'vidro', tiles: [9, 9, 9], solido: true, render: 'recorte', dureza: 350, icone: 'vidro' },
   { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
   { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo', dureza: 1100, durezaPicareta: 350, durezaFerro: 150 },
@@ -35,7 +35,7 @@ export const blocos: Bloco[] = [
   { id: 13, nome: 'água', tiles: [14, 14, 14], solido: false, render: 'agua' },
   { id: 14, nome: 'rocha-mãe', tiles: [15, 15, 15], solido: true, render: 'cubo' },
   { id: 15, nome: 'muda de árvore', tiles: [16, 16, 16], solido: false, render: 'cruz', dureza: 350 },
-  { id: 16, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 7, dureza: 300, madeira: true },
+  { id: 16, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 0, dureza: 300, madeira: true },
   { id: 17, nome: 'baú', tiles: [20, 21, 21], solido: true, render: 'cubo', dureza: 800 },
   { id: 18, nome: 'porta', tiles: [22, 22, 22], solido: true, render: 'porta', dureza: 700 },
   { id: 19, nome: 'porta aberta', tiles: [23, 23, 23], solido: false, render: 'porta', drop: 18, dureza: 700 },
@@ -56,8 +56,9 @@ export const blocos: Bloco[] = [
   { id: 34, nome: 'caixa de correio', tiles: [34, 34, 34], solido: false, render: 'cruz', dureza: 400 },
   { id: 35, nome: 'pacote', tiles: [35, 35, 35], solido: false, render: 'cruz' },
   { id: 36, nome: 'escada', tiles: [36, 36, 36], solido: false, render: 'recorte', dureza: 350, madeira: true },
+  { id: 37, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 0, dropSorte: { id: 15, chance: 1 }, dureza: 300, madeira: true },
 ];
-export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36];
+export const itens = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36];
 export const materiais = [21, 23, 25, 26];
 export interface Receita {
   de: number;
@@ -191,7 +192,7 @@ export const config = {
     uivoMinMs: 9000,
     uivoMaxMs: 16000,
   },
-  decay: { atrasoMinMs: 400, atrasoMaxMs: 2900, chanceMuda: 0.15, alcanceTronco: 6 },
+  decay: { atrasoMinMs: 400, atrasoMaxMs: 2900, chanceMuda: 0.1, alcanceTronco: 6 },
   salvar: {
     api: '/class/api/mundos.php',
     debounceMs: 12000,

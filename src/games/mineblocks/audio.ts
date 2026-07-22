@@ -170,7 +170,7 @@ export function criarAudio(ctx: Ctx): Audio {
       if (mudo()) return;
       // timbre por material: pedra grave, terra média, folha/areia aguda
       const grave = id === 3 || id === 9 || id === 10;
-      const agudo = id === 7 || id === 4 || id === 11 || id === 12;
+      const agudo = id === 7 || id === 16 || id === 37 || id === 4 || id === 11 || id === 12;
       croc(grave ? 300 : agudo ? 1400 : 700, 0.22);
     },
     soundPlace() { if (mudo()) return; croc(900, 0.14, 0.07); tom(220, 0, 0.06, 'square', 0.06); },
