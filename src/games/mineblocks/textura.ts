@@ -35,13 +35,6 @@ export function criarTextura(_ctx: Ctx): Texture {
     g.fillRect(ox + x, oy + y, 1, 1);
   }
 
-  function edge(ox: number, oy: number, color: string) {
-    g.fillStyle = color;
-    g.fillRect(ox, oy, TILE, 1);
-    g.fillRect(ox, oy + TILE - 1, TILE, 1);
-    g.fillRect(ox, oy, 1, TILE);
-    g.fillRect(ox + TILE - 1, oy, 1, TILE);
-  }
 
   base(0, [106, 190, 92], 0.10);
   {
@@ -64,7 +57,6 @@ export function criarTextura(_ctx: Ctx): Texture {
       }
     }
     for (let y = 2; y < 13; y++) px(ox, oy, 6, y, '#b9884e');
-    edge(ox, oy, '#5e3b1e');
   }
   {
     const [ox, oy] = base(6, [185, 138, 78], 0.015);
@@ -75,7 +67,6 @@ export function criarTextura(_ctx: Ctx): Texture {
       g.stroke();
     }
     px(ox, oy, 8, 8, '#8a6340');
-    edge(ox, oy, '#5e3b1e');
   }
   {
     const [ox, oy] = base(7, [186, 148, 92], 0.06);
@@ -95,7 +86,18 @@ export function criarTextura(_ctx: Ctx): Texture {
     for (const [bx, by, bw, bh] of [[6, 6, 3, 2], [1, 12, 3, 2], [12, 1, 3, 2]] as const) {
       g.fillRect(ox + bx, oy + by, bw, bh);
     }
-    edge(ox, oy, '#2e7020');
+  }
+  {
+    const ox = (38 % GRID) * TILE;
+    const oy = Math.floor(38 / GRID) * TILE;
+    g.fillStyle = '#2e7020';
+    g.fillRect(ox, oy, TILE, TILE);
+  }
+  {
+    const ox = (39 % GRID) * TILE;
+    const oy = Math.floor(39 / GRID) * TILE;
+    g.fillStyle = '#5e3b1e';
+    g.fillRect(ox, oy, TILE, TILE);
   }
   {
     const ox = (9 % GRID) * TILE;

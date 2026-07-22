@@ -31,6 +31,10 @@ interface Camada {
   idx: number[];
 }
 
+const OUTLINE_GROUP: Record<number, number> = { 7: 38, 16: 38, 37: 38, 5: 39 };
+const OUTLINE_WIDTH = 0.08;
+const OUTLINE_LIFT = 0.004;
+
 export function criarMalha(ctx: Ctx): Meshes {
   const { scene, world: mundo, texture: textura, byId: porId, cfg } = ctx;
   const { SX, SY, CHUNK } = cfg.mundo;
@@ -111,6 +115,46 @@ export function criarMalha(ctx: Ctx): Meshes {
       c.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     } else {
       c.idx.push(base + 1, base + 2, base + 3, base + 1, base + 3, base);
+    }
+  }
+
+  function empurrarBordas(c: Camada, f: number, bx: number, by: number, bz: number, id: number) {
+    const face = FACES[f];
+    const [nx, ny, nz] = face.n;
+    const normalAxis = nx !== 0 ? 0 : ny !== 0 ? 1 : 2;
+    const group = OUTLINE_GROUP[id];
+    const [u0, v0, u1, v1] = textura.uv(group);
+    const mu = (u0 + u1) / 2;
+    const mv = (v0 + v1) / 2;
+    const luz = SOMBRA_FACE[f];
+    const blockPos = [bx, by, bz];
+    for (let k = 0; k < 4; k++) {
+      const a = face.v[k];
+      const b = face.v[(k + 1) % 4];
+      let edgeAxis = -1;
+      for (let ax = 0; ax < 3; ax++) {
+        if (ax === normalAxis) continue;
+        if (a[ax] === b[ax]) edgeAxis = ax;
+      }
+      if (edgeAxis < 0) continue;
+      const dir = a[edgeAxis] === 1 ? 1 : -1;
+      const npos = [bx, by, bz];
+      npos[edgeAxis] += dir;
+      if (OUTLINE_GROUP[mundo.get(npos[0], npos[1], npos[2])] === group) continue;
+      const base = c.pos.length / 3;
+      const corners = [a, b, b, a];
+      for (let i = 0; i < 4; i++) {
+        const cv = corners[i];
+        const p = [blockPos[0] + cv[0], blockPos[1] + cv[1], blockPos[2] + cv[2]];
+        if (i >= 2) p[edgeAxis] -= dir * OUTLINE_WIDTH;
+        p[0] += nx * OUTLINE_LIFT;
+        p[1] += ny * OUTLINE_LIFT;
+        p[2] += nz * OUTLINE_LIFT;
+        c.pos.push(p[0], p[1], p[2]);
+        c.uv.push(mu, mv);
+        c.cor.push(luz, luz, luz);
+      }
+      c.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     }
   }
 
@@ -210,6 +254,7 @@ export function criarMalha(ctx: Ctx): Meshes {
             const vizDef = viz === 0 ? null : porId(viz);
             const recuo = def.render === 'agua' && vizDef && vizDef.render === 'recorte' ? 0.0045 : 0;
             empurrarFace(camada, f, x, y, z, tile, comAO, superficie, recuo);
+            if (OUTLINE_GROUP[id] !== undefined) empurrarBordas(camadas[0], f, x, y, z, id);
           }
         }
       }
