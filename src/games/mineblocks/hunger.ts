@@ -49,7 +49,29 @@ export function createHunger(ctx: Ctx): Hunger {
     ctx.save.schedule();
   }
 
+  function autoEat() {
+    const inv = ctx.state.inventory;
+    let ate = 0;
+    while (ctx.state.fome <= F.comeEm && (inv[F.comida] || 0) > 0) {
+      inv[F.comida]--;
+      ctx.state.fome = Math.min(F.max, ctx.state.fome + F.recupera);
+      ate++;
+    }
+    if (!ate) return;
+    starveMs = 0;
+    pulseMs = 0;
+    ctx.ui.updateCounts();
+    ctx.ui.updateHunger();
+    ctx.audio.soundSaved();
+    ctx.ui.showToast(ate > 1
+      ? '🍭 Nham! Você comeu ' + ate + ' algodões-doces da mochila!'
+      : '🍭 Nham! Você comeu um algodão-doce da mochila!', 'ok', 2400);
+    ctx.ui.announce('Você comeu algodão-doce e recuperou fome.');
+    ctx.save.schedule();
+  }
+
   function step(dt: number) {
+    autoEat();
     const ms = dt * 1000;
     if (!starving()) {
       pointMs += ms;

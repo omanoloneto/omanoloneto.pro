@@ -40,7 +40,7 @@ export const blocos: Bloco[] = [
   { id: 18, nome: 'porta', tiles: [22, 22, 22], solido: true, render: 'porta', dureza: 700 },
   { id: 19, nome: 'porta aberta', tiles: [23, 23, 23], solido: false, render: 'porta', drop: 18, dureza: 700 },
   { id: 20, nome: 'placa', tiles: [24, 24, 24], solido: false, render: 'cruz', dureza: 300 },
-  { id: 21, nome: 'lã', tiles: [25, 25, 25], solido: false, render: 'cruz', drop: 21, dureza: 200, icone: 'la' },
+  { id: 21, nome: 'algodão-doce', tiles: [25, 25, 25], solido: false, render: 'cruz', drop: 21, dureza: 200, icone: 'algodao-doce' },
   { id: 22, nome: 'carvão', tiles: [26, 26, 26], solido: true, render: 'cubo', drop: 23, dureza: 600, durezaFerro: 250, precisaPicareta: true },
   { id: 23, nome: 'carvão', tiles: [27, 27, 27], solido: false, render: 'cruz' },
   { id: 24, nome: 'picareta de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true, icone: 'picareta-madeira' },
@@ -133,6 +133,9 @@ export const config = {
     fatorLento: 0.55,
     danoIntervaloMs: 2600,
     avisoPontos: 3,
+    comida: 21,
+    comeEm: 4,
+    recupera: 3,
   },
   hotbarTamanho: 9,
   bichos: {
