@@ -12,6 +12,7 @@ import { criarCeu, DIA_S } from './ceu';
 import { criarKotsooh } from './kotsooh';
 import { criarMob } from './mob';
 import { criarFisica } from './fisica';
+import { createHunger } from './hunger';
 import { criarCamera } from './camera';
 import { criarMira } from './mira';
 import { createEditing } from './edicao';
@@ -31,6 +32,7 @@ export function startGame() {
     firstInput: false,
     inventory: new Array(data.blocos.length).fill(0),
     hotbarSlots: new Array(data.config.hotbarTamanho).fill(0),
+    fome: data.config.fome.max,
   };
   const player: Player = {
     x: data.config.mundo.SX / 2 + 0.5,
@@ -88,6 +90,7 @@ export function startGame() {
   ctx.sky = criarCeu(ctx);
   ctx.mob = criarMob(ctx);
   ctx.physics = criarFisica(ctx);
+  ctx.hunger = createHunger(ctx);
   ctx.kotsooh = criarKotsooh(ctx);
   ctx.camera3 = criarCamera(ctx);
   ctx.aim = criarMira(ctx);
@@ -100,6 +103,7 @@ export function startGame() {
   ui.buildCraft();
   ui.buildInventory();
   ui.buildHotbar();
+  ui.buildHunger();
 
   function craftRecipe(btn: HTMLElement) {
     const rec = data.receitas[+btn.dataset.receita!];
@@ -186,6 +190,7 @@ export function startGame() {
     ctx.physics.step(dt);
     const dtReal = Math.min(dtMs / 1000, 0.25);
     ctx.editing.step(dtReal, !sync.inRoom() || sync.isHost());
+    ctx.hunger.step(dtReal);
     if (input.strike) ctx.editing.strike(dtReal);
     else if (ctx.editing.striking()) ctx.editing.releaseStrike();
     ctx.avatars.step(dt);
@@ -217,6 +222,7 @@ export function startGame() {
       ui.els.generatingOverlay.hidden = true;
       ui.els.pauseModal.hidden = true;
       ui.els.hotbar.hidden = false;
+      ui.els.hunger.hidden = false;
       ui.els.reticle.hidden = false;
       ui.els.pauseBtn.hidden = false;
       ui.els.muteBtn.hidden = false;
@@ -231,6 +237,7 @@ export function startGame() {
         ui.showToast('🎲 Mundo de brincadeira (sem internet) — ele some quando você sai!', 'info', 3400);
       }
       ui.updateCounts();
+      ui.updateHunger();
       ui.selectSlot(state.sel, false);
       ctx.audio.resume();
       measure();
@@ -347,6 +354,8 @@ export function startGame() {
       state.inventory.fill(0);
       state.hotbarSlots.fill(0);
       state.sel = 0;
+      state.fome = ctx.cfg.fome.max;
+      ctx.hunger.reset();
       player.x = ctx.cfg.mundo.SX / 2 + 0.5;
       player.z = ctx.cfg.mundo.SZ / 2 + 0.5;
       player.yaw = Math.PI * 0.75;
@@ -369,6 +378,8 @@ export function startGame() {
       if (!loaded) {
         state.inventory.fill(0);
         state.hotbarSlots.fill(0);
+        state.fome = ctx.cfg.fome.max;
+        ctx.hunger.reset();
         ctx.metas.clear();
         gerarMundo(ctx, seed);
         player.x = ctx.cfg.mundo.SX / 2 + 0.5;
@@ -513,6 +524,7 @@ export function startGame() {
     set: ctx.world.set,
     breakBlock: () => ctx.editing.breakBlock(),
     place: () => ctx.editing.place(),
+    hunger: ctx.hunger,
     target: () => ctx.aim.target(),
     select: (i: number) => ctx.ui.selectSlot(i, false),
     saveNow: () => save.saveNow('manual'),

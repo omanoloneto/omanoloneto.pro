@@ -1,44 +1,32 @@
-// Persistência NO SERVIDOR (mundos.php): nada fica salvo no Chromebook.
-// O mundo vive num arquivo do host, protegido por senha — a criança
-// carrega de qualquer máquina com nome + senha.
-// RLE (run Uint16 + id Uint8) → base64; auto-save com debounce.
-//
-// Escrita protegida contra "amigo apagou meu castelo": todo save leva o
-// salvoEm que o cliente conhece (base); se o servidor tem um save MAIS
-// NOVO (outra aba/outro colega), devolve conflito — o auto-save para e
-// só o save manual, com confirmação da criança, passa por cima.
 import { encodeRLE, decodeRLE } from '../../lib/rle';
 import { gerarMundo } from './geracao';
 import type { Ctx, Save } from './types';
 
-// gerações antigas de mundo, da mais recente pra mais antiga (o load tenta
-// decodificar em ordem); o recorte antigo sobe SY - sy (a superfície velha
-// cai na altura da nova e o vão embaixo vira subsolo minerável)
-const LEGADOS = [
+const LEGACY_SIZES = [
   { sx: 192, sz: 192, sy: 40 },
   { sx: 96, sz: 96, sy: 40 },
 ];
-type Legado = (typeof LEGADOS)[number];
+type LegacySize = (typeof LEGACY_SIZES)[number];
 
 export function criarSalvar(ctx: Ctx): Save {
   const S = ctx.cfg.salvar;
-  let codigo = '';
-  let baseSalvoEm = 0; // versão do servidor que este cliente conhece
-  let conflito = false; // outro save mais novo existe: auto-save pausado
-  let forcarProximo = false;
-  let sujoDesdeUltimoSave = false;
-  let salvandoAgora = false;
+  let code = '';
+  let baseSavedAt = 0;
+  let conflict = false;
+  let forceNext = false;
+  let dirtySinceLastSave = false;
+  let savingNow = false;
   let debounce = 0;
-  let ultimoSaveMs = -Infinity; // nunca salvou: o 1º auto-save passa na hora
+  let lastSaveMs = -Infinity;
 
-  function offsetsLegado(L: Legado) {
+  function legacyOffsets(L: LegacySize) {
     const { SX, SZ, SY } = ctx.cfg.mundo;
     return { offX: (SX - L.sx) / 2, offZ: (SZ - L.sz) / 2, offY: SY - L.sy };
   }
 
-  function expandLegacyWorld(legacy: Uint8Array, seed: number, L: Legado): Uint8Array {
+  function expandLegacyWorld(legacy: Uint8Array, seed: number, L: LegacySize): Uint8Array {
     const { SX, SZ } = ctx.cfg.mundo;
-    const { offX, offZ, offY } = offsetsLegado(L);
+    const { offX, offZ, offY } = legacyOffsets(L);
     gerarMundo(ctx, seed);
     const out = new Uint8Array(ctx.world.data);
     for (let y = 0; y < L.sy; y++) {
@@ -47,8 +35,6 @@ export function criarSalvar(ctx: Ctx): Save {
         const dst = offX + (z + offZ) * SX + (y + offY) * SX * SZ;
         out.set(legacy.subarray(src, src + L.sx), dst);
         if (y === 0) {
-          // rocha-mãe antiga agora fica no meio do mundo: vira pedra pra
-          // liberar a escavação do subsolo novo embaixo dela
           for (let x = 0; x < L.sx; x++) if (out[dst + x] === 14) out[dst + x] = 3;
         }
       }
@@ -56,10 +42,10 @@ export function criarSalvar(ctx: Ctx): Save {
     return out;
   }
 
-  function remapLegacyMetas(metas: unknown, L: Legado): unknown {
+  function remapLegacyMetas(metas: unknown, L: LegacySize): unknown {
     if (!metas || typeof metas !== 'object') return metas;
     const { SX, SZ } = ctx.cfg.mundo;
-    const { offX, offZ, offY } = offsetsLegado(L);
+    const { offX, offZ, offY } = legacyOffsets(L);
     const out: Record<string, unknown> = {};
     for (const k of Object.keys(metas as Record<string, unknown>)) {
       const n = +k;
@@ -72,27 +58,28 @@ export function criarSalvar(ctx: Ctx): Save {
     return out;
   }
 
-  function payloadAtual(): string {
+  function currentPayload(): string {
     const p = ctx.player;
     return JSON.stringify({
-      v: 7, // v7 = mundo 384×384×80 (saves 192/96 migram no load); v6 = 192×192; v5 = hora do dia; v4 = metadata; v3-v1 ainda carregam
+      v: 7,
       seed: ctx.state.seed,
       tempoDia: Math.round(ctx.sky.time()),
       jogador: { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), yaw: +p.yaw.toFixed(3), pitch: +p.pitch.toFixed(3) },
       sel: ctx.state.sel,
       inv: ctx.state.inventory,
       slots: ctx.state.hotbarSlots,
+      fome: ctx.state.fome,
       metas: ctx.metas.serialize(),
       blocos: encodeRLE(ctx.world.data),
     });
   }
 
-  async function api(corpo: Record<string, unknown>): Promise<{ ok: boolean; status: number; json: any }> {
+  async function api(body: Record<string, unknown>): Promise<{ ok: boolean; status: number; json: any }> {
     try {
       const r = await fetch(S.api, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(corpo),
+        body: JSON.stringify(body),
       });
       const json = await r.json().catch(() => ({}));
       return { ok: r.ok, status: r.status, json };
@@ -101,75 +88,69 @@ export function criarSalvar(ctx: Ctx): Save {
     }
   }
 
-  async function enviarSave(payload: string, force: boolean) {
-    return api({ acao: 'salvar', codigo, payload, base: baseSalvoEm, force: force || forcarProximo });
+  async function sendSave(payload: string, force: boolean) {
+    return api({ acao: 'salvar', codigo: code, payload, base: baseSavedAt, force: force || forceNext });
   }
 
-  async function salvarAgora(motivo: 'auto' | 'manual' | 'flush' = 'manual'): Promise<boolean> {
-    if (!codigo || salvandoAgora) return false;
-    const agora = performance.now();
-    if (motivo === 'auto' && agora - ultimoSaveMs < S.minEntreSavesMs) {
-      agendar(); // cedo demais: tenta de novo depois
+  async function saveNow(reason: 'auto' | 'manual' | 'flush' = 'manual'): Promise<boolean> {
+    if (!code || savingNow) return false;
+    const now = performance.now();
+    if (reason === 'auto' && now - lastSaveMs < S.minEntreSavesMs) {
+      schedule();
       return false;
     }
-    // conflito pendente: só o save MANUAL (com confirmação) resolve
-    if (conflito && motivo !== 'manual') return false;
-    const payload = payloadAtual();
+    if (conflict && reason !== 'manual') return false;
+    const payload = currentPayload();
     if (payload.length > S.maxPayload) {
       ctx.ui.showToast('😅 O mundo ficou grande demais pra salvar!', 'err', 3000);
       return false;
     }
     clearTimeout(debounce);
-    // flush no fechar da aba: melhor esforço, NUNCA passa por cima de
-    // save alheio (sem force) e só marca limpo se o beacon foi aceito
-    if (motivo === 'flush') {
-      const corpo = JSON.stringify({ acao: 'salvar', codigo, payload, base: baseSalvoEm, force: false });
-      if (navigator.sendBeacon && corpo.length < 60000) {
-        if (navigator.sendBeacon(S.api, new Blob([corpo], { type: 'application/json' }))) {
-          sujoDesdeUltimoSave = false;
+    if (reason === 'flush') {
+      const body = JSON.stringify({ acao: 'salvar', codigo: code, payload, base: baseSavedAt, force: false });
+      if (navigator.sendBeacon && body.length < 60000) {
+        if (navigator.sendBeacon(S.api, new Blob([body], { type: 'application/json' }))) {
+          dirtySinceLastSave = false;
         }
       } else {
-        // >64KB o keepalive rejeita (limite da spec) — tenta mesmo assim,
-        // mas NÃO marca limpo: se a página sobreviver, o retry continua
-        fetch(S.api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: corpo, keepalive: true }).catch(() => {});
+        fetch(S.api, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
       }
       return true;
     }
-    salvandoAgora = true;
+    savingNow = true;
     ctx.ui.showSaving('salvando');
-    let r = await enviarSave(payload, false);
-    // outro save mais novo no servidor (amigo/outra aba)
+    let r = await sendSave(payload, false);
     if (r.status === 409 && r.json.erro === 'conflito') {
-      if (motivo === 'manual') {
-        const porCima = window.confirm(
+      if (reason === 'manual') {
+        const overwrite = window.confirm(
           'Opa! Outra pessoa salvou este mundo agorinha (vocês estão jogando juntos?).\n\n' +
           'OK = salvar o MEU jogo por cima do dela\nCancelar = deixar o save dela quieto'
         );
-        if (porCima) {
-          r = await enviarSave(payload, true);
+        if (overwrite) {
+          r = await sendSave(payload, true);
         } else {
-          conflito = true;
-          salvandoAgora = false;
+          conflict = true;
+          savingNow = false;
           ctx.ui.showSaving('nada');
           return false;
         }
       } else {
-        conflito = true;
-        salvandoAgora = false;
+        conflict = true;
+        savingNow = false;
         ctx.ui.showSaving('nada');
         ctx.ui.showToast('⚠️ Outra pessoa está salvando este mundo também! Salve pelo menu de pausa pra escolher o que fazer.', 'err', 4000);
         return false;
       }
     }
-    salvandoAgora = false;
+    savingNow = false;
     if (r.ok) {
-      conflito = false;
-      forcarProximo = false;
-      baseSalvoEm = r.json.salvoEm || baseSalvoEm;
-      ultimoSaveMs = performance.now();
-      sujoDesdeUltimoSave = false;
+      conflict = false;
+      forceNext = false;
+      baseSavedAt = r.json.salvoEm || baseSavedAt;
+      lastSaveMs = performance.now();
+      dirtySinceLastSave = false;
       ctx.ui.showSaving('salvo');
-      if (motivo === 'manual') {
+      if (reason === 'manual') {
         ctx.audio.soundSaved();
         ctx.ui.announce('World salvo!');
       }
@@ -179,25 +160,25 @@ export function criarSalvar(ctx: Ctx): Save {
     if (r.status !== 429) {
       ctx.ui.showToast('📡 Não consegui salvar agora — vou tentar de novo!', 'err', 2600);
     }
-    agendar(); // re-tenta no próximo ciclo
+    schedule();
     return false;
   }
 
-  function agendar() {
-    sujoDesdeUltimoSave = true;
+  function schedule() {
+    dirtySinceLastSave = true;
     clearTimeout(debounce);
-    debounce = window.setTimeout(() => salvarAgora('auto'), S.debounceMs);
+    debounce = window.setTimeout(() => saveNow('auto'), S.debounceMs);
   }
 
   return {
     async createWorld() {
       const r = await api({ acao: 'criar' });
       if (!r.ok || typeof r.json.codigo !== 'string') return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
-      codigo = r.json.codigo;
-      baseSalvoEm = 0;
-      conflito = false;
-      forcarProximo = false;
-      sujoDesdeUltimoSave = true;
+      code = r.json.codigo;
+      baseSavedAt = 0;
+      conflict = false;
+      forceNext = false;
+      dirtySinceLastSave = true;
       return null;
     },
     async loadWorld(cod: string) {
@@ -205,40 +186,38 @@ export function criarSalvar(ctx: Ctx): Save {
       if (!r.ok) return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
       const p = r.json.payload;
       if (!p || typeof p.blocos !== 'string') {
-        codigo = cod;
-        baseSalvoEm = r.json.salvoEm || 0;
-        conflito = false;
-        forcarProximo = false;
-        sujoDesdeUltimoSave = true;
+        code = cod;
+        baseSavedAt = r.json.salvoEm || 0;
+        conflict = false;
+        forceNext = false;
+        dirtySinceLastSave = true;
         return '__NOVO__';
       }
-      let migrado: Legado | null = null;
+      let migrated: LegacySize | null = null;
       let genMetas: Record<string, unknown> = {};
-      let blocos = decodeRLE(p.blocos, ctx.world.data.length, ctx.blocks.length - 1);
-      if (!blocos) {
-        for (const L of LEGADOS) {
-          const legado = decodeRLE(p.blocos, L.sx * L.sz * L.sy, ctx.blocks.length - 1);
-          if (legado) {
-            blocos = expandLegacyWorld(legado, p.seed >>> 0, L);
+      let blocks = decodeRLE(p.blocos, ctx.world.data.length, ctx.blocks.length - 1);
+      if (!blocks) {
+        for (const L of LEGACY_SIZES) {
+          const legacy = decodeRLE(p.blocos, L.sx * L.sz * L.sy, ctx.blocks.length - 1);
+          if (legacy) {
+            blocks = expandLegacyWorld(legacy, p.seed >>> 0, L);
             genMetas = ctx.metas.serialize() as Record<string, unknown>;
-            migrado = L;
+            migrated = L;
             break;
           }
         }
       }
-      if (!blocos) return 'Esse mundo está vazio ou quebrado. 😢';
-      codigo = cod;
-      baseSalvoEm = r.json.salvoEm || 0;
-      conflito = false;
-      forcarProximo = false;
-      ctx.world.data.set(blocos);
+      if (!blocks) return 'Esse mundo está vazio ou quebrado. 😢';
+      code = cod;
+      baseSavedAt = r.json.salvoEm || 0;
+      conflict = false;
+      forceNext = false;
+      ctx.world.data.set(blocks);
       ctx.state.seed = p.seed >>> 0;
-      if (typeof p.tempoDia === 'number') ctx.sky.setTime(p.tempoDia); // v<5 → fica de manhã
-      ctx.metas.load(migrado ? Object.assign(genMetas, remapLegacyMetas(p.metas, migrado)) : p.metas); // v<4 (sem metas) → mapa vazio
+      if (typeof p.tempoDia === 'number') ctx.sky.setTime(p.tempoDia);
+      ctx.metas.load(migrated ? Object.assign(genMetas, remapLegacyMetas(p.metas, migrated)) : p.metas);
       const NSLOTS = ctx.cfg.hotbarTamanho;
       ctx.state.sel = Math.max(0, Math.min(NSLOTS - 1, p.sel | 0));
-      // inventário: v2+ traz salvo; v1 (criativo antigo) migra vazio —
-      // a criança re-minera os próprios blocos, nada quebra
       const inv = new Array(ctx.blocks.length).fill(0);
       if (Array.isArray(p.inv)) {
         for (let i = 0; i < inv.length; i++) {
@@ -247,8 +226,6 @@ export function criarSalvar(ctx: Ctx): Save {
         }
       }
       ctx.state.inventory = inv;
-      // hotbar: v3 traz os slots; v2 migra (primeiros tipos que a criança
-      // tem viram atalhos); v1 fica vazia
       const slots = new Array(NSLOTS).fill(0);
       if (Array.isArray(p.slots)) {
         for (let i = 0; i < NSLOTS; i++) {
@@ -263,32 +240,35 @@ export function criarSalvar(ctx: Ctx): Save {
         }
       }
       ctx.state.hotbarSlots = slots;
+      const maxFome = ctx.cfg.fome.max;
+      ctx.state.fome = typeof p.fome === 'number' ? Math.max(0, Math.min(maxFome, Math.floor(p.fome))) : maxFome;
+      ctx.hunger.reset();
       const j = p.jogador || {};
-      const off = migrado ? offsetsLegado(migrado) : { offX: 0, offZ: 0, offY: 0 };
+      const off = migrated ? legacyOffsets(migrated) : { offX: 0, offZ: 0, offY: 0 };
       ctx.player.x = typeof j.x === 'number' ? j.x + off.offX : ctx.cfg.mundo.SX / 2;
       ctx.player.y = typeof j.y === 'number' ? j.y + off.offY : ctx.cfg.mundo.SY;
       ctx.player.z = typeof j.z === 'number' ? j.z + off.offZ : ctx.cfg.mundo.SZ / 2;
       ctx.player.yaw = typeof j.yaw === 'number' ? j.yaw : 0;
       ctx.player.pitch = typeof j.pitch === 'number' ? j.pitch : 0;
-      sujoDesdeUltimoSave = migrado !== null;
-      if (migrado) {
-        agendar();
+      dirtySinceLastSave = migrated !== null;
+      if (migrated) {
+        schedule();
         ctx.ui.showToast('🗺️ Seu mundo cresceu! Tem terras novas (e uma dungeon…) além das bordas antigas.', 'ok', 4200);
       }
       return null;
     },
     adoptWorld(cod) {
-      if (codigo === cod) return;
-      codigo = cod;
-      baseSalvoEm = 0;
-      conflito = false;
-      forcarProximo = true;
-      sujoDesdeUltimoSave = true;
+      if (code === cod) return;
+      code = cod;
+      baseSavedAt = 0;
+      conflict = false;
+      forceNext = true;
+      dirtySinceLastSave = true;
     },
-    saveNow: salvarAgora,
-    schedule: agendar,
-    hasWorld: () => codigo !== '',
-    worldCode: () => codigo,
-    dirty: () => sujoDesdeUltimoSave,
+    saveNow,
+    schedule,
+    hasWorld: () => code !== '',
+    worldCode: () => code,
+    dirty: () => dirtySinceLastSave,
   };
 }

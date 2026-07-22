@@ -14,6 +14,8 @@ export function createUI(ctx: Ctx): UI {
     reticle: $('[data-reticula]'),
     waterOverlay: $('[data-agua]'),
     scare: $('[data-susto]'),
+    hurt: $('[data-fome-dano]'),
+    hunger: $('[data-fome]'),
     saving: $('[data-salvando]'),
     worldNameHud: $('[data-nome-mundo]'),
     touchControls: $('[data-controles]'),
@@ -90,6 +92,27 @@ export function createUI(ctx: Ctx): UI {
       els.hotbar.appendChild(btn);
     }
     updateCounts();
+  }
+
+  function buildHunger() {
+    els.hunger.innerHTML = '';
+    for (let i = 0; i < ctx.cfg.fome.max; i++) {
+      const s = document.createElement('span');
+      s.className = 'fome__ponto';
+      s.textContent = '🍗';
+      els.hunger.appendChild(s);
+    }
+    updateHunger();
+  }
+
+  function updateHunger() {
+    const n = ctx.state.fome;
+    const pts = els.hunger.children;
+    for (let i = 0; i < pts.length; i++) {
+      pts[i].classList.toggle('fome__ponto--vazio', i >= n);
+    }
+    els.hunger.setAttribute('aria-label', 'Fome: ' + n + ' de ' + ctx.cfg.fome.max);
+    els.hunger.classList.toggle('fome--zerada', n <= 0);
   }
 
   function updateCounts() {
@@ -454,6 +477,13 @@ export function createUI(ctx: Ctx): UI {
       void els.scare.offsetWidth;
       els.scare.classList.add('show');
     },
+    flashHurt() {
+      els.hurt.classList.remove('show');
+      void els.hurt.offsetWidth;
+      els.hurt.classList.add('show');
+    },
+    buildHunger,
+    updateHunger,
   };
   return api;
 }

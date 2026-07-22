@@ -13,9 +13,7 @@ const description =
   <script type="application/json" data-dados set:html={dadosJson}></script>
 
   <main id="conteudo" class="mc" data-game role="application" aria-label="MineBlocks: mundo de blocos 3D pra construir e explorar">
-    <!-- Cena 3D + overlays -->
     <div class="cena" data-cena>
-      <!-- canvas WebGL entra aqui via JS -->
 
       <div class="hud-pills">
         <div class="pill pill--nome" data-nome-mundo></div>
@@ -25,22 +23,20 @@ const description =
       <div class="reticula" data-reticula aria-hidden="true" hidden>+</div>
       <div class="agua-overlay" data-agua aria-hidden="true" hidden></div>
       <div class="susto" data-susto aria-hidden="true"></div>
+      <div class="fome-dano" data-fome-dano aria-hidden="true"></div>
+      <div class="fome" data-fome role="status" aria-label="Fome" hidden></div>
 
-      <!-- hotbar de blocos + fabricação -->
       <nav class="hotbar" data-hotbar aria-label="Blocos pra construir" hidden></nav>
       <div class="balao" data-balao aria-hidden="true"></div>
       <button class="craft-btn" type="button" data-craft-btn aria-expanded="false" aria-label="Abrir o inventário (tecla E)" hidden>🎒</button>
 
-      <!-- lista de comandos (desktop): teclas principais sempre à vista -->
       <div class="hud-cmd" aria-hidden="true">
         <span><b>E</b> abrir mochila</span>
         <span><b>TAB</b> ver jogadores</span>
       </div>
 
-      <!-- lista de jogadores da sala (segurar TAB) -->
       <div class="tab-jogadores" data-tab-jogadores aria-live="polite" hidden></div>
 
-      <!-- inventário estilo Minecraft (tecla E) com a fabricação dentro -->
       <div class="inv" data-inv hidden>
         <div class="inv__caixa" role="dialog" aria-modal="false" aria-label="Inventário e fabricação">
           <div class="inv__topo">
@@ -53,7 +49,6 @@ const description =
         </div>
       </div>
 
-      <!-- baú: painel de troca de itens (conteúdo ↔ inventário) -->
       <div class="inv bau" data-bau hidden>
         <div class="inv__caixa" role="dialog" aria-modal="false" aria-label="Baú">
           <div class="inv__topo">
@@ -68,7 +63,6 @@ const description =
         </div>
       </div>
 
-      <!-- fornalha: só as receitas que precisam de fogo -->
       <div class="inv" data-fornalha hidden>
         <div class="inv__caixa" role="dialog" aria-modal="false" aria-label="Fornalha">
           <div class="inv__topo">
@@ -80,7 +74,6 @@ const description =
         </div>
       </div>
 
-      <!-- placa: escrever a mensagem ao colocar -->
       <div class="inv" data-placa-form hidden>
         <div class="inv__caixa inv__caixa--mini" role="dialog" aria-modal="true" aria-label="Escrever na placa">
           <div class="inv__topo"><span>📜 Escreva na placa</span></div>
@@ -92,7 +85,6 @@ const description =
         </div>
       </div>
 
-      <!-- controles touch -->
       <div class="controles" data-controles hidden>
         <div class="joy" data-joystick aria-label="Andar">
           <div class="joy__pino" data-joystick-pino></div>
@@ -101,7 +93,6 @@ const description =
         <button class="ctl ctl--pulo" type="button" data-btn-pulo aria-label="Pular">⬆️</button>
       </div>
 
-      <!-- dica fantasma (some no 1º input) -->
       <div class="fantasma" data-fantasma hidden>
         <span class="fantasma__desktop">Clique na tela pra olhar · W A S D anda · espaço pula · SEGURE o clique pra quebrar · botão direito coloca · E abre o inventário</span>
         <span class="fantasma__touch">Alavanca anda · arraste pra olhar · SEGURE ⛏️ pra quebrar · toque na tela coloca</span>
@@ -112,7 +103,6 @@ const description =
 
     <p class="sr-only" data-anuncio aria-live="assertive"></p>
 
-    <!-- Overlay: gerando mundo -->
     <div class="gerando" data-gerando hidden>
       <div class="gerando__caixa">
         <span class="gerando__cubo" aria-hidden="true"></span>
@@ -120,7 +110,6 @@ const description =
       </div>
     </div>
 
-    <!-- Modal: início (jogar agora × entrar por código) -->
     <div class="modal" data-inicio>
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="inicio-title">
         <div class="placa__topo" id="inicio-title">🧱 MineBlocks</div>
@@ -147,7 +136,6 @@ const description =
       </div>
     </div>
 
-    <!-- Modal: pausa -->
     <div class="modal" data-pausa hidden>
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="pausa-title">
         <div class="placa__topo" id="pausa-title">⏸ Pausa</div>
@@ -222,7 +210,6 @@ const description =
       overscroll-behavior: none;
     }
 
-    /* ===== HUD ===== */
     .hud-pills {
       position: absolute;
       top: max(8px, env(safe-area-inset-top));
@@ -259,7 +246,6 @@ const description =
     }
     .salvando[hidden] { display: none; }
 
-    /* ===== Cena ===== */
     .cena { position: relative; z-index: 10; flex: 1; min-height: 0; }
     .cena canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
@@ -286,8 +272,31 @@ const description =
     }
     .susto.show { animation: susto-pisca 0.45s ease-out; }
     @keyframes susto-pisca { 0% { opacity: 1; } 100% { opacity: 0; } }
+    .fome-dano {
+      position: absolute; inset: 0; z-index: 16;
+      pointer-events: none; opacity: 0;
+      box-shadow: inset 0 0 120px 46px rgba(214, 40, 28, 0.8);
+    }
+    .fome-dano.show { animation: susto-pisca 0.5s ease-out; }
+    .fome {
+      position: absolute; left: 50%;
+      bottom: calc(max(10px, env(safe-area-inset-bottom)) + 62px);
+      transform: translateX(-50%);
+      z-index: 40;
+      display: flex; gap: 1px;
+      font-size: 17px; line-height: 1;
+      pointer-events: none;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65));
+    }
+    .fome[hidden] { display: none; }
+    .fome__ponto--vazio { filter: grayscale(1) brightness(0.55); opacity: 0.4; }
+    .fome--zerada { animation: fome-treme 0.45s ease-in-out infinite; }
+    @keyframes fome-treme {
+      0%, 100% { transform: translateX(-50%); }
+      25% { transform: translateX(calc(-50% - 3px)); }
+      75% { transform: translateX(calc(-50% + 3px)); }
+    }
 
-    /* ===== Hotbar ===== */
     .hotbar {
       position: absolute; left: 50%; bottom: max(10px, env(safe-area-inset-bottom));
       transform: translateX(-50%);
@@ -312,7 +321,7 @@ const description =
     .slot.sel { border-color: var(--amarelo); box-shadow: 0 0 8px rgba(255, 210, 63, 0.6); }
     .slot__img {
       position: absolute; inset: 4px;
-      background-size: 400% 1000%; /* atlas 4 colunas × 10 linhas */
+      background-size: 400% 1000%;
       image-rendering: pixelated;
       border-radius: 4px;
     }
@@ -332,7 +341,6 @@ const description =
     .slot.vago { background: rgba(0, 0, 0, 0.45); border-style: dashed; }
     .slot__img[hidden] { display: none; }
 
-    /* ===== Fabricação ===== */
     .craft-btn {
       position: absolute; left: 12px; bottom: max(10px, env(safe-area-inset-bottom));
       z-index: 41;
@@ -346,7 +354,6 @@ const description =
     .craft-btn[hidden] { display: none; }
     .craft-btn[aria-expanded='true'] { border-color: var(--amarelo); }
 
-    /* lista de comandos (só desktop: são teclas) */
     .hud-cmd {
       position: absolute; left: 12px; z-index: 41; pointer-events: none;
       bottom: calc(74px + env(safe-area-inset-bottom));
@@ -365,7 +372,6 @@ const description =
     }
     @media (pointer: coarse) { .hud-cmd { display: none; } }
 
-    /* lista de jogadores da sala (segurar TAB) */
     .tab-jogadores {
       position: absolute; left: 50%; top: calc(max(8px, env(safe-area-inset-top)) + 58px);
       transform: translateX(-50%); z-index: 45; pointer-events: none;
@@ -386,7 +392,6 @@ const description =
     .tabj__nome { font-weight: 800; }
     .tabj__eu { opacity: 0.7; font-weight: 400; font-size: 0.82rem; }
 
-    /* painel do inventário (tecla E) */
     .inv {
       position: absolute; inset: 0; z-index: 46;
       display: grid; place-items: center;
@@ -442,10 +447,8 @@ const description =
     }
     .inv-slot.sel { border-color: var(--amarelo); box-shadow: 0 0 8px rgba(255, 210, 63, 0.6); }
 
-    /* baú + placa */
     .bau__rotulo { margin: 8px 0 6px; font-weight: 800; font-size: 0.9rem; }
     .bau__rotulo small { font-weight: 400; opacity: 0.75; }
-    /* baú: liberar/bloquear pra outros jogadores (só o dono vê) */
     .bau__trava {
       width: 100%; margin: 4px 0 2px; padding: 8px 12px;
       border-radius: 10px; cursor: pointer; font-weight: 800; font-size: 0.9rem;
@@ -519,8 +522,6 @@ const description =
     }
     .receita__seta { color: var(--amarelo); font-weight: 800; }
 
-    /* itens com arte própria (PNG em icones/): tapa o recorte do atlas em
-       qualquer contexto — precisa vir DEPOIS das regras por contexto acima */
     .slot__img.slot__img--icone {
       background-size: contain;
       background-position: center;
@@ -539,7 +540,6 @@ const description =
     }
     .balao.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* ===== Touch ===== */
     .controles { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
     .controles[hidden] { display: none; }
     .ctl {
@@ -607,7 +607,6 @@ const description =
     .toast.err { border-color: rgba(255, 92, 57, 0.7); }
     .toast[hidden] { display: none; }
 
-    /* ===== Overlay gerando ===== */
     .gerando {
       position: fixed; inset: 0; z-index: 60;
       display: grid; place-items: center;
@@ -623,7 +622,6 @@ const description =
     }
     @keyframes cubo-gira { 50% { transform: rotate(180deg) scale(0.8); } }
 
-    /* ===== Modais ===== */
     .modal {
       position: fixed; inset: 0; z-index: 50;
       display: grid; place-items: center;
@@ -704,7 +702,6 @@ const description =
     }
     .erro[hidden] { display: none; }
 
-    /* ===== Sala de amigos (multiplayer) ===== */
     .sala-chip {
       font-size: 0.82rem; font-weight: 800;
       padding: 3px 10px; border-radius: 999px;
@@ -758,6 +755,7 @@ const description =
     }
     @media (max-width: 560px) {
       .hotbar { gap: 2px; padding: 4px; bottom: max(8px, env(safe-area-inset-bottom)); }
+      .fome { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 50px); font-size: 14px; }
       .slot { width: 34px; height: 34px; border-radius: 7px; }
       .slot__img { inset: 3px; }
       .pill--nome { font-size: 0.82rem; }
@@ -785,6 +783,8 @@ const description =
     @media (prefers-reduced-motion: reduce) {
       .fantasma, .gerando__cubo { animation: none; }
       .susto.show { animation: none; }
+      .fome-dano.show { animation: none; }
+      .fome--zerada { animation: none; }
       .toast, .balao { transition: none; }
     }
   </style>

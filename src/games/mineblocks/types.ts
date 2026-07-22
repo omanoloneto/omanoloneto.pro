@@ -13,6 +13,7 @@ export interface State {
   firstInput: boolean;
   inventory: number[];
   hotbarSlots: number[];
+  fome: number;
 }
 
 export interface Player {
@@ -141,6 +142,12 @@ export interface Physics {
   settle(): void;
 }
 
+export interface Hunger {
+  step(dt: number): void;
+  reset(): void;
+  starving(): boolean;
+}
+
 export interface Kotsooh {
   spawn(): void;
   step(dt: number): void;
@@ -202,6 +209,9 @@ export interface UI {
   toggleCraftPanel(open?: boolean): void;
   showSaving(state: 'salvando' | 'salvo' | 'erro' | 'nada'): void;
   flashScare(): void;
+  flashHurt(): void;
+  buildHunger(): void;
+  updateHunger(): void;
   openFurnace(): void;
   closeFurnace(): void;
   furnaceOpen(): boolean;
@@ -290,6 +300,7 @@ export interface Ctx {
   sky: Sky;
   mob: Mob;
   physics: Physics;
+  hunger: Hunger;
   kotsooh: Kotsooh;
   camera3: Camera3;
   aim: Aim;
