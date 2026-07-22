@@ -328,6 +328,22 @@ export function criarTextura(_ctx: Ctx): Texture {
   }
 
   {
+    const ox = (36 % GRID) * TILE;
+    const oy = Math.floor(36 / GRID) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#8a6a3c';
+    g.fillRect(ox + 2, oy, 2, TILE);
+    g.fillRect(ox + 12, oy, 2, TILE);
+    g.fillStyle = '#b98a4e';
+    for (const y of [2, 6, 10, 14]) g.fillRect(ox + 2, oy + y, 12, 1);
+    g.fillStyle = '#d9ac6a';
+    for (const y of [2, 6, 10, 14]) g.fillRect(ox + 4, oy + y, 3, 1);
+    g.fillStyle = '#6e522f';
+    g.fillRect(ox + 2, oy, 1, TILE);
+    g.fillRect(ox + 13, oy, 1, TILE);
+  }
+
+  {
     const cracks: Array<Array<[number, number, number, number]>> = [
       [[7, 4, 8, 8], [8, 8, 6, 11], [9, 7, 11, 9]],
       [[7, 2, 8, 8], [8, 8, 5, 12], [8, 8, 12, 11], [4, 6, 8, 8], [9, 4, 11, 2]],

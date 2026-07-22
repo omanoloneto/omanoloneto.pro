@@ -55,8 +55,9 @@ export const blocos: Bloco[] = [
   { id: 33, nome: 'machado de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true, icone: 'machado-ferro' },
   { id: 34, nome: 'caixa de correio', tiles: [34, 34, 34], solido: false, render: 'cruz', dureza: 400 },
   { id: 35, nome: 'pacote', tiles: [35, 35, 35], solido: false, render: 'cruz' },
+  { id: 36, nome: 'escada', tiles: [36, 36, 36], solido: false, render: 'recorte', dureza: 350, madeira: true },
 ];
-export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34];
+export const itens = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36];
 export const materiais = [21, 23, 25, 26];
 export interface Receita {
   de: number;
@@ -84,6 +85,7 @@ export const receitas: Receita[] = [
   { de: 6, qtd: 2, para: 30, ganha: 1 },
   { de: 6, qtd: 3, para: 32, ganha: 1 },
   { de: 6, qtd: 4, para: 34, ganha: 1 },
+  { de: 6, qtd: 2, para: 36, ganha: 3 },
   { de: 26, qtd: 2, de2: 6, qtd2: 1, para: 31, ganha: 1, fornalha: true },
   { de: 26, qtd: 3, de2: 6, qtd2: 2, para: 33, ganha: 1, fornalha: true },
 ];
@@ -123,6 +125,8 @@ export const config = {
     aguaPuloBorda: 5.6,
     quedaTerminal: 20,
     subpassoMax: 0.45,
+    escadaSobe: 4.2,
+    escadaDesce: 1.6,
   },
   jogador: { largura: 0.6, altura: 1.8, olho: 1.62, alcance: 6 },
   crescimento: { minMs: 20000, maxMs: 40000 },

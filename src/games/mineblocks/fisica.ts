@@ -1,5 +1,7 @@
 import type { Ctx, Physics } from './types';
 
+const LADDER = 36;
+
 export function criarFisica(ctx: Ctx): Physics {
   const { player, input, world, byId } = ctx;
   const F = ctx.cfg.fisica;
@@ -73,11 +75,20 @@ export function criarFisica(ctx: Ctx): Physics {
     if (Math.abs(kbZ) < 0.02) kbZ = 0;
 
     p.inWater = byId(world.get(Math.floor(p.x), Math.floor(p.y + 0.9), Math.floor(p.z))).render === 'agua';
+    const px = Math.floor(p.x);
+    const pz = Math.floor(p.z);
+    const onLadder = !p.inWater && (
+      world.get(px, Math.floor(p.y + 0.1), pz) === LADDER ||
+      world.get(px, Math.floor(p.y + 0.9), pz) === LADDER
+    );
 
     if (p.inWater) {
       p.vy -= F.aguaGravidade * dt;
       if (p.vy < -F.aguaAfundaMax) p.vy = -F.aguaAfundaMax;
       if (input.jump) p.vy = F.aguaNado;
+    } else if (onLadder) {
+      p.vy = input.jump ? F.escadaSobe : -F.escadaDesce;
+      p.coyoteMs = 0;
     } else {
       if (input.jump && (p.onGround || p.coyoteMs > 0)) {
         p.vy = F.pulo;
