@@ -328,7 +328,32 @@ export function createCity(ctx: Ctx): City {
     return at(cellOf(x), cellOf(z));
   }
 
+  const MAP_COLORS: Record<number, [number, number, number]> = {
+    [GRASS]: [24, 41, 29],
+    [ROAD]: [70, 77, 96],
+    [WATER]: [30, 92, 143],
+    [RAIL]: [88, 74, 60],
+    [BUILD]: [39, 46, 64],
+    [PARK]: [33, 80, 49],
+    [BRIDGE]: [83, 91, 112],
+    [RAILBRIDGE]: [88, 74, 60],
+  };
+
   return {
+    paintMap(canvas) {
+      canvas.width = N;
+      canvas.height = N;
+      const g = canvas.getContext('2d')!;
+      const img = g.createImageData(N, N);
+      for (let i = 0; i < N * N; i++) {
+        const c = MAP_COLORS[grid[i]];
+        img.data[i * 4] = c[0];
+        img.data[i * 4 + 1] = c[1];
+        img.data[i * 4 + 2] = c[2];
+        img.data[i * 4 + 3] = 255;
+      }
+      g.putImageData(img, 0, 0);
+    },
     solidAt(x, z) {
       if (Math.abs(x) > HALF - 2 || Math.abs(z) > HALF - 2) return true;
       const t = typeAt(x, z);

@@ -84,12 +84,12 @@ export function createAudio(ctx: Ctx): Audio {
         btn.setAttribute('aria-pressed', String(ctx.state.muted));
         icon.textContent = ctx.state.muted ? '🔈' : '🔊';
       };
-      const saved = localStorage.getItem('sao-leo-racing:mudo');
+      const saved = localStorage.getItem('overdrive:mudo');
       ctx.state.muted = saved === null ? !ctx.cfg.somLigadoInicial : saved === '1';
       apply();
       btn.addEventListener('click', () => {
         ctx.state.muted = !ctx.state.muted;
-        localStorage.setItem('sao-leo-racing:mudo', ctx.state.muted ? '1' : '0');
+        localStorage.setItem('overdrive:mudo', ctx.state.muted ? '1' : '0');
         apply();
       });
     },

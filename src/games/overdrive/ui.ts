@@ -16,6 +16,10 @@ export function createUI(_ctx: Ctx): UI {
     muteIcon: $('[data-mute-icon]'),
     controls: $('[data-controles]'),
     hint: $('[data-fantasma]'),
+    minimap: $('[data-minimapa]'),
+    mapPanel: $('[data-mapa]'),
+    mapCanvas: $('[data-mapa-canvas]'),
+    mapClose: $('[data-mapa-fechar]'),
     announcer: $('[data-anuncio]'),
   };
 

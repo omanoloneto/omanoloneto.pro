@@ -6,6 +6,7 @@ import { createCity } from './city';
 import { createCar } from './car';
 import { createDriving } from './driving';
 import { createChaseCam } from './camera';
+import { createMinimap } from './minimap';
 import { bindInput } from './input';
 import type { Ctx, State } from './types';
 
@@ -34,6 +35,7 @@ export function startGame() {
       if (state.phase !== 'playing') return;
       ctx.driving.step(dt);
       ctx.chase.step(dt);
+      ctx.minimap.step(dt * 1000);
       const tel = ctx.driving.telemetry();
       ctx.audio.engine(tel.speedFwd, input.accel, tel.drifting);
     },
@@ -53,6 +55,7 @@ export function startGame() {
   ctx.car = createCar(ctx);
   ctx.driving = createDriving(ctx);
   ctx.chase = createChaseCam(ctx);
+  ctx.minimap = createMinimap(ctx);
 
   const touchMode = window.matchMedia('(pointer: coarse)').matches;
 
@@ -64,6 +67,7 @@ export function startGame() {
       ctx.ui.els.pauseBtn.hidden = false;
       ctx.ui.els.controls.hidden = !touchMode;
       ctx.ui.els.hint.hidden = false;
+      ctx.ui.els.minimap.hidden = false;
       ctx.audio.resume();
       stage.measure();
       ctx.chase.snap();
@@ -117,13 +121,14 @@ export function startGame() {
   ctx.chase.snap();
   stage.render();
 
-  (window as any).__slr = {
+  (window as any).__od = {
     state,
     input,
     car: ctx.car.state,
     telemetry: () => ctx.driving.telemetry(),
     surfaceAt: (x: number, z: number) => ctx.city.surfaceAt(x, z),
     solidAt: (x: number, z: number) => ctx.city.solidAt(x, z),
+    minimap: ctx.minimap,
     teleport(x: number, z: number, heading: number) {
       const c = ctx.car.state;
       c.x = x;

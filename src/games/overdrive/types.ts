@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { config, mapa, carros } from '../../data/sao-leo-racing';
+import type { config, mapa, carros } from '../../data/overdrive';
 import type { CarState, CarControls, CarTelemetry, Surface } from '../../lib/arcade-car';
 import type { Stage3D } from '../../lib/stage3d';
 
@@ -22,6 +22,13 @@ export interface City {
   surfaceAt(x: number, z: number): SurfaceKind;
   buildingTopAt(x: number, z: number): number;
   nearestLandmark(x: number, z: number): { nome: string; emoji: string; dist: number } | null;
+  paintMap(canvas: HTMLCanvasElement): void;
+}
+
+export interface Minimap {
+  step(dtMs: number): void;
+  toggleMap(): void;
+  mapOpen(): boolean;
 }
 
 export interface CarRig {
@@ -81,6 +88,7 @@ export interface Ctx {
   car: CarRig;
   driving: Driving;
   chase: ChaseCam;
+  minimap: Minimap;
   ui: UI;
   audio: Audio;
   flow: Flow;

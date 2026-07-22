@@ -13,11 +13,17 @@ export function bindInput(ctx: Ctx) {
   window.addEventListener('keydown', (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     if (e.key === 'Escape') {
+      if (ctx.minimap.mapOpen()) { e.preventDefault(); ctx.minimap.toggleMap(); return; }
       if (state.phase === 'playing') { e.preventDefault(); ctx.flow.pause(); }
       else if (state.phase === 'paused') { e.preventDefault(); ctx.flow.resume(); }
       return;
     }
     if (state.phase !== 'playing' || e.repeat) return;
+    if (/^[mM]$/.test(e.key)) {
+      e.preventDefault();
+      ctx.minimap.toggleMap();
+      return;
+    }
     if (e.key === ' ') {
       e.preventDefault();
       input.handbrake = true;
