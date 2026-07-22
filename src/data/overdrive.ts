@@ -13,12 +13,50 @@ export interface FisicaCarro {
   driftThreshold: number;
 }
 
+export interface PecaAro {
+  id: string;
+  nome: string;
+  spokes: number;
+  spokeWidth: number;
+  dish: number;
+  rimColor: string;
+  spokeColor: string;
+}
+
+export interface PecaAerofolio {
+  id: string;
+  nome: string;
+  style: 'ducktail' | 'asa';
+  span: number;
+  chord: number;
+  height: number;
+  usePaint: boolean;
+}
+
+export interface PecasCarro {
+  aro: string;
+  aerofolio: string | null;
+}
+
+export const pecas = {
+  aro: [
+    { id: 'ferro', nome: 'Aço Estampado', spokes: 0, spokeWidth: 0, dish: 0.03, rimColor: '#8a8d94', spokeColor: '#8a8d94' },
+    { id: 'estrela', nome: 'Estrela Cinco', spokes: 5, spokeWidth: 0.08, dish: 0.08, rimColor: '#d9dade', spokeColor: '#c6cad2' },
+    { id: 'turbina', nome: 'Turbina', spokes: 11, spokeWidth: 0.032, dish: 0.1, rimColor: '#d8c37a', spokeColor: '#d8c37a' },
+  ] as PecaAro[],
+  aerofolio: [
+    { id: 'ducktail', nome: 'Rabo de Pato', style: 'ducktail', span: 1.7, chord: 0.34, height: 0.12, usePaint: true },
+    { id: 'asa-gt', nome: 'Asa GT', style: 'asa', span: 1.86, chord: 0.4, height: 0.34, usePaint: false },
+  ] as PecaAerofolio[],
+};
+
 export interface Carro {
   id: string;
   nome: string;
   cor: string;
   corCabine: string;
   neon: string;
+  pecas: PecasCarro;
   fisica: FisicaCarro;
 }
 
@@ -29,6 +67,7 @@ export const carros: Carro[] = [
     cor: '#c9b78c',
     corCabine: '#131118',
     neon: '#00e5ff',
+    pecas: { aro: 'ferro', aerofolio: null },
     fisica: {
       accel: 13,
       topSpeed: 46,

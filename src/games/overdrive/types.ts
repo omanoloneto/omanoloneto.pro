@@ -1,11 +1,13 @@
 import type * as THREE from 'three';
-import type { config, mapa, carros } from '../../data/overdrive';
+import type { config, mapa, carros, pecas, PecasCarro } from '../../data/overdrive';
 import type { CarState, CarControls, CarTelemetry, Surface } from '../../lib/arcade-car';
 import type { Stage3D } from '../../lib/stage3d';
 
 export type Cfg = typeof config;
 export type MapData = typeof mapa;
 export type CarData = (typeof carros)[number];
+export type PartsData = typeof pecas;
+export type SlotId = keyof PartsData;
 
 export type Phase = 'intro' | 'playing' | 'paused';
 
@@ -34,6 +36,8 @@ export interface Minimap {
 export interface CarRig {
   state: CarState;
   group: THREE.Group;
+  loadout: PecasCarro;
+  setPart(slot: SlotId, id: string | null): boolean;
   hit(): void;
   update(dt: number, tel: CarTelemetry): void;
 }
@@ -77,6 +81,7 @@ export interface Ctx {
   cfg: Cfg;
   map: MapData;
   carData: CarData;
+  parts: PartsData;
   state: State;
   input: CarControls;
   stage: Stage3D;

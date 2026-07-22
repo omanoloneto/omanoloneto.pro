@@ -21,6 +21,7 @@ export function startGame() {
     cfg: data.config,
     map: data.mapa,
     carData: data.carros[0],
+    parts: data.pecas,
     state,
     input,
     sceneEl,
@@ -124,11 +125,24 @@ export function startGame() {
   (window as any).__od = {
     state,
     input,
+    stage,
     car: ctx.car.state,
     telemetry: () => ctx.driving.telemetry(),
     surfaceAt: (x: number, z: number) => ctx.city.surfaceAt(x, z),
     solidAt: (x: number, z: number) => ctx.city.solidAt(x, z),
     minimap: ctx.minimap,
+    parts: {
+      list: () => ({
+        aro: ctx.parts.aro.map((p) => p.id),
+        aerofolio: [null, ...ctx.parts.aerofolio.map((p) => p.id)],
+      }),
+      current: () => ({ ...ctx.car.loadout }),
+      set(slot: 'aro' | 'aerofolio', id: string | null) {
+        const ok = ctx.car.setPart(slot, id);
+        if (ok && state.phase !== 'playing') stage.render();
+        return ok;
+      },
+    },
     teleport(x: number, z: number, heading: number) {
       const c = ctx.car.state;
       c.x = x;
