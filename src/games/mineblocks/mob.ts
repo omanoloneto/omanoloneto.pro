@@ -73,40 +73,95 @@ function winpupGeometry(): THREE.BufferGeometry {
   return geo;
 }
 
-function bubbishGeometry(): THREE.BufferGeometry {
-  const bodyLight = new THREE.Color('#6fa8d8');
-  const bodyMid = new THREE.Color('#4c82b8');
-  const bodyShadow = new THREE.Color('#2e5e8e');
-  const fins = new THREE.Color('#cfe8f2');
-  const crystalLight = new THREE.Color('#8b6fd6');
-  const crystalShadow = new THREE.Color('#6a45b8');
-  const mouth = new THREE.Color('#e6a7b7');
-  const white = new THREE.Color('#ffffff');
-  const pupil = new THREE.Color('#3a3a3a');
+interface FaceTones {
+  top: THREE.Color;
+  side: THREE.Color;
+  bottom: THREE.Color;
+  front?: THREE.Color;
+  sideLow?: THREE.Color;
+}
 
-  const p: THREE.BufferGeometry[] = [
-    part(0.6, 0.44, 0.64, 0, 0.02, 0, bodyLight),
-    part(0.56, 0.1, 0.6, 0, -0.21, 0, bodyShadow),
-    part(0.62, 0.28, 0.16, 0, 0, 0.26, bodyMid),
-    part(0.34, 0.12, 0.05, 0, -0.11, -0.325, mouth),
-    part(0.4, 0.04, 0.05, 0, -0.03, -0.327, bodyShadow),
-    part(0.14, 0.16, 0.04, -0.15, 0.08, -0.33, pupil),
-    part(0.14, 0.16, 0.04, 0.15, 0.08, -0.33, pupil),
-    part(0.05, 0.05, 0.03, -0.12, 0.12, -0.345, white),
-    part(0.05, 0.05, 0.03, 0.18, 0.12, -0.345, white),
-    part(0.16, 0.1, 0.3, -0.37, -0.14, -0.05, bodyMid),
-    part(0.16, 0.1, 0.3, 0.37, -0.14, -0.05, bodyMid),
-    part(0.14, 0.09, 0.09, -0.38, -0.16, -0.24, bodyMid),
-    part(0.14, 0.09, 0.09, 0.38, -0.16, -0.24, bodyMid),
-    part(0.08, 0.28, 0.14, 0, 0.02, 0.4, fins),
-    part(0.08, 0.16, 0.1, 0, 0.02, 0.5, fins),
-    part(0.14, 0.05, 0.24, 0, 0.25, 0.02, crystalShadow),
-    part(0.09, 0.2, 0.09, 0, 0.34, -0.04, crystalLight),
-    part(0.08, 0.12, 0.08, 0, 0.3, 0.08, crystalLight),
-    part(0.06, 0.08, 0.06, 0, 0.28, -0.14, crystalShadow),
-    part(0.05, 0.07, 0.05, -0.2, 0.25, -0.1, bodyMid),
-    part(0.05, 0.07, 0.05, 0.22, 0.25, 0.06, bodyMid),
-  ];
+function shadedPart(w: number, h: number, d: number, x: number, y: number, z: number, tones: FaceTones): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(w, h, d);
+  const n = g.attributes.position.count;
+  const normals = g.attributes.normal;
+  const positions = g.attributes.position;
+  const colors = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const ny = normals.getY(i);
+    const nz = normals.getZ(i);
+    let c: THREE.Color;
+    if (ny > 0.5) c = tones.top;
+    else if (ny < -0.5) c = tones.bottom;
+    else if (nz < -0.5 && tones.front) c = tones.front;
+    else c = tones.sideLow && positions.getY(i) < 0 ? tones.sideLow : tones.side;
+    colors[i * 3] = c.r;
+    colors[i * 3 + 1] = c.g;
+    colors[i * 3 + 2] = c.b;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  g.translate(x, y, z);
+  return g;
+}
+
+function outlinePart(w: number, h: number, d: number, x: number, y: number, z: number): THREE.BufferGeometry {
+  const g = new THREE.BoxGeometry(w + 0.06, h + 0.06, d + 0.06);
+  g.translate(x, y, z);
+  return g;
+}
+
+interface BubPart {
+  w: number; h: number; d: number;
+  x: number; y: number; z: number;
+  tones: FaceTones;
+}
+
+const BUB = {
+  bodyLight: new THREE.Color('#7fb9f7'),
+  bodyMid: new THREE.Color('#5ca0e0'),
+  bodyShadow: new THREE.Color('#3e7ec2'),
+  finLight: new THREE.Color('#cfefff'),
+  finShadow: new THREE.Color('#a9dde8'),
+  beakLight: new THREE.Color('#f3d37a'),
+  beakShadow: new THREE.Color('#d4b25f'),
+  mouth: new THREE.Color('#7b3e38'),
+  eye: new THREE.Color('#33241e'),
+  white: new THREE.Color('#ffffff'),
+};
+
+const BODY_TONES: FaceTones = { top: BUB.bodyLight, side: BUB.bodyMid, sideLow: BUB.bodyShadow, bottom: BUB.bodyShadow };
+const FIN_TONES: FaceTones = { top: BUB.finLight, side: BUB.finLight, bottom: BUB.finShadow };
+
+const BUB_STRUCT: BubPart[] = [
+  { w: 0.56, h: 0.5, d: 0.58, x: 0, y: 0, z: 0, tones: BODY_TONES },
+  { w: 0.13, h: 0.12, d: 0.13, x: 0, y: 0.29, z: -0.02, tones: BODY_TONES },
+  { w: 0.09, h: 0.11, d: 0.09, x: 0, y: 0.37, z: -0.02, tones: BODY_TONES },
+  { w: 0.05, h: 0.09, d: 0.05, x: 0, y: 0.43, z: -0.02, tones: BODY_TONES },
+  { w: 0.04, h: 0.1, d: 0.1, x: -0.3, y: -0.02, z: 0.02, tones: FIN_TONES },
+  { w: 0.04, h: 0.1, d: 0.1, x: 0.3, y: -0.02, z: 0.02, tones: FIN_TONES },
+  { w: 0.05, h: 0.26, d: 0.1, x: 0, y: 0, z: 0.33, tones: { top: BUB.finLight, side: BUB.finLight, sideLow: BUB.finShadow, bottom: BUB.finShadow } },
+  { w: 0.05, h: 0.08, d: 0.14, x: 0, y: 0.15, z: 0.4, tones: FIN_TONES },
+  { w: 0.05, h: 0.08, d: 0.14, x: 0, y: -0.15, z: 0.4, tones: { top: BUB.finShadow, side: BUB.finShadow, bottom: BUB.finShadow } },
+  { w: 0.18, h: 0.07, d: 0.14, x: 0, y: -0.07, z: -0.34, tones: { top: BUB.beakLight, side: BUB.beakLight, front: BUB.beakLight, bottom: BUB.beakShadow } },
+  { w: 0.14, h: 0.05, d: 0.1, x: 0, y: -0.12, z: -0.32, tones: { top: BUB.beakShadow, side: BUB.beakShadow, front: BUB.beakShadow, bottom: BUB.beakShadow } },
+];
+
+function bubbishGeometry(): THREE.BufferGeometry {
+  const p: THREE.BufferGeometry[] = BUB_STRUCT.map((b) => shadedPart(b.w, b.h, b.d, b.x, b.y, b.z, b.tones));
+  p.push(
+    part(0.16, 0.2, 0.07, -0.14, 0.07, -0.315, BUB.eye),
+    part(0.16, 0.2, 0.07, 0.14, 0.07, -0.315, BUB.eye),
+    part(0.06, 0.06, 0.03, -0.1, 0.13, -0.36, BUB.white),
+    part(0.06, 0.06, 0.03, 0.18, 0.13, -0.36, BUB.white),
+    part(0.1, 0.03, 0.07, 0, -0.21, -0.315, BUB.mouth),
+  );
+  const geo = mergeGeometries(p)!;
+  p.forEach((g) => g.dispose());
+  return geo;
+}
+
+function bubbishOutlineGeometry(): THREE.BufferGeometry {
+  const p = BUB_STRUCT.map((b) => outlinePart(b.w, b.h, b.d, b.x, b.y, b.z));
   const geo = mergeGeometries(p)!;
   p.forEach((g) => g.dispose());
   return geo;
@@ -119,6 +174,8 @@ export function criarMob(ctx: Ctx): Mob {
   const material = new THREE.MeshBasicMaterial({ vertexColors: true });
   const geo = winpupGeometry();
   const fishGeo = bubbishGeometry();
+  const fishOutlineGeo = bubbishOutlineGeometry();
+  const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1e24, side: THREE.BackSide });
   const alive: Winpup[] = [];
   const fish: (Bubbish | null)[] = new Array(FISH_WIRE_BASE).fill(null);
   const F = cfg.peixes;
@@ -175,6 +232,7 @@ export function criarMob(ctx: Ctx): Mob {
   function createFish(x: number, y: number, z: number): Bubbish {
     const group = new THREE.Group();
     group.add(new THREE.Mesh(fishGeo, material));
+    group.add(new THREE.Mesh(fishOutlineGeo, outlineMaterial));
     ctx.scene.add(group);
     group.position.set(x, y, z);
     return {
@@ -193,13 +251,17 @@ export function criarMob(ctx: Ctx): Mob {
     return n;
   }
 
+  function fishCap(): number {
+    return Math.min(fish.length, F.porJogador * (1 + ctx.avatars.list().length));
+  }
+
   function trySpawnFish(x: number, z: number): boolean {
     const slot = fish.indexOf(null);
     if (slot < 0) return false;
     const depth = waterDepthAt(x, z);
     if (depth < 2) return false;
     const top = waterTopAt(x, z);
-    const y = top + 0.4 - Math.random() * Math.min(depth - 1, 2);
+    const y = top + 0.29 - Math.random() * Math.min(depth - 1, 2);
     fish[slot] = createFish(x, y, z);
     return true;
   }
@@ -207,7 +269,7 @@ export function criarMob(ctx: Ctx): Mob {
   function randomFishSpawn() {
     let x: number;
     let z: number;
-    if (Math.random() < 0.6) {
+    if (Math.random() < F.chancePerto) {
       const players = [{ x: ctx.player.x, z: ctx.player.z }];
       for (const a of ctx.avatars.list()) players.push({ x: a.x, z: a.z });
       const p = players[Math.floor(Math.random() * players.length)];
@@ -250,7 +312,7 @@ export function criarMob(ctx: Ctx): Mob {
           if (top < 0) continue;
           const depth = waterDepthAt(tx, tz);
           if (depth < 1) continue;
-          const maxY = top + 0.45;
+          const maxY = top + 0.29;
           const minY = top - depth + 1.3;
           if (maxY <= minY) continue;
           const ty = minY + Math.random() * (maxY - minY);
@@ -466,7 +528,7 @@ export function criarMob(ctx: Ctx): Mob {
         if (fishTryMs >= nextFishTryMs) {
           fishTryMs = 0;
           nextFishTryMs = F.tentativaMinMs + Math.random() * (F.tentativaMaxMs - F.tentativaMinMs);
-          if (fishCount() < F.max) randomFishSpawn();
+          if (fishCount() < fishCap()) randomFishSpawn();
         }
         simulateFish(dt);
       } else {
@@ -548,6 +610,7 @@ export function criarMob(ctx: Ctx): Mob {
     clear,
     count: () => alive.length,
     fishCount,
+    fishCap,
     spawnFishAt: (x, z) => trySpawnFish(x, z),
   };
 }

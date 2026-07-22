@@ -157,7 +157,8 @@ export const config = {
     woolDespawnMs: 60000,
   },
   peixes: {
-    max: 6,
+    porJogador: 3,
+    chancePerto: 0.9,
     tentativaMinMs: 6000,
     tentativaMaxMs: 14000,
     vidaMinMs: 45000,

@@ -114,6 +114,7 @@ export interface Mob {
   clear(): void;
   count(): number;
   fishCount(): number;
+  fishCap(): number;
   spawnFishAt(x: number, z: number): boolean;
 }
 
