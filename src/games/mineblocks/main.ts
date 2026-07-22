@@ -14,6 +14,7 @@ import { criarMob } from './mob';
 import { criarFisica } from './fisica';
 import { createHunger } from './hunger';
 import { createMinimap } from './minimap';
+import { fixSquareLake } from './repair';
 import { criarCamera } from './camera';
 import { criarMira } from './mira';
 import { createEditing } from './edicao';
@@ -531,6 +532,13 @@ export function startGame() {
     place: () => ctx.editing.place(),
     hunger: ctx.hunger,
     minimap: ctx.minimap,
+    repairNow: () => {
+      const buf = new Uint8Array(ctx.world.data);
+      const n = fixSquareLake(ctx, buf, state.seed, ctx.metas.serialize());
+      ctx.world.data.set(buf);
+      ctx.meshes.buildAll();
+      return n;
+    },
     target: () => ctx.aim.target(),
     select: (i: number) => ctx.ui.selectSlot(i, false),
     saveNow: () => save.saveNow('manual'),

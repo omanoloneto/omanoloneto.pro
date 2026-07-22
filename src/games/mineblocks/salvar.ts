@@ -1,5 +1,6 @@
 import { encodeRLE, decodeRLE } from '../../lib/rle';
 import { gerarMundo } from './geracao';
+import { fixSquareLake } from './repair';
 import type { Ctx, Save } from './types';
 
 const LEGACY_SIZES = [
@@ -208,6 +209,8 @@ export function criarSalvar(ctx: Ctx): Save {
         }
       }
       if (!blocks) return 'Esse mundo está vazio ou quebrado. 😢';
+      const remapped = migrated ? remapLegacyMetas(p.metas, migrated) : p.metas;
+      const repaired = fixSquareLake(ctx, blocks, p.seed >>> 0, remapped);
       code = cod;
       baseSavedAt = r.json.salvoEm || 0;
       conflict = false;
@@ -215,7 +218,7 @@ export function criarSalvar(ctx: Ctx): Save {
       ctx.world.data.set(blocks);
       ctx.state.seed = p.seed >>> 0;
       if (typeof p.tempoDia === 'number') ctx.sky.setTime(p.tempoDia);
-      ctx.metas.load(migrated ? Object.assign(genMetas, remapLegacyMetas(p.metas, migrated)) : p.metas);
+      ctx.metas.load(migrated ? Object.assign(genMetas, remapped as Record<string, unknown>) : remapped);
       const NSLOTS = ctx.cfg.hotbarTamanho;
       ctx.state.sel = Math.max(0, Math.min(NSLOTS - 1, p.sel | 0));
       const inv = new Array(ctx.blocks.length).fill(0);
@@ -250,10 +253,13 @@ export function criarSalvar(ctx: Ctx): Save {
       ctx.player.z = typeof j.z === 'number' ? j.z + off.offZ : ctx.cfg.mundo.SZ / 2;
       ctx.player.yaw = typeof j.yaw === 'number' ? j.yaw : 0;
       ctx.player.pitch = typeof j.pitch === 'number' ? j.pitch : 0;
-      dirtySinceLastSave = migrated !== null;
+      dirtySinceLastSave = migrated !== null || repaired > 0;
       if (migrated) {
         schedule();
         ctx.ui.showToast('🗺️ Seu mundo cresceu! Tem terras novas (e uma dungeon…) além das bordas antigas.', 'ok', 4200);
+      } else if (repaired > 0) {
+        schedule();
+        ctx.ui.showToast('🗺️ Consertei o lago quadrado da migração antiga — o mundo voltou ao normal!', 'ok', 4200);
       }
       return null;
     },
