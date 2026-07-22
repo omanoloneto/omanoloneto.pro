@@ -1,6 +1,6 @@
 import { encodeRLE, decodeRLE } from '../../lib/rle';
 import { gerarMundo } from './geracao';
-import { fixSquareLake } from './repair';
+import { naturalizeLegacyLake } from './repair';
 import type { Ctx, Save } from './types';
 
 const LEGACY_SIZES = [
@@ -210,7 +210,7 @@ export function criarSalvar(ctx: Ctx): Save {
       }
       if (!blocks) return 'Esse mundo está vazio ou quebrado. 😢';
       const remapped = migrated ? remapLegacyMetas(p.metas, migrated) : p.metas;
-      const repaired = fixSquareLake(ctx, blocks, p.seed >>> 0, remapped);
+      const repaired = naturalizeLegacyLake(ctx, blocks, p.seed >>> 0, remapped);
       code = cod;
       baseSavedAt = r.json.salvoEm || 0;
       conflict = false;
@@ -259,7 +259,7 @@ export function criarSalvar(ctx: Ctx): Save {
         ctx.ui.showToast('🗺️ Seu mundo cresceu! Tem terras novas (e uma dungeon…) além das bordas antigas.', 'ok', 4200);
       } else if (repaired > 0) {
         schedule();
-        ctx.ui.showToast('🗺️ Consertei o lago quadrado da migração antiga — o mundo voltou ao normal!', 'ok', 4200);
+        ctx.ui.showToast('🗺️ Dei um trato no lago da migração antiga — agora ele tem praia de verdade!', 'ok', 4200);
       }
       return null;
     },

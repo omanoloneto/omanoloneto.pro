@@ -14,7 +14,7 @@ import { criarMob } from './mob';
 import { criarFisica } from './fisica';
 import { createHunger } from './hunger';
 import { createMinimap } from './minimap';
-import { fixSquareLake } from './repair';
+import { naturalizeLegacyLake } from './repair';
 import { criarCamera } from './camera';
 import { criarMira } from './mira';
 import { createEditing } from './edicao';
@@ -534,7 +534,7 @@ export function startGame() {
     minimap: ctx.minimap,
     repairNow: () => {
       const buf = new Uint8Array(ctx.world.data);
-      const n = fixSquareLake(ctx, buf, state.seed, ctx.metas.serialize());
+      const n = naturalizeLegacyLake(ctx, buf, state.seed, ctx.metas.serialize());
       ctx.world.data.set(buf);
       ctx.meshes.buildAll();
       return n;
