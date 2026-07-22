@@ -34,6 +34,10 @@ const COLOR_TABLE: Record<number, [number, number, number]> = {
   42: [200, 50, 45],
   43: [200, 50, 45],
   44: [200, 50, 45],
+  47: [168, 168, 88],
+  48: [150, 150, 70],
+  49: [90, 140, 60],
+  51: [120, 80, 160],
 };
 
 export function createMinimap(ctx: Ctx): Minimap {

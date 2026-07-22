@@ -51,22 +51,25 @@ export function createHunger(ctx: Ctx): Hunger {
 
   function autoEat() {
     const inv = ctx.state.inventory;
-    let ate = 0;
-    while (ctx.state.fome <= F.comeEm && (inv[F.comida] || 0) > 0) {
-      inv[F.comida]--;
-      ctx.state.fome = Math.min(F.max, ctx.state.fome + F.recupera);
-      ate++;
+    const eaten: string[] = [];
+    let guard = 0;
+    while (ctx.state.fome <= F.comeEm && guard++ < 40) {
+      const food = F.comidas.find((c) => (inv[c.id] || 0) > 0);
+      if (!food) break;
+      inv[food.id]--;
+      ctx.state.fome = Math.min(F.max, ctx.state.fome + food.recupera);
+      eaten.push(ctx.byId(food.id).nome);
     }
-    if (!ate) return;
+    if (!eaten.length) return;
     starveMs = 0;
     pulseMs = 0;
     ctx.ui.updateCounts();
     ctx.ui.updateHunger();
     ctx.audio.soundSaved();
-    ctx.ui.showToast(ate > 1
-      ? '🍭 Nham! Você comeu ' + ate + ' algodões-doces da mochila!'
-      : '🍭 Nham! Você comeu um algodão-doce da mochila!', 'ok', 2400);
-    ctx.ui.announce('Você comeu algodão-doce e recuperou fome.');
+    ctx.ui.showToast(eaten.length > 1
+      ? '🍽️ Nham! Você comeu ' + eaten.length + ' petiscos da mochila!'
+      : '🍽️ Nham! Você comeu ' + eaten[0] + ' da mochila!', 'ok', 2400);
+    ctx.ui.announce('Você comeu ' + eaten.join(' e ') + ' e recuperou fome.');
     ctx.save.schedule();
   }
 

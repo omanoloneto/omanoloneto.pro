@@ -67,9 +67,14 @@ export const blocos: Bloco[] = [
   { id: 44, nome: 'máquina de vendas', tiles: [46, 48, 48], solido: true, render: 'cubo' },
   { id: 45, nome: 'pá de madeira', tiles: [43, 43, 43], solido: false, render: 'cruz', ferramenta: true },
   { id: 46, nome: 'pá de ferro', tiles: [47, 47, 47], solido: false, render: 'cruz', ferramenta: true },
+  { id: 47, nome: 'grama do pampa', tiles: [50, 51, 2], solido: true, render: 'cubo', drop: 2, dureza: 1000, durezaPa: 300 },
+  { id: 48, nome: 'capim do pampa', tiles: [52, 52, 52], solido: false, render: 'cruz', drop: 0, dureza: 200 },
+  { id: 49, nome: 'pé de butiá', tiles: [53, 53, 53], solido: false, render: 'cruz', drop: 50, dropSorte: { id: 50, chance: 1 }, dureza: 300 },
+  { id: 50, nome: 'butiá', tiles: [54, 54, 54], solido: false, render: 'cruz' },
+  { id: 51, nome: 'minério de ametista', tiles: [55, 55, 55], solido: true, render: 'cubo', dureza: 1400, durezaFerro: 500, precisaPicareta: true },
 ];
 export const itens = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36, 45, 46];
-export const materiais = [21, 23, 25, 26, 38, 39, 40];
+export const materiais = [21, 23, 25, 26, 38, 39, 40, 50, 51];
 export interface Receita {
   de: number;
   qtd: number;
@@ -127,8 +132,17 @@ export const config = {
       iron: { n: 700, sizeMin: 2, sizeMax: 5, yMin: 2, yMax: 34 },
       ouro: { n: 350, sizeMin: 1, sizeMax: 3, yMin: 2, yMax: 20 },
     },
+    pampa: {
+      x: 64,
+      z: 320,
+      raio: 62,
+      capim: 1200,
+      moitas: 45,
+      umbus: 2,
+      ametista: { n: 90, sizeMin: 1, sizeMax: 3, yMin: 2, yMax: 15 },
+    },
   },
-  maquina: { precoFerro: 5, precoOuro: 20 },
+  maquina: { precoFerro: 5, precoOuro: 20, precoAmetista: 50 },
   fisica: {
     gravidade: 25,
     pulo: 8.2,
@@ -153,9 +167,11 @@ export const config = {
     fatorLento: 0.55,
     danoIntervaloMs: 2600,
     avisoPontos: 3,
-    comida: 21,
     comeEm: 4,
-    recupera: 3,
+    comidas: [
+      { id: 21, recupera: 3 },
+      { id: 50, recupera: 2 },
+    ],
   },
   hotbarTamanho: 9,
   bichos: {

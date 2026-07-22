@@ -241,28 +241,41 @@ export function gerarMundo(ctx: Ctx, seed: number) {
   const meia = SX / 2;
 
   // ----- relevo + camadas -----
+  const P = G.pampa;
   const alturas = new Int16Array(SX * SZ);
+  const pampaMask = new Uint8Array(SX * SZ);
   for (let z = 0; z < SZ; z++) {
     for (let x = 0; x < SX; x++) {
       const n = relevo(x, z, seed, G.escalaRuido);
-      // ilha: afunda suavemente do miolo pra borda
       const r = Math.hypot(x - meioX, z - meioZ) / meia;
       const borda = suave(Math.min(1, Math.max(0, (r - G.ilhaInicioR) / (1.08 - G.ilhaInicioR))));
       let h = Math.round(G.alturaBase + (n * 2 - 1) * G.amplitude - borda * G.ilhaQueda);
+
+      const rp = Math.hypot(x - P.x, z - P.z) / P.raio;
+      let pampa = false;
+      if (rp < 1.2) {
+        const np = relevo(x, z, seed ^ 0x5199, 0.012);
+        const bordaP = suave(Math.min(1, Math.max(0, (rp - 0.55) / (1.2 - 0.55))));
+        const hp = Math.round(nivelAgua + 4 + (np * 2 - 1) * 2.5 - bordaP * 14);
+        if (hp > h) {
+          h = hp;
+          pampa = hp > nivelAgua + 1;
+        }
+      }
       h = Math.max(2, Math.min(SY - 16, h));
       alturas[x + z * SX] = h;
+      pampaMask[x + z * SX] = pampa ? 1 : 0;
 
       const praia = h <= nivelAgua + 1;
       for (let y = 0; y <= h; y++) {
         let id: number;
-        if (y === 0) id = 14; // rocha-mãe inquebrável
-        else if (y >= h - 2 && praia) id = 4; // areia na beira d'água
-        else if (y === h) id = 1; // grama
-        else if (y >= h - 2) id = 2; // terra
-        else id = 3; // pedra
+        if (y === 0) id = 14;
+        else if (y >= h - 2 && praia) id = 4;
+        else if (y === h) id = pampa ? 47 : 1;
+        else if (y >= h - 2) id = 2;
+        else id = 3;
         mundo.data[x + z * SX + y * SX * SZ] = id;
       }
-      // água até o nível do mar
       for (let y = h + 1; y <= nivelAgua; y++) {
         mundo.data[x + z * SX + y * SX * SZ] = 13;
       }
@@ -326,5 +339,87 @@ export function gerarMundo(ctx: Ctx, seed: number) {
     mundo.set(x, h + 1, z, rng() > 0.5 ? 11 : 12);
   }
 
+  const pampaTop = (x: number, z: number) => {
+    const h = alturaEm(x, z);
+    return pampaMask[x + z * SX] === 1 && mundo.get(x, h, z) === 47 && mundo.get(x, h + 1, z) === 0 ? h : -1;
+  };
+  const pampaSpot = () => {
+    const x = Math.max(2, Math.min(SX - 3, Math.floor(P.x - P.raio + rng() * P.raio * 2)));
+    const z = Math.max(2, Math.min(SZ - 3, Math.floor(P.z - P.raio + rng() * P.raio * 2)));
+    return { x, z };
+  };
+  for (let i = 0; i < P.capim; i++) {
+    const { x, z } = pampaSpot();
+    const h = pampaTop(x, z);
+    if (h > 0) mundo.set(x, h + 1, z, 48);
+  }
+  for (let i = 0; i < P.moitas; i++) {
+    const { x, z } = pampaSpot();
+    const h = pampaTop(x, z);
+    if (h > 0) mundo.set(x, h + 1, z, 49);
+  }
+  let umbus = 0;
+  for (let tries = 0; tries < 400 && umbus < P.umbus; tries++) {
+    const { x, z } = pampaSpot();
+    if (x < 6 || z < 6 || x >= SX - 6 || z >= SZ - 6) continue;
+    const h = pampaTop(x, z);
+    if (h <= nivelAgua + 2) continue;
+    brotarUmbu(ctx, x, h, z, rng);
+    umbus++;
+  }
+  const A = P.ametista;
+  let seeded = 0;
+  for (let tries = 0; tries < A.n * 30 && seeded < A.n; tries++) {
+    const { x, z } = pampaSpot();
+    if (pampaMask[x + z * SX] !== 1) continue;
+    const y0 = A.yMin + Math.floor(rng() * (A.yMax - A.yMin));
+    const size = A.sizeMin + Math.floor(rng() * (A.sizeMax - A.sizeMin + 1));
+    let cx = x;
+    let cy = y0;
+    let cz = z;
+    for (let s = 0; s < size; s++) {
+      if (mundo.get(cx, cy, cz) === 3) mundo.data[cx + cz * SX + cy * SX * SZ] = 51;
+      cx += Math.floor(rng() * 3) - 1;
+      cy += Math.floor(rng() * 3) - 1;
+      cz += Math.floor(rng() * 3) - 1;
+      cy = Math.max(A.yMin, Math.min(A.yMax, cy));
+    }
+    seeded++;
+  }
+
   mundo.dirty.clear(); // construirTudo vem a seguir; nada pendente
+}
+
+export function brotarUmbu(ctx: Ctx, x: number, h: number, z: number, rng: () => number) {
+  const { world: mundo } = ctx;
+  const alt = 7 + Math.floor(rng() * 2);
+  for (let y = 1; y <= alt; y++) mundo.set(x, h + y, z, 5);
+  mundo.set(x + 1, h + alt - 1, z, 5);
+  mundo.set(x - 1, h + alt - 2, z, 5);
+  const leaves: Array<[number, number, number]> = [];
+  const putLeaf = (lx: number, ly: number, lz: number) => {
+    if (mundo.get(lx, ly, lz) === 0) {
+      mundo.set(lx, ly, lz, 7);
+      leaves.push([lx, ly, lz]);
+    }
+  };
+  for (const [dy, radius] of [[alt - 1, 3], [alt, 3], [alt + 1, 2]] as const) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dz = -radius; dz <= radius; dz++) {
+        if (Math.abs(dx) === radius && Math.abs(dz) === radius && rng() > 0.3) continue;
+        if (dx === 0 && dz === 0 && dy <= alt) continue;
+        putLeaf(x + dx, h + dy + 1, z + dz);
+      }
+    }
+  }
+  for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    putLeaf(x + dx, h + alt + 3, z + dz);
+  }
+  for (let i = leaves.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [leaves[i], leaves[j]] = [leaves[j], leaves[i]];
+  }
+  leaves.forEach(([lx, ly, lz], i) => {
+    if (i < 2 || rng() < 0.1) mundo.set(lx, ly, lz, 37);
+  });
 }

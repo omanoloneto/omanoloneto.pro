@@ -180,6 +180,12 @@ export function criarAudio(ctx: Ctx): Audio {
     soundSaved() { if (mudo()) return; tom(523, 0, 0.1, 'triangle', 0.12); tom(784, 0.09, 0.14, 'triangle', 0.12); },
     soundError() { if (mudo()) return; tom(220, 0, 0.15, 'square', 0.08); },
     soundGhost() { if (mudo()) return; howl(180, 118, 1.1, 0.09); },
+    soundQueroQuero() {
+      if (mudo()) return;
+      tom(1900, 0, 0.06, 'square', 0.045);
+      tom(2400, 0.08, 0.07, 'square', 0.05);
+      tom(2100, 0.18, 0.06, 'square', 0.04);
+    },
     soundScare() { if (mudo()) return; howl(300, 150, 0.35, 0.14); croc(250, 0.2, 0.18); },
   };
 }

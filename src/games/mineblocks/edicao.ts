@@ -140,7 +140,8 @@ export function createEditing(ctx: Ctx): Editing {
       inv[s] = Math.min(999, (inv[s] || 0) + 1);
       addToHotbar(s);
       ctx.ui.updateCounts();
-      ctx.ui.showToast('🌱 Caiu uma ' + byId(s).nome + '! Plante em grama ou terra.', 'ok', 2200);
+      if (s === 15) ctx.ui.showToast('🌱 Caiu uma ' + byId(s).nome + '! Plante em grama ou terra.', 'ok', 2200);
+      else ctx.ui.showToast('🎁 Caiu +1 ' + byId(s).nome + '!', 'ok', 1600);
       ctx.audio.soundSaved();
     }
   }

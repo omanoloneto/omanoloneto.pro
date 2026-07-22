@@ -66,6 +66,7 @@ export interface Audio {
   soundSaved(): void;
   soundError(): void;
   soundGhost(): void;
+  soundQueroQuero(): void;
   soundScare(): void;
 }
 
@@ -116,6 +117,8 @@ export interface Mob {
   fishCount(): number;
   fishCap(): number;
   spawnFishAt(x: number, z: number): boolean;
+  ploverCount(): number;
+  ploverState(): Array<{ x: number; y: number; z: number; flying: boolean }>;
 }
 
 export type Meta =

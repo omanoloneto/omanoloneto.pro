@@ -4,7 +4,7 @@ import type { Ctx, Texture } from './types';
 
 const TILE = 16;
 const GRID = 4;
-const ROWS = 13;
+const ROWS = 14;
 const W = TILE * GRID;
 const H = TILE * ROWS;
 
@@ -529,6 +529,82 @@ export function criarTextura(_ctx: Ctx): Texture {
     g.fillStyle = '#9aa0aa';
     g.fillRect(ox + 7, oy + 1, 3, 1);
     px(ox, oy, 7, 3, '#eef0f4');
+  }
+
+  {
+    const [ox, oy] = base(50, [186, 190, 96], 0.015);
+    g.fillStyle = '#d2d47e';
+    for (const [bx, by, bw, bh] of [[2, 3, 4, 2], [9, 6, 4, 3], [4, 11, 3, 2], [12, 1, 3, 2]] as const) {
+      g.fillRect(ox + bx, oy + by, bw, bh);
+    }
+    g.fillStyle = '#a4a852';
+    for (const [bx, by, bw, bh] of [[7, 2, 2, 2], [1, 8, 3, 2], [11, 12, 3, 2]] as const) {
+      g.fillRect(ox + bx, oy + by, bw, bh);
+    }
+  }
+  {
+    const [ox, oy] = base(51, [134, 96, 67], 0.06);
+    g.fillStyle = '#babe60';
+    g.fillRect(ox, oy, TILE, 2);
+    for (let x = 0; x < TILE; x++) {
+      const hFranja = 2 + Math.floor(rng() * 3);
+      for (let y = 2; y < hFranja + 1; y++) px(ox, oy, x, y, x % 3 === 0 ? '#a4a852' : '#babe60');
+    }
+  }
+  {
+    const ox = (52 % GRID) * TILE;
+    const oy = Math.floor(52 / GRID) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    for (const [sx, hgt, bend] of [[2, 8, -1], [4, 11, 1], [6, 7, -1], [8, 12, 1], [10, 9, -1], [12, 11, 1], [14, 8, -1]] as const) {
+      for (let y = 0; y < hgt; y++) {
+        const tip = y >= hgt - 3;
+        px(ox, oy, sx + (tip ? bend : 0), 15 - y, tip ? '#e0d87a' : '#c2c05e');
+      }
+    }
+  }
+  {
+    const ox = (53 % GRID) * TILE;
+    const oy = Math.floor(53 / GRID) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.strokeStyle = '#5a9a4a';
+    g.lineWidth = 1.4;
+    for (const [x1, y1] of [[2, 4], [5, 2], [11, 2], [14, 4], [8, 1]] as const) {
+      g.beginPath();
+      g.moveTo(ox + 8, oy + 14);
+      g.quadraticCurveTo(ox + (8 + x1) / 2, oy + y1, ox + x1, oy + y1);
+      g.stroke();
+    }
+    g.fillStyle = '#e8a03a';
+    for (const [bx, by] of [[6, 9], [8, 10], [10, 9], [7, 11], [9, 12]] as const) {
+      g.fillRect(ox + bx, oy + by, 2, 2);
+    }
+  }
+  {
+    const ox = (54 % GRID) * TILE;
+    const oy = Math.floor(54 / GRID) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#d88f2e';
+    g.beginPath();
+    g.arc(ox + 8, oy + 9, 4.5, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#e8a84a';
+    g.beginPath();
+    g.arc(ox + 7, oy + 8, 2.6, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#5a9a4a';
+    g.fillRect(ox + 7, oy + 3, 2, 3);
+    g.fillRect(ox + 9, oy + 4, 3, 1);
+  }
+  {
+    const [ox, oy] = base(55, [138, 138, 142], 0.02);
+    g.fillStyle = '#9a5fd8';
+    for (const [bx, by, bw, bh] of [[3, 3, 3, 3], [10, 5, 3, 2], [5, 10, 2, 3], [11, 11, 3, 2]] as const) {
+      g.fillRect(ox + bx, oy + by, bw, bh);
+    }
+    g.fillStyle = '#c9a0f0';
+    for (const [bx, by] of [[4, 4], [11, 5], [5, 11], [12, 11]] as const) g.fillRect(ox + bx, oy + by, 1, 1);
+    g.fillStyle = '#6a3aa8';
+    for (const [bx, by] of [[3, 5], [12, 6], [6, 12]] as const) g.fillRect(ox + bx, oy + by, 1, 1);
   }
 
   const atlas = new THREE.CanvasTexture(canvas);

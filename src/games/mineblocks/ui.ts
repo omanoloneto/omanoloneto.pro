@@ -370,6 +370,7 @@ export function createUI(ctx: Ctx): UI {
     const offers = [
       { id: 26, price: M.precoFerro },
       { id: 39, price: M.precoOuro },
+      { id: 51, price: M.precoAmetista },
     ];
     for (const offer of offers) {
       const have = inv[offer.id] | 0;

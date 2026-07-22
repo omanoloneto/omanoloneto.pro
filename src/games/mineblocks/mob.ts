@@ -33,6 +33,20 @@ interface Bubbish {
   rx: number; ry: number; rz: number; ryaw: number;
 }
 
+interface Plover {
+  group: THREE.Group;
+  homeX: number; homeY: number; homeZ: number;
+  x: number; y: number; z: number;
+  yaw: number;
+  flying: boolean;
+  angle: number;
+  calmMs: number;
+  screamMs: number;
+  targetX: number; targetZ: number;
+  retargetMs: number;
+  phase: number;
+}
+
 function part(w: number, h: number, d: number, x: number, y: number, z: number, color: THREE.Color): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   g.translate(x, y, z);
@@ -146,6 +160,48 @@ const BUB_STRUCT: BubPart[] = [
   { w: 0.14, h: 0.05, d: 0.1, x: 0, y: -0.12, z: -0.32, tones: { top: BUB.beakShadow, side: BUB.beakShadow, front: BUB.beakShadow, bottom: BUB.beakShadow } },
 ];
 
+const PLOVER = {
+  back: new THREE.Color('#9aa5a0'),
+  backLow: new THREE.Color('#7c8781'),
+  belly: new THREE.Color('#f2f2ee'),
+  black: new THREE.Color('#1e1e22'),
+  beak: new THREE.Color('#d98a8a'),
+  leg: new THREE.Color('#c07878'),
+};
+
+const PLOVER_TONES: FaceTones = { top: PLOVER.back, side: PLOVER.back, sideLow: PLOVER.backLow, bottom: PLOVER.belly };
+
+const PLOVER_STRUCT: BubPart[] = [
+  { w: 0.34, h: 0.24, d: 0.44, x: 0, y: 0.28, z: 0.02, tones: PLOVER_TONES },
+  { w: 0.2, h: 0.18, d: 0.18, x: 0, y: 0.46, z: -0.18, tones: PLOVER_TONES },
+  { w: 0.05, h: 0.05, d: 0.1, x: 0, y: 0.48, z: -0.3, tones: { top: PLOVER.beak, side: PLOVER.beak, bottom: PLOVER.beak } },
+  { w: 0.38, h: 0.05, d: 0.3, x: 0, y: 0.41, z: 0.04, tones: { top: PLOVER.backLow, side: PLOVER.backLow, bottom: PLOVER.backLow } },
+  { w: 0.05, h: 0.16, d: 0.2, x: 0, y: 0.34, z: 0.28, tones: { top: PLOVER.back, side: PLOVER.back, bottom: PLOVER.black } },
+];
+
+function ploverGeometry(): THREE.BufferGeometry {
+  const p: THREE.BufferGeometry[] = PLOVER_STRUCT.map((b) => shadedPart(b.w, b.h, b.d, b.x, b.y, b.z, b.tones));
+  p.push(
+    part(0.22, 0.09, 0.05, 0, 0.33, -0.245, PLOVER.black),
+    part(0.16, 0.1, 0.16, 0, 0.19, 0.02, PLOVER.belly),
+    part(0.1, 0.05, 0.05, 0, 0.52, -0.06, PLOVER.black),
+    part(0.05, 0.05, 0.03, -0.055, 0.47, -0.275, PLOVER.black),
+    part(0.05, 0.05, 0.03, 0.055, 0.47, -0.275, PLOVER.black),
+    part(0.03, 0.16, 0.03, -0.08, 0.08, 0.04, PLOVER.leg),
+    part(0.03, 0.16, 0.03, 0.08, 0.08, 0.04, PLOVER.leg),
+  );
+  const geo = mergeGeometries(p)!;
+  p.forEach((g) => g.dispose());
+  return geo;
+}
+
+function ploverOutlineGeometry(): THREE.BufferGeometry {
+  const p = PLOVER_STRUCT.map((b) => outlinePart(b.w, b.h, b.d, b.x, b.y, b.z));
+  const geo = mergeGeometries(p)!;
+  p.forEach((g) => g.dispose());
+  return geo;
+}
+
 function bubbishGeometry(): THREE.BufferGeometry {
   const p: THREE.BufferGeometry[] = BUB_STRUCT.map((b) => shadedPart(b.w, b.h, b.d, b.x, b.y, b.z, b.tones));
   p.push(
@@ -175,9 +231,12 @@ export function criarMob(ctx: Ctx): Mob {
   const geo = winpupGeometry();
   const fishGeo = bubbishGeometry();
   const fishOutlineGeo = bubbishOutlineGeometry();
+  const ploverGeo = ploverGeometry();
+  const ploverOutlineGeo = ploverOutlineGeometry();
   const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1e24, side: THREE.BackSide });
   const alive: Winpup[] = [];
   const fish: (Bubbish | null)[] = new Array(FISH_WIRE_BASE).fill(null);
+  const plovers: Plover[] = [];
   const F = cfg.peixes;
   let timeMs = 0;
   let collectMs = 0;
@@ -202,6 +261,98 @@ export function criarMob(ctx: Ctx): Mob {
       const f = fish[s];
       if (f) ctx.scene.remove(f.group);
       fish[s] = null;
+    }
+    for (const p of plovers) ctx.scene.remove(p.group);
+    plovers.length = 0;
+  }
+
+  function spawnPlovers(rng: () => number) {
+    let tries = 0;
+    while (plovers.length < 4 && tries < 500) {
+      tries++;
+      const x = Math.floor(rng() * SX) + 0.5;
+      const z = Math.floor(rng() * SZ) + 0.5;
+      const h = groundAt(x, z);
+      if (world.get(Math.floor(x), h, Math.floor(z)) !== 47) continue;
+      if (plovers.some((p) => Math.abs(p.homeX - x) < 14 && Math.abs(p.homeZ - z) < 14)) continue;
+      const group = new THREE.Group();
+      group.add(new THREE.Mesh(ploverGeo, material));
+      group.add(new THREE.Mesh(ploverOutlineGeo, outlineMaterial));
+      ctx.scene.add(group);
+      const y = h + 1;
+      group.position.set(x, y, z);
+      plovers.push({
+        group, homeX: x, homeY: y, homeZ: z,
+        x, y, z, yaw: rng() * Math.PI * 2,
+        flying: false, angle: rng() * Math.PI * 2,
+        calmMs: 0, screamMs: 0,
+        targetX: x, targetZ: z, retargetMs: 0,
+        phase: rng() * Math.PI * 2,
+      });
+    }
+  }
+
+  function stepPlovers(dt: number) {
+    const dtMs = dt * 1000;
+    const p = ctx.player;
+    for (const b of plovers) {
+      const dist = Math.hypot(p.x - b.x, p.z - b.z);
+      if (!b.flying && dist < 6) {
+        b.flying = true;
+        b.calmMs = 0;
+      }
+      if (b.flying) {
+        b.angle += dt * 2.4;
+        const r = 3.6;
+        const tx = b.homeX + Math.cos(b.angle) * r;
+        const tz = b.homeZ + Math.sin(b.angle) * r;
+        const ty = b.homeY + 2.6 + Math.sin(timeMs / 1000 * 3 + b.phase) * 0.4;
+        b.yaw = Math.atan2(-(tx - b.x), -(tz - b.z));
+        b.x = tx;
+        b.z = tz;
+        b.y += (ty - b.y) * Math.min(1, dt * 4);
+        b.screamMs -= dtMs;
+        if (b.screamMs <= 0) {
+          b.screamMs = 1200 + Math.random() * 900;
+          if (dist < 16) ctx.audio.soundQueroQuero();
+        }
+        if (dist > 10) {
+          b.calmMs += dtMs;
+          if (b.calmMs > 2600) b.flying = false;
+        } else {
+          b.calmMs = 0;
+        }
+      } else {
+        if (b.y > b.homeY + 0.05) {
+          b.y += (b.homeY - b.y) * Math.min(1, dt * 3);
+        } else {
+          b.y = b.homeY;
+          if (timeMs >= b.retargetMs) {
+            b.retargetMs = timeMs + 2600 + Math.random() * 3200;
+            const ang = Math.random() * Math.PI * 2;
+            const r = Math.random() * 2.5;
+            const tx = b.homeX + Math.cos(ang) * r;
+            const tz = b.homeZ + Math.sin(ang) * r;
+            if (world.get(Math.floor(tx), Math.floor(b.homeY) - 1, Math.floor(tz)) === 47) {
+              b.targetX = tx;
+              b.targetZ = tz;
+            }
+          }
+          const dx = b.targetX - b.x;
+          const dz = b.targetZ - b.z;
+          const d = Math.hypot(dx, dz);
+          if (d > 0.05) {
+            const step = Math.min(d, 0.8 * dt);
+            b.x += (dx / d) * step;
+            b.z += (dz / d) * step;
+            b.yaw = Math.atan2(-dx, -dz);
+          }
+        }
+      }
+      const bob = b.flying ? 0 : Math.sin(timeMs / 1000 * Math.PI * 2 * 0.7 + b.phase) * 0.02;
+      b.group.position.set(b.x, b.y + bob, b.z);
+      b.group.rotation.y = b.yaw;
+      b.group.rotation.z = b.flying ? Math.sin(timeMs / 1000 * 7 + b.phase) * 0.2 : 0;
     }
   }
 
@@ -392,6 +543,7 @@ export function criarMob(ctx: Ctx): Mob {
         for (let x = 0; x < SX; x++)
           if (world.get(x, y, z) === CANDY) dropped.set(candyKey(x, y, z), B.woolDespawnMs);
     const rng = mulberry32((seed ^ 0x7712bb) >>> 0);
+    spawnPlovers(mulberry32((seed ^ 0x51e77) >>> 0));
     let tries = 0;
     while (alive.length < B.quantos && tries < 400) {
       tries++;
@@ -521,6 +673,7 @@ export function criarMob(ctx: Ctx): Mob {
     spawn,
     step(dt, simulateMobs) {
       timeMs += dt * 1000;
+      if (plovers.length) stepPlovers(dt);
       if (simulateMobs) {
         despawnMs += dt * 1000;
         if (despawnMs >= 1000) { despawnMs = 0; despawnCandy(); }
@@ -612,5 +765,7 @@ export function criarMob(ctx: Ctx): Mob {
     fishCount,
     fishCap,
     spawnFishAt: (x, z) => trySpawnFish(x, z),
+    ploverCount: () => plovers.length,
+    ploverState: () => plovers.map((b) => ({ x: b.x, y: b.y, z: b.z, flying: b.flying })),
   };
 }
