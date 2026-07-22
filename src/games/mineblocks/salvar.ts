@@ -78,12 +78,12 @@ export function criarSalvar(ctx: Ctx): Save {
   function stripSessionBlocks(data: Uint8Array): Uint8Array {
     let dirty = false;
     for (let i = 0; i < data.length; i++) {
-      if (data[i] === 41 || data[i] === 42) { dirty = true; break; }
+      if (data[i] >= 41 && data[i] <= 44) { dirty = true; break; }
     }
     if (!dirty) return data;
     const copy = new Uint8Array(data);
     for (let i = 0; i < copy.length; i++) {
-      if (copy[i] === 41 || copy[i] === 42) copy[i] = 0;
+      if (copy[i] >= 41 && copy[i] <= 44) copy[i] = 0;
     }
     return copy;
   }
@@ -224,7 +224,7 @@ export function criarSalvar(ctx: Ctx): Save {
       }
       if (!blocks) return 'Esse mundo está vazio ou quebrado. 😢';
       for (let i = 0; i < blocks.length; i++) {
-        if (blocks[i] === 41 || blocks[i] === 42) blocks[i] = 0;
+        if (blocks[i] >= 41 && blocks[i] <= 44) blocks[i] = 0;
       }
       const remapped = migrated ? remapLegacyMetas(p.metas, migrated) : p.metas;
       const repaired = naturalizeLegacyLake(ctx, blocks, p.seed >>> 0, remapped);

@@ -56,7 +56,7 @@ const SUMIU_S = 120;            // visto há >120s sai da sala sozinho
 const MAX_X = 384;
 const MAX_Y = 80;
 const MAX_Z = 384;
-const MAX_BLOCO = 42;   // maior id colocável no mundo (inclui ouro 38-40 e máquina de vendas 41/42)
+const MAX_BLOCO = 46;   // maior id colocável no mundo (máquina 41-44, pás 45/46)
 const MAX_BICHOS = 16;  // teto de Winpups no blackboard (só posição)
 // ciclo dia/noite (casa com DIA_S+NOITE_S do ceu.ts): a sala ancora o horário
 // e todo cliente deriva a mesma fase de (agora - cicloInicioMs) % CICLO_S

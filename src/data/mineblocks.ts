@@ -12,6 +12,7 @@ export interface Bloco {
   dureza?: number;
   durezaPicareta?: number;
   durezaFerro?: number;
+  durezaPa?: number;
   precisaPicareta?: boolean;
   ferramenta?: boolean;
   madeira?: boolean;
@@ -20,16 +21,16 @@ export interface Bloco {
 
 export const blocos: Bloco[] = [
   { id: 0, nome: 'ar', tiles: [0, 0, 0], solido: false, render: 'cubo' },
-  { id: 1, nome: 'grama', tiles: [0, 1, 2], solido: true, render: 'cubo', drop: 2, dureza: 550 },
-  { id: 2, nome: 'terra', tiles: [2, 2, 2], solido: true, render: 'cubo', dureza: 500 },
+  { id: 1, nome: 'grama', tiles: [0, 1, 2], solido: true, render: 'cubo', drop: 2, dureza: 1000, durezaPa: 300 },
+  { id: 2, nome: 'terra', tiles: [2, 2, 2], solido: true, render: 'cubo', dureza: 900, durezaPa: 280 },
   { id: 3, nome: 'pedra', tiles: [3, 3, 3], solido: true, render: 'cubo', drop: 10, dureza: 1300, durezaPicareta: 400, durezaFerro: 150 },
-  { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo', dureza: 450 },
-  { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo', dureza: 800, madeira: true },
-  { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo', dureza: 800, icone: 'tabuas', madeira: true },
+  { id: 4, nome: 'areia', tiles: [4, 4, 4], solido: true, render: 'cubo', dureza: 800, durezaPa: 250 },
+  { id: 5, nome: 'tronco', tiles: [6, 5, 6], solido: true, render: 'cubo', dureza: 1500, madeira: true },
+  { id: 6, nome: 'tábuas', tiles: [7, 7, 7], solido: true, render: 'cubo', dureza: 1500, icone: 'tabuas', madeira: true },
   { id: 7, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 0, dropSorte: { id: 15, chance: 0.1 }, dureza: 300, madeira: true },
   { id: 8, nome: 'vidro', tiles: [9, 9, 9], solido: true, render: 'recorte', dureza: 350, icone: 'vidro' },
-  { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
-  { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo', dureza: 1100, durezaPicareta: 350, durezaFerro: 150 },
+  { id: 9, nome: 'tijolos', tiles: [10, 10, 10], solido: true, render: 'cubo', dureza: 2200, durezaPicareta: 450, durezaFerro: 200 },
+  { id: 10, nome: 'pedregulho', tiles: [11, 11, 11], solido: true, render: 'cubo', dureza: 1900, durezaPicareta: 350, durezaFerro: 150 },
   { id: 11, nome: 'flor amarela', tiles: [12, 12, 12], solido: false, render: 'cruz', dureza: 350 },
   { id: 12, nome: 'flor vermelha', tiles: [13, 13, 13], solido: false, render: 'cruz', dureza: 350 },
   { id: 13, nome: 'água', tiles: [14, 14, 14], solido: false, render: 'agua' },
@@ -46,9 +47,9 @@ export const blocos: Bloco[] = [
   { id: 24, nome: 'picareta de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true, icone: 'picareta-madeira' },
   { id: 25, nome: 'minério de ferro', tiles: [29, 29, 29], solido: true, render: 'cubo', dureza: 900, durezaFerro: 350, precisaPicareta: true },
   { id: 26, nome: 'barra de ferro', tiles: [30, 30, 30], solido: false, render: 'cruz' },
-  { id: 27, nome: 'fornalha', tiles: [3, 31, 3], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
+  { id: 27, nome: 'fornalha', tiles: [3, 31, 3], solido: true, render: 'cubo', dureza: 2200, durezaPicareta: 450, durezaFerro: 200 },
   { id: 28, nome: 'picareta de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true, icone: 'picareta-ferro' },
-  { id: 29, nome: 'tijolos de pedra', tiles: [33, 33, 33], solido: true, render: 'cubo', dureza: 1400, durezaPicareta: 450, durezaFerro: 200 },
+  { id: 29, nome: 'tijolos de pedra', tiles: [33, 33, 33], solido: true, render: 'cubo', dureza: 2200, durezaPicareta: 450, durezaFerro: 200 },
   { id: 30, nome: 'espada de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true, icone: 'espada-madeira' },
   { id: 31, nome: 'espada de ferro', tiles: [32, 32, 32], solido: false, render: 'cruz', ferramenta: true, icone: 'espada-ferro' },
   { id: 32, nome: 'machado de madeira', tiles: [28, 28, 28], solido: false, render: 'cruz', ferramenta: true, icone: 'machado-madeira' },
@@ -62,8 +63,12 @@ export const blocos: Bloco[] = [
   { id: 40, nome: 'moeda', tiles: [42, 42, 42], solido: false, render: 'cruz' },
   { id: 41, nome: 'máquina de vendas', tiles: [46, 45, 45], solido: true, render: 'cubo' },
   { id: 42, nome: 'máquina de vendas', tiles: [46, 44, 44], solido: true, render: 'cubo' },
+  { id: 43, nome: 'máquina de vendas', tiles: [46, 49, 49], solido: true, render: 'cubo' },
+  { id: 44, nome: 'máquina de vendas', tiles: [46, 48, 48], solido: true, render: 'cubo' },
+  { id: 45, nome: 'pá de madeira', tiles: [43, 43, 43], solido: false, render: 'cruz', ferramenta: true },
+  { id: 46, nome: 'pá de ferro', tiles: [47, 47, 47], solido: false, render: 'cruz', ferramenta: true },
 ];
-export const itens = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36];
+export const itens = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36, 45, 46];
 export const materiais = [21, 23, 25, 26, 38, 39, 40];
 export interface Receita {
   de: number;
@@ -83,6 +88,7 @@ export const receitas: Receita[] = [
   { de: 6, qtd: 2, para: 18, ganha: 1 },
   { de: 6, qtd: 1, para: 20, ganha: 1 },
   { de: 6, qtd: 3, para: 24, ganha: 1 },
+  { de: 6, qtd: 2, para: 45, ganha: 1 },
   { de: 10, qtd: 8, para: 27, ganha: 1 },
   { de: 4, qtd: 1, para: 8, ganha: 1, fornalha: true },
   { de: 10, qtd: 1, para: 3, ganha: 1, fornalha: true },
@@ -95,6 +101,7 @@ export const receitas: Receita[] = [
   { de: 6, qtd: 2, para: 36, ganha: 3 },
   { de: 26, qtd: 2, de2: 6, qtd2: 1, para: 31, ganha: 1, fornalha: true },
   { de: 26, qtd: 3, de2: 6, qtd2: 2, para: 33, ganha: 1, fornalha: true },
+  { de: 26, qtd: 2, de2: 6, qtd2: 1, para: 46, ganha: 1, fornalha: true },
 ];
 
 export const config = {

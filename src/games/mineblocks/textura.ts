@@ -4,7 +4,7 @@ import type { Ctx, Texture } from './types';
 
 const TILE = 16;
 const GRID = 4;
-const ROWS = 12;
+const ROWS = 13;
 const W = TILE * GRID;
 const H = TILE * ROWS;
 
@@ -441,12 +441,19 @@ export function criarTextura(_ctx: Ctx): Texture {
     g.fillRect(ox + 7, oy + 6, 2, 5);
     g.fillRect(ox + 6, oy + 6, 1, 1);
   }
+  function vendingFrame(ox: number, oy: number, right: boolean) {
+    g.fillStyle = '#5c100e';
+    g.fillRect(ox, oy, TILE, 1);
+    g.fillRect(ox, oy + TILE - 1, TILE, 1);
+    if (right) g.fillRect(ox + TILE - 1, oy, 1, TILE);
+    else g.fillRect(ox, oy, 1, TILE);
+  }
   {
     const [ox, oy] = base(44, [208, 49, 45], 0.015);
     g.fillStyle = '#f2ede4';
-    g.fillRect(ox + 1, oy + 1, 14, 9);
+    g.fillRect(ox + 1, oy + 1, 15, 9);
     g.fillStyle = '#1c2430';
-    g.fillRect(ox + 2, oy + 2, 12, 7);
+    g.fillRect(ox + 2, oy + 2, 14, 7);
     const drinks = ['#4fa3e0', '#f0c93c', '#59c268', '#e07f4f', '#b06fd0', '#e5e8ee'];
     drinks.forEach((c, i) => {
       g.fillStyle = c;
@@ -454,29 +461,74 @@ export function criarTextura(_ctx: Ctx): Texture {
     });
     g.fillStyle = '#8f1d1a';
     g.fillRect(ox, oy + 12, TILE, 4);
+    vendingFrame(ox, oy, false);
+  }
+  {
+    const [ox, oy] = base(48, [208, 49, 45], 0.015);
     g.fillStyle = '#f2ede4';
-    g.fillRect(ox + 11, oy + 11, 3, 2);
-    edgeTile(ox, oy, '#5c100e');
+    g.fillRect(ox, oy + 1, 15, 9);
+    g.fillStyle = '#1c2430';
+    g.fillRect(ox, oy + 2, 14, 7);
+    const drinks = ['#59c268', '#e5e8ee', '#4fa3e0', '#b06fd0', '#f0c93c', '#e07f4f'];
+    drinks.forEach((c, i) => {
+      g.fillStyle = c;
+      g.fillRect(ox + 1 + (i % 3) * 4, oy + 3 + Math.floor(i / 3) * 3, 2, 2);
+    });
+    g.fillStyle = '#8f1d1a';
+    g.fillRect(ox, oy + 12, TILE, 4);
+    g.fillStyle = '#f2ede4';
+    g.fillRect(ox + 10, oy + 11, 4, 2);
+    vendingFrame(ox, oy, true);
   }
   {
     const [ox, oy] = base(45, [208, 49, 45], 0.015);
     g.fillStyle = '#8f1d1a';
-    g.fillRect(ox + 3, oy + 2, 10, 5);
+    g.fillRect(ox + 3, oy + 2, 13, 5);
     g.fillStyle = '#1c2430';
-    g.fillRect(ox + 4, oy + 3, 8, 3);
+    g.fillRect(ox + 4, oy + 3, 12, 3);
     g.fillStyle = '#f7d970';
-    g.fillRect(ox + 11, oy + 4, 1, 1);
+    g.fillRect(ox + 12, oy + 4, 1, 1);
+    vendingFrame(ox, oy, false);
+  }
+  {
+    const [ox, oy] = base(49, [208, 49, 45], 0.015);
+    g.fillStyle = '#8f1d1a';
+    g.fillRect(ox, oy + 2, 13, 5);
     g.fillStyle = '#1c2430';
-    g.fillRect(ox + 4, oy + 10, 8, 4);
+    g.fillRect(ox, oy + 3, 12, 3);
+    g.fillStyle = '#1c2430';
+    g.fillRect(ox + 2, oy + 9, 11, 5);
     g.fillStyle = '#2e3a4a';
-    g.fillRect(ox + 5, oy + 11, 6, 2);
-    edgeTile(ox, oy, '#5c100e');
+    g.fillRect(ox + 3, oy + 10, 9, 3);
+    vendingFrame(ox, oy, true);
   }
   {
     const [ox, oy] = base(46, [208, 49, 45], 0.015);
     g.fillStyle = '#b8352f';
     g.fillRect(ox + 2, oy + 2, 12, 12);
     edgeTile(ox, oy, '#5c100e');
+  }
+  {
+    const ox = (43 % GRID) * TILE;
+    const oy = Math.floor(43 / GRID) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    for (let y = 7; y < 15; y++) px(ox, oy, 8, y, '#7c4f28');
+    g.fillStyle = '#b9884e';
+    g.fillRect(ox + 6, oy + 2, 5, 5);
+    g.fillStyle = '#a06b3a';
+    g.fillRect(ox + 7, oy + 1, 3, 1);
+    px(ox, oy, 7, 3, '#d9b06a');
+  }
+  {
+    const ox = (47 % GRID) * TILE;
+    const oy = Math.floor(47 / GRID) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    for (let y = 7; y < 15; y++) px(ox, oy, 8, y, '#7c4f28');
+    g.fillStyle = '#c8ccd4';
+    g.fillRect(ox + 6, oy + 2, 5, 5);
+    g.fillStyle = '#9aa0aa';
+    g.fillRect(ox + 7, oy + 1, 3, 1);
+    px(ox, oy, 7, 3, '#eef0f4');
   }
 
   const atlas = new THREE.CanvasTexture(canvas);

@@ -17,6 +17,8 @@ const SWORD_WOOD = 30;
 const SWORD_IRON = 31;
 const AXE_WOOD = 32;
 const AXE_IRON = 33;
+const SHOVEL_WOOD = 45;
+const SHOVEL_IRON = 46;
 const MELEE = 3.2;
 const CONE = 0.6;
 const SWING_MS = 350;
@@ -196,6 +198,11 @@ export function createEditing(ctx: Ctx): Editing {
     return h === SWORD_WOOD || h === SWORD_IRON;
   }
 
+  function holdingShovel(): boolean {
+    const h = heldItem();
+    return h === SHOVEL_WOOD || h === SHOVEL_IRON;
+  }
+
   function holdingAxe(): boolean {
     const h = heldItem();
     return h === AXE_WOOD || h === AXE_IRON;
@@ -321,7 +328,7 @@ export function createEditing(ctx: Ctx): Editing {
   }
 
   function canBreak(a: Target): boolean {
-    if (a.id === 41 || a.id === 42) {
+    if (a.id >= 41 && a.id <= 44) {
       warn('🎰 A máquina de vendas não quebra nem sai do lugar!');
       return false;
     }
@@ -412,7 +419,8 @@ export function createEditing(ctx: Ctx): Editing {
     const tool = heldItem();
     let hardness = tool === IRON_PICKAXE && targetDef.durezaFerro !== undefined ? targetDef.durezaFerro
       : holdingPickaxe() && targetDef.durezaPicareta !== undefined ? targetDef.durezaPicareta
-        : targetDef.dureza!;
+        : holdingShovel() && targetDef.durezaPa !== undefined ? (tool === SHOVEL_IRON ? targetDef.durezaPa / 2 : targetDef.durezaPa)
+          : targetDef.dureza!;
     if (targetDef.madeira && holdingAxe()) hardness /= tool === AXE_IRON ? 3.5 : 2;
     if (progress >= hardness) {
       removeBlock(a);
@@ -542,7 +550,7 @@ export function createEditing(ctx: Ctx): Editing {
     if (!a) return place();
     if (a.id === CHEST) { openChest(a); return false; }
     if (a.id === FURNACE) { ctx.flow.releaseInputs(); ctx.ui.openFurnace(); ctx.flow.onFirstInput(); return false; }
-    if (a.id === 41 || a.id === 42) { ctx.flow.releaseInputs(); ctx.ui.openVending(); ctx.flow.onFirstInput(); return false; }
+    if (a.id >= 41 && a.id <= 44) { ctx.flow.releaseInputs(); ctx.ui.openVending(); ctx.flow.onFirstInput(); return false; }
     if (a.id === MAILBOX) { readMailbox(a); return false; }
     if (a.id === DOOR_CLOSED) { toggleDoor(a, DOOR_OPEN); return false; }
     if (a.id === DOOR_OPEN) { toggleDoor(a, DOOR_CLOSED); return false; }
