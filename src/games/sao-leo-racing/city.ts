@@ -24,52 +24,64 @@ export function createCity(ctx: Ctx): City {
   const rng = mulberry32(20260722);
 
   const cellOf = (v: number) => Math.max(0, Math.min(N - 1, Math.floor((v + HALF) / CELL)));
+  const centerOf = (c: number) => c * CELL - HALF + CELL / 2;
   const at = (cx: number, cz: number) => grid[cx + cz * N];
   const set = (cx: number, cz: number, t: number) => { grid[cx + cz * N] = t; };
 
-  function fillRect(x1: number, z1: number, x2: number, z2: number, t: number, onlyIf?: number) {
+  function fillRect(x1: number, z1: number, x2: number, z2: number, t: number) {
     const cx1 = cellOf(Math.min(x1, x2));
     const cx2 = cellOf(Math.max(x1, x2) - 0.01);
     const cz1 = cellOf(Math.min(z1, z2));
     const cz2 = cellOf(Math.max(z1, z2) - 0.01);
     for (let cz = cz1; cz <= cz2; cz++) {
+      for (let cx = cx1; cx <= cx2; cx++) set(cx, cz, t);
+    }
+  }
+
+  function paintSegment(x1: number, z1: number, x2: number, z2: number, w: number, t: number, skip?: number) {
+    const half = w / 2;
+    const cx1 = cellOf(Math.min(x1, x2) - half);
+    const cx2 = cellOf(Math.max(x1, x2) + half);
+    const cz1 = cellOf(Math.min(z1, z2) - half);
+    const cz2 = cellOf(Math.max(z1, z2) + half);
+    const dx = x2 - x1;
+    const dz = z2 - z1;
+    const len2 = dx * dx + dz * dz || 1;
+    for (let cz = cz1; cz <= cz2; cz++) {
       for (let cx = cx1; cx <= cx2; cx++) {
-        if (onlyIf === undefined || at(cx, cz) === onlyIf) set(cx, cz, t);
+        if (skip !== undefined && at(cx, cz) === skip) continue;
+        const px = centerOf(cx);
+        const pz = centerOf(cz);
+        const u = Math.max(0, Math.min(1, ((px - x1) * dx + (pz - z1) * dz) / len2));
+        const qx = x1 + dx * u - px;
+        const qz = z1 + dz * u - pz;
+        if (qx * qx + qz * qz <= half * half) set(cx, cz, t);
       }
     }
   }
+
+  const rio = map.rio;
+  const riverCenter = (x: number) =>
+    rio.zCentro + rio.onda1.amp * Math.sin(x / rio.onda1.freq + rio.onda1.fase) + rio.onda2.amp * Math.sin(x / rio.onda2.freq + rio.onda2.fase);
+  const riverHalf = (x: number) => rio.meia + rio.meiaOnda.amp * Math.sin(x / rio.meiaOnda.freq + rio.meiaOnda.fase);
+  const inRiver = (x: number, z: number) => Math.abs(z - riverCenter(x)) <= riverHalf(x);
 
   for (const p of map.pracas) fillRect(p.x1, p.z1, p.x2, p.z2, PARK);
-  for (const r of map.ruas) {
-    const h = r.w / 2;
-    if (r.x1 === r.x2) fillRect(r.x1 - h, r.z1, r.x1 + h, r.z2, ROAD);
-    else fillRect(r.x1, r.z1 - h, r.x2, r.z1 + h, ROAD);
-  }
-  {
-    const h = map.trilho.w / 2;
-    const cx1 = cellOf(map.trilho.x - h);
-    const cx2 = cellOf(map.trilho.x + h - 0.01);
-    for (let cz = 0; cz < N; cz++) {
-      for (let cx = cx1; cx <= cx2; cx++) {
-        if (at(cx, cz) !== ROAD) set(cx, cz, RAIL);
-      }
-    }
-  }
-  {
-    const cz1 = cellOf(map.rio.z1);
-    const cz2 = cellOf(map.rio.z2 - 0.01);
-    for (let cz = cz1; cz <= cz2; cz++) {
-      for (let cx = 0; cx < N; cx++) {
-        const x = cx * CELL - HALF + CELL / 2;
-        const t = at(cx, cz);
-        if (t === ROAD && map.pontes.some((p) => Math.abs(x - p.x) <= p.w / 2)) set(cx, cz, BRIDGE);
-        else if (t === RAIL) set(cx, cz, RAILBRIDGE);
-        else set(cx, cz, WATER);
-      }
+  for (const r of map.ruas) paintSegment(r.x1, r.z1, r.x2, r.z2, r.w, ROAD);
+  paintSegment(map.trilho.x1, map.trilho.z1, map.trilho.x2, map.trilho.z2, map.trilho.w, RAIL, ROAD);
+  for (let cz = 0; cz < N; cz++) {
+    for (let cx = 0; cx < N; cx++) {
+      const x = centerOf(cx);
+      const z = centerOf(cz);
+      if (!inRiver(x, z)) continue;
+      const t = at(cx, cz);
+      if (t === ROAD && map.pontes.some((p) => Math.abs(x - p.x) <= p.w / 2)) set(cx, cz, BRIDGE);
+      else if (t === RAIL) set(cx, cz, RAILBRIDGE);
+      else set(cx, cz, WATER);
     }
   }
 
-  interface Building { x: number; z: number; w: number; d: number; h: number; body: string; win: string }
+  interface Building { x: number; z: number; w: number; d: number; h: number; body: string; win: string | null; roof: boolean }
   const buildings: Building[] = [];
 
   function stampBuilding(b: Building) {
@@ -88,9 +100,10 @@ export function createCity(ctx: Ctx): City {
 
   for (const m of map.marcos) {
     if (!m.predio) continue;
-    stampBuilding({ x: m.x, z: m.z, w: m.predio.w, d: m.predio.d, h: m.predio.h, body: m.predio.cor, win: K.janelas[0] });
+    stampBuilding({ x: m.x, z: m.z, w: m.predio.w, d: m.predio.d, h: m.predio.h, body: m.predio.cor, win: K.janelas[0], roof: false });
   }
 
+  const centro = map.centro;
   for (let cz = 1; cz < N - 3; cz += 3) {
     for (let cx = 1; cx < N - 3; cx += 3) {
       let free = true;
@@ -106,21 +119,37 @@ export function createCity(ctx: Ctx): City {
           const nx = cx + dx;
           const nz = cz + dz;
           if (nx < 0 || nz < 0 || nx >= N || nz >= N) continue;
-          if (at(nx, nz) === ROAD) nearRoad = true;
+          const t = at(nx, nz);
+          if (t === ROAD || t === BRIDGE) nearRoad = true;
         }
       }
       if (!nearRoad || rng() > 0.72) continue;
-      const wx = cx * CELL - HALF + CELL;
-      const wz = cz * CELL - HALF + CELL;
-      stampBuilding({
-        x: wx,
-        z: wz,
-        w: 7,
-        d: 7,
-        h: 7 + rng() * 19,
-        body: K.predios[Math.floor(rng() * K.predios.length)],
-        win: K.janelas[Math.floor(rng() * K.janelas.length)],
-      });
+      const wx = centerOf(cx) + CELL / 2;
+      const wz = centerOf(cz) + CELL / 2;
+      const inCentro = wx >= centro.x1 && wx <= centro.x2 && wz >= centro.z1 && wz <= centro.z2;
+      if (inCentro) {
+        stampBuilding({
+          x: wx,
+          z: wz,
+          w: 7,
+          d: 7,
+          h: 9 + rng() * 19,
+          body: K.predios[Math.floor(rng() * K.predios.length)],
+          win: K.janelas[Math.floor(rng() * K.janelas.length)],
+          roof: false,
+        });
+      } else {
+        stampBuilding({
+          x: wx,
+          z: wz,
+          w: 5.5 + rng() * 1.5,
+          d: 5.5 + rng() * 1.5,
+          h: 3.2 + rng() * 2.4,
+          body: K.casas[Math.floor(rng() * K.casas.length)],
+          win: rng() < 0.6 ? K.janelaCasa : null,
+          roof: true,
+        });
+      }
     }
   }
 
@@ -152,88 +181,125 @@ export function createCity(ctx: Ctx): City {
   }
 
   const deco = new QuadBatch();
-  const lane = new THREE.Color(K.faixa);
-  for (const r of map.ruas) {
-    if (r.w < 10) continue;
-    if (r.x1 === r.x2) {
-      for (let z = Math.min(r.z1, r.z2) + 4; z < Math.max(r.z1, r.z2) - 4; z += 10) {
-        const cz = cellOf(z);
-        const cx = cellOf(r.x1);
-        const t = at(cx, cz);
-        if (t !== ROAD && t !== BRIDGE) continue;
-        deco.quad(r.x1 - 0.2, z, r.x1 + 0.2, z + 2.8, 0.03, lane);
-      }
-    } else {
-      for (let x = Math.min(r.x1, r.x2) + 4; x < Math.max(r.x1, r.x2) - 4; x += 10) {
-        const cx = cellOf(x);
-        const cz = cellOf(r.z1);
-        const t = at(cx, cz);
-        if (t !== ROAD && t !== BRIDGE) continue;
-        deco.quad(x, r.z1 - 0.2, x + 2.8, r.z1 + 0.2, 0.03, lane);
-      }
-    }
-  }
-  const sleeper = new THREE.Color(K.dormente);
-  for (let z = -HALF + 2; z < HALF - 2; z += 3) {
-    deco.quad(map.trilho.x - map.trilho.w / 2 + 1, z, map.trilho.x + map.trilho.w / 2 - 1, z + 0.5, 0.03, sleeper);
-  }
-  const shine = new THREE.Color(K.aguaBrilho);
-  for (let i = 0; i < 150; i++) {
-    const x = -HALF + rng() * T;
-    const z = map.rio.z1 + rng() * (map.rio.z2 - map.rio.z1);
-    if (at(cellOf(x), cellOf(z)) !== WATER) continue;
-    deco.quad(x, z, x + 1.6 + rng() * 2, z + 0.4, 0.02, shine);
-  }
-  const pool = new THREE.Color(K.poolLuz);
-
   const parts: THREE.BufferGeometry[] = [];
-  for (const b of buildings) {
-    const body = new THREE.Color(b.body);
-    const win = new THREE.Color(b.win);
-    parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, body));
-    parts.push(coloredBox(b.w + 0.12, 0.9, b.d + 0.12, b.x, b.h * 0.38, b.z, win));
-    if (b.h > 11) parts.push(coloredBox(b.w + 0.12, 0.9, b.d + 0.12, b.x, b.h * 0.72, b.z, win));
-  }
-
+  const lane = new THREE.Color(K.faixa);
+  const pool = new THREE.Color(K.poolLuz);
   const poleColor = new THREE.Color(K.poste);
   const lampColor = new THREE.Color(K.luzPoste);
   let lampFlip = 1;
+
   for (const r of map.ruas) {
-    const h = r.w / 2 + 1.2;
-    if (r.x1 === r.x2) {
-      for (let z = Math.min(r.z1, r.z2) + 8; z < Math.max(r.z1, r.z2) - 8; z += 26) {
-        lampFlip = -lampFlip;
-        const x = r.x1 + h * lampFlip;
-        const t = at(cellOf(x), cellOf(z));
-        if (t === WATER || t === BUILD) continue;
-        parts.push(coloredBox(0.2, 4.6, 0.2, x, 2.3, z, poleColor));
-        parts.push(coloredBox(0.6, 0.3, 0.6, x, 4.7, z, lampColor));
-        deco.quad(x - 2.6, z - 2.6, x + 2.6, z + 2.6, 0.02, pool);
-      }
-    } else {
-      for (let x = Math.min(r.x1, r.x2) + 8; x < Math.max(r.x1, r.x2) - 8; x += 26) {
-        lampFlip = -lampFlip;
-        const z = r.z1 + h * lampFlip;
-        const t = at(cellOf(x), cellOf(z));
-        if (t === WATER || t === BUILD) continue;
-        parts.push(coloredBox(0.2, 4.6, 0.2, x, 2.3, z, poleColor));
-        parts.push(coloredBox(0.6, 0.3, 0.6, x, 4.7, z, lampColor));
-        deco.quad(x - 2.6, z - 2.6, x + 2.6, z + 2.6, 0.02, pool);
+    const dx = r.x2 - r.x1;
+    const dz = r.z2 - r.z1;
+    const len = Math.hypot(dx, dz);
+    const ux = dx / len;
+    const uz = dz / len;
+    const nx = -uz;
+    const nz = ux;
+    if (r.w >= 10) {
+      for (let s = 6; s < len - 6; s += 10) {
+        const px = r.x1 + ux * s;
+        const pz = r.z1 + uz * s;
+        const t = at(cellOf(px), cellOf(pz));
+        if (t !== ROAD && t !== BRIDGE) continue;
+        if (Math.abs(ux) >= Math.abs(uz)) deco.quad(px, pz - 0.2, px + 2.8 * Math.sign(ux || 1), pz + 0.2, 0.03, lane);
+        else deco.quad(px - 0.2, pz, px + 0.2, pz + 2.8 * Math.sign(uz || 1), 0.03, lane);
       }
     }
+    for (let s = 10; s < len - 10; s += 26) {
+      lampFlip = -lampFlip;
+      const off = (r.w / 2 + 1.2) * lampFlip;
+      const px = r.x1 + ux * s + nx * off;
+      const pz = r.z1 + uz * s + nz * off;
+      const t = at(cellOf(px), cellOf(pz));
+      if (t === WATER || t === BUILD || t === RAILBRIDGE) continue;
+      parts.push(coloredBox(0.2, 4.6, 0.2, px, 2.3, pz, poleColor));
+      parts.push(coloredBox(0.6, 0.3, 0.6, px, 4.7, pz, lampColor));
+      deco.quad(px - 2.6, pz - 2.6, px + 2.6, pz + 2.6, 0.02, pool);
+    }
+  }
+
+  const shine = new THREE.Color(K.aguaBrilho);
+  for (let i = 0; i < 170; i++) {
+    const x = -HALF + rng() * T;
+    const zc = riverCenter(x);
+    const z = zc - riverHalf(x) + rng() * riverHalf(x) * 2;
+    if (at(cellOf(x), cellOf(z)) !== WATER) continue;
+    deco.quad(x, z, x + 1.6 + rng() * 2, z + 0.4, 0.02, shine);
+  }
+
+  {
+    const tr = map.trilho;
+    const dx = tr.x2 - tr.x1;
+    const dz = tr.z2 - tr.z1;
+    const len = Math.hypot(dx, dz);
+    const ux = dx / len;
+    const uz = dz / len;
+    const angle = Math.atan2(dx, dz);
+    const sleeper = new THREE.Color(K.dormente);
+    for (let s = 2; s < len - 2; s += 3.2) {
+      const px = tr.x1 + ux * s;
+      const pz = tr.z1 + uz * s;
+      if (Math.abs(px) > HALF - 2 || Math.abs(pz) > HALF - 2) continue;
+      const g = coloredBox(tr.w - 3, 0.12, 0.6, 0, 0.06, 0, sleeper);
+      g.rotateY(angle);
+      g.translate(px, 0, pz);
+      parts.push(g);
+    }
+    const railColor = new THREE.Color('#6a6f7a');
+    for (const side of [-1.4, 1.4]) {
+      const g = coloredBox(0.3, 0.22, len, 0, 0.14, 0, railColor);
+      g.rotateY(angle);
+      g.translate((tr.x1 + tr.x2) / 2 + side, 0, (tr.z1 + tr.z2) / 2);
+      parts.push(g);
+    }
+    const railXAt = (z: number) => tr.x1 + (tr.x2 - tr.x1) * ((z - tr.z1) / (tr.z2 - tr.z1));
+    const trainBody = new THREE.Color(K.trem);
+    const trainFace = new THREE.Color(K.tremFrente);
+    for (let i = 0; i < 3; i++) {
+      const z = map.estacaoTrem.z - 16 + i * 13;
+      const x = railXAt(z);
+      for (const [w, h, d, y, c] of [[3.2, 3, 12, 1.6, trainBody], [3.3, 0.8, 12.1, 1.1, trainFace]] as const) {
+        const g = coloredBox(w, h, d, 0, y, 0, c);
+        g.rotateY(angle);
+        g.translate(x, 0, z);
+        parts.push(g);
+      }
+    }
+    const platform = coloredBox(2.4, 0.5, 34, 0, 0.25, 0, new THREE.Color(K.deckPonte));
+    platform.rotateY(angle);
+    platform.translate(railXAt(map.estacaoTrem.z) - 4.4, 0, map.estacaoTrem.z);
+    parts.push(platform);
   }
 
   const guard = new THREE.Color(K.guardaPonte);
   for (const p of map.pontes) {
-    const len = map.rio.z2 - map.rio.z1 + 10;
-    const zc = (map.rio.z1 + map.rio.z2) / 2;
-    parts.push(coloredBox(0.5, 1.1, len, p.x - p.w / 2 + 0.4, 0.55, zc, guard));
-    parts.push(coloredBox(0.5, 1.1, len, p.x + p.w / 2 - 0.4, 0.55, zc, guard));
+    const zc = riverCenter(p.x);
+    const half = riverHalf(p.x) + 6;
+    parts.push(coloredBox(0.5, 1.1, half * 2, p.x - p.w / 2 + 0.4, 0.55, zc, guard));
+    parts.push(coloredBox(0.5, 1.1, half * 2, p.x + p.w / 2 - 0.4, 0.55, zc, guard));
+  }
+
+  for (const b of buildings) {
+    const body = new THREE.Color(b.body);
+    parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, body));
+    if (b.win) {
+      const win = new THREE.Color(b.win);
+      if (b.roof) {
+        parts.push(coloredBox(b.w * 0.4, 0.7, 0.14, b.x, b.h * 0.5, b.z - b.d / 2 - 0.02, win));
+      } else {
+        parts.push(coloredBox(b.w + 0.12, 0.9, b.d + 0.12, b.x, b.h * 0.38, b.z, win));
+        if (b.h > 13) parts.push(coloredBox(b.w + 0.12, 0.9, b.d + 0.12, b.x, b.h * 0.72, b.z, win));
+      }
+    }
+    if (b.roof) {
+      parts.push(coloredBox(b.w + 0.7, 1.1, b.d + 0.7, b.x, b.h + 0.45, b.z, new THREE.Color(K.telhado)));
+    }
   }
 
   const trunk = new THREE.Color(K.arvoreTronco);
   const leaf = new THREE.Color(K.arvoreCopa);
-  for (let i = 0; i < 240; i++) {
+  for (let i = 0; i < 260; i++) {
     const x = -HALF + rng() * T;
     const z = -HALF + rng() * T;
     const t = at(cellOf(x), cellOf(z));
@@ -242,15 +308,6 @@ export function createCity(ctx: Ctx): City {
     parts.push(coloredBox(0.5 * s, 2.2 * s, 0.5 * s, x, 1.1 * s, z, trunk));
     parts.push(coloredBox(2.4 * s, 2.6 * s, 2.4 * s, x, 3.4 * s, z, leaf));
   }
-
-  const trainBody = new THREE.Color(K.trem);
-  const trainFace = new THREE.Color(K.tremFrente);
-  for (let i = 0; i < 3; i++) {
-    const z = map.estacaoTrem.z - 14 + i * 13;
-    parts.push(coloredBox(3.2, 3, 12, map.trilho.x, 1.6, z, trainBody));
-    parts.push(coloredBox(3.3, 0.8, 12.1, map.trilho.x, 1.1, z, trainFace));
-  }
-  parts.push(coloredBox(2.4, 0.5, 30, map.trilho.x + 4.4, 0.25, map.estacaoTrem.z, new THREE.Color(K.deckPonte)));
 
   const material = new THREE.MeshBasicMaterial({ vertexColors: true });
   const groundGeo = ground.build();
