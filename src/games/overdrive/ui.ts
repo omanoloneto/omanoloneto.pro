@@ -16,6 +16,7 @@ export function createUI(_ctx: Ctx): UI {
     muteIcon: $('[data-mute-icon]'),
     controls: $('[data-controles]'),
     hint: $('[data-fantasma]'),
+    gps: $('[data-gps]'),
     minimap: $('[data-minimapa]'),
     mapPanel: $('[data-mapa]'),
     mapCanvas: $('[data-mapa-canvas]'),
@@ -39,11 +40,10 @@ export function createUI(_ctx: Ctx): UI {
       els.speed.textContent = String(v);
     },
     setPlace(nome, emoji) {
-      const next = nome ? (emoji ? emoji + ' ' : '') + nome : '';
+      const next = nome ? (emoji ? emoji + ' ' : '') + nome : 'Centro';
       if (next === place) return;
       place = next;
       els.place.textContent = next;
-      els.place.hidden = !next;
     },
     announce(msg) {
       const now = performance.now();

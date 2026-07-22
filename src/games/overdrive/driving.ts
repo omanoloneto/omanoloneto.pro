@@ -6,6 +6,7 @@ export function createDriving(ctx: Ctx): Driving {
   let tel: CarTelemetry = { speedFwd: 0, lateral: 0, drifting: false, steer: 0 };
   let lastHitMs = -1e9;
   let placeMs = 0;
+  let lastStreet: string | null = null;
 
   function collide() {
     const car = ctx.car.state;
@@ -58,9 +59,18 @@ export function createDriving(ctx: Ctx): Driving {
       placeMs += dt * 1000;
       if (placeMs > 300) {
         placeMs = 0;
-        const near = ctx.city.nearestLandmark(car.x, car.z);
-        if (near && near.dist < cfg.hud.marcoDist) ctx.ui.setPlace(near.nome, near.emoji);
-        else ctx.ui.setPlace(null);
+        const street = ctx.city.streetAt(car.x, car.z, lastStreet);
+        lastStreet = street;
+        if (street) ctx.ui.setPlace(street);
+        else {
+          const near = ctx.city.nearestLandmark(car.x, car.z);
+          if (near && near.dist < cfg.hud.marcoDist) ctx.ui.setPlace(near.nome, near.emoji);
+          else {
+            const c = ctx.map.centro;
+            const inCentro = car.x >= c.x1 && car.x <= c.x2 && car.z >= c.z1 && car.z <= c.z2;
+            ctx.ui.setPlace(inCentro ? 'Centro' : 'São Leopoldo');
+          }
+        }
       }
     },
     telemetry: () => tel,

@@ -2,13 +2,17 @@ export type MapProject = (x: number, z: number) => [number, number];
 
 export interface MinimapViewOptions {
   terrain: HTMLCanvasElement;
+  hudTerrain?: HTMLCanvasElement;
   hud: HTMLCanvasElement;
   big: HTMLCanvasElement;
   panel: HTMLElement;
   worldToMap: MapProject;
   mapToWorldScale: number;
   view: number;
-  markers(g: CanvasRenderingContext2D, project: MapProject, pxPerUnit: number, isBig: boolean): void;
+  rotation?: () => number;
+  circular?: boolean;
+  hudBackground?: string;
+  markers(g: CanvasRenderingContext2D, project: MapProject, pxPerUnit: number, isBig: boolean, rotation: number): void;
   onToggle?(open: boolean): void;
 }
 
@@ -27,19 +31,42 @@ export function createMinimapView(opts: MinimapViewOptions): MinimapView {
   let clock = 0;
 
   function drawHud(cx: number, cz: number) {
+    const src = opts.hudTerrain ?? opts.terrain;
+    const W = opts.hud.width;
+    const H = opts.hud.height;
     const viewPx = opts.view * opts.mapToWorldScale;
-    const [mx, mz] = opts.worldToMap(cx, cz);
-    const sx = Math.max(0, Math.min(opts.terrain.width - viewPx, mx - viewPx / 2));
-    const sz = Math.max(0, Math.min(opts.terrain.height - viewPx, mz - viewPx / 2));
-    const scale = opts.hud.width / viewPx;
-    hg.imageSmoothingEnabled = false;
-    hg.clearRect(0, 0, opts.hud.width, opts.hud.height);
-    hg.drawImage(opts.terrain, sx, sz, viewPx, viewPx, 0, 0, opts.hud.width, opts.hud.height);
+    const scale = W / viewPx;
+    const [mx, my] = opts.worldToMap(cx, cz);
+    const rot = opts.rotation ? opts.rotation() : 0;
+    hg.clearRect(0, 0, W, H);
+    hg.save();
+    if (opts.circular) {
+      hg.beginPath();
+      hg.arc(W / 2, H / 2, Math.min(W, H) / 2, 0, Math.PI * 2);
+      hg.clip();
+    }
+    if (opts.hudBackground) {
+      hg.fillStyle = opts.hudBackground;
+      hg.fillRect(0, 0, W, H);
+    }
+    hg.save();
+    hg.translate(W / 2, H / 2);
+    hg.rotate(rot);
+    hg.scale(scale, scale);
+    hg.translate(-mx, -my);
+    hg.imageSmoothingEnabled = true;
+    hg.drawImage(src, 0, 0);
+    hg.restore();
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
     const project: MapProject = (x, z) => {
-      const [px, pz] = opts.worldToMap(x, z);
-      return [(px - sx) * scale, (pz - sz) * scale];
+      const [px, py] = opts.worldToMap(x, z);
+      const dx = px - mx;
+      const dy = py - my;
+      return [W / 2 + (dx * cos - dy * sin) * scale, H / 2 + (dx * sin + dy * cos) * scale];
     };
-    opts.markers(hg, project, opts.mapToWorldScale * scale, false);
+    opts.markers(hg, project, opts.mapToWorldScale * scale, false, rot);
+    hg.restore();
   }
 
   function drawBig() {
@@ -51,7 +78,7 @@ export function createMinimapView(opts: MinimapViewOptions): MinimapView {
       const [px, pz] = opts.worldToMap(x, z);
       return [px * scale, pz * scale];
     };
-    opts.markers(bg, project, opts.mapToWorldScale * scale, true);
+    opts.markers(bg, project, opts.mapToWorldScale * scale, true, 0);
   }
 
   function mapOpen() {

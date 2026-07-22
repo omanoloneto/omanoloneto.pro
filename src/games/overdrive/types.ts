@@ -27,7 +27,8 @@ export interface City {
   surfaceAt(x: number, z: number): SurfaceKind;
   buildingTopAt(x: number, z: number): number;
   nearestLandmark(x: number, z: number): { nome: string; emoji: string; dist: number } | null;
-  paintMap(canvas: HTMLCanvasElement): void;
+  streetAt(x: number, z: number, current?: string | null): string | null;
+  paintMap(canvas: HTMLCanvasElement, style?: 'padrao' | 'gps'): void;
 }
 
 export interface DayNight {

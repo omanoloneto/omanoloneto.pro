@@ -73,7 +73,7 @@ export function startGame() {
       ctx.ui.els.pauseBtn.hidden = false;
       ctx.ui.els.controls.hidden = !touchMode;
       ctx.ui.els.hint.hidden = false;
-      ctx.ui.els.minimap.hidden = false;
+      ctx.ui.els.gps.hidden = false;
       ctx.audio.resume();
       stage.measure();
       ctx.chase.snap();
@@ -135,6 +135,7 @@ export function startGame() {
     telemetry: () => ctx.driving.telemetry(),
     surfaceAt: (x: number, z: number) => ctx.city.surfaceAt(x, z),
     solidAt: (x: number, z: number) => ctx.city.solidAt(x, z),
+    streetAt: (x: number, z: number) => ctx.city.streetAt(x, z),
     minimap: ctx.minimap,
     ciclo: {
       info: () => ctx.dayNight.info(),

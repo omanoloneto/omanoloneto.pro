@@ -15,9 +15,13 @@ const description =
   <main id="conteudo" class="slr" data-game role="application" aria-label="Overdrive: dirija um carro de corrida por São Leopoldo à noite">
     <div class="cena" data-cena>
 
-      <div class="lugar" data-lugar hidden></div>
-
-      <canvas class="minimapa" data-minimapa width="150" height="150" aria-label="Minimapa — toque pra abrir o mapa de São Leopoldo" hidden></canvas>
+      <div class="gps" data-gps hidden>
+        <canvas class="minimapa" data-minimapa width="150" height="150" aria-label="Minimapa — toque pra abrir o mapa de São Leopoldo"></canvas>
+        <div class="gps__label">
+          <span class="gps__rua" data-lugar>Centro</span>
+          <span class="gps__cidade">São Leopoldo - RS</span>
+        </div>
+      </div>
 
       <div class="mapa" data-mapa hidden>
         <div class="mapa__caixa" role="dialog" aria-modal="false" aria-label="Mapa de São Leopoldo">
@@ -97,34 +101,58 @@ const description =
   .cena { position: relative; z-index: 10; flex: 1; min-height: 0; }
   .cena canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
-  .lugar {
-    position: absolute; top: 14px; left: 50%;
-    transform: translateX(-50%);
+  .gps {
+    position: absolute; top: 10px; left: 10px;
     z-index: 30;
-    padding: 8px 18px;
-    background: rgba(8, 10, 24, 0.72);
-    border: 1px solid rgba(0, 229, 255, 0.5);
-    border-radius: 999px;
-    font-weight: 800;
-    font-size: 1.02rem;
-    letter-spacing: 0.04em;
-    text-shadow: 0 0 12px rgba(0, 229, 255, 0.65);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px;
     pointer-events: none;
+  }
+  .gps[hidden] { display: none; }
+  @media (pointer: fine) {
+    .gps { top: auto; left: 16px; bottom: max(16px, env(safe-area-inset-bottom)); }
+  }
+  canvas.minimapa {
+    width: 150px; height: 150px;
+    border-radius: 50%;
+    cursor: pointer;
+    pointer-events: auto;
+    border: 5px solid transparent;
+    background:
+      linear-gradient(#0a0b0d, #0a0b0d) padding-box,
+      conic-gradient(from 210deg, #9aa0aa, #4a4e56 18%, #23262c 38%, #7d838d 55%, #33363d 72%, #9aa0aa) border-box;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.65), 0 0 0 1px #121418;
+  }
+  .gps__label {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 5px 12px 6px;
+    background: rgba(10, 11, 15, 0.85);
+    border: 1px solid rgba(90, 96, 106, 0.55);
+    border-radius: 10px;
+    text-align: center;
+    line-height: 1.25;
+    max-width: 195px;
+  }
+  .gps__rua {
+    color: #ffd23f;
+    font-weight: 800;
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+  .gps__cidade {
+    color: #eef1f6;
+    font-weight: 700;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.9;
     white-space: nowrap;
   }
-  .lugar[hidden] { display: none; }
-
-  canvas.minimapa {
-    position: absolute; top: 12px; left: 12px;
-    width: 150px; height: 150px;
-    z-index: 30;
-    border: 1px solid rgba(0, 229, 255, 0.5);
-    border-radius: 12px;
-    background: rgba(8, 10, 24, 0.72);
-    image-rendering: pixelated;
-    cursor: pointer;
-  }
-  canvas.minimapa[hidden] { display: none; }
   .mapa {
     position: fixed; inset: 0;
     z-index: 55;
@@ -169,7 +197,10 @@ const description =
     text-align: center;
   }
   @media (max-width: 560px) {
-    canvas.minimapa { width: 104px; height: 104px; top: 10px; left: 10px; }
+    canvas.minimapa { width: 104px; height: 104px; }
+    .gps__label { max-width: 150px; padding: 4px 8px 5px; }
+    .gps__rua { max-width: 132px; font-size: 0.64rem; }
+    .gps__cidade { font-size: 0.52rem; }
   }
 
   .painel-vel {

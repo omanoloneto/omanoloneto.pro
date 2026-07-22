@@ -356,23 +356,57 @@ export function createCity(ctx: Ctx): City {
     [RAILBRIDGE]: [88, 74, 60],
   };
 
+  const GPS_COLORS: Record<number, [number, number, number]> = {
+    [GRASS]: [15, 16, 18],
+    [ROAD]: [178, 182, 189],
+    [WATER]: [22, 32, 44],
+    [RAIL]: [74, 66, 56],
+    [BUILD]: [36, 38, 43],
+    [PARK]: [22, 31, 24],
+    [BRIDGE]: [204, 208, 214],
+    [RAILBRIDGE]: [88, 78, 66],
+  };
+
   return {
     tintables: [material, asphaltMaterial],
     nightGlow: emissiveMaterial,
     nightDecals: glowDecalMaterial,
-    paintMap(canvas) {
+    paintMap(canvas, style = 'padrao') {
       canvas.width = N;
       canvas.height = N;
       const g = canvas.getContext('2d')!;
       const img = g.createImageData(N, N);
+      const pal = style === 'gps' ? GPS_COLORS : MAP_COLORS;
       for (let i = 0; i < N * N; i++) {
-        const c = MAP_COLORS[grid[i]];
+        const c = pal[grid[i]];
         img.data[i * 4] = c[0];
         img.data[i * 4 + 1] = c[1];
         img.data[i * 4 + 2] = c[2];
         img.data[i * 4 + 3] = 255;
       }
       g.putImageData(img, 0, 0);
+    },
+    streetAt(x, z, current = null) {
+      let best: string | null = null;
+      let bestD2 = Infinity;
+      let currentHolds = false;
+      for (const r of map.ruas) {
+        const dx = r.x2 - r.x1;
+        const dz = r.z2 - r.z1;
+        const len2 = dx * dx + dz * dz || 1;
+        const u = Math.max(0, Math.min(1, ((x - r.x1) * dx + (z - r.z1) * dz) / len2));
+        const qx = r.x1 + dx * u - x;
+        const qz = r.z1 + dz * u - z;
+        const d2 = qx * qx + qz * qz;
+        const lim = r.w / 2 + 6;
+        if (d2 > lim * lim) continue;
+        if (current && r.nome === current) currentHolds = true;
+        if (d2 < bestD2) {
+          bestD2 = d2;
+          best = r.nome ?? null;
+        }
+      }
+      return currentHolds ? current : best;
     },
     solidAt(x, z) {
       if (Math.abs(x) > HALF - 2 || Math.abs(z) > HALF - 2) return true;
