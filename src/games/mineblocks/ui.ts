@@ -16,6 +16,10 @@ export function createUI(ctx: Ctx): UI {
     scare: $('[data-susto]'),
     hurt: $('[data-fome-dano]'),
     hunger: $('[data-fome]'),
+    minimap: $('[data-minimapa]'),
+    mapPanel: $('[data-mapa]'),
+    mapCanvas: $('[data-mapa-canvas]'),
+    mapClose: $('[data-mapa-fechar]'),
     saving: $('[data-salvando]'),
     worldNameHud: $('[data-nome-mundo]'),
     touchControls: $('[data-controles]'),
@@ -399,8 +403,15 @@ export function createUI(ctx: Ctx): UI {
     showSign(text, author) {
       api.showToast('📜 <b>' + esc(text || '(placa em branco)') + '</b>' + (author ? ' <span class="placa__autor">— ' + esc(author) + '</span>' : ''), 'info', 4200);
     },
-    isPanelOpen: () => !els.invPanel.hidden || !els.chestPanel.hidden || !els.signForm.hidden || !els.furnacePanel.hidden,
+    isPanelOpen: () => !els.invPanel.hidden || !els.chestPanel.hidden || !els.signForm.hidden || !els.furnacePanel.hidden || !els.mapPanel.hidden,
     closeTopPanel() {
+      if (!els.mapPanel.hidden) {
+        els.mapPanel.hidden = true;
+        ctx.lock.request();
+        ctx.audio.soundUI();
+        api.announce('Mapa fechado.');
+        return true;
+      }
       if (!els.signForm.hidden) { closeSignForm(null); return true; }
       if (chestKey >= 0) { closeChest(); return true; }
       if (!els.furnacePanel.hidden) { closeFurnace(); return true; }

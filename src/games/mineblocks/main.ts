@@ -13,6 +13,7 @@ import { criarKotsooh } from './kotsooh';
 import { criarMob } from './mob';
 import { criarFisica } from './fisica';
 import { createHunger } from './hunger';
+import { createMinimap } from './minimap';
 import { criarCamera } from './camera';
 import { criarMira } from './mira';
 import { createEditing } from './edicao';
@@ -97,6 +98,7 @@ export function startGame() {
   ctx.editing = createEditing(ctx);
   ctx.save = criarSalvar(ctx);
   ctx.avatars = criarBonecos(ctx);
+  ctx.minimap = createMinimap(ctx);
   ctx.sync = criarSync(ctx);
 
   const { ui, save, sync } = ctx;
@@ -191,6 +193,7 @@ export function startGame() {
     const dtReal = Math.min(dtMs / 1000, 0.25);
     ctx.editing.step(dtReal, !sync.inRoom() || sync.isHost());
     ctx.hunger.step(dtReal);
+    ctx.minimap.step(dtReal);
     if (input.strike) ctx.editing.strike(dtReal);
     else if (ctx.editing.striking()) ctx.editing.releaseStrike();
     ctx.avatars.step(dt);
@@ -223,6 +226,8 @@ export function startGame() {
       ui.els.pauseModal.hidden = true;
       ui.els.hotbar.hidden = false;
       ui.els.hunger.hidden = false;
+      ui.els.minimap.hidden = false;
+      ctx.minimap.reset();
       ui.els.reticle.hidden = false;
       ui.els.pauseBtn.hidden = false;
       ui.els.muteBtn.hidden = false;
@@ -525,6 +530,7 @@ export function startGame() {
     breakBlock: () => ctx.editing.breakBlock(),
     place: () => ctx.editing.place(),
     hunger: ctx.hunger,
+    minimap: ctx.minimap,
     target: () => ctx.aim.target(),
     select: (i: number) => ctx.ui.selectSlot(i, false),
     saveNow: () => save.saveNow('manual'),

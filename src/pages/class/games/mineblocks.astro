@@ -25,6 +25,7 @@ const description =
       <div class="susto" data-susto aria-hidden="true"></div>
       <div class="fome-dano" data-fome-dano aria-hidden="true"></div>
       <div class="fome" data-fome role="status" aria-label="Fome" hidden></div>
+      <canvas class="minimapa" data-minimapa width="132" height="132" aria-label="Minimapa — toque pra abrir o mapa grande" hidden></canvas>
 
       <nav class="hotbar" data-hotbar aria-label="Blocos pra construir" hidden></nav>
       <div class="balao" data-balao aria-hidden="true"></div>
@@ -32,6 +33,7 @@ const description =
 
       <div class="hud-cmd" aria-hidden="true">
         <span><b>E</b> abrir mochila</span>
+        <span><b>M</b> ver mapa</span>
         <span><b>TAB</b> ver jogadores</span>
       </div>
 
@@ -60,6 +62,17 @@ const description =
           <div class="bau__grade" data-bau-conteudo></div>
           <p class="bau__rotulo">🎒 Seus itens <small>(clique pra guardar)</small></p>
           <div class="bau__grade" data-bau-inv></div>
+        </div>
+      </div>
+
+      <div class="inv mapa" data-mapa hidden>
+        <div class="inv__caixa inv__caixa--mapa" role="dialog" aria-modal="false" aria-label="Mapa do mundo">
+          <div class="inv__topo">
+            <span>🗺️ Mapa do mundo</span>
+            <button class="inv__fechar" type="button" data-mapa-fechar aria-label="Fechar o mapa">✖</button>
+          </div>
+          <canvas class="mapa__tela" data-mapa-canvas width="384" height="384"></canvas>
+          <p class="mapa__dica">O triângulo amarelo é você · 🏠 é a sua casa · M fecha</p>
         </div>
       </div>
 
@@ -295,6 +308,33 @@ const description =
       0%, 100% { transform: translateX(-50%); }
       25% { transform: translateX(calc(-50% - 3px)); }
       75% { transform: translateX(calc(-50% + 3px)); }
+    }
+    canvas.minimapa {
+      position: absolute; top: 66px; right: 12px;
+      width: 132px; height: 132px;
+      z-index: 30;
+      border: 2px solid rgba(123, 182, 97, 0.45);
+      border-radius: 10px;
+      background: rgba(14, 26, 20, 0.55);
+      image-rendering: pixelated;
+      cursor: pointer;
+    }
+    canvas.minimapa[hidden] { display: none; }
+    .inv__caixa--mapa { width: auto; max-width: none; }
+    canvas.mapa__tela {
+      display: block;
+      width: min(72vmin, 520px);
+      height: min(72vmin, 520px);
+      image-rendering: pixelated;
+      border: 1px solid rgba(123, 182, 97, 0.45);
+      border-radius: 8px;
+      background: rgba(14, 26, 20, 0.55);
+    }
+    .mapa__dica {
+      margin: 8px 0 0;
+      font-size: 0.82rem;
+      opacity: 0.75;
+      text-align: center;
     }
 
     .hotbar {
@@ -756,6 +796,7 @@ const description =
     @media (max-width: 560px) {
       .hotbar { gap: 2px; padding: 4px; bottom: max(8px, env(safe-area-inset-bottom)); }
       .fome { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 50px); font-size: 14px; }
+      canvas.minimapa { top: 58px; right: 10px; width: 92px; height: 92px; }
       .slot { width: 34px; height: 34px; border-radius: 7px; }
       .slot__img { inset: 3px; }
       .pill--nome { font-size: 0.82rem; }

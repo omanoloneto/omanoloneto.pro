@@ -273,6 +273,14 @@ export interface Avatars {
   clear(): void;
   count(): number;
   names(): string[];
+  list(): RemotePlayer[];
+}
+
+export interface Minimap {
+  step(dt: number): void;
+  reset(): void;
+  toggleMap(): void;
+  mapOpen(): boolean;
 }
 
 export interface Ctx {
@@ -308,6 +316,7 @@ export interface Ctx {
   save: Save;
   sync: Sync;
   avatars: Avatars;
+  minimap: Minimap;
   flow: Flow;
   lock: Lock;
 }

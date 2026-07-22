@@ -107,6 +107,7 @@ export function bindInput(ctx: Ctx) {
     if (/^[1-9]$/.test(e.key)) ctx.ui.selectSlot(+e.key - 1, true);
     if (/^[eEcC]$/.test(e.key)) { e.preventDefault(); toggleInventory(); }
     if (/^[qQ]$/.test(e.key)) { e.preventDefault(); ctx.editing.dropSelectedItem(); }
+    if (/^[mM]$/.test(e.key)) { e.preventDefault(); ctx.minimap.toggleMap(); }
   });
   window.addEventListener('keyup', (e) => {
     if (e.key === 'Tab') { e.preventDefault(); ctx.ui.showPlayers(false); return; }
