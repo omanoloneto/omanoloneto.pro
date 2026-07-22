@@ -113,6 +113,8 @@ export interface Mob {
   scare(ox: number, oy: number, oz: number, fx: number, fy: number, fz: number, range: number, cone: number): boolean;
   clear(): void;
   count(): number;
+  fishCount(): number;
+  spawnFishAt(x: number, z: number): boolean;
 }
 
 export type Meta =

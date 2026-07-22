@@ -156,6 +156,17 @@ export const config = {
     maxLaPerto: 5,
     woolDespawnMs: 60000,
   },
+  peixes: {
+    max: 6,
+    tentativaMinMs: 6000,
+    tentativaMaxMs: 14000,
+    vidaMinMs: 45000,
+    vidaMaxMs: 120000,
+    nado: 1.6,
+    raioPasseio: 8,
+    bobHz: 0.8,
+    bobAmp: 0.08,
+  },
   kotsooh: {
     quantos: 3,
     velPasseio: 1.3,

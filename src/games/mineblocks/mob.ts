@@ -6,6 +6,8 @@ import type { RemoteMob, Ctx, Mob } from './types';
 
 const CANDY = 21;
 const PACKAGE = 35;
+const WATER = 13;
+const FISH_WIRE_BASE = 8;
 
 interface Winpup {
   group: THREE.Group;
@@ -16,6 +18,17 @@ interface Winpup {
   retargetMs: number;
   dropMs: number;
   fleeMs: number;
+  phase: number;
+  rx: number; ry: number; rz: number; ryaw: number;
+}
+
+interface Bubbish {
+  group: THREE.Group;
+  x: number; y: number; z: number;
+  yaw: number;
+  targetX: number; targetY: number; targetZ: number;
+  retargetMs: number;
+  dieMs: number;
   phase: number;
   rx: number; ry: number; rz: number; ryaw: number;
 }
@@ -60,16 +73,60 @@ function winpupGeometry(): THREE.BufferGeometry {
   return geo;
 }
 
+function bubbishGeometry(): THREE.BufferGeometry {
+  const bodyLight = new THREE.Color('#6fa8d8');
+  const bodyMid = new THREE.Color('#4c82b8');
+  const bodyShadow = new THREE.Color('#2e5e8e');
+  const fins = new THREE.Color('#cfe8f2');
+  const crystalLight = new THREE.Color('#8b6fd6');
+  const crystalShadow = new THREE.Color('#6a45b8');
+  const mouth = new THREE.Color('#e6a7b7');
+  const white = new THREE.Color('#ffffff');
+  const pupil = new THREE.Color('#3a3a3a');
+
+  const p: THREE.BufferGeometry[] = [
+    part(0.6, 0.44, 0.64, 0, 0.02, 0, bodyLight),
+    part(0.56, 0.1, 0.6, 0, -0.21, 0, bodyShadow),
+    part(0.62, 0.28, 0.16, 0, 0, 0.26, bodyMid),
+    part(0.34, 0.12, 0.05, 0, -0.11, -0.325, mouth),
+    part(0.4, 0.04, 0.05, 0, -0.03, -0.327, bodyShadow),
+    part(0.14, 0.16, 0.04, -0.15, 0.08, -0.33, pupil),
+    part(0.14, 0.16, 0.04, 0.15, 0.08, -0.33, pupil),
+    part(0.05, 0.05, 0.03, -0.12, 0.12, -0.345, white),
+    part(0.05, 0.05, 0.03, 0.18, 0.12, -0.345, white),
+    part(0.16, 0.1, 0.3, -0.37, -0.14, -0.05, bodyMid),
+    part(0.16, 0.1, 0.3, 0.37, -0.14, -0.05, bodyMid),
+    part(0.14, 0.09, 0.09, -0.38, -0.16, -0.24, bodyMid),
+    part(0.14, 0.09, 0.09, 0.38, -0.16, -0.24, bodyMid),
+    part(0.08, 0.28, 0.14, 0, 0.02, 0.4, fins),
+    part(0.08, 0.16, 0.1, 0, 0.02, 0.5, fins),
+    part(0.14, 0.05, 0.24, 0, 0.25, 0.02, crystalShadow),
+    part(0.09, 0.2, 0.09, 0, 0.34, -0.04, crystalLight),
+    part(0.08, 0.12, 0.08, 0, 0.3, 0.08, crystalLight),
+    part(0.06, 0.08, 0.06, 0, 0.28, -0.14, crystalShadow),
+    part(0.05, 0.07, 0.05, -0.2, 0.25, -0.1, bodyMid),
+    part(0.05, 0.07, 0.05, 0.22, 0.25, 0.06, bodyMid),
+  ];
+  const geo = mergeGeometries(p)!;
+  p.forEach((g) => g.dispose());
+  return geo;
+}
+
 export function criarMob(ctx: Ctx): Mob {
   const { cfg, world } = ctx;
   const B = cfg.bichos;
   const { SX, SZ } = cfg.mundo;
   const material = new THREE.MeshBasicMaterial({ vertexColors: true });
   const geo = winpupGeometry();
+  const fishGeo = bubbishGeometry();
   const alive: Winpup[] = [];
+  const fish: (Bubbish | null)[] = new Array(FISH_WIRE_BASE).fill(null);
+  const F = cfg.peixes;
   let timeMs = 0;
   let collectMs = 0;
   let despawnMs = 0;
+  let fishTryMs = 0;
+  let nextFishTryMs = 3000;
   const dropped = new Map<number, number>();
 
   const candyKey = (x: number, y: number, z: number) => x + z * SX + y * SX * SZ;
@@ -84,6 +141,169 @@ export function criarMob(ctx: Ctx): Mob {
   function clear() {
     for (const w of alive) ctx.scene.remove(w.group);
     alive.length = 0;
+    for (let s = 0; s < fish.length; s++) {
+      const f = fish[s];
+      if (f) ctx.scene.remove(f.group);
+      fish[s] = null;
+    }
+  }
+
+  function waterTopAt(x: number, z: number): number {
+    const cx = Math.floor(x);
+    const cz = Math.floor(z);
+    for (let y = cfg.mundo.SY - 1; y >= 1; y--) {
+      const id = world.get(cx, y, cz);
+      if (id === 0) continue;
+      return id === WATER ? y : -1;
+    }
+    return -1;
+  }
+
+  function waterDepthAt(x: number, z: number): number {
+    const top = waterTopAt(x, z);
+    if (top < 0) return 0;
+    const cx = Math.floor(x);
+    const cz = Math.floor(z);
+    let d = 0;
+    while (world.get(cx, top - d, cz) === WATER) d++;
+    return d;
+  }
+
+  const inWater = (x: number, y: number, z: number) =>
+    world.get(Math.floor(x), Math.floor(y), Math.floor(z)) === WATER;
+
+  function createFish(x: number, y: number, z: number): Bubbish {
+    const group = new THREE.Group();
+    group.add(new THREE.Mesh(fishGeo, material));
+    ctx.scene.add(group);
+    group.position.set(x, y, z);
+    return {
+      group, x, y, z, yaw: Math.random() * Math.PI * 2,
+      targetX: x, targetY: y, targetZ: z,
+      retargetMs: 0,
+      dieMs: timeMs + F.vidaMinMs + Math.random() * (F.vidaMaxMs - F.vidaMinMs),
+      phase: Math.random() * Math.PI * 2,
+      rx: x, ry: y, rz: z, ryaw: 0,
+    };
+  }
+
+  function fishCount(): number {
+    let n = 0;
+    for (const f of fish) if (f) n++;
+    return n;
+  }
+
+  function trySpawnFish(x: number, z: number): boolean {
+    const slot = fish.indexOf(null);
+    if (slot < 0) return false;
+    const depth = waterDepthAt(x, z);
+    if (depth < 2) return false;
+    const top = waterTopAt(x, z);
+    const y = top + 0.4 - Math.random() * Math.min(depth - 1, 2);
+    fish[slot] = createFish(x, y, z);
+    return true;
+  }
+
+  function randomFishSpawn() {
+    let x: number;
+    let z: number;
+    if (Math.random() < 0.6) {
+      const players = [{ x: ctx.player.x, z: ctx.player.z }];
+      for (const a of ctx.avatars.list()) players.push({ x: a.x, z: a.z });
+      const p = players[Math.floor(Math.random() * players.length)];
+      const ang = Math.random() * Math.PI * 2;
+      const r = 6 + Math.random() * 22;
+      x = p.x + Math.cos(ang) * r;
+      z = p.z + Math.sin(ang) * r;
+    } else {
+      x = 4 + Math.random() * (SX - 8);
+      z = 4 + Math.random() * (SZ - 8);
+    }
+    if (x < 2 || z < 2 || x > SX - 2 || z > SZ - 2) return;
+    trySpawnFish(x, z);
+  }
+
+  function positionFish(f: Bubbish) {
+    const bob = Math.sin(timeMs / 1000 * Math.PI * 2 * F.bobHz + f.phase) * F.bobAmp;
+    f.group.position.set(f.x, f.y + bob, f.z);
+    f.group.rotation.y = f.yaw;
+    f.group.rotation.z = Math.sin(timeMs / 1000 * 5 + f.phase) * 0.06;
+  }
+
+  function simulateFish(dt: number) {
+    for (let s = 0; s < fish.length; s++) {
+      const f = fish[s];
+      if (!f) continue;
+      if (timeMs >= f.dieMs) {
+        ctx.scene.remove(f.group);
+        fish[s] = null;
+        continue;
+      }
+      if (timeMs >= f.retargetMs) {
+        f.retargetMs = timeMs + 2500 + Math.random() * 3500;
+        for (let t = 0; t < 3; t++) {
+          const ang = Math.random() * Math.PI * 2;
+          const r = 1 + Math.random() * F.raioPasseio;
+          const tx = Math.max(2, Math.min(SX - 2, f.x + Math.cos(ang) * r));
+          const tz = Math.max(2, Math.min(SZ - 2, f.z + Math.sin(ang) * r));
+          const top = waterTopAt(tx, tz);
+          if (top < 0) continue;
+          const depth = waterDepthAt(tx, tz);
+          if (depth < 1) continue;
+          const maxY = top + 0.45;
+          const minY = top - depth + 1.3;
+          if (maxY <= minY) continue;
+          const ty = minY + Math.random() * (maxY - minY);
+          if (!inWater(tx, ty, tz)) continue;
+          f.targetX = tx;
+          f.targetY = ty;
+          f.targetZ = tz;
+          break;
+        }
+      }
+      const dx = f.targetX - f.x;
+      const dy = f.targetY - f.y;
+      const dz = f.targetZ - f.z;
+      const dist = Math.hypot(dx, dy, dz);
+      if (dist > 0.05) {
+        const step = Math.min(dist, F.nado * dt);
+        const nx = f.x + (dx / dist) * step;
+        const ny = f.y + (dy / dist) * step;
+        const nz = f.z + (dz / dist) * step;
+        if (inWater(nx, ny, nz)) {
+          f.x = nx;
+          f.y = ny;
+          f.z = nz;
+          f.yaw = Math.atan2(-dx, -dz);
+        } else {
+          f.retargetMs = 0;
+        }
+      }
+      positionFish(f);
+    }
+  }
+
+  function followNetFish(dt: number) {
+    const k = 1 - Math.exp(-dt * 5);
+    for (const f of fish) {
+      if (!f) continue;
+      const dx = f.rx - f.x;
+      const dy = f.ry - f.y;
+      const dz = f.rz - f.z;
+      if (dx * dx + dy * dy + dz * dz > 64) {
+        f.x = f.rx;
+        f.y = f.ry;
+        f.z = f.rz;
+      } else {
+        f.x += dx * k;
+        f.y += dy * k;
+        f.z += dz * k;
+      }
+      let dyaw = f.ryaw - f.yaw;
+      dyaw = ((dyaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+      f.yaw += dyaw * k;
+      positionFish(f);
+    }
   }
 
   function newWinpup(x: number, z: number, rng: () => number): Winpup {
@@ -242,6 +462,15 @@ export function criarMob(ctx: Ctx): Mob {
       if (simulateMobs) {
         despawnMs += dt * 1000;
         if (despawnMs >= 1000) { despawnMs = 0; despawnCandy(); }
+        fishTryMs += dt * 1000;
+        if (fishTryMs >= nextFishTryMs) {
+          fishTryMs = 0;
+          nextFishTryMs = F.tentativaMinMs + Math.random() * (F.tentativaMaxMs - F.tentativaMinMs);
+          if (fishCount() < F.max) randomFishSpawn();
+        }
+        simulateFish(dt);
+      } else {
+        followNetFish(dt);
       }
       if (!alive.length) return;
       if (simulateMobs) simulate(dt);
@@ -250,16 +479,44 @@ export function criarMob(ctx: Ctx): Mob {
       if (collectMs >= 120) { collectMs = 0; collect(); }
     },
     applyNet(mobs) {
+      const seen = new Set<number>();
       for (const b of mobs) {
-        const w = alive[b.i];
-        if (!w) continue;
-        w.rx = b.x; w.ry = b.y; w.rz = b.z; w.ryaw = b.yaw;
+        if (b.i < FISH_WIRE_BASE) {
+          const w = alive[b.i];
+          if (!w) continue;
+          w.rx = b.x; w.ry = b.y; w.rz = b.z; w.ryaw = b.yaw;
+          continue;
+        }
+        const slot = b.i - FISH_WIRE_BASE;
+        if (slot >= fish.length) continue;
+        seen.add(slot);
+        let f = fish[slot];
+        if (!f) {
+          f = createFish(b.x, b.y, b.z);
+          fish[slot] = f;
+        }
+        f.rx = b.x; f.ry = b.y; f.rz = b.z; f.ryaw = b.yaw;
+      }
+      for (let s = 0; s < fish.length; s++) {
+        const f = fish[s];
+        if (f && !seen.has(s)) {
+          ctx.scene.remove(f.group);
+          fish[s] = null;
+        }
       }
     },
     netState(): RemoteMob[] {
-      return alive.map((w, i) => ({
+      const out: RemoteMob[] = alive.map((w, i) => ({
         i, x: +w.x.toFixed(2), y: +w.y.toFixed(2), z: +w.z.toFixed(2), yaw: +w.yaw.toFixed(2),
       }));
+      fish.forEach((f, s) => {
+        if (!f) return;
+        out.push({
+          i: FISH_WIRE_BASE + s,
+          x: +f.x.toFixed(2), y: +f.y.toFixed(2), z: +f.z.toFixed(2), yaw: +f.yaw.toFixed(2),
+        });
+      });
+      return out;
     },
     scare(ox, oy, oz, fx, fy, fz, range, cone) {
       let best: Winpup | null = null;
@@ -290,5 +547,7 @@ export function criarMob(ctx: Ctx): Mob {
     },
     clear,
     count: () => alive.length,
+    fishCount,
+    spawnFishAt: (x, z) => trySpawnFish(x, z),
   };
 }
