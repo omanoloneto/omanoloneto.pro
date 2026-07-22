@@ -71,8 +71,21 @@ export function criarSalvar(ctx: Ctx): Save {
       slots: ctx.state.hotbarSlots,
       fome: ctx.state.fome,
       metas: ctx.metas.serialize(),
-      blocos: encodeRLE(ctx.world.data),
+      blocos: encodeRLE(stripSessionBlocks(ctx.world.data)),
     });
+  }
+
+  function stripSessionBlocks(data: Uint8Array): Uint8Array {
+    let dirty = false;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i] === 41 || data[i] === 42) { dirty = true; break; }
+    }
+    if (!dirty) return data;
+    const copy = new Uint8Array(data);
+    for (let i = 0; i < copy.length; i++) {
+      if (copy[i] === 41 || copy[i] === 42) copy[i] = 0;
+    }
+    return copy;
   }
 
   async function api(body: Record<string, unknown>): Promise<{ ok: boolean; status: number; json: any }> {
@@ -172,6 +185,7 @@ export function criarSalvar(ctx: Ctx): Save {
   }
 
   return {
+    currentPayload,
     async createWorld() {
       const r = await api({ acao: 'criar' });
       if (!r.ok || typeof r.json.codigo !== 'string') return r.json.erro || 'Não deu pra falar com o servidor. Tenta de novo?';
@@ -209,6 +223,9 @@ export function criarSalvar(ctx: Ctx): Save {
         }
       }
       if (!blocks) return 'Esse mundo está vazio ou quebrado. 😢';
+      for (let i = 0; i < blocks.length; i++) {
+        if (blocks[i] === 41 || blocks[i] === 42) blocks[i] = 0;
+      }
       const remapped = migrated ? remapLegacyMetas(p.metas, migrated) : p.metas;
       const repaired = naturalizeLegacyLake(ctx, blocks, p.seed >>> 0, remapped);
       code = cod;

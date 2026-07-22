@@ -87,6 +87,17 @@ const description =
         </div>
       </div>
 
+      <div class="inv" data-maquina hidden>
+        <div class="inv__caixa" role="dialog" aria-modal="false" aria-label="Máquina de vendas">
+          <div class="inv__topo">
+            <span>🎰 Máquina de Vendas</span>
+            <button class="inv__fechar" type="button" data-maquina-fechar aria-label="Fechar a máquina">✖</button>
+          </div>
+          <p class="craft__titulo">Venda suas barras e ganhe moedas! Você tem <b data-maquina-saldo>0</b> 🪙</p>
+          <div class="craft__lista" data-maquina-painel></div>
+        </div>
+      </div>
+
       <div class="inv" data-placa-form hidden>
         <div class="inv__caixa inv__caixa--mini" role="dialog" aria-modal="true" aria-label="Escrever na placa">
           <div class="inv__topo"><span>📜 Escreva na placa</span></div>
@@ -361,7 +372,7 @@ const description =
     .slot.sel { border-color: var(--amarelo); box-shadow: 0 0 8px rgba(255, 210, 63, 0.6); }
     .slot__img {
       position: absolute; inset: 4px;
-      background-size: 400% 1000%;
+      background-size: 400% 1200%;
       image-rendering: pixelated;
       border-radius: 4px;
     }
@@ -476,7 +487,7 @@ const description =
     .inv-slot.tem { cursor: pointer; }
     .inv-slot .slot__img {
       position: absolute; inset: 5px;
-      background-size: 400% 1000%;
+      background-size: 400% 1200%;
       image-rendering: pixelated;
       border-radius: 5px;
     }
@@ -517,7 +528,7 @@ const description =
     .bau-item:hover { border-color: var(--amarelo); }
     .bau-item .slot__img {
       position: absolute; inset: 4px;
-      background-size: 400% 1000%;
+      background-size: 400% 1200%;
       image-rendering: pixelated;
       border-radius: 4px;
     }
@@ -556,7 +567,7 @@ const description =
     .receita__lado .slot__img {
       position: static; display: inline-block;
       width: 26px; height: 26px;
-      background-size: 400% 1000%;
+      background-size: 400% 1200%;
       image-rendering: pixelated;
       border-radius: 4px;
     }

@@ -321,6 +321,10 @@ export function createEditing(ctx: Ctx): Editing {
   }
 
   function canBreak(a: Target): boolean {
+    if (a.id === 41 || a.id === 42) {
+      warn('🎰 A máquina de vendas não quebra nem sai do lugar!');
+      return false;
+    }
     if (a.id === 14 || byId(a.id).dureza === undefined) {
       warn('🪨 Essa rocha do fundo não quebra!');
       return false;
@@ -538,6 +542,7 @@ export function createEditing(ctx: Ctx): Editing {
     if (!a) return place();
     if (a.id === CHEST) { openChest(a); return false; }
     if (a.id === FURNACE) { ctx.flow.releaseInputs(); ctx.ui.openFurnace(); ctx.flow.onFirstInput(); return false; }
+    if (a.id === 41 || a.id === 42) { ctx.flow.releaseInputs(); ctx.ui.openVending(); ctx.flow.onFirstInput(); return false; }
     if (a.id === MAILBOX) { readMailbox(a); return false; }
     if (a.id === DOOR_CLOSED) { toggleDoor(a, DOOR_OPEN); return false; }
     if (a.id === DOOR_OPEN) { toggleDoor(a, DOOR_CLOSED); return false; }

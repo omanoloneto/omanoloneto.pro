@@ -190,6 +190,7 @@ export interface Editing {
 }
 
 export interface Save {
+  currentPayload(): string;
   createWorld(): Promise<string | null>;
   loadWorld(code: string): Promise<string | null>;
   adoptWorld(code: string): void;
@@ -216,6 +217,7 @@ export interface UI {
   buildHunger(): void;
   updateHunger(): void;
   openFurnace(): void;
+  openVending(): void;
   closeFurnace(): void;
   furnaceOpen(): boolean;
   openChest(key: number, title: string, isOwner: boolean): void;

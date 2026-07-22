@@ -57,9 +57,14 @@ export const blocos: Bloco[] = [
   { id: 35, nome: 'pacote', tiles: [35, 35, 35], solido: false, render: 'cruz' },
   { id: 36, nome: 'escada', tiles: [36, 36, 36], solido: false, render: 'recorte', dureza: 350, madeira: true },
   { id: 37, nome: 'folhas', tiles: [8, 8, 8], solido: true, render: 'cubo', drop: 0, dropSorte: { id: 15, chance: 1 }, dureza: 300, madeira: true },
+  { id: 38, nome: 'minério de ouro', tiles: [40, 40, 40], solido: true, render: 'cubo', dureza: 1100, durezaFerro: 400, precisaPicareta: true },
+  { id: 39, nome: 'barra de ouro', tiles: [41, 41, 41], solido: false, render: 'cruz' },
+  { id: 40, nome: 'moeda', tiles: [42, 42, 42], solido: false, render: 'cruz' },
+  { id: 41, nome: 'máquina de vendas', tiles: [46, 45, 45], solido: true, render: 'cubo' },
+  { id: 42, nome: 'máquina de vendas', tiles: [46, 44, 44], solido: true, render: 'cubo' },
 ];
 export const itens = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36];
-export const materiais = [21, 23, 25, 26];
+export const materiais = [21, 23, 25, 26, 38, 39, 40];
 export interface Receita {
   de: number;
   qtd: number;
@@ -82,6 +87,7 @@ export const receitas: Receita[] = [
   { de: 4, qtd: 1, para: 8, ganha: 1, fornalha: true },
   { de: 10, qtd: 1, para: 3, ganha: 1, fornalha: true },
   { de: 25, qtd: 1, de2: 23, qtd2: 1, para: 26, ganha: 1, fornalha: true },
+  { de: 38, qtd: 1, de2: 23, qtd2: 1, para: 39, ganha: 1, fornalha: true },
   { de: 26, qtd: 3, de2: 6, qtd2: 2, para: 28, ganha: 1, fornalha: true },
   { de: 6, qtd: 2, para: 30, ganha: 1 },
   { de: 6, qtd: 3, para: 32, ganha: 1 },
@@ -112,8 +118,10 @@ export const config = {
     veins: {
       coal: { n: 1400, sizeMin: 3, sizeMax: 6, yMin: 2 },
       iron: { n: 700, sizeMin: 2, sizeMax: 5, yMin: 2, yMax: 34 },
+      ouro: { n: 350, sizeMin: 1, sizeMax: 3, yMin: 2, yMax: 20 },
     },
   },
+  maquina: { precoFerro: 5, precoOuro: 20 },
   fisica: {
     gravidade: 25,
     pulo: 8.2,

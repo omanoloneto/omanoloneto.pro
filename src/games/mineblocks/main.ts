@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { cleanPlayerName } from '../../lib/player-name';
 import type { Ctx, State, Input, Player } from './types';
 import { createUI } from './ui';
+import { spawnVendingMachine } from './vending';
 import { criarAudio } from './audio';
 import { criarTextura } from './textura';
 import { criarMundo } from './mundo';
@@ -394,6 +395,7 @@ export function startGame() {
         player.pitch = 0;
         ctx.sky.setTime(Math.round(DIA_S * 0.13));
       }
+      spawnVendingMachine(ctx);
       ctx.meshes.buildAll();
       ctx.editing.startSaplings();
       ctx.mob.spawn(seed);

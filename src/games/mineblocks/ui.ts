@@ -51,6 +51,10 @@ export function createUI(ctx: Ctx): UI {
     furnacePanel: $('[data-fornalha]'),
     furnaceList: $('[data-fornalha-painel]'),
     furnaceClose: $('[data-fornalha-fechar]'),
+    vendingPanel: $('[data-maquina]'),
+    vendingList: $('[data-maquina-painel]'),
+    vendingClose: $('[data-maquina-fechar]'),
+    vendingBalance: $('[data-maquina-saldo]'),
     signForm: $('[data-placa-form]'),
     signInput: $('[data-placa-input]'),
     signOk: $('[data-placa-ok]'),
@@ -358,6 +362,55 @@ export function createUI(ctx: Ctx): UI {
   }
   els.furnaceClose.addEventListener('click', () => closeFurnace());
 
+  function renderVending() {
+    const inv = ctx.state.inventory;
+    els.vendingBalance.textContent = String(inv[40] | 0);
+    els.vendingList.innerHTML = '';
+    const M = ctx.cfg.maquina;
+    const offers = [
+      { id: 26, price: M.precoFerro },
+      { id: 39, price: M.precoOuro },
+    ];
+    for (const offer of offers) {
+      const have = inv[offer.id] | 0;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'receita' + (have > 0 ? ' pode' : '');
+      btn.disabled = have <= 0;
+      const nome = ctx.byId(offer.id).nome;
+      btn.setAttribute('aria-label', 'Vender 1 ' + nome + ' por ' + offer.price + ' moedas. Você tem ' + have + '.');
+      btn.innerHTML =
+        '<span class="receita__lado">1× ' + blockImg(offer.id) + ' <small>(' + have + ')</small></span>' +
+        '<span class="receita__seta">💰</span>' +
+        '<span class="receita__lado">' + offer.price + '× ' + blockImg(40) + '</span>';
+      btn.addEventListener('click', () => {
+        if ((inv[offer.id] | 0) <= 0) return;
+        inv[offer.id]--;
+        ctx.editing.gainItem(40, offer.price);
+        ctx.audio.soundSaved();
+        api.showToast('🪙 Vendeu ' + nome + ' por ' + offer.price + ' moedas!', 'ok', 1600);
+        renderVending();
+        api.updateCounts();
+      });
+      els.vendingList.appendChild(btn);
+    }
+  }
+  function openVending() {
+    api.toggleCraftPanel(false);
+    renderVending();
+    els.vendingPanel.hidden = false;
+    api.updateCounts();
+    ctx.lock.release();
+    ctx.audio.soundUI();
+    api.announce('Máquina de vendas aberta — venda barras de ferro e ouro por moedas.');
+  }
+  function closeVending() {
+    if (els.vendingPanel.hidden) return;
+    els.vendingPanel.hidden = true;
+    ctx.lock.request();
+  }
+  els.vendingClose.addEventListener('click', () => closeVending());
+
   function closeSignForm(text: string | null) {
     if (!signCb) return;
     const cb = signCb;
@@ -391,6 +444,7 @@ export function createUI(ctx: Ctx): UI {
     chestOpen: () => chestKey,
     updateChest() { if (chestKey >= 0) renderChest(); },
     openFurnace,
+    openVending,
     closeFurnace,
     furnaceOpen: () => !els.furnacePanel.hidden,
     askSignText(cb) {
@@ -403,7 +457,7 @@ export function createUI(ctx: Ctx): UI {
     showSign(text, author) {
       api.showToast('📜 <b>' + esc(text || '(placa em branco)') + '</b>' + (author ? ' <span class="placa__autor">— ' + esc(author) + '</span>' : ''), 'info', 4200);
     },
-    isPanelOpen: () => !els.invPanel.hidden || !els.chestPanel.hidden || !els.signForm.hidden || !els.furnacePanel.hidden || !els.mapPanel.hidden,
+    isPanelOpen: () => !els.invPanel.hidden || !els.chestPanel.hidden || !els.signForm.hidden || !els.furnacePanel.hidden || !els.vendingPanel.hidden || !els.mapPanel.hidden,
     closeTopPanel() {
       if (!els.mapPanel.hidden) {
         els.mapPanel.hidden = true;
@@ -415,6 +469,7 @@ export function createUI(ctx: Ctx): UI {
       if (!els.signForm.hidden) { closeSignForm(null); return true; }
       if (chestKey >= 0) { closeChest(); return true; }
       if (!els.furnacePanel.hidden) { closeFurnace(); return true; }
+      if (!els.vendingPanel.hidden) { closeVending(); return true; }
       if (!els.invPanel.hidden) {
         api.toggleCraftPanel(false);
         ctx.lock.request();

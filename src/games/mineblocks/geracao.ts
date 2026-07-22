@@ -298,6 +298,7 @@ export function gerarMundo(ctx: Ctx, seed: number) {
   };
   semearVeios(22, G.veins.coal);
   semearVeios(25, G.veins.iron);
+  semearVeios(38, G.veins.ouro);
 
   // ----- árvores (tronco 4-5 + copa) -----
   const copas: Array<[number, number]> = [];

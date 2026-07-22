@@ -4,7 +4,7 @@ import type { Ctx, Texture } from './types';
 
 const TILE = 16;
 const GRID = 4;
-const ROWS = 10;
+const ROWS = 12;
 const W = TILE * GRID;
 const H = TILE * ROWS;
 
@@ -33,6 +33,14 @@ export function criarTextura(_ctx: Ctx): Texture {
   function px(ox: number, oy: number, x: number, y: number, color: string) {
     g.fillStyle = color;
     g.fillRect(ox + x, oy + y, 1, 1);
+  }
+
+  function edgeTile(ox: number, oy: number, color: string) {
+    g.fillStyle = color;
+    g.fillRect(ox, oy, TILE, 1);
+    g.fillRect(ox, oy + TILE - 1, TILE, 1);
+    g.fillRect(ox, oy, 1, TILE);
+    g.fillRect(ox + TILE - 1, oy, 1, TILE);
   }
 
 
@@ -391,6 +399,84 @@ export function criarTextura(_ctx: Ctx): Texture {
         g.stroke();
       }
     });
+  }
+
+  {
+    const [ox, oy] = base(40, [138, 138, 142], 0.02);
+    g.fillStyle = '#e8b93a';
+    for (const [bx, by, bw, bh] of [[3, 3, 3, 2], [10, 5, 2, 3], [5, 9, 2, 2], [11, 11, 3, 2], [7, 13, 2, 2]] as const) {
+      g.fillRect(ox + bx, oy + by, bw, bh);
+    }
+    g.fillStyle = '#f7d970';
+    for (const [bx, by] of [[4, 3], [10, 6], [12, 11]] as const) g.fillRect(ox + bx, oy + by, 1, 1);
+  }
+  {
+    const ox = (41 % GRID) * TILE;
+    const oy = Math.floor(41 / GRID) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#c9971f';
+    g.fillRect(ox + 2, oy + 7, 12, 6);
+    g.fillStyle = '#e8b93a';
+    g.fillRect(ox + 3, oy + 5, 10, 5);
+    g.fillStyle = '#f7d970';
+    g.fillRect(ox + 4, oy + 6, 8, 2);
+    g.fillStyle = '#8f6a12';
+    g.fillRect(ox + 2, oy + 12, 12, 1);
+  }
+  {
+    const ox = (42 % GRID) * TILE;
+    const oy = Math.floor(42 / GRID) * TILE;
+    g.clearRect(ox, oy, TILE, TILE);
+    g.fillStyle = '#c9971f';
+    g.beginPath();
+    g.arc(ox + 8, oy + 8, 6, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#e8b93a';
+    g.beginPath();
+    g.arc(ox + 8, oy + 8, 4.6, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#f7d970';
+    g.fillRect(ox + 5, oy + 5, 2, 2);
+    g.fillStyle = '#8f6a12';
+    g.fillRect(ox + 7, oy + 6, 2, 5);
+    g.fillRect(ox + 6, oy + 6, 1, 1);
+  }
+  {
+    const [ox, oy] = base(44, [208, 49, 45], 0.015);
+    g.fillStyle = '#f2ede4';
+    g.fillRect(ox + 1, oy + 1, 14, 9);
+    g.fillStyle = '#1c2430';
+    g.fillRect(ox + 2, oy + 2, 12, 7);
+    const drinks = ['#4fa3e0', '#f0c93c', '#59c268', '#e07f4f', '#b06fd0', '#e5e8ee'];
+    drinks.forEach((c, i) => {
+      g.fillStyle = c;
+      g.fillRect(ox + 3 + (i % 3) * 4, oy + 3 + Math.floor(i / 3) * 3, 2, 2);
+    });
+    g.fillStyle = '#8f1d1a';
+    g.fillRect(ox, oy + 12, TILE, 4);
+    g.fillStyle = '#f2ede4';
+    g.fillRect(ox + 11, oy + 11, 3, 2);
+    edgeTile(ox, oy, '#5c100e');
+  }
+  {
+    const [ox, oy] = base(45, [208, 49, 45], 0.015);
+    g.fillStyle = '#8f1d1a';
+    g.fillRect(ox + 3, oy + 2, 10, 5);
+    g.fillStyle = '#1c2430';
+    g.fillRect(ox + 4, oy + 3, 8, 3);
+    g.fillStyle = '#f7d970';
+    g.fillRect(ox + 11, oy + 4, 1, 1);
+    g.fillStyle = '#1c2430';
+    g.fillRect(ox + 4, oy + 10, 8, 4);
+    g.fillStyle = '#2e3a4a';
+    g.fillRect(ox + 5, oy + 11, 6, 2);
+    edgeTile(ox, oy, '#5c100e');
+  }
+  {
+    const [ox, oy] = base(46, [208, 49, 45], 0.015);
+    g.fillStyle = '#b8352f';
+    g.fillRect(ox + 2, oy + 2, 12, 12);
+    edgeTile(ox, oy, '#5c100e');
   }
 
   const atlas = new THREE.CanvasTexture(canvas);
