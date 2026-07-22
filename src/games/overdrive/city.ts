@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../lib/rng';
 import { coloredBox, mergeParts, QuadBatch, textSprite } from './mesh';
+import { createAsphaltTexture } from './city-texture';
 import type { City, Ctx, SurfaceKind } from './types';
 
 const GRASS = 0;
@@ -154,6 +155,8 @@ export function createCity(ctx: Ctx): City {
   }
 
   const ground = new QuadBatch();
+  const asphaltGround = new QuadBatch(8);
+  const asphaltTypes = new Set([ROAD, BRIDGE, BUILD]);
   const paint: Record<number, THREE.Color> = {
     [GRASS]: new THREE.Color(K.grama),
     [ROAD]: new THREE.Color(K.asfalto),
@@ -173,7 +176,8 @@ export function createCity(ctx: Ctx): City {
         const x0 = runStart * CELL - HALF;
         const x1 = cx * CELL - HALF;
         const z0 = cz * CELL - HALF;
-        ground.quad(x0, z0, x1, z0 + CELL, 0, paint[runType]);
+        const batch = asphaltTypes.has(runType) ? asphaltGround : ground;
+        batch.quad(x0, z0, x1, z0 + CELL, 0, paint[runType]);
         runStart = cx;
         runType = t;
       }
@@ -181,7 +185,9 @@ export function createCity(ctx: Ctx): City {
   }
 
   const deco = new QuadBatch();
+  const glowDecals = new QuadBatch();
   const parts: THREE.BufferGeometry[] = [];
+  const emissiveParts: THREE.BufferGeometry[] = [];
   const lane = new THREE.Color(K.faixa);
   const pool = new THREE.Color(K.poolLuz);
   const poleColor = new THREE.Color(K.poste);
@@ -214,8 +220,8 @@ export function createCity(ctx: Ctx): City {
       const t = at(cellOf(px), cellOf(pz));
       if (t === WATER || t === BUILD || t === RAILBRIDGE) continue;
       parts.push(coloredBox(0.2, 4.6, 0.2, px, 2.3, pz, poleColor));
-      parts.push(coloredBox(0.6, 0.3, 0.6, px, 4.7, pz, lampColor));
-      deco.quad(px - 2.6, pz - 2.6, px + 2.6, pz + 2.6, 0.02, pool);
+      emissiveParts.push(coloredBox(0.6, 0.3, 0.6, px, 4.7, pz, lampColor));
+      glowDecals.quad(px - 2.6, pz - 2.6, px + 2.6, pz + 2.6, 0.02, pool);
     }
   }
 
@@ -286,10 +292,10 @@ export function createCity(ctx: Ctx): City {
     if (b.win) {
       const win = new THREE.Color(b.win);
       if (b.roof) {
-        parts.push(coloredBox(b.w * 0.4, 0.7, 0.14, b.x, b.h * 0.5, b.z - b.d / 2 - 0.02, win));
+        emissiveParts.push(coloredBox(b.w * 0.4, 0.7, 0.14, b.x, b.h * 0.5, b.z - b.d / 2 - 0.02, win));
       } else {
-        parts.push(coloredBox(b.w + 0.12, 0.9, b.d + 0.12, b.x, b.h * 0.38, b.z, win));
-        if (b.h > 13) parts.push(coloredBox(b.w + 0.12, 0.9, b.d + 0.12, b.x, b.h * 0.72, b.z, win));
+        emissiveParts.push(coloredBox(b.w + 0.12, 0.9, b.d + 0.12, b.x, b.h * 0.38, b.z, win));
+        if (b.h > 13) emissiveParts.push(coloredBox(b.w + 0.12, 0.9, b.d + 0.12, b.x, b.h * 0.72, b.z, win));
       }
     }
     if (b.roof) {
@@ -310,12 +316,23 @@ export function createCity(ctx: Ctx): City {
   }
 
   const material = new THREE.MeshBasicMaterial({ vertexColors: true });
+  const asphaltTexture = createAsphaltTexture(ctx.stage.lowTier);
+  ctx.textures.asfalto = asphaltTexture;
+  const asphaltMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, map: asphaltTexture });
   const groundGeo = ground.build();
   if (groundGeo) ctx.scene.add(new THREE.Mesh(groundGeo, material));
+  const asphaltGeo = asphaltGround.build();
+  if (asphaltGeo) ctx.scene.add(new THREE.Mesh(asphaltGeo, asphaltMaterial));
   const decoGeo = deco.build();
   if (decoGeo) ctx.scene.add(new THREE.Mesh(decoGeo, material));
   const merged = mergeParts(parts);
   if (merged) ctx.scene.add(new THREE.Mesh(merged, material));
+  const emissiveMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
+  const emissiveGeo = mergeParts(emissiveParts);
+  if (emissiveGeo) ctx.scene.add(new THREE.Mesh(emissiveGeo, emissiveMaterial));
+  const glowDecalMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false });
+  const glowGeo = glowDecals.build();
+  if (glowGeo) ctx.scene.add(new THREE.Mesh(glowGeo, glowDecalMaterial));
 
   for (const m of map.marcos) {
     const sprite = textSprite(m.emoji + ' ' + m.nome, 26);
@@ -340,6 +357,9 @@ export function createCity(ctx: Ctx): City {
   };
 
   return {
+    tintables: [material, asphaltMaterial],
+    nightGlow: emissiveMaterial,
+    nightDecals: glowDecalMaterial,
     paintMap(canvas) {
       canvas.width = N;
       canvas.height = N;

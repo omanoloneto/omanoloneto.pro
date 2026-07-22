@@ -18,7 +18,10 @@ export function createCar(ctx: Ctx): CarRig {
   const white = new THREE.Color('#ffffff');
   const neon = new THREE.Color(data.neon);
 
-  const atlas = createCarAtlas(ctx.stage.lowTier);
+  const atlas = createCarAtlas(ctx.stage.lowTier, () => {
+    if (!ctx.stage.running()) ctx.stage.render();
+  });
+  ctx.textures.carro = atlas.texture;
   const r = atlas.r;
   const material = new THREE.MeshBasicMaterial({ vertexColors: true, map: atlas.texture });
   const group = new THREE.Group();

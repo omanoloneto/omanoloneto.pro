@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { UVRect } from './mesh';
 
 const SIZE = 128;
+const SCALE = 4;
 
 export interface CarAtlas {
   texture: THREE.CanvasTexture;
@@ -33,11 +34,12 @@ export function subV(r: UVRect, a: number, b: number): UVRect {
   return [r[0], r[3] + (r[1] - r[3]) * b, r[2], r[3] + (r[1] - r[3]) * a];
 }
 
-export function createCarAtlas(lowTier: boolean): CarAtlas {
+export function createCarAtlas(lowTier: boolean, onUpdate?: () => void): CarAtlas {
   const canvas = document.createElement('canvas');
-  canvas.width = SIZE;
-  canvas.height = SIZE;
+  canvas.width = SIZE * SCALE;
+  canvas.height = SIZE * SCALE;
   const g = canvas.getContext('2d')!;
+  g.scale(SCALE, SCALE);
 
   g.fillStyle = '#ffffff';
   g.fillRect(0, 0, SIZE, SIZE);
@@ -203,8 +205,20 @@ export function createCarAtlas(lowTier: boolean): CarAtlas {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.magFilter = lowTier ? THREE.NearestFilter : THREE.LinearFilter;
-  texture.minFilter = lowTier ? THREE.NearestFilter : THREE.LinearFilter;
-  texture.generateMipmaps = false;
+  texture.minFilter = lowTier ? THREE.LinearMipmapNearestFilter : THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+
+  const painted = new Image();
+  painted.onload = () => {
+    g.drawImage(painted, 0, 0, SIZE, SIZE);
+    g.fillStyle = '#ffffff';
+    g.fillRect(0, 0, 8, 8);
+    g.fillStyle = '#17171c';
+    g.fillRect(0, 10, 6, 6);
+    texture.needsUpdate = true;
+    onUpdate?.();
+  };
+  painted.src = '/class/img/overdrive/carro.png';
 
   return {
     texture,

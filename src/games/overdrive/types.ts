@@ -20,11 +20,20 @@ export interface State {
 }
 
 export interface City {
+  tintables: THREE.MeshBasicMaterial[];
+  nightGlow: THREE.MeshBasicMaterial;
+  nightDecals: THREE.MeshBasicMaterial;
   solidAt(x: number, z: number): boolean;
   surfaceAt(x: number, z: number): SurfaceKind;
   buildingTopAt(x: number, z: number): number;
   nearestLandmark(x: number, z: number): { nome: string; emoji: string; dist: number } | null;
   paintMap(canvas: HTMLCanvasElement): void;
+}
+
+export interface DayNight {
+  step(dt: number): void;
+  set(t: number): void;
+  info(): { t: number; k: number; fase: 'dia' | 'noite' };
 }
 
 export interface Minimap {
@@ -89,8 +98,10 @@ export interface Ctx {
   camera: THREE.PerspectiveCamera;
   sceneEl: HTMLElement;
   reducedMotion: boolean;
+  textures: Record<string, THREE.Texture>;
   city: City;
   car: CarRig;
+  dayNight: DayNight;
   driving: Driving;
   chase: ChaseCam;
   minimap: Minimap;

@@ -4,6 +4,7 @@ import { createUI } from './ui';
 import { createAudio } from './audio';
 import { createCity } from './city';
 import { createCar } from './car';
+import { createDayNight } from './daynight';
 import { createDriving } from './driving';
 import { createChaseCam } from './camera';
 import { createMinimap } from './minimap';
@@ -26,6 +27,7 @@ export function startGame() {
     input,
     sceneEl,
     reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    textures: {},
     surfaces: data.config.superficies,
   } as Ctx;
 
@@ -36,6 +38,7 @@ export function startGame() {
       if (state.phase !== 'playing') return;
       ctx.driving.step(dt);
       ctx.chase.step(dt);
+      ctx.dayNight.step(dt);
       ctx.minimap.step(dt * 1000);
       const tel = ctx.driving.telemetry();
       ctx.audio.engine(tel.speedFwd, input.accel, tel.drifting);
@@ -44,6 +47,7 @@ export function startGame() {
   ctx.stage = stage;
   ctx.scene = stage.scene;
   ctx.camera = stage.camera;
+  stage.renderer.toneMapping = THREE.LinearToneMapping;
 
   const K = data.config.cores;
   stage.scene.background = new THREE.Color(K.ceu);
@@ -56,6 +60,7 @@ export function startGame() {
   ctx.car = createCar(ctx);
   ctx.driving = createDriving(ctx);
   ctx.chase = createChaseCam(ctx);
+  ctx.dayNight = createDayNight(ctx);
   ctx.minimap = createMinimap(ctx);
 
   const touchMode = window.matchMedia('(pointer: coarse)').matches;
@@ -131,6 +136,17 @@ export function startGame() {
     surfaceAt: (x: number, z: number) => ctx.city.surfaceAt(x, z),
     solidAt: (x: number, z: number) => ctx.city.solidAt(x, z),
     minimap: ctx.minimap,
+    ciclo: {
+      info: () => ctx.dayNight.info(),
+      set(t: number) {
+        ctx.dayNight.set(t);
+        if (state.phase !== 'playing') stage.render();
+      },
+    },
+    texturas: () =>
+      Object.fromEntries(
+        Object.entries(ctx.textures).map(([nome, tex]) => [nome, (tex.image as HTMLCanvasElement).toDataURL('image/png')]),
+      ),
     parts: {
       list: () => ({
         aro: ctx.parts.aro.map((p) => p.id),

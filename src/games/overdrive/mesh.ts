@@ -451,12 +451,19 @@ export function mergeParts(parts: THREE.BufferGeometry[]): THREE.BufferGeometry 
 export class QuadBatch {
   pos: number[] = [];
   col: number[] = [];
+  uv: number[] = [];
   idx: number[] = [];
+
+  constructor(private uvScale?: number) {}
 
   quad(x0: number, z0: number, x1: number, z1: number, y: number, color: THREE.Color) {
     const b = this.pos.length / 3;
     this.pos.push(x0, y, z0, x1, y, z0, x1, y, z1, x0, y, z1);
     for (let i = 0; i < 4; i++) this.col.push(color.r, color.g, color.b);
+    if (this.uvScale) {
+      const s = this.uvScale;
+      this.uv.push(x0 / s, z0 / s, x1 / s, z0 / s, x1 / s, z1 / s, x0 / s, z1 / s);
+    }
     this.idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
   }
 
@@ -465,6 +472,7 @@ export class QuadBatch {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.pos), 3));
     g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.col), 3));
+    if (this.uv.length) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(this.uv), 2));
     g.setIndex(this.idx);
     return g;
   }

@@ -164,6 +164,7 @@ export const mapa = {
 
 export const config = {
   mundo: { tamanho: 720, celula: 4 },
+  ciclo: { diaS: 60, noiteS: 60, transicaoS: 7, claridadeDia: 2.6 },
   camera: {
     fov: 60,
     dist: 9.5,
@@ -185,6 +186,10 @@ export const config = {
     neblina: '#070c1a',
     neblinaPerto: 70,
     neblinaLonge: 330,
+    ceuDia: '#7db8ec',
+    neblinaDia: '#a9cbea',
+    neblinaPertoDia: 150,
+    neblinaLongeDia: 520,
     asfalto: '#1c202a',
     faixa: '#d8d8e4',
     grama: '#101c13',
