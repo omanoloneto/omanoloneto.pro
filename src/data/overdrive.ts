@@ -120,14 +120,14 @@ export interface Rotatoria {
 
 export const mapa = {
   nome: 'São Leopoldo',
-  vias: [
+    vias: [
     { tipo: 'br', nome: 'BR-116', pontos: [[-410, -500], [-415, -282], [-428, -120], [-445, 40], [-455, 160], [-462, 282], [-465, 500]] },
     { tipo: 'avenida', nome: 'Av. João Corrêa', pontos: [[-440, -177], [-190, -177]] },
-    { tipo: 'avenida', nome: 'Av. Dom João Becker', pontos: [[-190, -500], [-190, 60], [-215, 200], [-230, 282], [-235, 500]] },
-    { tipo: 'avenida', nome: 'Av. Theodomiro Porto', pontos: [[-440, 105], [-195, 105]] },
+    { tipo: 'avenida', nome: 'Av. Dom João Becker', pontos: [[-190, -500], [-192, 95], [-215, 200], [-230, 282], [-235, 500]] },
+    { tipo: 'avenida', nome: 'Av. Theodomiro Porto', pontos: [[-440, 105], [-201, 106]] },
     { tipo: 'avenida', nome: 'Av. Feitoria', pontos: [[-190, -125], [-16, -153], [145, -177], [306, -197], [459, -218]] },
-    { tipo: 'avenida', nome: 'Av. Henrique Bier', pontos: [[459, -218], [419, -40], [306, -32], [209, -64], [113, -40], [24, 4], [-49, 36], [-190, 60]] },
-    { tipo: 'avenida', nome: 'Av. Unisinos', pontos: [[-190, 60], [-65, 70], [15, 115], [62, 180], [85, 282], [95, 500]] },
+    { tipo: 'avenida', nome: 'Av. Henrique Bier', pontos: [[459, -218], [419, -40], [306, -32], [209, -64], [113, -40], [24, 4], [-49, 36], [-177, 102]] },
+    { tipo: 'avenida', nome: 'Av. Unisinos', pontos: [[-191, 107], [-67, 131], [-2, 165], [42, 211], [85, 282], [95, 500]] },
     { tipo: 'avenida', nome: 'Av. Mauá', pontos: [[-330, 105], [-338, 282], [-340, 500]] },
     { tipo: 'rua', nome: 'R. São Joaquim', pontos: [[-379, -177], [-379, 105]] },
     { tipo: 'rua', nome: 'R. Independência', pontos: [[-343, -300], [-343, 105]] },
@@ -143,14 +143,14 @@ export const mapa = {
   ] as Via[],
   predios: [] as Predio[],
   marcos: [
-    { tipo: 'ginasio', x: -314, z: -240 },
-    { tipo: 'skate', x: -238, z: -240 },
-    { tipo: 'prefeitura', x: -400, z: -38 },
+    { tipo: 'ginasio', x: -256, z: -210 },
+    { tipo: 'skate', x: -216, z: -200 },
+    { tipo: 'prefeitura', x: -361, z: -157 },
   ] as Marco[],
   rotatorias: [
-    { x: -190, z: 60, raioInterno: 12, raioExterno: 22 },
+    { x: -175, z: 93, raioInterno: 12, raioExterno: 33 },
   ] as Rotatoria[],
-  spawn: { x: -400, z: -171.75, heading: Math.PI / 2 },
+  spawn: { x: -400, z: -171.75, heading: 1.570796 },
 };
 
 export const config = {
