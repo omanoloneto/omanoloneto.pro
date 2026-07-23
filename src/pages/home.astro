@@ -1,0 +1,230 @@
+---
+const cores = ['#4285F4', '#EA4335', '#FBBC05', '#4285F4', '#34A853', '#EA4335'];
+const letras = ['G', 'o', 'o', 'g', 'l', 'e'];
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Google</title>
+    <meta name="robots" content="noindex" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%234285F4' d='M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.5 13.2l7.8 6.1C12.2 13.5 17.6 9.5 24 9.5z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.4 0-11.9-4.3-13.8-10.1l-7.9 6.1C6.5 42.6 14.6 48 24 48z'/%3E%3Cpath fill='%23FBBC05' d='M10.2 28.7c-.5-1.4-.7-2.9-.7-4.7s.3-3.3.7-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.4 10.8l7.8-6.1z'/%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.5 13.2l7.8 6.1C12.2 13.5 17.6 9.5 24 9.5z' opacity='0'/%3E%3C/svg%3E"
+    />
+    <style>
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+        font-family: arial, sans-serif;
+        color: #202124;
+        background: #fff;
+      }
+      a { color: #202124; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+
+      header {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 15px;
+        padding: 6px 15px 0;
+        height: 60px;
+        font-size: 13px;
+      }
+      header a { padding: 0 4px; }
+      .apps {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: 0;
+        border-radius: 50%;
+        background: none;
+        cursor: pointer;
+      }
+      .apps:hover { background: rgba(60, 64, 67, 0.08); }
+      .signin {
+        background: #1a73e8;
+        color: #fff;
+        padding: 9px 23px;
+        border-radius: 4px;
+        font-weight: 500;
+      }
+      .signin:hover { background: #1b66c9; text-decoration: none; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: -40px;
+        justify-content: center;
+        padding: 0 20px;
+      }
+      .logo {
+        font-size: 92px;
+        font-weight: 400;
+        letter-spacing: -6px;
+        margin-bottom: 24px;
+        user-select: none;
+        font-family: 'Product Sans', arial, sans-serif;
+      }
+      .search {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        max-width: 584px;
+        height: 46px;
+        padding: 0 14px;
+        border: 1px solid #dfe1e5;
+        border-radius: 24px;
+        box-shadow: none;
+        transition: box-shadow .2s, border-color .2s;
+      }
+      .search:hover,
+      .search:focus-within {
+        box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+        border-color: rgba(223, 225, 229, 0);
+      }
+      .search .mag { display: flex; color: #9aa0a6; margin-right: 12px; }
+      .search input {
+        flex: 1;
+        height: 100%;
+        border: 0;
+        outline: none;
+        font-size: 16px;
+        background: transparent;
+        color: #202124;
+      }
+      .search .tools { display: flex; align-items: center; gap: 18px; margin-left: 10px; }
+      .search .tools button { border: 0; background: none; cursor: pointer; padding: 0; display: flex; }
+
+      .btns { display: flex; gap: 12px; margin-top: 29px; }
+      .btns button {
+        background: #f8f9fa;
+        border: 1px solid #f8f9fa;
+        border-radius: 4px;
+        color: #3c4043;
+        font-size: 14px;
+        padding: 0 16px;
+        height: 36px;
+        cursor: pointer;
+      }
+      .btns button:hover {
+        border-color: #dadce0;
+        box-shadow: 0 1px 1px rgba(0,0,0,.1);
+        color: #202124;
+      }
+      .lang { margin-top: 30px; font-size: 13px; color: #4d5156; }
+      .lang a { color: #1a0dab; }
+
+      footer { background: #f2f2f2; font-size: 15px; color: #70757a; }
+      footer .country {
+        padding: 15px 30px;
+        border-bottom: 1px solid #dadce0;
+      }
+      footer .links {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        padding: 0 15px;
+      }
+      footer .links > div { display: flex; flex-wrap: wrap; }
+      footer .links a { color: #70757a; padding: 14px 15px; }
+
+      @media (max-width: 560px) {
+        .logo { font-size: 68px; letter-spacing: -4px; }
+        footer .links { justify-content: center; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="https://mail.google.com">Gmail</a>
+      <a href="https://www.google.com/imghp">Imagens</a>
+      <button class="apps" type="button" aria-label="Google Apps">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="#5f6368">
+          <circle cx="5" cy="5" r="2" /><circle cx="12" cy="5" r="2" /><circle cx="19" cy="5" r="2" />
+          <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+          <circle cx="5" cy="19" r="2" /><circle cx="12" cy="19" r="2" /><circle cx="19" cy="19" r="2" />
+        </svg>
+      </button>
+      <a class="signin" href="https://accounts.google.com">Fazer login</a>
+    </header>
+
+    <main id="conteudo">
+      <div class="logo" aria-label="Google">
+        {letras.map((l, i) => <span style={`color:${cores[i]}`}>{l}</span>)}
+      </div>
+
+      <form id="f" class="search" action="https://www.google.com/search" method="get" role="search">
+        <span class="mag" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z" />
+          </svg>
+        </span>
+        <input type="text" name="q" title="Pesquisar" aria-label="Pesquisar" autocomplete="off" autofocus />
+        <span class="tools">
+          <button type="button" aria-label="Pesquisa por voz">
+            <svg width="24" height="24" viewBox="0 0 24 24">
+              <path fill="#4285f4" d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3z" />
+              <path fill="#34a853" d="M11 18.92V22h2v-3.08A7 7 0 0019 12h-2a5 5 0 01-10 0H5a7 7 0 006 6.92z" />
+              <path fill="#fbbc05" d="M9 11a3 3 0 006 0V9H9z" opacity=".7" />
+              <path fill="#ea4335" d="M9 5a3 3 0 016 0v2H9z" />
+            </svg>
+          </button>
+          <button type="button" aria-label="Pesquisar por imagem">
+            <svg width="24" height="24" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3" fill="#4285f4" />
+              <path fill="#ea4335" d="M12 5a7 7 0 00-6.06 3.5l2.6 1.5A4 4 0 0112 8z" />
+              <path fill="#fbbc05" d="M5.94 8.5A7 7 0 005 12a7 7 0 001 3.5l2.6-1.5A4 4 0 018 12a4 4 0 01.54-2z" />
+              <path fill="#34a853" d="M12 19a7 7 0 006.06-3.5l-2.6-1.5A4 4 0 0112 16z" />
+              <path fill="#4285f4" d="M18.06 8.5A7 7 0 0012 5v3a4 4 0 013.46 2z" />
+            </svg>
+          </button>
+        </span>
+      </form>
+
+      <div class="btns">
+        <button type="submit" form="f">Pesquisa Google</button>
+        <button type="button" data-lucky>Estou com sorte</button>
+      </div>
+
+      <p class="lang">O Google está disponível em: <a href="https://www.google.com/setprefs?hl=en">English</a></p>
+    </main>
+
+    <footer>
+      <div class="country">Brasil</div>
+      <div class="links">
+        <div>
+          <a href="https://about.google">Sobre</a>
+          <a href="https://ads.google.com">Publicidade</a>
+          <a href="https://www.google.com/services">Negócios</a>
+          <a href="https://www.google.com/search/howsearchworks">Como funciona a Pesquisa</a>
+        </div>
+        <div>
+          <a href="https://policies.google.com/privacy">Privacidade</a>
+          <a href="https://policies.google.com/terms">Termos</a>
+          <a href="#">Configurações</a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const lucky = document.querySelector('[data-lucky]');
+      lucky?.addEventListener('click', () => {
+        const q = (document.querySelector('input[name="q"]') as HTMLInputElement).value.trim();
+        const base = 'https://www.google.com/search?btnI=1';
+        location.href = q ? base + '&q=' + encodeURIComponent(q) : 'https://www.google.com/doodles';
+      });
+    </script>
+  </body>
+</html>
