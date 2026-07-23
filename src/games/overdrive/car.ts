@@ -196,6 +196,7 @@ export function createCar(ctx: Ctx): CarRig {
   group.rotation.y = state.heading + Math.PI;
   let squashUntil = 0;
   let roll = 0;
+  let pitch = 0;
 
   return {
     state,
@@ -206,9 +207,17 @@ export function createCar(ctx: Ctx): CarRig {
       squashUntil = performance.now() + 110;
     },
     update(dt: number, tel: CarTelemetry) {
-      group.position.set(state.x, 0, state.z);
+      const hc = ctx.city.heightAt(state.x, state.z);
+      group.position.set(state.x, hc, state.z);
       group.rotation.y = state.heading + Math.PI;
-      const targetRoll = Math.max(-0.16, Math.min(0.16, -tel.lateral * 0.014));
+      const fwdX = Math.sin(state.heading);
+      const fwdZ = Math.cos(state.heading);
+      const e = 1.4;
+      const pitchSlope = (ctx.city.heightAt(state.x + fwdX * e, state.z + fwdZ * e) - ctx.city.heightAt(state.x - fwdX * e, state.z - fwdZ * e)) / (2 * e);
+      const rollSlope = (ctx.city.heightAt(state.x + fwdZ * e, state.z - fwdX * e) - ctx.city.heightAt(state.x - fwdZ * e, state.z + fwdX * e)) / (2 * e);
+      pitch += (Math.atan(-pitchSlope) - pitch) * (1 - Math.exp(-8 * dt));
+      group.rotation.x = pitch;
+      const targetRoll = Math.max(-0.16, Math.min(0.16, -tel.lateral * 0.014)) + Math.atan(rollSlope) * 0.6;
       roll += (targetRoll - roll) * (1 - Math.exp(-8 * dt));
       group.rotation.z = roll;
       const spin = (tel.speedFwd * dt) / 0.37;

@@ -39,6 +39,18 @@ export function createCity(ctx: Ctx): City {
   const at = (cx: number, cz: number) => grid[cx + cz * N];
   const set = (cx: number, cz: number, t: number) => { grid[cx + cz * N] = t; };
 
+  const morros = map.morros;
+  function heightAt(x: number, z: number): number {
+    let h = 0;
+    for (const m of morros) {
+      const dx = x - m.x;
+      const dz = z - m.z;
+      const s = m.raio * 0.5;
+      h += m.altura * Math.exp(-(dx * dx + dz * dz) / (2 * s * s));
+    }
+    return h;
+  }
+
   const halfWidth = (tipo: string) =>
     tipo === 'avenida' ? V.avenida.pista + V.avenida.canteiro / 2 : tipo === 'br' ? V.br.largura / 2 : V.rua.largura / 2;
 
@@ -293,10 +305,11 @@ export function createCity(ctx: Ctx): City {
         const uz = ddz / len;
         const nx = -uz;
         const nz = ux;
+        const hm = heightAt(cx, cz);
         paintSegment(pa.x, pa.z, pb.x, pb.z, V.avenida.canteiro, MEDIAN, { only: ROAD });
-        parts.push(orientedBox(cx, cz, ux, uz, len, V.avenida.canteiro - 0.7, V.avenida.alturaCanteiro, V.avenida.alturaCanteiro / 2, canteiroColor));
+        parts.push(orientedBox(cx, cz, ux, uz, len, V.avenida.canteiro - 0.7, V.avenida.alturaCanteiro, hm + V.avenida.alturaCanteiro / 2, canteiroColor));
         for (const side of [-1, 1]) {
-          parts.push(orientedBox(cx + nx * guiaOff * side, cz + nz * guiaOff * side, ux, uz, len, V.avenida.guia, 0.26, 0.13, guiaColor));
+          parts.push(orientedBox(cx + nx * guiaOff * side, cz + nz * guiaOff * side, ux, uz, len, V.avenida.guia, 0.26, hm + 0.13, guiaColor));
         }
       }
 
@@ -304,13 +317,14 @@ export function createCity(ctx: Ctx): City {
         const s = sampleAt(pts, cum, arc);
         const nx = -s.uz;
         const nz = s.ux;
-        parts.push(coloredBox(0.25, V.avenida.posteAltura, 0.25, s.x, V.avenida.posteAltura / 2, s.z, poleColor));
-        parts.push(orientedBox(s.x, s.z, s.ux, s.uz, 0.25, 3.4, 0.15, V.avenida.posteAltura - 0.1, poleColor));
+        const hs = heightAt(s.x, s.z);
+        parts.push(coloredBox(0.25, V.avenida.posteAltura, 0.25, s.x, hs + V.avenida.posteAltura / 2, s.z, poleColor));
+        parts.push(orientedBox(s.x, s.z, s.ux, s.uz, 0.25, 3.4, 0.15, hs + V.avenida.posteAltura - 0.1, poleColor));
         for (const side of [-1, 1]) {
-          emissiveParts.push(coloredBox(0.6, 0.25, 0.6, s.x + nx * 1.5 * side, V.avenida.posteAltura - 0.05, s.z + nz * 1.5 * side, lampColor));
+          emissiveParts.push(coloredBox(0.6, 0.25, 0.6, s.x + nx * 1.5 * side, hs + V.avenida.posteAltura - 0.05, s.z + nz * 1.5 * side, lampColor));
           const gx = s.x + nx * 3.2 * side;
           const gz = s.z + nz * 3.2 * side;
-          glowDecals.quad(gx - 2.6, gz - 2.6, gx + 2.6, gz + 2.6, 0.05, pool);
+          glowDecals.quad(gx - 2.6, gz - 2.6, gx + 2.6, gz + 2.6, heightAt(gx, gz) + 0.05, pool);
         }
       }
     }
@@ -328,7 +342,6 @@ export function createCity(ctx: Ctx): City {
         ? [-V.br.faixaOffsets[1], -V.br.faixaOffsets[0], V.br.faixaOffsets[0], V.br.faixaOffsets[1]]
         : [0];
     const color = via.tipo === 'rua' ? laneYellow : laneWhite;
-    const y = isBR ? V.br.deckTopo + 0.04 : 0.06;
     for (let arc = p.faixaPasso / 2; arc < total; arc += p.faixaPasso) {
       if (nearVertex(cum, arc, p.faixaLen / 2 + 0.5)) continue;
       const s = sampleAt(pts, cum, arc);
@@ -336,7 +349,10 @@ export function createCity(ctx: Ctx): City {
       const nx = -s.uz;
       const nz = s.ux;
       for (const off of offsets) {
-        deco.quadRot(s.x + nx * off, s.z + nz * off, s.ux, s.uz, p.faixaLen, p.faixaLarg, y, color);
+        const dx = s.x + nx * off;
+        const dz = s.z + nz * off;
+        const y = isBR ? V.br.deckTopo + 0.04 : heightAt(dx, dz) + 0.06;
+        deco.quadRot(dx, dz, s.ux, s.uz, p.faixaLen, p.faixaLarg, y, color);
       }
     }
   }
@@ -345,9 +361,25 @@ export function createCity(ctx: Ctx): City {
     const hw = halfWidth(via.tipo);
     const L = offsetPolyline(via.pontos, hw);
     const R = offsetPolyline(via.pontos, -hw);
-    const y = 0.02 + vi * 0.001;
+    const yoff = 0.02 + vi * 0.001;
     for (let i = 0; i < via.pontos.length - 1; i++) {
-      asphaltGround.quadCorners(L[i][0], L[i][1], R[i][0], R[i][1], R[i + 1][0], R[i + 1][1], L[i + 1][0], L[i + 1][1], y, asfaltoColor);
+      const segLen = Math.hypot(L[i + 1][0] - L[i][0], L[i + 1][1] - L[i][1]);
+      const steps = Math.max(1, Math.round(segLen / 6));
+      for (let k = 0; k < steps; k++) {
+        const t0 = k / steps;
+        const t1 = (k + 1) / steps;
+        const la = lerp2(L[i], L[i + 1], t0);
+        const lb = lerp2(L[i], L[i + 1], t1);
+        const ra = lerp2(R[i], R[i + 1], t0);
+        const rb = lerp2(R[i], R[i + 1], t1);
+        asphaltGround.quad3(
+          la[0], heightAt(la[0], la[1]) + yoff, la[1],
+          ra[0], heightAt(ra[0], ra[1]) + yoff, ra[1],
+          rb[0], heightAt(rb[0], rb[1]) + yoff, rb[1],
+          lb[0], heightAt(lb[0], lb[1]) + yoff, lb[1],
+          asfaltoColor,
+        );
+      }
     }
   }
 
@@ -370,9 +402,13 @@ export function createCity(ctx: Ctx): City {
           const mx = (iA[0] + iB[0] + oA[0] + oB[0]) / 4;
           const mz = (iA[1] + iB[1] + oA[1] + oB[1]) / 4;
           if (blockedNear(mx, mz, vi, S.gap)) continue;
-          curbs.quadCorners(iA[0], iA[1], oA[0], oA[1], oB[0], oB[1], iB[0], iB[1], S.alt, calcadaColor);
-          curbs.quadWall(iA[0], iA[1], iB[0], iB[1], 0, S.alt, calcadaMuretaColor);
-          curbs.quadWall(oA[0], oA[1], oB[0], oB[1], 0, S.alt, calcadaMuretaColor);
+          const hiA = heightAt(iA[0], iA[1]);
+          const hiB = heightAt(iB[0], iB[1]);
+          const hoA = heightAt(oA[0], oA[1]);
+          const hoB = heightAt(oB[0], oB[1]);
+          curbs.quad3(iA[0], hiA + S.alt, iA[1], oA[0], hoA + S.alt, oA[1], oB[0], hoB + S.alt, oB[1], iB[0], hiB + S.alt, iB[1], calcadaColor);
+          curbs.quadWall3(iA[0], iA[1], iB[0], iB[1], hiA, hiA + S.alt, hiB, hiB + S.alt, calcadaMuretaColor);
+          curbs.quadWall3(oA[0], oA[1], oB[0], oB[1], hoA, hoA + S.alt, hoB, hoB + S.alt, calcadaMuretaColor);
         }
       }
     }
@@ -391,9 +427,10 @@ export function createCity(ctx: Ctx): City {
       const pz = s.z + s.ux * off * flip;
       const t = at(cellOf(px), cellOf(pz));
       if (t === BUILD || t === PILLAR) continue;
-      parts.push(coloredBox(0.2, V.rua.posteAltura, 0.2, px, V.rua.posteAltura / 2, pz, poleColor));
-      emissiveParts.push(coloredBox(0.6, 0.3, 0.6, px, V.rua.posteAltura + 0.1, pz, lampColor));
-      glowDecals.quad(px - 2.6, pz - 2.6, px + 2.6, pz + 2.6, 0.05, pool);
+      const h = heightAt(px, pz);
+      parts.push(coloredBox(0.2, V.rua.posteAltura, 0.2, px, h + V.rua.posteAltura / 2, pz, poleColor));
+      emissiveParts.push(coloredBox(0.6, 0.3, 0.6, px, h + V.rua.posteAltura + 0.1, pz, lampColor));
+      glowDecals.quad(px - 2.6, pz - 2.6, px + 2.6, pz + 2.6, h + 0.05, pool);
     }
   }
 
@@ -630,23 +667,24 @@ export function createCity(ctx: Ctx): City {
 
   function emitRotatoria(r: (typeof map.rotatorias)[number]) {
     const rc = cfg.marcos.rotatoria;
+    const h0 = heightAt(r.x, r.z);
     stampRing(r.x, r.z, r.raioInterno, r.raioExterno, rc.ilhaH);
     const rMid = (r.raioInterno + r.raioExterno) / 2;
     const segLen = 2 * rMid * Math.sin(Math.PI / rc.ringSegs) * 1.06;
     for (let k = 0; k < rc.ringSegs; k++) {
       const a = ((k + 0.5) / rc.ringSegs) * Math.PI * 2;
-      asphaltGround.quadRot(r.x + Math.cos(a) * rMid, r.z + Math.sin(a) * rMid, -Math.sin(a), Math.cos(a), segLen, rc.ringWid, 0.03, asfaltoColor);
+      asphaltGround.quadRot(r.x + Math.cos(a) * rMid, r.z + Math.sin(a) * rMid, -Math.sin(a), Math.cos(a), segLen, rc.ringWid, h0 + 0.03, asfaltoColor);
     }
     const island = new THREE.CylinderGeometry(r.raioInterno, r.raioInterno, rc.ilhaH, 32);
-    island.translate(r.x, rc.ilhaH / 2, r.z);
+    island.translate(r.x, h0 + rc.ilhaH / 2, r.z);
     parts.push(shadeInto(island, new THREE.Color(K.rotatoriaIlha)));
     const curb = new THREE.CylinderGeometry(r.raioInterno + 0.4, r.raioInterno + 0.4, 0.5, 32, 1, true);
-    curb.translate(r.x, 0.25, r.z);
+    curb.translate(r.x, h0 + 0.25, r.z);
     parts.push(shadeInto(curb, new THREE.Color(K.guia)));
     const ob = new THREE.CylinderGeometry(0.3, 1.2, rc.obeliscoH, 4);
-    ob.translate(r.x, rc.ilhaH + rc.obeliscoH / 2, r.z);
+    ob.translate(r.x, h0 + rc.ilhaH + rc.obeliscoH / 2, r.z);
     parts.push(shadeInto(ob, new THREE.Color(K.rotatoriaMonumento)));
-    emissiveParts.push(coloredBox(0.6, 0.6, 0.6, r.x, rc.ilhaH + rc.obeliscoH, r.z, new THREE.Color(K.luzPoste)));
+    emissiveParts.push(coloredBox(0.6, 0.6, 0.6, r.x, h0 + rc.ilhaH + rc.obeliscoH, r.z, new THREE.Color(K.luzPoste)));
   }
 
   function emitCasa(m: (typeof map.marcos)[number]) {
@@ -817,28 +855,71 @@ export function createCity(ctx: Ctx): City {
   });
   map.vias.forEach((via, vi) => emitDashes(via, vi));
 
+  function emitBuilding(x: number, z: number, rot: number, fn: () => void) {
+    const s0 = parts.length;
+    const s1 = emissiveParts.length;
+    const s2 = graffitiParts.length;
+    const s3 = mallParts.length;
+    fn();
+    const y0 = heightAt(x, z);
+    if (rot === 0 && y0 === 0) return;
+    const apply = (arr: THREE.BufferGeometry[], from: number) => {
+      for (let i = from; i < arr.length; i++) {
+        const g = arr[i];
+        if (rot !== 0) {
+          g.translate(-x, 0, -z);
+          g.rotateY(rot);
+          g.translate(x, 0, z);
+        }
+        if (y0 !== 0) g.translate(0, y0, 0);
+      }
+    };
+    apply(parts, s0);
+    apply(emissiveParts, s1);
+    apply(graffitiParts, s2);
+    apply(mallParts, s3);
+  }
+
   for (const b of map.predios) {
     fillCells(b.x, b.z, b.w, b.d, BUILD, b.h);
-    if (b.tipo === 'torre') emitTorre(b);
-    else if (b.tipo === 'predio') emitPredio(b);
-    else if (b.tipo === 'loja') emitLoja(b);
-    else if (b.tipo === 'galpao') emitGalpao(b);
-    else parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, new THREE.Color(b.cor)));
+    emitBuilding(b.x, b.z, b.rot ?? 0, () => {
+      if (b.tipo === 'torre') emitTorre(b);
+      else if (b.tipo === 'predio') emitPredio(b);
+      else if (b.tipo === 'loja') emitLoja(b);
+      else if (b.tipo === 'galpao') emitGalpao(b);
+      else parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, new THREE.Color(b.cor)));
+    });
   }
   for (const m of map.marcos) {
-    if (m.tipo === 'ginasio') emitGinasio(m);
-    else if (m.tipo === 'prefeitura') emitPrefeitura(m);
-    else if (m.tipo === 'skate') emitSkate(m);
-    else if (m.tipo === 'casa') emitCasa(m);
-    else if (m.tipo === 'bourbon') emitBourbon(m);
+    emitBuilding(m.x, m.z, m.rot ?? 0, () => {
+      if (m.tipo === 'ginasio') emitGinasio(m);
+      else if (m.tipo === 'prefeitura') emitPrefeitura(m);
+      else if (m.tipo === 'skate') emitSkate(m);
+      else if (m.tipo === 'casa') emitCasa(m);
+      else if (m.tipo === 'bourbon') emitBourbon(m);
+    });
   }
   for (const r of map.rotatorias) emitRotatoria(r);
 
   const ground = new QuadBatch();
   const grama = new THREE.Color(K.grama);
-  for (let cz = 0; cz < N; cz++) {
-    const z0 = cz * CELL - HALF;
-    ground.quad(-HALF, z0, HALF, z0 + CELL, 0, grama);
+  const gcol = new THREE.Color();
+  const GS = 6;
+  const nG = Math.ceil(T / GS);
+  for (let gz = 0; gz < nG; gz++) {
+    for (let gx = 0; gx < nG; gx++) {
+      const x0 = -HALF + gx * GS;
+      const x1 = Math.min(HALF, x0 + GS);
+      const z0 = -HALF + gz * GS;
+      const z1 = Math.min(HALF, z0 + GS);
+      const h00 = heightAt(x0, z0);
+      const h10 = heightAt(x1, z0);
+      const h11 = heightAt(x1, z1);
+      const h01 = heightAt(x0, z1);
+      const k = 1 + Math.max(-0.25, Math.min(0.4, ((h00 + h10 + h11 + h01) / 4) * 0.018));
+      gcol.copy(grama).multiplyScalar(k);
+      ground.quad3(x0, h00, z0, x1, h10, z0, x1, h11, z1, x0, h01, z1, gcol);
+    }
   }
 
   const material = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -985,6 +1066,9 @@ export function createCity(ctx: Ctx): City {
     },
     gridAt(x, z) {
       return typeAt(x, z);
+    },
+    heightAt(x, z) {
+      return heightAt(x, z);
     },
     buildingTopAt(x, z) {
       return tops[cellOf(x) + cellOf(z) * N];

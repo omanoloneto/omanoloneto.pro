@@ -515,6 +515,28 @@ export class QuadBatch {
     this.idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
   }
 
+  quad3(ax: number, ay: number, az: number, bx: number, by: number, bz: number, cx: number, cy: number, cz: number, dx: number, dy: number, dz: number, color: THREE.Color) {
+    const b = this.pos.length / 3;
+    this.pos.push(ax, ay, az, bx, by, bz, cx, cy, cz, dx, dy, dz);
+    for (let i = 0; i < 4; i++) this.col.push(color.r, color.g, color.b);
+    if (this.uvScale) {
+      const s = this.uvScale;
+      this.uv.push(ax / s, az / s, bx / s, bz / s, cx / s, cz / s, dx / s, dz / s);
+    }
+    this.idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
+  }
+
+  quadWall3(ax: number, az: number, bx: number, bz: number, y0a: number, y1a: number, y0b: number, y1b: number, color: THREE.Color) {
+    const b = this.pos.length / 3;
+    this.pos.push(ax, y0a, az, bx, y0b, bz, bx, y1b, bz, ax, y1a, az);
+    for (let i = 0; i < 4; i++) this.col.push(color.r, color.g, color.b);
+    if (this.uvScale) {
+      const s = this.uvScale;
+      this.uv.push(ax / s, az / s, bx / s, bz / s, bx / s, bz / s, ax / s, az / s);
+    }
+    this.idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+  }
+
   quadRot(cx: number, cz: number, ux: number, uz: number, len: number, wid: number, y: number, color: THREE.Color) {
     const hl = len / 2;
     const hw = wid / 2;

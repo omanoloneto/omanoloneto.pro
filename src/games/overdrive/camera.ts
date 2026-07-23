@@ -12,11 +12,12 @@ export function createChaseCam(ctx: Ctx): ChaseCam {
     const fwdZ = Math.cos(car.heading);
     let x = car.x - fwdX * C.dist;
     let z = car.z - fwdZ * C.dist;
-    let y = C.altura;
+    const groundH = ctx.city.heightAt(x, z);
+    let y = groundH + C.altura;
     const top = ctx.city.buildingTopAt(x, z);
-    if (top > 0) y = Math.max(y, top + 2.2);
+    if (top > 0) y = Math.max(y, groundH + top + 2.2);
     target.set(x, y, z);
-    look.set(car.x + fwdX * C.lookAhead, C.lookAltura, car.z + fwdZ * C.lookAhead);
+    look.set(car.x + fwdX * C.lookAhead, ctx.city.heightAt(car.x, car.z) + C.lookAltura, car.z + fwdZ * C.lookAhead);
   }
 
   return {

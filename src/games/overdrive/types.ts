@@ -26,6 +26,7 @@ export interface City {
   solidAt(x: number, z: number): boolean;
   surfaceAt(x: number, z: number): SurfaceKind;
   gridAt(x: number, z: number): number;
+  heightAt(x: number, z: number): number;
   buildingTopAt(x: number, z: number): number;
   streetAt(x: number, z: number, current?: string | null): string | null;
   paintMap(canvas: HTMLCanvasElement, style?: 'padrao' | 'gps'): void;

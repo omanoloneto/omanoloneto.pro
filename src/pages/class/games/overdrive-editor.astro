@@ -16,6 +16,11 @@ const description = 'Editor topo-down pra reposicionar marcos, rotatórias e via
       <strong>🗺️ Overdrive · editor</strong>
       <button type="button" data-fit>Ajustar</button>
       <button type="button" data-snap>Snap: 1</button>
+      <button type="button" data-add="rua">+ Rua</button>
+      <button type="button" data-add="avenida">+ Avenida</button>
+      <button type="button" data-add="br">+ BR</button>
+      <button type="button" data-add-morro>+ Morro</button>
+      <button type="button" data-dup>Duplicar</button>
       <button type="button" data-export>Exportar</button>
       <span class="ed__readout" data-readout></span>
       <a class="ed__voltar" href="/class/games/overdrive/">▶ testar no jogo</a>
@@ -28,7 +33,7 @@ const description = 'Editor topo-down pra reposicionar marcos, rotatórias e via
     <div class="ed__export" data-export-box hidden>
       <div class="ed__export-caixa">
         <div class="ed__export-topo">
-          <span>Cole isto no <code>mapa</code> em <code>src/data/overdrive.ts</code> (substitui vias/predios/marcos/rotatorias/spawn)</span>
+          <span>Cole isto no <code>mapa</code> em <code>src/data/overdrive.ts</code> (substitui vias/predios/marcos/rotatorias/morros/spawn)</span>
           <button type="button" data-export-close aria-label="Fechar">✖</button>
         </div>
         <textarea data-export-text spellcheck="false"></textarea>
@@ -76,12 +81,19 @@ const description = 'Editor topo-down pra reposicionar marcos, rotatórias e via
   }
   .ed__panel h3 { margin: 0 0 8px; font-size: 0.9rem; color: #ffd23f; }
   .ed__panel label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 6px 0; }
-  .ed__panel input {
+  .ed__panel input, .ed__panel select {
     width: 90px; padding: 4px 6px;
     background: #0c0f16; color: #e8ecf8;
     border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px;
     font: inherit; font-size: 0.82rem;
   }
+  .ed__panel .del {
+    width: 100%; margin-top: 8px; padding: 7px;
+    background: #3a1414; color: #ffb4b4;
+    border: 1px solid rgba(255, 80, 80, 0.4); border-radius: 7px;
+    cursor: pointer; font: inherit; font-size: 0.82rem;
+  }
+  .ed__panel .del:hover { background: #501a1a; }
   .ed__panel .hint { opacity: 0.6; font-size: 0.75rem; line-height: 1.4; margin: 8px 0 0; }
   .ed__export {
     position: fixed; inset: 0; z-index: 50;

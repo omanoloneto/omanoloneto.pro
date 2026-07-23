@@ -4,8 +4,9 @@ interface Via { tipo: string; nome?: string; pontos: Pt[] }
 interface Marco { tipo: string; x: number; z: number; rot?: number }
 interface Predio { tipo?: string; x: number; z: number; w: number; d: number; h: number; cor: string; rot?: number }
 interface Rotatoria { x: number; z: number; raioInterno: number; raioExterno: number }
+interface Morro { x: number; z: number; raio: number; altura: number }
 interface Spawn { x: number; z: number; heading: number }
-interface Mapa { nome: string; vias: Via[]; predios: Predio[]; marcos: Marco[]; rotatorias: Rotatoria[]; spawn: Spawn }
+interface Mapa { nome: string; vias: Via[]; predios: Predio[]; marcos: Marco[]; rotatorias: Rotatoria[]; morros: Morro[]; spawn: Spawn }
 
 type Sel =
   | { kind: 'vertex'; via: number; i: number }
@@ -15,6 +16,8 @@ type Sel =
   | { kind: 'rotCenter'; i: number }
   | { kind: 'rotIn'; i: number }
   | { kind: 'rotOut'; i: number }
+  | { kind: 'morro'; i: number }
+  | { kind: 'morroRim'; i: number }
   | { kind: 'spawn' }
   | { kind: 'spawnHeading' }
   | null;
@@ -29,6 +32,7 @@ export function startEditor() {
   const data = JSON.parse(document.querySelector('[data-dados]')!.textContent!);
   const cfg = data.config;
   const mapa: Mapa = data.mapa;
+  if (!mapa.morros) mapa.morros = [];
   const T = cfg.mundo.tamanho;
 
   const canvas = document.querySelector('[data-canvas]') as HTMLCanvasElement;
@@ -42,6 +46,9 @@ export function startEditor() {
   const exportText = document.querySelector('[data-export-text]') as HTMLTextAreaElement;
   const copyBtn = document.querySelector('[data-copy]') as HTMLButtonElement;
   const closeExport = document.querySelector('[data-export-close]') as HTMLButtonElement;
+  const addViaBtns = document.querySelectorAll('[data-add]');
+  const addMorroBtn = document.querySelector('[data-add-morro]') as HTMLButtonElement;
+  const dupBtn = document.querySelector('[data-dup]') as HTMLButtonElement;
 
   const view = { cx: 0, cz: 0, scale: 1 };
   let snap = 1;
@@ -112,6 +119,21 @@ export function startEditor() {
       });
     }
 
+    for (const h of mapa.morros) {
+      g.save();
+      const up = h.altura >= 0;
+      g.strokeStyle = up ? 'rgba(120,180,90,0.9)' : 'rgba(150,110,70,0.9)';
+      g.fillStyle = up ? 'rgba(120,180,90,0.12)' : 'rgba(150,110,70,0.12)';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(sx(h.x), sy(h.z), h.raio * view.scale, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      g.restore();
+      handleDot(h.x + h.raio, h.z, '#8fd15a');
+      centerDot(h.x, h.z, up ? '#8fd15a' : '#c8905a', `morro ${h.altura > 0 ? '+' : ''}${h.altura}`);
+    }
+
     for (const r of mapa.rotatorias) {
       g.strokeStyle = '#8a8f98';
       g.lineWidth = Math.max(2, 10 * view.scale);
@@ -132,7 +154,9 @@ export function startEditor() {
       g.save();
       g.globalAlpha = 0.5;
       g.fillStyle = b.cor || '#888';
-      g.fillRect(sx(b.x - b.w / 2), sy(b.z - b.d / 2), b.w * view.scale, b.d * view.scale);
+      g.translate(sx(b.x), sy(b.z));
+      g.rotate(b.rot || 0);
+      g.fillRect(-b.w / 2 * view.scale, -b.d / 2 * view.scale, b.w * view.scale, b.d * view.scale);
       g.restore();
       handleDot(b.x, b.z, '#c9d2e0');
     }
@@ -148,7 +172,9 @@ export function startEditor() {
         g.fill();
       } else {
         const [fw, fd] = footprint(m.tipo);
-        g.fillRect(sx(m.x - fw / 2), sy(m.z - fd / 2), fw * view.scale, fd * view.scale);
+        g.translate(sx(m.x), sy(m.z));
+        g.rotate(m.rot || 0);
+        g.fillRect(-fw / 2 * view.scale, -fd / 2 * view.scale, fw * view.scale, fd * view.scale);
       }
       g.restore();
       centerDot(m.x, m.z, marcoColor(m.tipo), m.tipo);
@@ -246,6 +272,7 @@ export function startEditor() {
     if (sel.kind === 'vertex') p = mapa.vias[sel.via].pontos[sel.i];
     else if (sel.kind === 'marco') p = [mapa.marcos[sel.i].x, mapa.marcos[sel.i].z];
     else if (sel.kind === 'predio') p = [mapa.predios[sel.i].x, mapa.predios[sel.i].z];
+    else if (sel.kind === 'morro') p = [mapa.morros[sel.i].x, mapa.morros[sel.i].z];
     else if (sel.kind === 'rotCenter') p = [mapa.rotatorias[sel.i].x, mapa.rotatorias[sel.i].z];
     else if (sel.kind === 'spawn') p = [mapa.spawn.x, mapa.spawn.z];
     if (!p) return;
@@ -281,10 +308,12 @@ export function startEditor() {
       if (near(r.x + r.raioExterno, r.z, 8)) return { kind: 'rotOut', i };
       if (near(r.x - r.raioInterno, r.z, 8)) return { kind: 'rotIn', i };
     }
+    for (let i = 0; i < mapa.morros.length; i++) if (near(mapa.morros[i].x + mapa.morros[i].raio, mapa.morros[i].z, 8)) return { kind: 'morroRim', i };
     if (near(s.x, s.z, 12)) return { kind: 'spawn' };
     for (let i = 0; i < mapa.marcos.length; i++) if (near(mapa.marcos[i].x, mapa.marcos[i].z, 12)) return { kind: 'marco', i };
     for (let i = 0; i < mapa.predios.length; i++) if (near(mapa.predios[i].x, mapa.predios[i].z, 11)) return { kind: 'predio', i };
     for (let i = 0; i < mapa.rotatorias.length; i++) if (near(mapa.rotatorias[i].x, mapa.rotatorias[i].z, 12)) return { kind: 'rotCenter', i };
+    for (let i = 0; i < mapa.morros.length; i++) if (near(mapa.morros[i].x, mapa.morros[i].z, 12)) return { kind: 'morro', i };
     for (let v = 0; v < mapa.vias.length; v++) {
       const via = mapa.vias[v];
       const lim = halfW(via.tipo) * view.scale + 4;
@@ -350,6 +379,11 @@ export function startEditor() {
     } else if (d.kind === 'predio') {
       mapa.predios[d.i].x = mx;
       mapa.predios[d.i].z = mz;
+    } else if (d.kind === 'morro') {
+      mapa.morros[d.i].x = mx;
+      mapa.morros[d.i].z = mz;
+    } else if (d.kind === 'morroRim') {
+      mapa.morros[d.i].raio = Math.max(8, Math.round(Math.hypot(wx(px) - mapa.morros[d.i].x, wz(py) - mapa.morros[d.i].z)));
     } else if (d.kind === 'rotCenter') {
       mapa.rotatorias[d.i].x = mx;
       mapa.rotatorias[d.i].z = mz;
@@ -416,14 +450,25 @@ export function startEditor() {
 
   window.addEventListener('keydown', (e) => {
     if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
-    if ((e.key === 'Delete' || e.key === 'Backspace') && sel?.kind === 'vertex') {
-      const via = mapa.vias[sel.via];
-      if (via.pontos.length > 2) {
-        via.pontos.splice(sel.i, 1);
-        sel = null;
-        buildPanel();
-        render();
-      }
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (sel?.kind === 'vertex') {
+        const via = mapa.vias[sel.via];
+        if (via.pontos.length > 2) { via.pontos.splice(sel.i, 1); sel = null; }
+      } else if (sel?.kind === 'viaBody') { mapa.vias.splice(sel.via, 1); sel = null; }
+      else if (sel?.kind === 'morro' || sel?.kind === 'morroRim') { mapa.morros.splice(sel.i, 1); sel = null; }
+      else if (sel?.kind === 'predio') { mapa.predios.splice(sel.i, 1); sel = null; }
+      else if (sel?.kind === 'marco') { mapa.marcos.splice(sel.i, 1); sel = null; }
+      buildPanel();
+      render();
+      return;
+    }
+    if (e.key === '[' || e.key === ']') {
+      const d = (e.key === '[' ? -1 : 1) * Math.PI / 12;
+      if (sel?.kind === 'predio') mapa.predios[sel.i].rot = (mapa.predios[sel.i].rot || 0) + d;
+      else if (sel?.kind === 'marco') mapa.marcos[sel.i].rot = (mapa.marcos[sel.i].rot || 0) + d;
+      else return;
+      buildPanel();
+      render();
       return;
     }
     const step = e.shiftKey ? 10 : 1;
@@ -432,6 +477,7 @@ export function startEditor() {
       if (sel.kind === 'vertex') { mapa.vias[sel.via].pontos[sel.i][0] += dx; mapa.vias[sel.via].pontos[sel.i][1] += dz; }
       else if (sel.kind === 'marco') { mapa.marcos[sel.i].x += dx; mapa.marcos[sel.i].z += dz; }
       else if (sel.kind === 'predio') { mapa.predios[sel.i].x += dx; mapa.predios[sel.i].z += dz; }
+      else if (sel.kind === 'morro') { mapa.morros[sel.i].x += dx; mapa.morros[sel.i].z += dz; }
       else if (sel.kind === 'rotCenter') { mapa.rotatorias[sel.i].x += dx; mapa.rotatorias[sel.i].z += dz; }
       else if (sel.kind === 'spawn') { mapa.spawn.x += dx; mapa.spawn.z += dz; }
       buildPanel();
@@ -447,21 +493,23 @@ export function startEditor() {
     if (!sel) { panel.innerHTML = '<p class="hint">Clique num objeto pra selecionar. Arraste pra mover · roda dá zoom · arraste o vazio pra andar.</p>'; return; }
     const rows: string[] = [];
     const num = (label: string, val: number, key: string) => `<label>${label}<input type="number" step="0.5" value="${val}" data-field="${key}"></label>`;
-    if (sel.kind === 'vertex') {
-      const via = mapa.vias[sel.via];
-      const p = via.pontos[sel.i];
-      rows.push(`<h3>${via.nome ?? via.tipo} · vértice ${sel.i + 1}/${via.pontos.length}</h3>`);
-      rows.push(num('x', p[0], 'vx'));
-      rows.push(num('z', p[1], 'vz'));
-      rows.push('<p class="hint">Delete apaga o vértice · duplo-clique numa via insere um novo.</p>');
-    } else if (sel.kind === 'viaBody') {
-      const via = mapa.vias[sel.via];
-      rows.push(`<h3>${via.nome ?? via.tipo} (via inteira)</h3><p class="hint">Arrastando move a via toda. Clique num vértice pra editar ponto.</p>`);
+    const deg = (rad: number) => Math.round((rad * 180 / Math.PI) * 10) / 10;
+    const viaIdx = sel.kind === 'vertex' ? sel.via : sel.kind === 'viaBody' ? sel.via : -1;
+    if (viaIdx >= 0) {
+      const via = mapa.vias[viaIdx];
+      rows.push(`<h3>${via.nome ?? via.tipo}${sel.kind === 'vertex' ? ` · vértice ${sel.i + 1}/${via.pontos.length}` : ''}</h3>`);
+      rows.push(`<label>nome<input type="text" value="${(via.nome ?? '').replace(/"/g, '&quot;')}" data-via-nome></label>`);
+      rows.push(`<label>tipo<select data-via-tipo>${['rua', 'avenida', 'br'].map((t) => `<option value="${t}"${via.tipo === t ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`);
+      if (sel.kind === 'vertex') { rows.push(num('x', via.pontos[sel.i][0], 'vx')); rows.push(num('z', via.pontos[sel.i][1], 'vz')); }
+      rows.push('<button type="button" class="del" data-del-via>Apagar via</button>');
+      rows.push('<p class="hint">Duplo-clique na via insere vértice · Delete apaga vértice/via.</p>');
     } else if (sel.kind === 'marco') {
       const m = mapa.marcos[sel.i];
       rows.push(`<h3>marco · ${m.tipo}</h3>`);
       rows.push(num('x', m.x, 'mx'));
       rows.push(num('z', m.z, 'mz'));
+      rows.push(num('rotação (graus)', deg(m.rot || 0), 'mr'));
+      rows.push('<p class="hint">[ ] gira 15° · Duplicar copia · Delete apaga.</p>');
     } else if (sel.kind === 'predio') {
       const b = mapa.predios[sel.i];
       rows.push(`<h3>prédio · ${b.tipo ?? 'box'}</h3>`);
@@ -470,6 +518,16 @@ export function startEditor() {
       rows.push(num('largura', b.w, 'pw'));
       rows.push(num('profund.', b.d, 'pd'));
       rows.push(num('altura', b.h, 'ph'));
+      rows.push(num('rotação (graus)', deg(b.rot || 0), 'pr'));
+      rows.push('<p class="hint">[ ] gira 15° · Duplicar copia · Delete apaga.</p>');
+    } else if (sel.kind === 'morro' || sel.kind === 'morroRim') {
+      const h = mapa.morros[sel.i];
+      rows.push('<h3>morro</h3>');
+      rows.push(num('x', h.x, 'hx'));
+      rows.push(num('z', h.z, 'hz'));
+      rows.push(num('raio', h.raio, 'hraio'));
+      rows.push(num('altura', h.altura, 'haltura'));
+      rows.push('<p class="hint">Altura negativa = vale · Delete apaga.</p>');
     } else if (sel.kind === 'rotCenter' || sel.kind === 'rotIn' || sel.kind === 'rotOut') {
       const r = mapa.rotatorias[sel.i];
       rows.push('<h3>rotatória</h3>');
@@ -482,7 +540,7 @@ export function startEditor() {
       rows.push('<h3>spawn</h3>');
       rows.push(num('x', s.x, 'sx'));
       rows.push(num('z', s.z, 'sz'));
-      rows.push(num('heading (graus)', Math.round((s.heading * 180 / Math.PI) * 10) / 10, 'sh'));
+      rows.push(num('heading (graus)', deg(s.heading), 'sh'));
     }
     panel.innerHTML = rows.join('');
     panel.querySelectorAll('input[data-field]').forEach((el) => {
@@ -494,19 +552,35 @@ export function startEditor() {
         render();
       });
     });
+    const nomeI = panel.querySelector('[data-via-nome]') as HTMLInputElement | null;
+    nomeI?.addEventListener('input', () => { if (viaIdx >= 0) { mapa.vias[viaIdx].nome = nomeI.value; render(); } });
+    const tipoS = panel.querySelector('[data-via-tipo]') as HTMLSelectElement | null;
+    tipoS?.addEventListener('change', () => { if (viaIdx >= 0) { mapa.vias[viaIdx].tipo = tipoS.value; render(); } });
+    panel.querySelector('[data-del-via]')?.addEventListener('click', () => { if (viaIdx >= 0) { mapa.vias.splice(viaIdx, 1); sel = null; buildPanel(); render(); } });
   }
 
   function applyField(field: string, val: number) {
     if (!sel) return;
     if (sel.kind === 'vertex') { if (field === 'vx') mapa.vias[sel.via].pontos[sel.i][0] = val; else mapa.vias[sel.via].pontos[sel.i][1] = val; }
-    else if (sel.kind === 'marco') { if (field === 'mx') mapa.marcos[sel.i].x = val; else mapa.marcos[sel.i].z = val; }
-    else if (sel.kind === 'predio') {
+    else if (sel.kind === 'marco') {
+      const m = mapa.marcos[sel.i];
+      if (field === 'mx') m.x = val;
+      else if (field === 'mz') m.z = val;
+      else if (field === 'mr') m.rot = val * Math.PI / 180;
+    } else if (sel.kind === 'predio') {
       const b = mapa.predios[sel.i];
       if (field === 'px') b.x = val;
       else if (field === 'pz') b.z = val;
       else if (field === 'pw') b.w = val;
       else if (field === 'pd') b.d = val;
       else if (field === 'ph') b.h = val;
+      else if (field === 'pr') b.rot = val * Math.PI / 180;
+    } else if (sel.kind === 'morro' || sel.kind === 'morroRim') {
+      const h = mapa.morros[sel.i];
+      if (field === 'hx') h.x = val;
+      else if (field === 'hz') h.z = val;
+      else if (field === 'hraio') h.raio = val;
+      else if (field === 'haltura') h.altura = val;
     } else if (sel.kind === 'rotCenter' || sel.kind === 'rotIn' || sel.kind === 'rotOut') {
       const r = mapa.rotatorias[sel.i];
       if (field === 'rx') r.x = val;
@@ -523,9 +597,11 @@ export function startEditor() {
   const ri = (v: number) => Math.round(v);
   function buildExport() {
     const via = (v: Via) => `    { tipo: '${v.tipo}',${v.nome ? ` nome: '${v.nome.replace(/'/g, "\\'")}',` : ''} pontos: [${v.pontos.map((p) => `[${ri(p[0])}, ${ri(p[1])}]`).join(', ')}] },`;
-    const marco = (m: Marco) => `    { tipo: '${m.tipo}', x: ${ri(m.x)}, z: ${ri(m.z)}${m.rot !== undefined ? `, rot: ${m.rot}` : ''} },`;
+    const rr = (v?: number) => (v ? `, rot: ${Math.round(v * 1e4) / 1e4}` : '');
+    const marco = (m: Marco) => `    { tipo: '${m.tipo}', x: ${ri(m.x)}, z: ${ri(m.z)}${rr(m.rot)} },`;
     const rota = (r: Rotatoria) => `    { x: ${ri(r.x)}, z: ${ri(r.z)}, raioInterno: ${ri(r.raioInterno)}, raioExterno: ${ri(r.raioExterno)} },`;
-    const predio = (b: Predio) => `    { tipo: '${b.tipo ?? 'box'}', x: ${ri(b.x)}, z: ${ri(b.z)}, w: ${ri(b.w)}, d: ${ri(b.d)}, h: ${ri(b.h)}, cor: '${b.cor}'${b.rot !== undefined ? `, rot: ${b.rot}` : ''} },`;
+    const predio = (b: Predio) => `    { tipo: '${b.tipo ?? 'box'}', x: ${ri(b.x)}, z: ${ri(b.z)}, w: ${ri(b.w)}, d: ${ri(b.d)}, h: ${ri(b.h)}, cor: '${b.cor}'${rr(b.rot)} },`;
+    const morro = (h: Morro) => `    { x: ${ri(h.x)}, z: ${ri(h.z)}, raio: ${ri(h.raio)}, altura: ${Math.round(h.altura * 10) / 10} },`;
     return [
       '  vias: [',
       mapa.vias.map(via).join('\n'),
@@ -537,6 +613,7 @@ export function startEditor() {
       '  rotatorias: [',
       mapa.rotatorias.map(rota).join('\n'),
       '  ] as Rotatoria[],',
+      mapa.morros.length ? `  morros: [\n${mapa.morros.map(morro).join('\n')}\n  ] as Morro[],` : '  morros: [] as Morro[],',
       `  spawn: { x: ${Math.round(mapa.spawn.x * 100) / 100}, z: ${Math.round(mapa.spawn.z * 100) / 100}, heading: ${Math.round(mapa.spawn.heading * 1e6) / 1e6} },`,
     ].join('\n');
   }
@@ -558,6 +635,38 @@ export function startEditor() {
     setTimeout(() => (copyBtn.textContent = 'Copiar'), 1200);
   });
   closeExport.addEventListener('click', () => (exportBox.hidden = true));
+
+  const centerXZ = (): Pt => [Math.round(view.cx), Math.round(view.cz)];
+  addViaBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const tipo = (btn as HTMLElement).dataset.add!;
+      const [cx, cz] = centerXZ();
+      mapa.vias.push({ tipo, nome: tipo === 'br' ? 'BR' : tipo === 'avenida' ? 'Nova Avenida' : 'Nova Rua', pontos: [[cx - 40, cz], [cx + 40, cz]] });
+      sel = { kind: 'viaBody', via: mapa.vias.length - 1 };
+      buildPanel();
+      render();
+    });
+  });
+  addMorroBtn.addEventListener('click', () => {
+    const [cx, cz] = centerXZ();
+    mapa.morros.push({ x: cx, z: cz, raio: 60, altura: 12 });
+    sel = { kind: 'morro', i: mapa.morros.length - 1 };
+    buildPanel();
+    render();
+  });
+  dupBtn.addEventListener('click', () => {
+    if (sel?.kind === 'predio') {
+      const b = mapa.predios[sel.i];
+      mapa.predios.push({ ...b, x: b.x + 8, z: b.z + 8 });
+      sel = { kind: 'predio', i: mapa.predios.length - 1 };
+    } else if (sel?.kind === 'marco') {
+      const m = mapa.marcos[sel.i];
+      mapa.marcos.push({ ...m, x: m.x + 8, z: m.z + 8 });
+      sel = { kind: 'marco', i: mapa.marcos.length - 1 };
+    } else return;
+    buildPanel();
+    render();
+  });
 
   window.addEventListener('resize', resize);
   snapBtn.textContent = `Snap: ${snap}`;

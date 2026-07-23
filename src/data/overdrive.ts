@@ -122,6 +122,13 @@ export interface Rotatoria {
   raioExterno: number;
 }
 
+export interface Morro {
+  x: number;
+  z: number;
+  raio: number;
+  altura: number;
+}
+
 export const mapa = {
   nome: 'São Leopoldo',
     vias: [
@@ -161,6 +168,7 @@ export const mapa = {
   rotatorias: [
     { x: -175, z: 93, raioInterno: 12, raioExterno: 33 },
   ] as Rotatoria[],
+  morros: [] as Morro[],
   spawn: { x: -400, z: -171.75, heading: 1.570796 },
 };
 
