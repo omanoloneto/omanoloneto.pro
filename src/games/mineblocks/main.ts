@@ -6,6 +6,7 @@ import { spawnVendingMachine } from './vending';
 import { criarAudio } from './audio';
 import { criarTextura } from './textura';
 import { criarMundo } from './mundo';
+import { createBlockLight } from './luz';
 import { criarMetas } from './meta';
 import { gerarMundo, reseedOres, ensurePampa } from './geracao';
 import { criarMalha } from './malha';
@@ -88,6 +89,8 @@ export function startGame() {
   ctx.audio.bindMute(ctx.ui.els.muteBtn, ctx.ui.els.muteIcon);
   ctx.texture = criarTextura(ctx);
   ctx.world = criarMundo(ctx);
+  ctx.light = createBlockLight(ctx);
+  ctx.world.onLight = ctx.light.onBlockChange;
   ctx.metas = criarMetas(ctx);
   ctx.meshes = criarMalha(ctx);
   ctx.sky = criarCeu(ctx);
@@ -541,6 +544,7 @@ export function startGame() {
       reseedOres(ctx);
       ctx.meshes.buildAll();
     },
+    lightAt: (x: number, y: number, z: number) => ctx.light.level(x, y, z),
     ensurePampa: () => {
       const r = ensurePampa(ctx, state.seed);
       ctx.meshes.buildAll();

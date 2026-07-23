@@ -84,6 +84,13 @@ export interface World {
   highestGround(x: number, z: number): number;
   clear(): void;
   onChange?: (x: number, y: number, z: number, id: number) => void;
+  onLight?: (x: number, y: number, z: number, oldId: number, newId: number) => void;
+}
+
+export interface BlockLight {
+  level(x: number, y: number, z: number): number;
+  rebuildAll(): void;
+  onBlockChange(x: number, y: number, z: number, oldId: number, newId: number): void;
 }
 
 export interface Meshes {
@@ -314,6 +321,7 @@ export interface Ctx {
   audio: Audio;
   texture: Texture;
   world: World;
+  light: BlockLight;
   metas: MetaStore;
   meshes: Meshes;
   sky: Sky;

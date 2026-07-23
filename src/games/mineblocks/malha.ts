@@ -155,7 +155,7 @@ const FURNITURE: Record<number, FurniturePiece[]> = {
 };
 
 export function criarMalha(ctx: Ctx): Meshes {
-  const { scene, world: mundo, texture: textura, byId: porId, cfg } = ctx;
+  const { scene, world: mundo, texture: textura, byId: porId, cfg, light: luzBloco } = ctx;
   const { SX, SY, CHUNK } = cfg.mundo;
   const NCX = SX / CHUNK;
 
@@ -167,11 +167,15 @@ export function criarMalha(ctx: Ctx): Meshes {
     map: textura.atlas, vertexColors: true, transparent: true, opacity: 0.65,
     depthWrite: false, side: THREE.DoubleSide,
   });
+  // camada de tocha: NUNCA recebe o tint de noite — faces iluminadas ficam acesas
+  const matLuz = new THREE.MeshBasicMaterial({
+    map: textura.atlas, vertexColors: true, alphaTest: 0.5, side: THREE.DoubleSide,
+  });
 
-  // meshes[ci] = [opaca, recorte, agua] (null onde a camada é vazia)
+  // meshes[ci] = [opaca, recorte, agua, luz] (null onde a camada é vazia)
   const meshes: Array<Array<THREE.Mesh | null>> = [];
-  for (let i = 0; i < NCX * NCX; i++) meshes.push([null, null, null]);
-  const materiais = [matOpaca, matRecorte, matAgua];
+  for (let i = 0; i < NCX * NCX; i++) meshes.push([null, null, null, null]);
+  const materiais = [matOpaca, matRecorte, matAgua, matLuz];
 
   // AO: bloco 'cubo' oclui; vidro/água/flor não. Fora do mundo NÃO oclui
   // (a parede fantasma do obter é só pro culling — sem ela a borda inteira
@@ -183,7 +187,7 @@ export function criarMalha(ctx: Ctx): Meshes {
 
   function empurrarFace(
     c: Camada, f: number, bx: number, by: number, bz: number,
-    tile: number, comAO: boolean, afundarTopo: number, recuo: number
+    tile: number, comAO: boolean, afundarTopo: number, recuo: number, luzTocha = 0
   ) {
     const face = FACES[f];
     const [u0, v0, u1, v1] = textura.uv(tile);
@@ -226,7 +230,7 @@ export function criarMalha(ctx: Ctx): Meshes {
       const [rx, ry, rz] = face.n;
       c.pos.push(bx + cv[0] - rx * recuo, vy - ry * recuo, bz + cv[2] - rz * recuo);
       c.uv.push(uvs[i][0], uvs[i][1]);
-      const luz = sombra * brilho;
+      const luz = Math.max(sombra * brilho, luzTocha);
       c.cor.push(luz, luz, luz);
     }
     // diagonal consistente com o AO (evita o "X" invertido nas quinas)
@@ -346,13 +350,13 @@ export function criarMalha(ctx: Ctx): Meshes {
     }
   }
 
-  function empurrarCruz(c: Camada, bx: number, by: number, bz: number, tile: number) {
+  function empurrarCruz(c: Camada, bx: number, by: number, bz: number, tile: number, luz = 0.95) {
     const [u0, v0, u1, v1] = textura.uv(tile);
     for (const [x0, z0, x1, z1] of [[0.14, 0.14, 0.86, 0.86], [0.86, 0.14, 0.14, 0.86]] as const) {
       const base = c.pos.length / 3;
       c.pos.push(bx + x0, by, bz + z0, bx + x1, by, bz + z1, bx + x1, by + 1, bz + z1, bx + x0, by + 1, bz + z0);
       c.uv.push(u0, v0, u1, v0, u1, v1, u0, v1);
-      for (let i = 0; i < 4; i++) c.cor.push(0.95, 0.95, 0.95);
+      for (let i = 0; i < 4; i++) c.cor.push(luz, luz, luz);
       c.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     }
   }
@@ -412,6 +416,7 @@ export function criarMalha(ctx: Ctx): Meshes {
       { pos: [], uv: [], cor: [], idx: [] },
       { pos: [], uv: [], cor: [], idx: [] },
       { pos: [], uv: [], cor: [], idx: [] },
+      { pos: [], uv: [], cor: [], idx: [] },
     ];
     const x0 = cx * CHUNK;
     const z0 = cz * CHUNK;
@@ -423,7 +428,9 @@ export function criarMalha(ctx: Ctx): Meshes {
           const def = porId(id);
           if (!def) continue; // id desconhecido (save de versão futura?): pula
           if (def.render === 'cruz') {
-            empurrarCruz(camadas[1], x, y, z, def.tiles[0]);
+            const Lc = id === 62 ? 12 : luzBloco.level(x, y, z);
+            if (Lc > 0) empurrarCruz(camadas[3], x, y, z, def.tiles[0], id === 62 ? 1 : Math.max(0.4, 0.35 + 0.65 * (Lc / 12)));
+            else empurrarCruz(camadas[1], x, y, z, def.tiles[0]);
             continue;
           }
           if (def.render === 'porta') {
@@ -431,10 +438,9 @@ export function criarMalha(ctx: Ctx): Meshes {
             continue;
           }
           if (def.render === 'movel') {
-            empurrarMovel(camadas[0], x, y, z, id);
+            empurrarMovel(luzBloco.level(x, y, z) > 0 ? camadas[3] : camadas[0], x, y, z, id);
             continue;
           }
-          const camada = def.render === 'agua' ? camadas[2] : def.render === 'recorte' ? camadas[1] : camadas[0];
           const comAO = def.render === 'cubo';
           // topo da água rebaixado quando tem ar em cima (linha d'água)
           const superficie = def.render === 'agua' && mundo.get(x, y + 1, z) === 0 ? 0.12 : 0;
@@ -442,17 +448,20 @@ export function criarMalha(ctx: Ctx): Meshes {
             const n = FACES[f].n;
             const viz = mundo.get(x + n[0], y + n[1], z + n[2]);
             if (!faceVisivel(id, viz)) continue;
+            const Lf = def.render === 'cubo' ? luzBloco.level(x + n[0], y + n[1], z + n[2]) : 0;
+            const luzTocha = Lf > 0 ? 0.35 + 0.65 * (Lf / 12) : 0;
+            const camada = def.render === 'agua' ? camadas[2] : def.render === 'recorte' ? camadas[1] : luzTocha > 0 ? camadas[3] : camadas[0];
             const tile = f === 2 ? def.tiles[0] : f === 3 ? def.tiles[2] : def.tiles[1];
             const vizDef = viz === 0 ? null : porId(viz);
             const recuo = def.render === 'agua' && vizDef && vizDef.render === 'recorte' ? 0.0045 : 0;
-            empurrarFace(camada, f, x, y, z, tile, comAO, superficie, recuo);
+            empurrarFace(camada, f, x, y, z, tile, comAO, superficie, recuo, luzTocha);
             if (OUTLINE_GROUP[id] !== undefined) empurrarBordas(camadas[0], f, x, y, z, id);
           }
         }
       }
     }
 
-    for (let l = 0; l < 3; l++) {
+    for (let l = 0; l < 4; l++) {
       const velho = meshes[ci][l];
       if (velho) {
         velho.geometry.dispose();
@@ -477,6 +486,7 @@ export function criarMalha(ctx: Ctx): Meshes {
 
   return {
     buildAll() {
+      luzBloco.rebuildAll();
       for (let ci = 0; ci < NCX * NCX; ci++) reconstruirChunk(ci);
       mundo.dirty.clear();
     },

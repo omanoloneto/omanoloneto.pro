@@ -22,8 +22,10 @@ export function criarMundo(ctx: Ctx): World {
 
   function definir(x: number, y: number, z: number, id: number) {
     if (x < 0 || x >= SX || z < 0 || z >= SZ || y < 0 || y >= SY) return;
+    const antes = dados[x + z * SX + y * SX * SZ];
     dados[x + z * SX + y * SX * SZ] = id;
     api.onChange?.(x, y, z, id); // multiplayer escuta TODA escrita daqui
+    api.onLight?.(x, y, z, antes, id);
     // AO alcança a diagonal: um edit na borda muda vértices do chunk vizinho
     marcarSujo(x, z);
     marcarSujo(x - 1, z); marcarSujo(x + 1, z);

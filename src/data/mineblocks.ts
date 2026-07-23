@@ -82,8 +82,9 @@ export const blocos: Bloco[] = [
   { id: 59, nome: 'estante', tiles: [60, 60, 60], solido: true, render: 'movel', drop: 58, dureza: 600, madeira: true },
   { id: 60, nome: 'tronco de umbu', tiles: [63, 62, 63], solido: true, render: 'cubo', dureza: 1500, madeira: true },
   { id: 61, nome: 'tábuas de umbu', tiles: [63, 63, 63], solido: true, render: 'cubo', dureza: 1500, madeira: true },
+  { id: 62, nome: 'tocha', tiles: [64, 64, 64], solido: false, render: 'cruz', drop: 62, dureza: 150 },
 ];
-export const itens = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36, 45, 46, 52, 54, 56, 57, 58, 60, 61];
+export const itens = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36, 45, 46, 52, 54, 56, 57, 58, 60, 61, 62];
 export const materiais = [21, 23, 25, 26, 38, 39, 40, 50, 51];
 export interface Receita {
   de: number;
@@ -97,6 +98,7 @@ export interface Receita {
 export const receitas: Receita[] = [
   { de: 5, qtd: 1, para: 6, ganha: 4 },
   { de: 60, qtd: 1, para: 61, ganha: 4 },
+  { de: 6, qtd: 1, de2: 23, qtd2: 1, para: 62, ganha: 4 },
   { de: 10, qtd: 2, para: 9, ganha: 1 },
   { de: 10, qtd: 2, para: 29, ganha: 1 },
   { de: 2, qtd: 1, para: 1, ganha: 1 },

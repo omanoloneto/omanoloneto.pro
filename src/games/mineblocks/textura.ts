@@ -4,7 +4,7 @@ import type { Ctx, Texture } from './types';
 
 const TILE = 16;
 const GRID = 4;
-const ROWS = 16;
+const ROWS = 17;
 const W = TILE * GRID;
 const H = TILE * ROWS;
 
@@ -684,6 +684,20 @@ export function criarTextura(_ctx: Ctx): Texture {
     const [ox, oy] = base(61, [255, 255, 255], 0);
     g.fillStyle = '#ffffff';
     g.fillRect(ox, oy, TILE, TILE);
+  }
+  {
+    const ox = (64 % GRID) * TILE;
+    const oy = Math.floor(64 / GRID) * TILE;
+    g.fillStyle = '#7c4f28';
+    g.fillRect(ox + 7, oy + 4, 2, 9);
+    g.fillStyle = '#a06b3a';
+    g.fillRect(ox + 7, oy + 4, 1, 9);
+    g.fillStyle = '#f09c3a';
+    g.fillRect(ox + 6, oy + 1, 4, 4);
+    g.fillStyle = '#ffdf6b';
+    g.fillRect(ox + 7, oy + 1, 2, 3);
+    g.fillStyle = '#fff6d8';
+    g.fillRect(ox + 7, oy + 2, 1, 1);
   }
   {
     const [ox, oy] = base(62, [110, 90, 82], 0.015);
