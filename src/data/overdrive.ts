@@ -102,6 +102,22 @@ export interface Predio {
   cor: string;
 }
 
+export type MarcoTipo = 'ginasio' | 'prefeitura' | 'skate';
+
+export interface Marco {
+  tipo: MarcoTipo;
+  x: number;
+  z: number;
+  rot?: number;
+}
+
+export interface Rotatoria {
+  x: number;
+  z: number;
+  raioInterno: number;
+  raioExterno: number;
+}
+
 export const mapa = {
   nome: 'São Leopoldo',
   vias: [
@@ -126,6 +142,14 @@ export const mapa = {
     { tipo: 'rua', nome: 'R. Amadeo Rossi', pontos: [[230, -188], [248, -110], [210, -64]] },
   ] as Via[],
   predios: [] as Predio[],
+  marcos: [
+    { tipo: 'ginasio', x: -314, z: -240 },
+    { tipo: 'skate', x: -238, z: -240 },
+    { tipo: 'prefeitura', x: -400, z: -38 },
+  ] as Marco[],
+  rotatorias: [
+    { x: -190, z: 60, raioInterno: 12, raioExterno: 22 },
+  ] as Rotatoria[],
   spawn: { x: -400, z: -171.75, heading: Math.PI / 2 },
 };
 
@@ -149,6 +173,7 @@ export const config = {
   vias: {
     amostraPasso: 2,
     gapMargem: 2.5,
+    calcada: { larg: 2.0, alt: 0.15, gap: 2.5, passo: 6 },
     avenida: {
       pista: 7.5,
       canteiro: 3,
@@ -182,6 +207,12 @@ export const config = {
       posteAltura: 4.4,
     },
   },
+  marcos: {
+    ginasio: { drumR: 20, drumH: 9, domeR: 21, domeH: 8.5, colunas: 16, colW: 0.8, colD: 0.6, colH: 8.6, bandaY: 5.4, bandaH: 1.8, bandaSegs: 28 },
+    prefeitura: { w: 20, h: 26, d: 14, terreoH: 5, terreoInset: 1.5, andarH: 3, bandaH: 1.1 },
+    skate: { padW: 26, padD: 20, rampaAng: 0.34, funboxH: 1.4 },
+    rotatoria: { ringSegs: 44, ringWid: 10, ilhaH: 1.2, obeliscoH: 10 },
+  },
   cores: {
     ceu: '#05070f',
     neblina: '#070c1a',
@@ -197,12 +228,27 @@ export const config = {
     grama: '#101c13',
     canteiro: '#17301c',
     guia: '#8d93a0',
+    calcada: '#9a9ba1',
+    calcadaMureta: '#7c7d83',
     deckBR: '#333a48',
     muretaBR: '#565e6e',
     pilarBR: '#3d434f',
     poste: '#3a3f4a',
     luzPoste: '#ffd9a0',
     poolLuz: '#2c3346',
+    ginasioDrum: '#8f8c83',
+    ginasioDome: '#7c7e80',
+    ginasioColuna: '#2f6fb0',
+    ginasioJanela: '#3a5a8c',
+    prefeituraCorpo: '#d7d9dc',
+    prefeituraTerreo: '#3a3d44',
+    prefeituraJanela: '#38507a',
+    prefeituraVidro: '#20344e',
+    skateConcreto: '#9a9ea3',
+    skateRampa: '#82868c',
+    skateNeon: '#19e0d0',
+    rotatoriaIlha: '#14261a',
+    rotatoriaMonumento: '#b8bcc2',
   },
   somLigadoInicial: true,
 };
