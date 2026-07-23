@@ -2,7 +2,14 @@ import type { config, especies, mapas, tiles } from '../../data/wildmon';
 
 export type Cfg = typeof config;
 export type Dir = 0 | 1 | 2 | 3;
-export type Fase = 'intro' | 'jogando' | 'dialogo';
+export type Fase = 'intro' | 'jogando' | 'dialogo' | 'batalha' | 'colecao';
+
+export interface Combatente {
+  especieId: string;
+  energia: number;
+}
+
+export type ResultadoBatalha = 'amigo' | 'fugiu' | 'nada';
 
 export interface Jogador {
   x: number;
@@ -22,6 +29,8 @@ export interface Estado {
   mapa: string;
   mudo: boolean;
   online: number;
+  time: Combatente[];
+  colecao: string[];
 }
 
 export interface Input {
@@ -43,6 +52,21 @@ export interface Rede {
   remotos(): JogadorRemoto[];
   flushSair(): void;
   ligado(): boolean;
+}
+
+export interface Batalha {
+  iniciar(especieId: string, aoFim: (r: ResultadoBatalha) => void): void;
+  passo(dt: number): void;
+  desenhar(ts: number): void;
+  apertouA(): void;
+  mover(dx: number, dy: number): void;
+  ativa(): boolean;
+}
+
+export interface Colecao {
+  abrir(): void;
+  fechar(): void;
+  aberta(): boolean;
 }
 
 export interface JogadorRemoto {
@@ -78,7 +102,7 @@ export interface Audio {
 }
 
 export interface Salvar {
-  carregar(): { nome: string; starter: 'dog' | 'cat'; mapa: string; x: number; y: number } | null;
+  carregar(): { nome: string; starter: 'dog' | 'cat'; mapa: string; x: number; y: number; colecao: string[]; time: string[] } | null;
   gravar(): void;
   nomeGuardado(): string;
 }
@@ -100,4 +124,6 @@ export interface Contexto {
   overworld: Overworld;
   rede: Rede;
   salvar: Salvar;
+  batalha: Batalha;
+  colecaoUI: Colecao;
 }

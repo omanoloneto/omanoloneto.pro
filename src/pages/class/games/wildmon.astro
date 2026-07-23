@@ -16,6 +16,7 @@ const description =
     <header class="hud">
       <span class="hud__titulo">🐾 Wildmon</span>
       <strong class="hud__online" data-online>👥 1</strong>
+      <button class="hud__mute" type="button" data-abrir-dex aria-label="Ver meus amigos">📕</button>
       <button class="hud__mute" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som">
         <span data-mute-icon>🔊</span>
       </button>
@@ -23,6 +24,25 @@ const description =
 
     <div class="palco" data-palco>
       <canvas class="tela" data-canvas aria-hidden="true"></canvas>
+      <div class="batalha" data-batalha hidden>
+        <div class="bt-info bt-info--in">
+          <span class="bt-nome" data-bt-nome-in></span>
+          <div class="bt-barra"><i data-bt-barra-in></i></div>
+        </div>
+        <div class="bt-info bt-info--al">
+          <span class="bt-nome" data-bt-nome-al></span>
+          <div class="bt-barra"><i data-bt-barra-al></i></div>
+          <span class="bt-en" data-bt-en-al></span>
+        </div>
+        <p class="bt-msg" data-bt-msg></p>
+        <div class="bt-menu" data-bt-menu role="menu" hidden>
+          <button type="button" data-bt-acao="lutar">⚔️ LUTAR</button>
+          <button type="button" data-bt-acao="trocar">🔄 TROCAR</button>
+          <button type="button" data-bt-acao="amigar">💚 AMIGAR</button>
+          <button type="button" data-bt-acao="fugir">🏃 FUGIR</button>
+        </div>
+        <div class="bt-lista" data-bt-lista hidden></div>
+      </div>
       <div class="dialogo" data-dialogo hidden>
         <p data-dialogo-texto></p>
         <span class="dialogo__seta" data-dialogo-seta hidden>▼</span>
@@ -70,6 +90,16 @@ const description =
           </form>
           <p class="erro" data-erro-intro role="alert" hidden></p>
           <a class="voltar" href="/class/games/">← voltar pros jogos</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-colecao hidden>
+      <div class="placa" role="dialog" aria-modal="true" aria-labelledby="dex-title">
+        <div class="placa__topo" id="dex-title">🐾 Meus amigos <span class="dex-contagem" data-colecao-contagem></span></div>
+        <div class="placa__corpo">
+          <div class="dex" data-colecao-grade></div>
+          <button class="botao botao--go" type="button" data-colecao-fechar>Fechar</button>
         </div>
       </div>
     </div>
@@ -160,6 +190,84 @@ const description =
     }
     .toast.show { opacity: 1; }
     .toast[hidden] { display: none; }
+
+    .batalha { position: absolute; inset: 0; pointer-events: none; font-family: inherit; }
+    .batalha[hidden] { display: none; }
+    .batalha button { pointer-events: auto; touch-action: manipulation; }
+
+    .bt-info {
+      position: absolute; min-width: 40%;
+      background: rgba(10, 25, 12, 0.9);
+      border: 2px solid var(--verde); border-radius: 8px;
+      padding: 5px 8px;
+      font-size: clamp(0.62rem, 2vw, 0.82rem); font-weight: 800;
+    }
+    .bt-info--in { top: 4%; left: 3%; }
+    .bt-info--al { top: 4%; right: 3%; text-align: right; }
+    .bt-nome { display: block; letter-spacing: 1px; }
+    .bt-barra {
+      height: 8px; margin-top: 3px;
+      background: rgba(6, 14, 8, 0.9);
+      border: 1px solid rgba(106, 190, 79, 0.5);
+      border-radius: 999px; overflow: hidden;
+    }
+    .bt-barra i {
+      display: block; height: 100%; width: 100%;
+      background: linear-gradient(90deg, #6abe4f, #9ade7f);
+      transition: width 0.12s linear;
+    }
+    .bt-en { font-size: 0.7rem; color: rgba(220, 245, 225, 0.85); }
+
+    .bt-msg {
+      position: absolute; left: 2%; right: 2%; bottom: 2%;
+      min-height: 2.8em;
+      background: rgba(10, 25, 12, 0.94);
+      border: 2px solid var(--verde); border-radius: 10px;
+      padding: 8px 12px;
+      font-size: clamp(0.8rem, 2.5vw, 1rem); line-height: 1.4;
+    }
+    .bt-menu, .bt-lista {
+      position: absolute; right: 2%; bottom: calc(2% + 3.6em);
+      width: min(62%, 280px);
+      display: grid; gap: 5px;
+    }
+    .bt-menu { grid-template-columns: 1fr 1fr; }
+    .bt-lista { grid-template-columns: 1fr; max-height: 46%; overflow-y: auto; }
+    .bt-menu[hidden], .bt-lista[hidden] { display: none; }
+    .bt-menu button, .bt-lista button {
+      font-family: inherit; font-weight: 800;
+      font-size: clamp(0.68rem, 2.2vw, 0.9rem);
+      color: #eaf6ff; cursor: pointer; padding: 9px 6px;
+      background: rgba(10, 25, 12, 0.94);
+      border: 2px solid rgba(106, 190, 79, 0.5); border-radius: 8px;
+      text-align: center;
+    }
+    .bt-lista button { text-align: left; }
+    .bt-menu button.sel, .bt-lista button.sel {
+      border-color: var(--amarelo);
+      background: rgba(255, 210, 63, 0.22);
+      box-shadow: 0 0 0 2px rgba(255, 210, 63, 0.3);
+    }
+    .bt-lista button.off { opacity: 0.4; cursor: default; }
+
+    .dex {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+      margin-bottom: 14px;
+    }
+    .dex-cel {
+      display: grid; justify-items: center; gap: 2px;
+      padding: 6px 3px; border-radius: 10px;
+      background: rgba(6, 14, 8, 0.7);
+      border: 2px solid rgba(106, 190, 79, 0.3);
+      text-align: center;
+    }
+    .dex-arte { width: 40px; height: 40px; display: grid; place-items: center; }
+    .dex-arte canvas { width: 40px; height: 40px; image-rendering: pixelated; }
+    .dex-cel.oculto .dex-arte canvas { filter: brightness(0) opacity(0.55); }
+    .dex-cel.bloqueado .dex-arte { font-size: 1.6rem; font-weight: 800; color: rgba(220, 245, 225, 0.3); }
+    .dex-cel strong { font-size: 0.72rem; letter-spacing: 1px; }
+    .dex-cel span { font-size: 0.6rem; color: rgba(220, 245, 225, 0.65); line-height: 1.2; }
+    .dex-contagem { font-size: 0.9rem; font-weight: 800; color: var(--amarelo); }
 
     .controles {
       display: flex; align-items: center; justify-content: space-between;
@@ -278,7 +386,7 @@ const description =
 
     @media (prefers-reduced-motion: reduce) {
       .placa, .dialogo__seta { animation: none !important; }
-      .toast, .starter { transition: none !important; }
+      .toast, .starter, .bt-barra i { transition: none !important; }
     }
   </style>
 

@@ -26,6 +26,13 @@ function contorno(sprite: HTMLCanvasElement, cor = '#26302a'): HTMLCanvasElement
   return c;
 }
 
+function escala(sprite: HTMLCanvasElement, n: number): HTMLCanvasElement {
+  const [c, g] = novo(sprite.width * n, sprite.height * n);
+  g.imageSmoothingEnabled = false;
+  g.drawImage(sprite, 0, 0, sprite.width * n, sprite.height * n);
+  return c;
+}
+
 const P = {
   gramaClara: '#a0d078',
   grama: '#88c060',
@@ -463,6 +470,34 @@ function selvagem(id: string, frame: number): HTMLCanvasElement {
     }
     ret(g, f ? 6 : 7, 12, 1, 2, '#f0a030');
     ret(g, f ? 9 : 8, 12, 1, 2, '#f0a030');
+  } else if (id === 'pig') {
+    ret(g, 2, 8, 10, 5, '#f0a0b0');
+    ret(g, 2, 8, 10, 2, '#f8c0cc');
+    ret(g, 10, 5, 5, 5, '#f0a0b0');
+    ret(g, 10, 5, 5, 2, '#f8c0cc');
+    ret(g, 13, 8, 2, 2, '#e07890');
+    px(g, 13, 8, '#a05060');
+    px(g, 14, 9, '#a05060');
+    px(g, 12, 6, '#282828');
+    px(g, 10, 3, '#f0a0b0');
+    px(g, 11, 4, '#e07890');
+    px(g, 13, 3, '#f0a0b0');
+    px(g, 14, 4, '#e07890');
+    ret(g, 0, 9, 2, 2, '#f8c0cc');
+    ret(g, f ? 3 : 4, 13, 2, 2, '#d88098');
+    ret(g, f ? 9 : 8, 13, 2, 2, '#d88098');
+  } else if (id === 'duck') {
+    ret(g, 2, 8, 9, 5, '#f8f0d8');
+    ret(g, 2, 11, 9, 2, '#e8dcb0');
+    ret(g, 8, 3, 5, 6, '#f8f0d8');
+    ret(g, 8, 3, 5, 2, '#ffffff');
+    ret(g, 12, 6, 3, 2, '#f0a030');
+    px(g, 14, 7, '#d07818');
+    px(g, 10, 5, '#282828');
+    ret(g, 3, 9, 4, 2, '#e8dcb0');
+    if (f) ret(g, 3, 8, 4, 1, '#d8cc9c');
+    ret(g, f ? 4 : 5, 13, 2, 2, '#f0a030');
+    ret(g, f ? 9 : 8, 13, 2, 2, '#f0a030');
   } else {
     ret(g, 7, 6, 2, 6, '#484038');
     px(g, 6, 4, '#484038');
@@ -519,8 +554,19 @@ export function criarSprites(): Record<string, HTMLCanvasElement | HTMLCanvasEle
   ['professora', 'morador', 'crianca', 'placa'].forEach((n) => {
     s['npc-' + n] = npcSprite(n);
   });
-  ['fox', 'owl', 'bird', 'butterfly'].forEach((id) => {
+  ['fox', 'owl', 'bird', 'butterfly', 'duck', 'pig'].forEach((id) => {
     s['selvagem-' + id] = [selvagem(id, 0), selvagem(id, 1)];
   });
+  const baseBatalha: Record<string, HTMLCanvasElement> = {
+    dog: bicho('dog', 0, 0),
+    cat: bicho('cat', 0, 0),
+    fox: selvagem('fox', 0),
+    owl: selvagem('owl', 0),
+    bird: selvagem('bird', 0),
+    butterfly: selvagem('butterfly', 0),
+    duck: selvagem('duck', 0),
+    pig: selvagem('pig', 0),
+  };
+  for (const id in baseBatalha) s['batalha-' + id] = escala(baseBatalha[id], 2);
   return s;
 }

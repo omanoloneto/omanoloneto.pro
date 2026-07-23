@@ -6,26 +6,48 @@ export type Especie = {
   traducao: string;
   tipo: TipoBicho;
   sprite: boolean;
+  energiaMax: number;
+  ataque: number;
+  golpes: string[];
 };
 
 export const especies: Especie[] = [
-  { id: 'dog', nome: 'Dog', traducao: 'cachorro', tipo: 'farm', sprite: true },
-  { id: 'cat', nome: 'Cat', traducao: 'gato', tipo: 'farm', sprite: true },
-  { id: 'pig', nome: 'Pig', traducao: 'porco', tipo: 'farm', sprite: false },
-  { id: 'cow', nome: 'Cow', traducao: 'vaca', tipo: 'farm', sprite: false },
-  { id: 'fox', nome: 'Fox', traducao: 'raposa', tipo: 'forest', sprite: true },
-  { id: 'bear', nome: 'Bear', traducao: 'urso', tipo: 'forest', sprite: false },
-  { id: 'owl', nome: 'Owl', traducao: 'coruja', tipo: 'forest', sprite: true },
-  { id: 'snake', nome: 'Snake', traducao: 'cobra', tipo: 'forest', sprite: false },
-  { id: 'fish', nome: 'Fish', traducao: 'peixe', tipo: 'water', sprite: false },
-  { id: 'frog', nome: 'Frog', traducao: 'sapo', tipo: 'water', sprite: false },
-  { id: 'duck', nome: 'Duck', traducao: 'pato', tipo: 'water', sprite: false },
-  { id: 'turtle', nome: 'Turtle', traducao: 'tartaruga', tipo: 'water', sprite: false },
-  { id: 'bird', nome: 'Bird', traducao: 'pássaro', tipo: 'sky', sprite: true },
-  { id: 'bee', nome: 'Bee', traducao: 'abelha', tipo: 'sky', sprite: false },
-  { id: 'bat', nome: 'Bat', traducao: 'morcego', tipo: 'sky', sprite: false },
-  { id: 'butterfly', nome: 'Butterfly', traducao: 'borboleta', tipo: 'sky', sprite: true },
+  { id: 'dog', nome: 'Dog', traducao: 'cachorro', tipo: 'farm', sprite: true, energiaMax: 22, ataque: 6, golpes: ['tackle'] },
+  { id: 'cat', nome: 'Cat', traducao: 'gato', tipo: 'farm', sprite: true, energiaMax: 20, ataque: 7, golpes: ['tackle'] },
+  { id: 'pig', nome: 'Pig', traducao: 'porco', tipo: 'farm', sprite: true, energiaMax: 20, ataque: 5, golpes: ['tackle'] },
+  { id: 'cow', nome: 'Cow', traducao: 'vaca', tipo: 'farm', sprite: false, energiaMax: 24, ataque: 5, golpes: ['tackle'] },
+  { id: 'fox', nome: 'Fox', traducao: 'raposa', tipo: 'forest', sprite: true, energiaMax: 16, ataque: 7, golpes: ['bite'] },
+  { id: 'bear', nome: 'Bear', traducao: 'urso', tipo: 'forest', sprite: false, energiaMax: 22, ataque: 7, golpes: ['bite'] },
+  { id: 'owl', nome: 'Owl', traducao: 'coruja', tipo: 'forest', sprite: true, energiaMax: 15, ataque: 6, golpes: ['bite'] },
+  { id: 'snake', nome: 'Snake', traducao: 'cobra', tipo: 'forest', sprite: false, energiaMax: 14, ataque: 8, golpes: ['bite'] },
+  { id: 'fish', nome: 'Fish', traducao: 'peixe', tipo: 'water', sprite: false, energiaMax: 14, ataque: 6, golpes: ['splash'] },
+  { id: 'frog', nome: 'Frog', traducao: 'sapo', tipo: 'water', sprite: false, energiaMax: 15, ataque: 6, golpes: ['splash'] },
+  { id: 'duck', nome: 'Duck', traducao: 'pato', tipo: 'water', sprite: true, energiaMax: 16, ataque: 6, golpes: ['splash'] },
+  { id: 'turtle', nome: 'Turtle', traducao: 'tartaruga', tipo: 'water', sprite: false, energiaMax: 20, ataque: 5, golpes: ['splash'] },
+  { id: 'bird', nome: 'Bird', traducao: 'pássaro', tipo: 'sky', sprite: true, energiaMax: 14, ataque: 7, golpes: ['peck'] },
+  { id: 'bee', nome: 'Bee', traducao: 'abelha', tipo: 'sky', sprite: false, energiaMax: 13, ataque: 7, golpes: ['peck'] },
+  { id: 'bat', nome: 'Bat', traducao: 'morcego', tipo: 'sky', sprite: false, energiaMax: 14, ataque: 7, golpes: ['peck'] },
+  { id: 'butterfly', nome: 'Butterfly', traducao: 'borboleta', tipo: 'sky', sprite: true, energiaMax: 13, ataque: 5, golpes: ['peck'] },
 ];
+
+export type Golpe = { id: string; nome: string; tipo: TipoBicho; poder: number };
+
+export const GOLPES: Record<string, Golpe> = {
+  tackle: { id: 'tackle', nome: 'Tackle', tipo: 'farm', poder: 6 },
+  bite: { id: 'bite', nome: 'Bite', tipo: 'forest', poder: 6 },
+  splash: { id: 'splash', nome: 'Splash', tipo: 'water', poder: 6 },
+  peck: { id: 'peck', nome: 'Peck', tipo: 'sky', poder: 6 },
+};
+
+const BATE: Record<TipoBicho, TipoBicho> = { farm: 'sky', sky: 'water', water: 'forest', forest: 'farm' };
+
+export function vantagem(atk: TipoBicho, def: TipoBicho): number {
+  if (BATE[atk] === def) return 2;
+  if (BATE[def] === atk) return 0.5;
+  return 1;
+}
+
+export const TIPO_NOME: Record<TipoBicho, string> = { farm: 'Fazenda', forest: 'Floresta', water: 'Água', sky: 'Céu' };
 
 export const mapaVila: string[] = [
   '###############..#################',
@@ -119,6 +141,8 @@ export const config = {
   dialogoMsPorLetra: 28,
   nomeMin: 2,
   nomeMax: 10,
+  divDano: 2,
+  timeMax: 6,
   rede: {
     api: '/class/api/wm-mundo.php',
     pollMs: 1200,
@@ -196,6 +220,8 @@ export const mapas: Record<string, { mapa: string[]; npcs: Npc[]; selvagens: Sel
       { especie: 'bird', x: 17, y: 15, raio: 3 },
       { especie: 'butterfly', x: 23, y: 3, raio: 3 },
       { especie: 'butterfly', x: 15, y: 22, raio: 3 },
+      { especie: 'pig', x: 16, y: 7, raio: 2 },
+      { especie: 'duck', x: 11, y: 24, raio: 2 },
     ],
     saidas: [
       { x: 13, y: 29, para: 'vila', px: 15, py: 1 },

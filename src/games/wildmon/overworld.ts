@@ -159,6 +159,7 @@ export function criarOverworld(ctx: Contexto): Overworld {
   }
 
   function interagir() {
+    if (jogador.andando) return;
     const alvoX = jogador.x + DX[jogador.dir];
     const alvoY = jogador.y + DY[jogador.dir];
     const npc = npcs().find((n) => n.x === alvoX && n.y === alvoY);
@@ -170,7 +171,12 @@ export function criarOverworld(ctx: Contexto): Overworld {
     const bicho = bichos.find((b) => b.x === alvoX && b.y === alvoY);
     if (bicho) {
       ctx.audio.somConfirma();
-      ctx.ui.abrirDialogo([bicho.nome + '! (' + bicho.nome.toLowerCase() + ' = ' + bicho.traducao + ')']);
+      ctx.batalha.iniciar(bicho.especie, (r) => {
+        if (r === 'amigo') {
+          const i = bichos.indexOf(bicho);
+          if (i >= 0) bichos.splice(i, 1);
+        }
+      });
     }
   }
 

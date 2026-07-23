@@ -5,12 +5,14 @@ import { criarRede } from './rede';
 import { criarUI } from './ui';
 import { criarAudio } from './audio';
 import { criarSalvar } from './salvar';
+import { criarBatalha } from './batalha';
+import { criarColecao } from './colecao';
 import { cleanPlayerName } from '../../lib/player-name';
 
 export function iniciarJogo() {
   const dados = JSON.parse(document.querySelector('[data-dados]')!.textContent!);
 
-  const estado: Estado = { fase: 'intro', nome: '', starter: 'dog', mapa: 'vila', mudo: false, online: 1 };
+  const estado: Estado = { fase: 'intro', nome: '', starter: 'dog', mapa: 'vila', mudo: false, online: 1, time: [], colecao: [] };
   const jogador: Jogador = { x: dados.config.spawn.x, y: dados.config.spawn.y, px: dados.config.spawn.x, py: dados.config.spawn.y, dir: 0, andando: false, progresso: 0, trilha: [] };
   const input: Input = { dx: 0, dy: 0, a: false };
 
@@ -40,7 +42,9 @@ export function iniciarJogo() {
   ctx.salvar = criarSalvar(ctx);
   ctx.overworld = criarOverworld(ctx);
   ctx.rede = criarRede(ctx);
-  const { ui, audio, salvar, overworld, rede } = ctx;
+  ctx.batalha = criarBatalha(ctx);
+  ctx.colecaoUI = criarColecao(ctx);
+  const { ui, audio, salvar, overworld, rede, batalha, colecaoUI } = ctx;
 
   let ultimoTs = 0;
   let salvarTimer = 0;
@@ -52,8 +56,10 @@ export function iniciarJogo() {
     ultimoTs = ts;
     if (estado.fase === 'intro') return;
     if (estado.fase === 'jogando') overworld.passo(dt);
+    if (estado.fase === 'batalha') batalha.passo(dt);
     ui.passoDialogo(ts);
-    overworld.desenhar(ts);
+    if (estado.fase === 'batalha') batalha.desenhar(ts);
+    else overworld.desenhar(ts);
     if (ts - salvarTimer > 5000) {
       salvarTimer = ts;
       salvar.gravar();
@@ -64,9 +70,16 @@ export function iniciarJogo() {
     return cleanPlayerName(bruto, ctx.cfg.nomeMax);
   }
 
-  async function comecar(nome: string, starter: 'dog' | 'cat', mapa: string, x: number, y: number) {
+  function energiaMaxDe(id: string): number {
+    const e = ctx.especies.find((esp: { id: string; energiaMax: number }) => esp.id === id);
+    return e ? e.energiaMax : 10;
+  }
+
+  async function comecar(nome: string, starter: 'dog' | 'cat', mapa: string, x: number, y: number, colecao: string[], time: string[]) {
     estado.nome = nome;
     estado.starter = starter;
+    estado.colecao = colecao.slice();
+    estado.time = time.map((id) => ({ especieId: id, energia: energiaMaxDe(id) }));
     estado.mapa = ctx.mapas[mapa] ? mapa : 'vila';
     jogador.x = x;
     jogador.y = y;
@@ -127,13 +140,17 @@ export function iniciarJogo() {
     }
     audio.retomar();
     audio.jingleEscolha();
-    comecar(nome, starterEscolhido, 'vila', ctx.cfg.spawn.x, ctx.cfg.spawn.y);
+    comecar(nome, starterEscolhido, 'vila', ctx.cfg.spawn.x, ctx.cfg.spawn.y, [starterEscolhido], [starterEscolhido]);
   });
 
   function apertouA() {
     if (estado.fase === 'dialogo') {
       audio.somBlip();
       ui.avancarDialogo();
+    } else if (estado.fase === 'batalha') {
+      batalha.apertouA();
+    } else if (estado.fase === 'colecao') {
+      colecaoUI.fechar();
     } else if (estado.fase === 'jogando') {
       overworld.interagir();
     }
@@ -158,6 +175,11 @@ export function iniciarJogo() {
 
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (estado.fase === 'intro') return;
+    if (e.key === 'Escape' && estado.fase === 'colecao') {
+      e.preventDefault();
+      colecaoUI.fechar();
+      return;
+    }
     if (e.key === 'z' || e.key === 'Z' || e.key === 'Enter') {
       e.preventDefault();
       apertouA();
@@ -165,6 +187,12 @@ export function iniciarJogo() {
     }
     if (TECLAS[e.key]) {
       e.preventDefault();
+      if (estado.fase === 'batalha') {
+        const v = TECLAS[e.key];
+        batalha.mover(v[0], v[1]);
+        return;
+      }
+      if (estado.fase !== 'jogando') return;
       teclasAtivas.add(e.key);
       recalcularInput();
     }
@@ -183,6 +211,10 @@ export function iniciarJogo() {
     const liga = (e: PointerEvent) => {
       e.preventDefault();
       btn.setPointerCapture && btn.setPointerCapture(e.pointerId);
+      if (estado.fase === 'batalha') {
+        batalha.mover(dx, dy);
+        return;
+      }
       input.dx = dx;
       input.dy = dy;
       btn.classList.add('on');
@@ -201,6 +233,14 @@ export function iniciarJogo() {
     apertouA();
   });
 
+  (document.querySelector('[data-abrir-dex]') as HTMLElement).addEventListener('click', () => {
+    if (estado.fase === 'jogando') {
+      audio.somConfirma();
+      colecaoUI.abrir();
+    }
+  });
+  (document.querySelector('[data-colecao-fechar]') as HTMLElement).addEventListener('click', () => colecaoUI.fechar());
+
   window.addEventListener('pagehide', () => {
     salvar.gravar();
     rede.flushSair();
@@ -214,7 +254,7 @@ export function iniciarJogo() {
 
   const salvo = salvar.carregar();
   if (salvo) {
-    comecar(salvo.nome, salvo.starter, salvo.mapa, salvo.x, salvo.y);
+    comecar(salvo.nome, salvo.starter, salvo.mapa, salvo.x, salvo.y, salvo.colecao, salvo.time);
   } else {
     setTimeout(() => campoNome.focus(), 60);
   }
@@ -223,8 +263,12 @@ export function iniciarJogo() {
     estado, jogador, input,
     rede,
     overworld,
+    batalha,
+    colecaoUI,
     salvar,
     interagir: () => overworld.interagir(),
+    apertouA,
+    mover: (dx: number, dy: number) => batalha.mover(dx, dy),
     avancar: () => ui.avancarDialogo(),
     dialogoAberto: () => ui.dialogoAberto(),
   };
