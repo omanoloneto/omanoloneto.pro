@@ -131,13 +131,13 @@ export interface Morro {
 
 export const mapa = {
   nome: 'São Leopoldo',
-    vias: [
+      vias: [
     { tipo: 'br', nome: 'BR-116', pontos: [[-410, -500], [-415, -282], [-428, -120], [-445, 40], [-455, 160], [-462, 282], [-465, 500]] },
     { tipo: 'avenida', nome: 'Av. João Corrêa', pontos: [[-440, -177], [-190, -177]] },
     { tipo: 'avenida', nome: 'Av. Dom João Becker', pontos: [[-190, -500], [-192, 95], [-215, 200], [-230, 282], [-235, 500]] },
     { tipo: 'avenida', nome: 'Av. Theodomiro Porto', pontos: [[-440, 105], [-201, 106]] },
     { tipo: 'avenida', nome: 'Av. Feitoria', pontos: [[-190, -125], [-16, -153], [145, -177], [306, -197], [459, -218]] },
-    { tipo: 'avenida', nome: 'Av. Henrique Bier', pontos: [[459, -218], [419, -40], [306, -32], [209, -64], [113, -40], [24, 4], [-49, 36], [-177, 102]] },
+    { tipo: 'avenida', nome: 'Av. Henrique Bier', pontos: [[459, -218], [419, -40], [306, -32], [209, -64], [113, -40], [24, 4], [-49, 36], [-140, 90]] },
     { tipo: 'avenida', nome: 'Av. Unisinos', pontos: [[-191, 107], [-67, 131], [-2, 165], [42, 211], [85, 282], [95, 500]] },
     { tipo: 'avenida', nome: 'Av. Mauá', pontos: [[-330, 105], [-338, 282], [-340, 500]] },
     { tipo: 'rua', nome: 'R. São Joaquim', pontos: [[-379, -177], [-379, 105]] },
@@ -159,16 +159,19 @@ export const mapa = {
     { tipo: 'galpao', x: 140, z: 430, w: 34, d: 20, h: 8, cor: '#7d8794' },
   ] as Predio[],
   marcos: [
-    { tipo: 'ginasio', x: -256, z: -210 },
+    { tipo: 'ginasio', x: -256, z: -215 },
     { tipo: 'skate', x: -216, z: -200 },
     { tipo: 'prefeitura', x: -361, z: -157 },
-    { tipo: 'casa', x: -120, z: -235, rot: 0 },
-    { tipo: 'bourbon', x: 330, z: -110, rot: 0 },
+    { tipo: 'casa', x: -303, z: 22 },
+    { tipo: 'bourbon', x: -314, z: 68, rot: 1.5708 },
   ] as Marco[],
   rotatorias: [
-    { x: -175, z: 93, raioInterno: 12, raioExterno: 33 },
+    { x: -166, z: 97, raioInterno: 12, raioExterno: 33 },
   ] as Rotatoria[],
-  morros: [] as Morro[],
+  morros: [
+    { x: 268, z: -17, raio: 202, altura: 12 },
+    { x: -163, z: 247, raio: 138, altura: 12 },
+  ] as Morro[],
   spawn: { x: -400, z: -171.75, heading: 1.570796 },
 };
 
