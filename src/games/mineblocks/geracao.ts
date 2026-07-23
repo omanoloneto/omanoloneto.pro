@@ -313,29 +313,7 @@ export function gerarMundo(ctx: Ctx, seed: number, opts: { semPampa?: boolean } 
   digDungeon(ctx, rng, alturaEm);
 
   // ----- veios de minério espalhados no subsolo (random walk na pedra) -----
-  const semearVeios = (oreId: number, v: { n: number; sizeMin: number; sizeMax: number; yMin: number; yMax?: number }) => {
-    for (let i = 0; i < v.n; i++) {
-      let x = 2 + Math.floor(rng() * (SX - 4));
-      let z = 2 + Math.floor(rng() * (SZ - 4));
-      const teto = Math.min(v.yMax ?? SY, alturaEm(x, z) - 3);
-      if (teto <= v.yMin) continue;
-      let y = v.yMin + Math.floor(rng() * (teto - v.yMin + 1));
-      const tam = v.sizeMin + Math.floor(rng() * (v.sizeMax - v.sizeMin + 1));
-      for (let b = 0; b < tam; b++) {
-        if (mundo.data[x + z * SX + y * SX * SZ] === 3) {
-          mundo.data[x + z * SX + y * SX * SZ] = oreId;
-        }
-        const eixo = Math.floor(rng() * 3);
-        const passo = rng() < 0.5 ? -1 : 1;
-        if (eixo === 0) x = Math.max(1, Math.min(SX - 2, x + passo));
-        else if (eixo === 1) y = Math.max(1, Math.min(SY - 2, y + passo));
-        else z = Math.max(1, Math.min(SZ - 2, z + passo));
-      }
-    }
-  };
-  semearVeios(22, G.veins.coal);
-  semearVeios(25, G.veins.iron);
-  semearVeios(38, G.veins.ouro);
+  seedOreVeins(ctx, rng, alturaEm);
 
   // ----- árvores (tronco 4-5 + copa) -----
   const copas: Array<[number, number]> = [];
@@ -452,4 +430,44 @@ export function brotarUmbu(ctx: Ctx, x: number, h: number, z: number, rng: () =>
   leaves.forEach(([lx, ly, lz], i) => {
     if (i < 2 || rng() < 0.1) mundo.set(lx, ly, lz, 37);
   });
+}
+
+const ORE_IDS = [22, 25, 38];
+
+export function seedOreVeins(ctx: Ctx, rng: () => number, surfaceAt: (x: number, z: number) => number) {
+  const { SX, SZ, SY } = ctx.cfg.mundo;
+  const G = ctx.cfg.geracao;
+  const mundo = ctx.world;
+  const semear = (oreId: number, v: { n: number; sizeMin: number; sizeMax: number; yMin: number; yMax?: number }) => {
+    for (let i = 0; i < v.n; i++) {
+      let x = 2 + Math.floor(rng() * (SX - 4));
+      let z = 2 + Math.floor(rng() * (SZ - 4));
+      const teto = Math.min(v.yMax ?? SY, surfaceAt(x, z) - 3);
+      if (teto <= v.yMin) continue;
+      let y = v.yMin + Math.floor(rng() * (teto - v.yMin + 1));
+      const tam = v.sizeMin + Math.floor(rng() * (v.sizeMax - v.sizeMin + 1));
+      for (let b = 0; b < tam; b++) {
+        if (mundo.data[x + z * SX + y * SX * SZ] === 3) {
+          mundo.data[x + z * SX + y * SX * SZ] = oreId;
+        }
+        const eixo = Math.floor(rng() * 3);
+        const passo = rng() < 0.5 ? -1 : 1;
+        if (eixo === 0) x = Math.max(1, Math.min(SX - 2, x + passo));
+        else if (eixo === 1) y = Math.max(1, Math.min(SY - 2, y + passo));
+        else z = Math.max(1, Math.min(SZ - 2, z + passo));
+      }
+    }
+  };
+  semear(22, G.veins.coal);
+  semear(25, G.veins.iron);
+  semear(38, G.veins.ouro);
+}
+
+export function reseedOres(ctx: Ctx) {
+  const d = ctx.world.data;
+  for (let i = 0; i < d.length; i++) {
+    if (ORE_IDS.includes(d[i])) d[i] = 3;
+  }
+  const rng = mulberry32((Math.random() * 4294967296) >>> 0);
+  seedOreVeins(ctx, rng, (x, z) => ctx.world.highestGround(x, z));
 }

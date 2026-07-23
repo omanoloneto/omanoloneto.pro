@@ -7,7 +7,7 @@ import { criarAudio } from './audio';
 import { criarTextura } from './textura';
 import { criarMundo } from './mundo';
 import { criarMetas } from './meta';
-import { gerarMundo } from './geracao';
+import { gerarMundo, reseedOres } from './geracao';
 import { criarMalha } from './malha';
 import { criarCeu, DIA_S } from './ceu';
 import { criarKotsooh } from './kotsooh';
@@ -395,6 +395,7 @@ export function startGame() {
         player.pitch = 0;
         ctx.sky.setTime(Math.round(DIA_S * 0.13));
       }
+      if (loaded) reseedOres(ctx);
       spawnVendingMachine(ctx);
       ctx.meshes.buildAll();
       ctx.editing.startSaplings();
@@ -534,6 +535,10 @@ export function startGame() {
     place: () => ctx.editing.place(),
     hunger: ctx.hunger,
     minimap: ctx.minimap,
+    reseedOres: () => {
+      reseedOres(ctx);
+      ctx.meshes.buildAll();
+    },
     repairNow: () => {
       const buf = new Uint8Array(ctx.world.data);
       const n = naturalizeLegacyLake(ctx, buf, state.seed, ctx.metas.serialize());
