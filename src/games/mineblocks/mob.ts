@@ -96,7 +96,16 @@ interface FaceTones {
   sideLow?: THREE.Color;
 }
 
-function shadedPart(w: number, h: number, d: number, x: number, y: number, z: number, tones: FaceTones): THREE.BufferGeometry {
+interface PartRot { x?: number; y?: number; z?: number }
+
+function applyRot(g: THREE.BufferGeometry, rot?: PartRot) {
+  if (!rot) return;
+  if (rot.x) g.rotateX(rot.x);
+  if (rot.y) g.rotateY(rot.y);
+  if (rot.z) g.rotateZ(rot.z);
+}
+
+function shadedPart(w: number, h: number, d: number, x: number, y: number, z: number, tones: FaceTones, rot?: PartRot): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   const n = g.attributes.position.count;
   const normals = g.attributes.normal;
@@ -115,12 +124,14 @@ function shadedPart(w: number, h: number, d: number, x: number, y: number, z: nu
     colors[i * 3 + 2] = c.b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  applyRot(g, rot);
   g.translate(x, y, z);
   return g;
 }
 
-function outlinePart(w: number, h: number, d: number, x: number, y: number, z: number): THREE.BufferGeometry {
+function outlinePart(w: number, h: number, d: number, x: number, y: number, z: number, rot?: PartRot): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w + 0.06, h + 0.06, d + 0.06);
+  applyRot(g, rot);
   g.translate(x, y, z);
   return g;
 }
@@ -129,6 +140,7 @@ interface BubPart {
   w: number; h: number; d: number;
   x: number; y: number; z: number;
   tones: FaceTones;
+  rot?: PartRot;
 }
 
 const BUB = {
@@ -195,44 +207,76 @@ const YU = {
 const YU_FUR: FaceTones = { top: YU.furLight, side: YU.furLight, sideLow: YU.furDark, bottom: YU.furDark };
 const YU_VEST: FaceTones = { top: YU.vestLight, side: YU.vestDark, bottom: YU.belt };
 
+const YU_LIME = new THREE.Color('#b8d84a');
+const YU_BELT_TONES: FaceTones = { top: new THREE.Color('#38616f'), side: new THREE.Color('#38616f'), bottom: new THREE.Color('#38616f') };
+const YU_HAT_TONES: FaceTones = { top: new THREE.Color('#4ea6bb'), side: new THREE.Color('#4ea6bb'), sideLow: new THREE.Color('#3d8496'), bottom: new THREE.Color('#3d8496') };
+const YU_SCARF_TONES: FaceTones = { top: new THREE.Color('#2ecc71'), side: new THREE.Color('#2ecc71'), sideLow: new THREE.Color('#1e8e5e'), bottom: new THREE.Color('#1e8e5e') };
+const YU_LIME_TONES: FaceTones = { top: YU_LIME, side: YU_LIME, bottom: YU_LIME };
+const AXE_ROT = { z: 0.55 };
+
 const YU_STRUCT: BubPart[] = [
-  { w: 0.22, h: 0.34, d: 0.26, x: -0.15, y: 0.17, z: 0.02, tones: YU_FUR },
-  { w: 0.22, h: 0.34, d: 0.26, x: 0.15, y: 0.17, z: 0.02, tones: YU_FUR },
-  { w: 0.62, h: 0.52, d: 0.42, x: 0, y: 0.62, z: 0, tones: YU_VEST },
-  { w: 0.64, h: 0.09, d: 0.44, x: 0, y: 0.4, z: 0, tones: { top: YU.belt, side: YU.belt, bottom: YU.belt } },
-  { w: 0.16, h: 0.44, d: 0.2, x: -0.4, y: 0.66, z: 0.02, tones: YU_FUR },
-  { w: 0.16, h: 0.44, d: 0.2, x: 0.4, y: 0.66, z: 0.02, tones: YU_FUR },
-  { w: 0.16, h: 0.3, d: 0.18, x: 0.4, y: 1.0, z: -0.08, tones: YU_FUR },
-  { w: 0.56, h: 0.14, d: 0.48, x: 0, y: 0.94, z: 0, tones: { top: YU.scarf, side: YU.scarf, sideLow: YU.scarfDark, bottom: YU.scarfDark } },
-  { w: 0.26, h: 0.09, d: 0.3, x: -0.34, y: 0.9, z: 0.3, tones: { top: YU.scarf, side: YU.scarfDark, bottom: YU.scarfDark } },
-  { w: 0.2, h: 0.08, d: 0.24, x: -0.44, y: 0.78, z: 0.44, tones: { top: YU.scarfDark, side: YU.scarfDark, bottom: YU.scarfDark } },
-  { w: 0.5, h: 0.42, d: 0.44, x: 0, y: 1.24, z: 0, tones: YU_FUR },
-  { w: 0.26, h: 0.18, d: 0.12, x: 0, y: 1.16, z: -0.26, tones: YU_FUR },
-  { w: 0.1, h: 0.1, d: 0.08, x: -0.2, y: 1.48, z: 0.04, tones: YU_FUR },
-  { w: 0.1, h: 0.1, d: 0.08, x: 0.2, y: 1.48, z: 0.04, tones: YU_FUR },
-  { w: 0.48, h: 0.09, d: 0.42, x: 0, y: 1.5, z: -0.02, tones: { top: YU.hat, side: YU.hat, bottom: YU.hat } },
-  { w: 0.3, h: 0.07, d: 0.26, x: 0, y: 1.57, z: -0.02, tones: { top: YU.hat, side: YU.hat, bottom: YU.hat } },
-  { w: 0.36, h: 0.09, d: 0.52, x: 0, y: 0.08, z: 0.5, tones: { top: YU.furDark, side: YU.furDark, bottom: YU.furDark } },
-  { w: 0.07, h: 0.62, d: 0.07, x: 0.42, y: 1.28, z: -0.06, tones: { top: YU.axeHandle, side: YU.axeHandle, bottom: YU.axeHandle } },
-  { w: 0.2, h: 0.28, d: 0.09, x: 0.42, y: 1.66, z: -0.06, tones: { top: YU.axeMetal, side: YU.axeMetal, bottom: YU.axeMetal } },
+  { w: 0.26, h: 0.26, d: 0.3, x: -0.2, y: 0.13, z: 0.04, tones: YU_FUR },
+  { w: 0.26, h: 0.26, d: 0.3, x: 0.2, y: 0.13, z: 0.04, tones: YU_FUR },
+  { w: 0.74, h: 0.44, d: 0.54, x: 0, y: 0.48, z: 0.02, tones: YU_FUR },
+  { w: 0.78, h: 0.1, d: 0.58, x: 0, y: 0.72, z: 0.02, tones: YU_BELT_TONES },
+  { w: 0.64, h: 0.4, d: 0.46, x: 0, y: 0.96, z: 0, tones: YU_VEST },
+  { w: 0.18, h: 0.44, d: 0.2, x: -0.46, y: 0.86, z: 0.02, tones: YU_FUR },
+  { w: 0.2, h: 0.08, d: 0.22, x: -0.46, y: 0.66, z: 0.02, tones: YU_LIME_TONES },
+  { w: 0.17, h: 0.14, d: 0.19, x: -0.46, y: 0.56, z: 0.02, tones: { top: YU.furDark, side: YU.furDark, bottom: YU.furDark } },
+  { w: 0.18, h: 0.22, d: 0.2, x: 0.44, y: 1.0, z: -0.02, tones: YU_FUR },
+  { w: 0.16, h: 0.3, d: 0.18, x: 0.46, y: 1.26, z: -0.08, tones: YU_FUR },
+  { w: 0.2, h: 0.06, d: 0.2, x: 0.46, y: 1.36, z: -0.09, tones: YU_LIME_TONES },
+  { w: 0.18, h: 0.14, d: 0.2, x: 0.46, y: 1.46, z: -0.1, tones: { top: YU.furDark, side: YU.furDark, bottom: YU.furDark } },
+  { w: 0.62, h: 0.16, d: 0.54, x: 0, y: 1.22, z: -0.02, tones: YU_SCARF_TONES },
+  { w: 0.34, h: 0.1, d: 0.28, x: -0.42, y: 1.14, z: 0.26, tones: YU_SCARF_TONES },
+  { w: 0.28, h: 0.09, d: 0.24, x: -0.58, y: 1.0, z: 0.42, tones: YU_SCARF_TONES },
+  { w: 0.22, h: 0.08, d: 0.2, x: -0.7, y: 0.86, z: 0.56, tones: { top: new THREE.Color('#1e8e5e'), side: new THREE.Color('#1e8e5e'), bottom: new THREE.Color('#1e8e5e') } },
+  { w: 0.58, h: 0.5, d: 0.5, x: 0, y: 1.52, z: -0.06, tones: YU_FUR },
+  { w: 0.14, h: 0.24, d: 0.22, x: -0.32, y: 1.4, z: -0.12, tones: YU_FUR },
+  { w: 0.14, h: 0.24, d: 0.22, x: 0.32, y: 1.4, z: -0.12, tones: YU_FUR },
+  { w: 0.32, h: 0.24, d: 0.18, x: 0, y: 1.4, z: -0.38, tones: YU_FUR },
+  { w: 0.11, h: 0.11, d: 0.09, x: -0.22, y: 1.8, z: 0.02, tones: YU_FUR },
+  { w: 0.11, h: 0.11, d: 0.09, x: 0.22, y: 1.8, z: 0.02, tones: YU_FUR },
+  { w: 0.56, h: 0.11, d: 0.48, x: 0, y: 1.82, z: -0.06, tones: YU_HAT_TONES },
+  { w: 0.36, h: 0.08, d: 0.3, x: 0, y: 1.91, z: -0.06, tones: YU_HAT_TONES },
+  { w: 0.36, h: 0.05, d: 0.2, x: 0, y: 1.8, z: -0.38, tones: YU_HAT_TONES },
+  { w: 0.42, h: 0.1, d: 0.6, x: 0, y: 0.1, z: 0.6, tones: { top: YU.furDark, side: YU.furDark, bottom: YU.furDark } },
+  { w: 0.08, h: 1.0, d: 0.08, x: 0.22, y: 1.62, z: -0.1, tones: { top: YU.axeHandle, side: YU_LIME, sideLow: YU.axeHandle, bottom: YU.axeHandle }, rot: AXE_ROT },
+  { w: 0.24, h: 0.34, d: 0.1, x: -0.06, y: 2.06, z: -0.1, tones: { top: YU.axeMetal, side: YU.axeMetal, bottom: YU.axeMetal }, rot: AXE_ROT },
 ];
 
 function yujackGeometry(): THREE.BufferGeometry {
-  const p: THREE.BufferGeometry[] = YU_STRUCT.map((b) => shadedPart(b.w, b.h, b.d, b.x, b.y, b.z, b.tones));
+  const p: THREE.BufferGeometry[] = YU_STRUCT.map((b) => shadedPart(b.w, b.h, b.d, b.x, b.y, b.z, b.tones, b.rot));
   p.push(
-    part(0.12, 0.14, 0.04, -0.13, 1.32, -0.235, YU.white),
-    part(0.12, 0.14, 0.04, 0.13, 1.32, -0.235, YU.white),
-    part(0.08, 0.1, 0.03, -0.13, 1.31, -0.245, YU.eye),
-    part(0.08, 0.1, 0.03, 0.13, 1.31, -0.245, YU.eye),
-    part(0.04, 0.05, 0.02, -0.12, 1.3, -0.255, YU.pupil),
-    part(0.04, 0.05, 0.02, 0.14, 1.3, -0.255, YU.pupil),
-    part(0.14, 0.04, 0.04, -0.13, 1.41, -0.24, YU.furDark),
-    part(0.14, 0.04, 0.04, 0.13, 1.41, -0.24, YU.furDark),
-    part(0.12, 0.06, 0.04, 0, 1.23, -0.31, YU.nose),
-    part(0.1, 0.12, 0.03, 0, 1.06, -0.315, YU.white),
-    part(0.16, 0.14, 0.03, 0, 0.52, -0.215, YU.gold),
-    part(0.05, 0.05, 0.02, -0.15, 0.72, -0.212, YU.gold),
-    part(0.05, 0.05, 0.02, -0.15, 0.6, -0.212, YU.gold),
+    part(0.15, 0.17, 0.04, -0.15, 1.6, -0.295, YU.white),
+    part(0.15, 0.17, 0.04, 0.15, 1.6, -0.295, YU.white),
+    part(0.1, 0.12, 0.03, -0.15, 1.59, -0.305, YU.eye),
+    part(0.1, 0.12, 0.03, 0.15, 1.59, -0.305, YU.eye),
+    part(0.05, 0.06, 0.02, -0.14, 1.58, -0.315, YU.pupil),
+    part(0.05, 0.06, 0.02, 0.16, 1.58, -0.315, YU.pupil),
+    part(0.18, 0.05, 0.04, -0.15, 1.71, -0.3, YU.furDark),
+    part(0.18, 0.05, 0.04, 0.15, 1.71, -0.3, YU.furDark),
+    part(0.1, 0.12, 0.03, -0.28, 1.52, -0.29, YU.nose),
+    part(0.1, 0.12, 0.03, 0.28, 1.52, -0.29, YU.nose),
+    part(0.2, 0.09, 0.04, 0, 1.47, -0.475, YU.furDark),
+    part(0.14, 0.14, 0.03, 0, 1.32, -0.475, YU.white),
+    part(0.02, 0.14, 0.04, 0, 1.32, -0.48, YU.furDark),
+    part(0.2, 0.18, 0.04, 0, 0.72, -0.295, YU.gold),
+    part(0.055, 0.055, 0.02, -0.045, 0.755, -0.31, YU.eye),
+    part(0.055, 0.055, 0.02, 0.045, 0.755, -0.31, YU.eye),
+    part(0.055, 0.055, 0.02, -0.045, 0.685, -0.31, YU.eye),
+    part(0.055, 0.055, 0.02, 0.045, 0.685, -0.31, YU.eye),
+    part(0.06, 0.06, 0.02, -0.16, 1.06, -0.232, YU.gold),
+    part(0.06, 0.06, 0.02, -0.16, 0.92, -0.232, YU.gold),
+    part(0.07, 0.05, 0.06, -0.28, 0.02, -0.12, YU.white),
+    part(0.07, 0.05, 0.06, -0.2, 0.02, -0.13, YU.white),
+    part(0.07, 0.05, 0.06, -0.12, 0.02, -0.12, YU.white),
+    part(0.07, 0.05, 0.06, 0.12, 0.02, -0.12, YU.white),
+    part(0.07, 0.05, 0.06, 0.2, 0.02, -0.13, YU.white),
+    part(0.07, 0.05, 0.06, 0.28, 0.02, -0.12, YU.white),
+    part(0.44, 0.025, 0.06, 0, 0.155, 0.44, YU.furLight),
+    part(0.44, 0.025, 0.06, 0, 0.155, 0.62, YU.furLight),
+    part(0.06, 0.025, 0.56, 0, 0.155, 0.6, YU.furLight),
   );
   const geo = mergeGeometries(p)!;
   p.forEach((g) => g.dispose());
@@ -240,7 +284,7 @@ function yujackGeometry(): THREE.BufferGeometry {
 }
 
 function yujackOutlineGeometry(): THREE.BufferGeometry {
-  const p = YU_STRUCT.map((b) => outlinePart(b.w, b.h, b.d, b.x, b.y, b.z));
+  const p = YU_STRUCT.map((b) => outlinePart(b.w, b.h, b.d, b.x, b.y, b.z, b.rot));
   const geo = mergeGeometries(p)!;
   p.forEach((g) => g.dispose());
   return geo;
@@ -423,7 +467,7 @@ export function criarMob(ctx: Ctx): Mob {
         b.yaw = 0;
       } else {
         b.restUntilMs = timeMs + 1200 + Math.random() * 2600;
-        if (Math.random() < 0.35) {
+        if (Math.random() < 0.45) {
           b.patrolIdx = -1;
         } else {
           b.patrolIdx = (b.patrolIdx + 1) % b.patrol.length;
