@@ -135,12 +135,9 @@ export function startEditor() {
         g.beginPath();
         g.arc(sx(m.x), sy(m.z), rr, 0, Math.PI * 2);
         g.fill();
-      } else if (m.tipo === 'prefeitura') {
-        const p = cfg.marcos.prefeitura;
-        g.fillRect(sx(m.x - p.w / 2), sy(m.z - p.d / 2), p.w * view.scale, p.d * view.scale);
       } else {
-        const s = cfg.marcos.skate;
-        g.fillRect(sx(m.x - s.padW / 2), sy(m.z - s.padD / 2), s.padW * view.scale, s.padD * view.scale);
+        const [fw, fd] = footprint(m.tipo);
+        g.fillRect(sx(m.x - fw / 2), sy(m.z - fd / 2), fw * view.scale, fd * view.scale);
       }
       g.restore();
       centerDot(m.x, m.z, marcoColor(m.tipo), m.tipo);
@@ -154,7 +151,18 @@ export function startEditor() {
   }
 
   function marcoColor(tipo: string) {
-    return tipo === 'ginasio' ? '#ff33cc' : tipo === 'prefeitura' ? '#ffe14d' : '#3fd23f';
+    if (tipo === 'ginasio') return '#ff33cc';
+    if (tipo === 'prefeitura') return '#ffe14d';
+    if (tipo === 'casa') return '#e0705a';
+    if (tipo === 'bourbon') return '#c9bfa8';
+    return '#3fd23f';
+  }
+
+  function footprint(tipo: string): [number, number] {
+    if (tipo === 'prefeitura') return [cfg.marcos.prefeitura.w, cfg.marcos.prefeitura.d];
+    if (tipo === 'casa') return [cfg.marcos.casa.w, cfg.marcos.casa.d];
+    if (tipo === 'bourbon') return [cfg.marcos.bourbon.w, cfg.marcos.bourbon.d];
+    return [cfg.marcos.skate.padW, cfg.marcos.skate.padD];
   }
 
   function handleDot(x: number, z: number, color: string) {

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { coloredBox, mergeParts, orientedBox, QuadBatch, shadeInto } from './mesh';
-import { createAsphaltTexture } from './city-texture';
+import { createAsphaltTexture, createGraffitiTexture, createMallTexture } from './city-texture';
 import type { City, Ctx, SurfaceKind } from './types';
 
 type Pt = [number, number];
@@ -222,6 +222,8 @@ export function createCity(ctx: Ctx): City {
   const curbs = new QuadBatch();
   const parts: THREE.BufferGeometry[] = [];
   const emissiveParts: THREE.BufferGeometry[] = [];
+  const graffitiParts: THREE.BufferGeometry[] = [];
+  const mallParts: THREE.BufferGeometry[] = [];
   const calcadaColor = new THREE.Color(K.calcada);
   const calcadaMuretaColor = new THREE.Color(K.calcadaMureta);
   const laneWhite = new THREE.Color(K.faixa);
@@ -647,6 +649,67 @@ export function createCity(ctx: Ctx): City {
     emissiveParts.push(coloredBox(0.6, 0.6, 0.6, r.x, rc.ilhaH + rc.obeliscoH, r.z, new THREE.Color(K.luzPoste)));
   }
 
+  function emitCasa(m: (typeof map.marcos)[number]) {
+    const c = cfg.marcos.casa;
+    fillCells(m.x, m.z, c.w, c.d, BUILD, c.h);
+    const body = new THREE.BoxGeometry(c.w, c.h, c.d);
+    body.translate(m.x, c.h / 2, m.z);
+    graffitiParts.push(body);
+    const cornija = new THREE.Color(K.casaCornija);
+    const frame = new THREE.Color(K.casaJanelaFrame);
+    const jan = new THREE.Color(K.casaJanela);
+    parts.push(coloredBox(c.w + 0.6, 1.0, c.d + 0.6, m.x, c.h + 0.3, m.z, cornija));
+    parts.push(coloredBox(c.w + 0.3, 0.7, c.d + 0.3, m.x, c.h - 1.7, m.z, cornija));
+    parts.push(coloredBox(9, 1.7, c.d * 0.55, m.x, c.h + 1.1, m.z, cornija));
+    const front = m.z + c.d / 2;
+    for (const wx of [-9, -5, 5, 9]) {
+      parts.push(coloredBox(2.4, 4.0, 0.2, m.x + wx, 4.3, front + 0.02, frame));
+      parts.push(coloredBox(2.0, 3.6, 0.28, m.x + wx, 4.3, front + 0.12, jan));
+    }
+    parts.push(coloredBox(2.2, 4.8, 0.2, m.x, 2.5, front + 0.02, frame));
+    parts.push(coloredBox(1.7, 4.3, 0.34, m.x, 2.35, front + 0.14, new THREE.Color(K.casaPorta)));
+    emissiveParts.push(coloredBox(3.0, 0.9, 0.15, m.x - 8, 6.4, front + 0.16, new THREE.Color(K.casaVitrine)));
+    const west = m.x - c.w / 2;
+    for (const wz of [-4.5, 0, 4.5]) {
+      parts.push(coloredBox(0.2, 4.0, 2.4, west - 0.02, 4.3, m.z + wz, frame));
+      parts.push(coloredBox(0.28, 3.6, 2.0, west - 0.12, 4.3, m.z + wz, jan));
+    }
+  }
+
+  function emitBourbon(m: (typeof map.marcos)[number]) {
+    const bb = cfg.marcos.bourbon;
+    fillCells(m.x, m.z, bb.w, bb.d, BUILD, bb.h);
+    const body = new THREE.BoxGeometry(bb.w, bb.h, bb.d);
+    body.translate(m.x, bb.h / 2, m.z);
+    mallParts.push(body);
+    const tw = 16;
+    const tH = bb.h + 8;
+    const tower = new THREE.BoxGeometry(tw, tH, tw);
+    tower.translate(m.x - bb.w / 2 + tw / 2, tH / 2, m.z - bb.d / 2 + tw / 2);
+    mallParts.push(tower);
+    parts.push(coloredBox(bb.w + 1.5, 1.6, bb.d + 1.5, m.x, bb.h + 0.8, m.z, new THREE.Color(K.bourbonTelhado)));
+    parts.push(coloredBox(tw + 1, 1.2, tw + 1, m.x - bb.w / 2 + tw / 2, tH + 0.6, m.z - bb.d / 2 + tw / 2, new THREE.Color(K.bourbonTelhado)));
+    parts.push(coloredBox(bb.w + 0.4, 3.2, bb.d + 0.4, m.x, 1.6, m.z, new THREE.Color(K.bourbonGranito)));
+    const glass = new THREE.Color(K.bourbonVidro);
+    const front = m.z + bb.d / 2;
+    for (let i = -3; i <= 3; i++) {
+      emissiveParts.push(coloredBox(4.5, bb.h - 6, 0.3, m.x + i * 8, bb.h / 2 + 1.5, front + 0.05, glass));
+    }
+    const east = m.x + bb.w / 2;
+    for (let i = -3; i <= 3; i++) {
+      emissiveParts.push(coloredBox(0.3, bb.h - 6, 4.2, east + 0.05, bb.h / 2 + 1.5, m.z + i * 6, glass));
+    }
+    parts.push(coloredBox(24, 1.2, 8, m.x, 6.6, front + 3.5, new THREE.Color(K.bourbonMarquise)));
+    for (const cx of [-10, 10]) parts.push(coloredBox(0.6, 6.6, 0.6, m.x + cx, 3.3, front + 7, new THREE.Color(K.bourbonMarquise)));
+    emissiveParts.push(coloredBox(21, 2.6, 0.7, m.x, 9.0, front + 0.35, new THREE.Color(K.bourbonSign)));
+    emissiveParts.push(coloredBox(14, 6.5, 0.4, m.x, 13.0, front + 0.1, glass));
+    const arch = new THREE.CylinderGeometry(7, 7, 0.4, 22, 1, false, 0, Math.PI);
+    arch.rotateX(Math.PI / 2);
+    arch.rotateZ(Math.PI / 2);
+    arch.translate(m.x, 16.2, front + 0.1);
+    emissiveParts.push(shadeInto(arch, glass, true));
+  }
+
   map.vias.forEach((via, vi) => {
     if (via.tipo !== 'br') {
       buildRoadRibbon(via, vi);
@@ -672,6 +735,8 @@ export function createCity(ctx: Ctx): City {
     if (m.tipo === 'ginasio') emitGinasio(m);
     else if (m.tipo === 'prefeitura') emitPrefeitura(m);
     else if (m.tipo === 'skate') emitSkate(m);
+    else if (m.tipo === 'casa') emitCasa(m);
+    else if (m.tipo === 'bourbon') emitBourbon(m);
   }
   for (const r of map.rotatorias) emitRotatoria(r);
 
@@ -697,6 +762,16 @@ export function createCity(ctx: Ctx): City {
   if (curbGeo) ctx.scene.add(new THREE.Mesh(curbGeo, curbMaterial));
   const merged = mergeParts(parts);
   if (merged) ctx.scene.add(new THREE.Mesh(merged, material));
+  const graffitiTexture = createGraffitiTexture(ctx.stage.lowTier);
+  ctx.textures.grafite = graffitiTexture;
+  const graffitiMaterial = new THREE.MeshBasicMaterial({ map: graffitiTexture });
+  const graffitiGeo = mergeParts(graffitiParts);
+  if (graffitiGeo) ctx.scene.add(new THREE.Mesh(graffitiGeo, graffitiMaterial));
+  const mallTexture = createMallTexture(ctx.stage.lowTier);
+  ctx.textures.mall = mallTexture;
+  const mallMaterial = new THREE.MeshBasicMaterial({ map: mallTexture });
+  const mallGeo = mergeParts(mallParts);
+  if (mallGeo) ctx.scene.add(new THREE.Mesh(mallGeo, mallMaterial));
   const emissiveMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
   const emissiveGeo = mergeParts(emissiveParts);
   if (emissiveGeo) ctx.scene.add(new THREE.Mesh(emissiveGeo, emissiveMaterial));
@@ -725,7 +800,7 @@ export function createCity(ctx: Ctx): City {
   };
 
   return {
-    tintables: [material, asphaltMaterial, curbMaterial],
+    tintables: [material, asphaltMaterial, curbMaterial, graffitiMaterial, mallMaterial],
     nightGlow: emissiveMaterial,
     nightDecals: glowDecalMaterial,
     paintMap(canvas, style = 'padrao') {

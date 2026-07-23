@@ -102,7 +102,7 @@ export interface Predio {
   cor: string;
 }
 
-export type MarcoTipo = 'ginasio' | 'prefeitura' | 'skate';
+export type MarcoTipo = 'ginasio' | 'prefeitura' | 'skate' | 'casa' | 'bourbon';
 
 export interface Marco {
   tipo: MarcoTipo;
@@ -146,6 +146,8 @@ export const mapa = {
     { tipo: 'ginasio', x: -256, z: -210 },
     { tipo: 'skate', x: -216, z: -200 },
     { tipo: 'prefeitura', x: -361, z: -157 },
+    { tipo: 'casa', x: -120, z: -235, rot: 0 },
+    { tipo: 'bourbon', x: 330, z: -110, rot: 0 },
   ] as Marco[],
   rotatorias: [
     { x: -175, z: 93, raioInterno: 12, raioExterno: 33 },
@@ -212,6 +214,8 @@ export const config = {
     prefeitura: { w: 20, h: 27, d: 14, terreoH: 5, terreoInset: 1.5, andarH: 3, coreW: 5.5 },
     skate: { padW: 26, padD: 20, rampaAng: 0.34, funboxH: 1.4 },
     rotatoria: { ringSegs: 44, ringWid: 10, ilhaH: 1.2, obeliscoH: 10 },
+    casa: { w: 24, d: 16, h: 8.5 },
+    bourbon: { w: 60, d: 44, h: 17 },
   },
   cores: {
     ceu: '#05070f',
@@ -253,6 +257,16 @@ export const config = {
     skateNeon: '#19e0d0',
     rotatoriaIlha: '#14261a',
     rotatoriaMonumento: '#b8bcc2',
+    casaCornija: '#e7ded0',
+    casaJanela: '#efe9dc',
+    casaJanelaFrame: '#7d786c',
+    casaPorta: '#f2efe8',
+    casaVitrine: '#ffd24a',
+    bourbonVidro: '#2f5d55',
+    bourbonTelhado: '#b8bcc0',
+    bourbonSign: '#e23b3b',
+    bourbonMarquise: '#d8d3c8',
+    bourbonGranito: '#7a4a42',
   },
   somLigadoInicial: true,
 };
