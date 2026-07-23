@@ -30,6 +30,7 @@ export interface City {
   buildingTopAt(x: number, z: number): number;
   streetAt(x: number, z: number, current?: string | null): string | null;
   paintMap(canvas: HTMLCanvasElement, style?: 'padrao' | 'gps'): void;
+  dispose(): void;
 }
 
 export interface DayNight {

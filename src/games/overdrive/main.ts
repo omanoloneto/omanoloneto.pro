@@ -9,10 +9,13 @@ import { createDriving } from './driving';
 import { createChaseCam } from './camera';
 import { createMinimap } from './minimap';
 import { bindInput } from './input';
+import { fetchPublishedMapa } from './map-load';
 import type { Ctx, State } from './types';
 
-export function startGame() {
+export async function startGame() {
   const data = JSON.parse(document.querySelector('[data-dados]')!.textContent!);
+  const publicado = await fetchPublishedMapa();
+  const mapa = publicado ?? data.mapa;
 
   const state: State = { phase: 'intro', muted: false, firstInput: false };
   const input = { accel: false, brake: false, left: false, right: false, handbrake: false };
@@ -20,7 +23,7 @@ export function startGame() {
 
   const ctx = {
     cfg: data.config,
-    map: data.mapa,
+    map: mapa,
     carData: data.carros[0],
     parts: data.pecas,
     state,

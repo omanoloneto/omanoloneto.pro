@@ -1,0 +1,111 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { config, mapa } from '../../../data/overdrive';
+
+const dadosJson = JSON.stringify({ config, mapa });
+
+const title = 'Overdrive — editor 3D | Manolo Neto';
+const description = 'Editor 3D estilo Cities Skylines pra montar a cidade do Overdrive.';
+---
+
+<Layout title={title} description={description}>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main class="ed3">
+    <div class="ed3__cena" data-cena></div>
+
+    <div class="ed3__bar">
+      <strong>🏙️ Overdrive · 3D</strong>
+      <button type="button" data-tool="select" class="on">Selecionar</button>
+      <button type="button" data-tool="place">Colocar</button>
+      <button type="button" data-tool="terreno">Terreno</button>
+      <span class="ed3__sep"></span>
+      <button type="button" data-save>Salvar</button>
+      <button type="button" data-publish class="ed3__pub">Publicar</button>
+      <button type="button" data-download>Baixar código</button>
+      <a class="ed3__link" href="/class/games/overdrive-editor/">editor 2D (ruas)</a>
+      <a class="ed3__link" href="/class/games/overdrive/">▶ jogo</a>
+    </div>
+
+    <div class="ed3__palette" data-palette>
+      <span>Prédios</span>
+      <button type="button" data-place="predio:torre">Torre</button>
+      <button type="button" data-place="predio:predio">Prédio</button>
+      <button type="button" data-place="predio:loja">Loja</button>
+      <button type="button" data-place="predio:galpao">Galpão</button>
+      <span>Marcos</span>
+      <button type="button" data-place="marco:ginasio">Ginásio</button>
+      <button type="button" data-place="marco:prefeitura">Prefeitura</button>
+      <button type="button" data-place="marco:skate">Skate</button>
+      <button type="button" data-place="marco:casa">Casa</button>
+      <button type="button" data-place="marco:bourbon">Bourbon</button>
+    </div>
+
+    <aside class="ed3__panel" data-panel></aside>
+    <div class="ed3__toast" data-toast></div>
+    <p class="ed3__dica">Botão direito gira · botão do meio arrasta · roda dá zoom · botão esquerdo edita</p>
+  </main>
+</Layout>
+
+<style is:global>
+  body { margin: 0; }
+  .ed3 { position: fixed; inset: 0; overflow: hidden; background: #0a0c12; color: #e8ecf8; font-family: 'Oxanium', Verdana, sans-serif; }
+  .ed3__cena { position: absolute; inset: 0; }
+  .ed3__cena canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .ed3__bar {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 12px; background: rgba(18, 21, 31, 0.92);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .ed3__bar button {
+    border: 1px solid rgba(255, 255, 255, 0.18); background: #1c2130; color: #e8ecf8;
+    border-radius: 8px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 0.85rem;
+  }
+  .ed3__bar button:hover { background: #262d40; }
+  .ed3__bar button.on { background: #2f6fb0; border-color: #4a8fd0; }
+  .ed3__pub { background: #17324a !important; border-color: rgba(0, 229, 255, 0.4) !important; }
+  .ed3__sep { flex: 1; }
+  .ed3__link { color: #00e5ff; text-decoration: none; font-size: 0.85rem; padding: 0 6px; }
+  .ed3__palette {
+    position: absolute; top: 52px; left: 12px; z-index: 10;
+    display: none; flex-direction: column; gap: 5px; width: 130px;
+    background: rgba(16, 19, 28, 0.94); border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px; padding: 10px;
+  }
+  .ed3__palette.open { display: flex; }
+  .ed3__palette span { font-size: 0.72rem; opacity: 0.6; text-transform: uppercase; margin-top: 4px; }
+  .ed3__palette button {
+    border: 1px solid rgba(255, 255, 255, 0.18); background: #1c2130; color: #e8ecf8;
+    border-radius: 7px; padding: 6px; cursor: pointer; font: inherit; font-size: 0.82rem;
+  }
+  .ed3__palette button:hover { background: #262d40; }
+  .ed3__palette button.on { background: #2f6fb0; }
+  .ed3__panel {
+    position: absolute; top: 52px; right: 12px; z-index: 10; width: 210px;
+    background: rgba(16, 19, 28, 0.94); border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px; padding: 12px 14px; font-size: 0.85rem;
+  }
+  .ed3__panel h3 { margin: 0 0 8px; font-size: 0.9rem; color: #ffd23f; }
+  .ed3__panel label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 6px 0; }
+  .ed3__panel input { width: 92px; padding: 4px 6px; background: #0c0f16; color: #e8ecf8; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; font: inherit; font-size: 0.82rem; }
+  .ed3__panel input[type="color"] { padding: 2px; height: 26px; }
+  .ed3__panel .hint { opacity: 0.6; font-size: 0.75rem; line-height: 1.4; margin: 8px 0 0; }
+  .ed3__toast {
+    position: absolute; bottom: 46px; left: 50%; transform: translateX(-50%) translateY(20px);
+    z-index: 20; padding: 10px 18px; border-radius: 10px; font-size: 0.9rem;
+    background: #17324a; border: 1px solid rgba(0, 229, 255, 0.4); opacity: 0; pointer-events: none;
+    transition: opacity .2s, transform .2s;
+  }
+  .ed3__toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .ed3__toast.err { background: #3a1414; border-color: rgba(255, 80, 80, 0.4); }
+  .ed3__dica {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    z-index: 10; margin: 0; font-size: 0.75rem; opacity: 0.55; white-space: nowrap;
+  }
+</style>
+
+<script>
+  import { startEditor3D } from '../../../games/overdrive/editor3d';
+  startEditor3D();
+</script>

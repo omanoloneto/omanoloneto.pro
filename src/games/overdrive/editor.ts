@@ -1,3 +1,6 @@
+import { buildMapaExport, type ExpMapa } from './map-export';
+import { loadLocalDraft, saveLocalDraft } from './map-load';
+
 type Pt = [number, number];
 
 interface Via { tipo: string; nome?: string; pontos: Pt[] }
@@ -31,7 +34,7 @@ const VIA_STYLE: Record<string, { w: number; casing: string; fill: string }> = {
 export function startEditor() {
   const data = JSON.parse(document.querySelector('[data-dados]')!.textContent!);
   const cfg = data.config;
-  const mapa: Mapa = data.mapa;
+  const mapa: Mapa = (loadLocalDraft() as Mapa) ?? data.mapa;
   if (!mapa.morros) mapa.morros = [];
   const T = cfg.mundo.tamanho;
 
@@ -49,6 +52,7 @@ export function startEditor() {
   const addViaBtns = document.querySelectorAll('[data-add]');
   const addMorroBtn = document.querySelector('[data-add-morro]') as HTMLButtonElement;
   const dupBtn = document.querySelector('[data-dup]') as HTMLButtonElement;
+  const saveBtn = document.querySelector('[data-save]') as HTMLButtonElement;
 
   const view = { cx: 0, cz: 0, scale: 1 };
   let snap = 1;
@@ -594,35 +598,18 @@ export function startEditor() {
     }
   }
 
-  const ri = (v: number) => Math.round(v);
-  function buildExport() {
-    const via = (v: Via) => `    { tipo: '${v.tipo}',${v.nome ? ` nome: '${v.nome.replace(/'/g, "\\'")}',` : ''} pontos: [${v.pontos.map((p) => `[${ri(p[0])}, ${ri(p[1])}]`).join(', ')}] },`;
-    const rr = (v?: number) => (v ? `, rot: ${Math.round(v * 1e4) / 1e4}` : '');
-    const marco = (m: Marco) => `    { tipo: '${m.tipo}', x: ${ri(m.x)}, z: ${ri(m.z)}${rr(m.rot)} },`;
-    const rota = (r: Rotatoria) => `    { x: ${ri(r.x)}, z: ${ri(r.z)}, raioInterno: ${ri(r.raioInterno)}, raioExterno: ${ri(r.raioExterno)} },`;
-    const predio = (b: Predio) => `    { tipo: '${b.tipo ?? 'box'}', x: ${ri(b.x)}, z: ${ri(b.z)}, w: ${ri(b.w)}, d: ${ri(b.d)}, h: ${ri(b.h)}, cor: '${b.cor}'${rr(b.rot)} },`;
-    const morro = (h: Morro) => `    { x: ${ri(h.x)}, z: ${ri(h.z)}, raio: ${ri(h.raio)}, altura: ${Math.round(h.altura * 10) / 10} },`;
-    return [
-      '  vias: [',
-      mapa.vias.map(via).join('\n'),
-      '  ] as Via[],',
-      mapa.predios.length ? `  predios: [\n${mapa.predios.map(predio).join('\n')}\n  ] as Predio[],` : '  predios: [] as Predio[],',
-      '  marcos: [',
-      mapa.marcos.map(marco).join('\n'),
-      '  ] as Marco[],',
-      '  rotatorias: [',
-      mapa.rotatorias.map(rota).join('\n'),
-      '  ] as Rotatoria[],',
-      mapa.morros.length ? `  morros: [\n${mapa.morros.map(morro).join('\n')}\n  ] as Morro[],` : '  morros: [] as Morro[],',
-      `  spawn: { x: ${Math.round(mapa.spawn.x * 100) / 100}, z: ${Math.round(mapa.spawn.z * 100) / 100}, heading: ${Math.round(mapa.spawn.heading * 1e6) / 1e6} },`,
-    ].join('\n');
-  }
+  const buildExport = () => buildMapaExport(mapa as unknown as ExpMapa);
 
   snapBtn.addEventListener('click', () => {
     snap = snap === 1 ? 0.25 : snap === 0.25 ? 5 : 1;
     snapBtn.textContent = `Snap: ${snap}`;
   });
   fitBtn.addEventListener('click', fit);
+  saveBtn.addEventListener('click', () => {
+    saveLocalDraft(mapa);
+    saveBtn.textContent = 'Salvo!';
+    setTimeout(() => (saveBtn.textContent = 'Salvar'), 1200);
+  });
   exportBtn.addEventListener('click', () => {
     exportText.value = buildExport();
     exportBox.hidden = false;

@@ -922,37 +922,35 @@ export function createCity(ctx: Ctx): City {
     }
   }
 
+  const cityMeshes: THREE.Mesh[] = [];
+  const addMesh = (geo: THREE.BufferGeometry | null, mat: THREE.Material) => {
+    if (!geo) return;
+    const mesh = new THREE.Mesh(geo, mat);
+    ctx.scene.add(mesh);
+    cityMeshes.push(mesh);
+  };
   const material = new THREE.MeshBasicMaterial({ vertexColors: true });
   const asphaltTexture = createAsphaltTexture(ctx.stage.lowTier);
   ctx.textures.asfalto = asphaltTexture;
   const asphaltMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, map: asphaltTexture });
-  const groundGeo = ground.build();
-  if (groundGeo) ctx.scene.add(new THREE.Mesh(groundGeo, material));
-  const asphaltGeo = asphaltGround.build();
-  if (asphaltGeo) ctx.scene.add(new THREE.Mesh(asphaltGeo, asphaltMaterial));
-  const decoGeo = deco.build();
-  if (decoGeo) ctx.scene.add(new THREE.Mesh(decoGeo, material));
+  addMesh(ground.build(), material);
+  addMesh(asphaltGround.build(), asphaltMaterial);
+  addMesh(deco.build(), material);
   const curbMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
-  const curbGeo = curbs.build();
-  if (curbGeo) ctx.scene.add(new THREE.Mesh(curbGeo, curbMaterial));
-  const merged = mergeParts(parts);
-  if (merged) ctx.scene.add(new THREE.Mesh(merged, material));
+  addMesh(curbs.build(), curbMaterial);
+  addMesh(mergeParts(parts), material);
   const graffitiTexture = createGraffitiTexture(ctx.stage.lowTier);
   ctx.textures.grafite = graffitiTexture;
   const graffitiMaterial = new THREE.MeshBasicMaterial({ map: graffitiTexture });
-  const graffitiGeo = mergeParts(graffitiParts);
-  if (graffitiGeo) ctx.scene.add(new THREE.Mesh(graffitiGeo, graffitiMaterial));
+  addMesh(mergeParts(graffitiParts), graffitiMaterial);
   const mallTexture = createMallTexture(ctx.stage.lowTier);
   ctx.textures.mall = mallTexture;
   const mallMaterial = new THREE.MeshBasicMaterial({ map: mallTexture });
-  const mallGeo = mergeParts(mallParts);
-  if (mallGeo) ctx.scene.add(new THREE.Mesh(mallGeo, mallMaterial));
+  addMesh(mergeParts(mallParts), mallMaterial);
   const emissiveMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
-  const emissiveGeo = mergeParts(emissiveParts);
-  if (emissiveGeo) ctx.scene.add(new THREE.Mesh(emissiveGeo, emissiveMaterial));
+  addMesh(mergeParts(emissiveParts), emissiveMaterial);
   const glowDecalMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false });
-  const glowGeo = glowDecals.build();
-  if (glowGeo) ctx.scene.add(new THREE.Mesh(glowGeo, glowDecalMaterial));
+  addMesh(glowDecals.build(), glowDecalMaterial);
 
   function typeAt(x: number, z: number): number {
     return at(cellOf(x), cellOf(z));
@@ -1069,6 +1067,14 @@ export function createCity(ctx: Ctx): City {
     },
     heightAt(x, z) {
       return heightAt(x, z);
+    },
+    dispose() {
+      for (const mesh of cityMeshes) {
+        ctx.scene.remove(mesh);
+        mesh.geometry.dispose();
+      }
+      for (const mat of [material, asphaltMaterial, curbMaterial, graffitiMaterial, mallMaterial, emissiveMaterial, glowDecalMaterial]) mat.dispose();
+      for (const tex of [asphaltTexture, graffitiTexture, mallTexture]) tex.dispose();
     },
     buildingTopAt(x, z) {
       return tops[cellOf(x) + cellOf(z) * N];
