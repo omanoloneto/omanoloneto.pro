@@ -141,9 +141,9 @@ export const config = {
     flores: 2400,
     dungeon: { n: 3, salas: 7, carvaoPorSala: 10, ferroPorSala: 5 },
     veins: {
-      coal: { n: 1400, sizeMin: 3, sizeMax: 6, yMin: 2 },
-      iron: { n: 700, sizeMin: 2, sizeMax: 5, yMin: 2, yMax: 34 },
-      ouro: { n: 350, sizeMin: 1, sizeMax: 3, yMin: 2, yMax: 20 },
+      coal: { n: 3200, sizeMin: 4, sizeMax: 8, yMin: 2 },
+      iron: { n: 1800, sizeMin: 3, sizeMax: 6, yMin: 2, yMax: 34 },
+      ouro: { n: 800, sizeMin: 2, sizeMax: 4, yMin: 2, yMax: 20 },
     },
     pampa: {
       raio: 66,

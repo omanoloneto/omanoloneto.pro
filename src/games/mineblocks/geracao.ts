@@ -435,13 +435,19 @@ export function brotarUmbu(ctx: Ctx, x: number, h: number, z: number, rng: () =>
 const ORE_IDS = [22, 25, 38, 51];
 
 export function seedOreVeins(ctx: Ctx, rng: () => number, surfaceAt: (x: number, z: number) => number) {
-  const { SX, SZ, SY } = ctx.cfg.mundo;
+  const { SX, SZ, SY, nivelAgua } = ctx.cfg.mundo;
   const G = ctx.cfg.geracao;
   const mundo = ctx.world;
   const semear = (oreId: number, v: { n: number; sizeMin: number; sizeMax: number; yMin: number; yMax?: number }) => {
     for (let i = 0; i < v.n; i++) {
       let x = 2 + Math.floor(rng() * (SX - 4));
       let z = 2 + Math.floor(rng() * (SZ - 4));
+      // veio só embaixo de TERRA FIRME: no fundo do mar ninguém escava
+      for (let t = 0; t < 8 && surfaceAt(x, z) <= nivelAgua; t++) {
+        x = 2 + Math.floor(rng() * (SX - 4));
+        z = 2 + Math.floor(rng() * (SZ - 4));
+      }
+      if (surfaceAt(x, z) <= nivelAgua) continue;
       const teto = Math.min(v.yMax ?? SY, surfaceAt(x, z) - 3);
       if (teto <= v.yMin) continue;
       let y = v.yMin + Math.floor(rng() * (teto - v.yMin + 1));
