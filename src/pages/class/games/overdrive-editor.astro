@@ -1,0 +1,117 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { config, mapa } from '../../../data/overdrive';
+
+const dadosJson = JSON.stringify({ config, mapa });
+
+const title = 'Overdrive — editor de mapa | Manolo Neto';
+const description = 'Editor topo-down pra reposicionar marcos, rotatórias e vias do Overdrive.';
+---
+
+<Layout title={title} description={description}>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main class="ed" data-editor>
+    <div class="ed__bar">
+      <strong>🗺️ Overdrive · editor</strong>
+      <button type="button" data-fit>Ajustar</button>
+      <button type="button" data-snap>Snap: 1</button>
+      <button type="button" data-export>Exportar</button>
+      <span class="ed__readout" data-readout></span>
+      <a class="ed__voltar" href="/class/games/overdrive/">▶ testar no jogo</a>
+    </div>
+
+    <canvas class="ed__canvas" data-canvas></canvas>
+
+    <aside class="ed__panel" data-panel></aside>
+
+    <div class="ed__export" data-export-box hidden>
+      <div class="ed__export-caixa">
+        <div class="ed__export-topo">
+          <span>Cole isto no <code>mapa</code> em <code>src/data/overdrive.ts</code> (substitui vias/predios/marcos/rotatorias/spawn)</span>
+          <button type="button" data-export-close aria-label="Fechar">✖</button>
+        </div>
+        <textarea data-export-text spellcheck="false"></textarea>
+        <button type="button" data-copy>Copiar</button>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  body { margin: 0; }
+  .ed {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    background: #0a0c12;
+    color: #e8ecf8;
+    font-family: 'Oxanium', Verdana, sans-serif;
+    overflow: hidden;
+  }
+  .ed__bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: #12151f;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-wrap: wrap;
+  }
+  .ed__bar button {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: #1c2130; color: #e8ecf8;
+    border-radius: 8px; padding: 6px 12px;
+    cursor: pointer; font: inherit; font-size: 0.85rem;
+  }
+  .ed__bar button:hover { background: #262d40; }
+  .ed__readout { margin-left: auto; opacity: 0.7; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+  .ed__voltar { color: #00e5ff; text-decoration: none; font-size: 0.85rem; }
+  .ed__canvas { flex: 1; min-height: 0; display: block; width: 100%; touch-action: none; cursor: crosshair; }
+  .ed__panel {
+    position: fixed; right: 12px; top: 62px;
+    width: 220px;
+    background: rgba(16, 19, 28, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 0.85rem;
+  }
+  .ed__panel h3 { margin: 0 0 8px; font-size: 0.9rem; color: #ffd23f; }
+  .ed__panel label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 6px 0; }
+  .ed__panel input {
+    width: 90px; padding: 4px 6px;
+    background: #0c0f16; color: #e8ecf8;
+    border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px;
+    font: inherit; font-size: 0.82rem;
+  }
+  .ed__panel .hint { opacity: 0.6; font-size: 0.75rem; line-height: 1.4; margin: 8px 0 0; }
+  .ed__export {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(3, 4, 12, 0.72); padding: 16px;
+  }
+  .ed__export[hidden] { display: none; }
+  .ed__export-caixa {
+    width: min(760px, 94vw);
+    background: #12151f; border: 1px solid rgba(0, 229, 255, 0.4);
+    border-radius: 14px; padding: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .ed__export-topo { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 0.82rem; }
+  .ed__export-topo code { color: #ffd23f; }
+  .ed__export-topo button { border: 0; background: rgba(255, 255, 255, 0.12); color: #fff; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; }
+  .ed__export textarea {
+    width: 100%; height: 46vh; resize: vertical;
+    background: #0c0f16; color: #cfe3ff;
+    border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px;
+    padding: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 0.78rem; line-height: 1.45;
+  }
+  .ed__export [data-copy] {
+    align-self: flex-start;
+    border: 1px solid rgba(0, 229, 255, 0.5); background: #10222c; color: #bff;
+    border-radius: 8px; padding: 8px 16px; cursor: pointer; font: inherit;
+  }
+</style>
+
+<script>
+  import { startEditor } from '../../../games/overdrive/editor';
+  startEditor();
+</script>
