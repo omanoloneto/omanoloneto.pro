@@ -6,6 +6,7 @@ const LEAF_NATURAL = 7;
 const LEAF_PLACED = 16;
 const LEAF_LUCKY = 37;
 const TRUNK = 5;
+const UMBU_TRUNK = 60;
 const isDecayLeaf = (id: number) => id === LEAF_NATURAL || id === LEAF_LUCKY;
 const CHEST = 17;
 const DOOR_CLOSED = 18;
@@ -187,7 +188,7 @@ export function createEditing(ctx: Ctx): Editing {
       gainItem(above);
       ctx.metas.remove(a.x, a.y + 1, a.z);
     }
-    if (a.id === TRUNK || isDecayLeaf(a.id) || a.id === LEAF_PLACED) {
+    if (a.id === TRUNK || a.id === UMBU_TRUNK || isDecayLeaf(a.id) || a.id === LEAF_PLACED) {
       queueNeighbors(a.x, a.y, a.z);
     }
     ctx.audio.soundBreak(a.id);
@@ -831,7 +832,7 @@ export function createEditing(ctx: Ctx): Editing {
           const ny = y + dy;
           const nz = z + dz;
           const id = world.get(nx, ny, nz);
-          if (id === TRUNK) return true;
+          if (id === TRUNK || id === UMBU_TRUNK) return true;
           if (!isDecayLeaf(id)) continue;
           const k = key3(nx, ny, nz);
           if (visited.has(k)) continue;

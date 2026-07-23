@@ -401,9 +401,9 @@ export function gerarMundo(ctx: Ctx, seed: number, opts: { semPampa?: boolean } 
 export function brotarUmbu(ctx: Ctx, x: number, h: number, z: number, rng: () => number) {
   const { world: mundo } = ctx;
   const alt = 7 + Math.floor(rng() * 2);
-  for (let y = 1; y <= alt; y++) mundo.set(x, h + y, z, 5);
-  mundo.set(x + 1, h + alt - 1, z, 5);
-  mundo.set(x - 1, h + alt - 2, z, 5);
+  for (let y = 1; y <= alt; y++) mundo.set(x, h + y, z, 60);
+  mundo.set(x + 1, h + alt - 1, z, 60);
+  mundo.set(x - 1, h + alt - 2, z, 60);
   const leaves: Array<[number, number, number]> = [];
   const putLeaf = (lx: number, ly: number, lz: number) => {
     if (mundo.get(lx, ly, lz) === 0) {
@@ -432,7 +432,7 @@ export function brotarUmbu(ctx: Ctx, x: number, h: number, z: number, rng: () =>
   });
 }
 
-const ORE_IDS = [22, 25, 38];
+const ORE_IDS = [22, 25, 38, 51];
 
 export function seedOreVeins(ctx: Ctx, rng: () => number, surfaceAt: (x: number, z: number) => number) {
   const { SX, SZ, SY } = ctx.cfg.mundo;
@@ -470,4 +470,34 @@ export function reseedOres(ctx: Ctx) {
   }
   const rng = mulberry32((Math.random() * 4294967296) >>> 0);
   seedOreVeins(ctx, rng, (x, z) => ctx.world.highestGround(x, z));
+  seedAmethyst(ctx, rng);
+}
+
+function seedAmethyst(ctx: Ctx, rng: () => number) {
+  const { SX, SZ } = ctx.cfg.mundo;
+  const A = ctx.cfg.geracao.pampa.ametista;
+  const mundo = ctx.world;
+  const cols: number[] = [];
+  for (let z = 2; z < SZ - 2; z++) {
+    for (let x = 2; x < SX - 2; x++) {
+      if (mundo.get(x, mundo.highestGround(x, z), z) === 47) cols.push(x + z * SX);
+    }
+  }
+  if (!cols.length) return;
+  let seeded = 0;
+  for (let tries = 0; tries < A.n * 30 && seeded < A.n; tries++) {
+    const k = cols[Math.floor(rng() * cols.length)];
+    let cx = k % SX;
+    let cz = Math.floor(k / SX);
+    let cy = A.yMin + Math.floor(rng() * (A.yMax - A.yMin));
+    const size = A.sizeMin + Math.floor(rng() * (A.sizeMax - A.sizeMin + 1));
+    for (let s = 0; s < size; s++) {
+      if (mundo.get(cx, cy, cz) === 3) mundo.data[cx + cz * SX + cy * SX * SZ] = 51;
+      cx += Math.floor(rng() * 3) - 1;
+      cy += Math.floor(rng() * 3) - 1;
+      cz += Math.floor(rng() * 3) - 1;
+      cy = Math.max(A.yMin, Math.min(A.yMax, cy));
+    }
+    seeded++;
+  }
 }

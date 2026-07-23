@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import type { Ctx, Sky } from './types';
 
-export const DIA_S = 185;
+export const DIA_S = 180;
 export const NOITE_S = 180;
 export const CICLO_S = DIA_S + NOITE_S;
 const R = 250; // raio do domo (< far 260); recentrado na câmera todo frame

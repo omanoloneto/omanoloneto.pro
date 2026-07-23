@@ -31,7 +31,7 @@ interface Camada {
   idx: number[];
 }
 
-const OUTLINE_GROUP: Record<number, number> = { 7: 38, 16: 38, 37: 38, 5: 39 };
+const OUTLINE_GROUP: Record<number, number> = { 7: 38, 16: 38, 37: 38, 5: 39, 60: 40 };
 const OUTLINE_WIDTH = 0.08;
 const OUTLINE_LIFT = 0.004;
 

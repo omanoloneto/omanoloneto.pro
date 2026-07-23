@@ -685,6 +685,25 @@ export function criarTextura(_ctx: Ctx): Texture {
     g.fillStyle = '#ffffff';
     g.fillRect(ox, oy, TILE, TILE);
   }
+  {
+    const [ox, oy] = base(62, [110, 90, 82], 0.015);
+    for (const sx of [2, 7, 12]) {
+      const h0 = Math.floor(rng() * 3);
+      for (let y = h0; y < TILE - Math.floor(rng() * 3); y++) {
+        px(ox, oy, sx, y, '#574740');
+        if (rng() > 0.6) px(ox, oy, sx + 1, y, '#574740');
+      }
+    }
+    for (let y = 2; y < 13; y++) px(ox, oy, 5, y, '#8a7468');
+    for (let y = 4; y < 11; y++) px(ox, oy, 10, y, '#8a7468');
+  }
+  {
+    const [ox, oy] = base(63, [196, 112, 63], 0.015);
+    g.fillStyle = '#9a4f28';
+    for (const ly of [3, 7, 11]) g.fillRect(ox, oy + ly, TILE, 1);
+    g.fillStyle = '#d98d5c';
+    for (const [bx, by] of [[3, 5], [10, 9], [6, 13], [12, 1]] as const) g.fillRect(ox + bx, oy + by, 3, 1);
+  }
 
   const atlas = new THREE.CanvasTexture(canvas);
   atlas.magFilter = THREE.NearestFilter;
