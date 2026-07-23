@@ -1,0 +1,185 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import { config, times } from '../../../data/futsal-poderes';
+
+const dadosJson = JSON.stringify({ config, times });
+const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const title = 'Futsal dos Poderes — futebol com superpoderes! | Manolo Neto';
+const description = 'Jogo 3D de futsal 5x5 com crianças que têm superpoderes: chute cometa, arranque furacão e mais. Faça gols contra os Vulcões!';
+---
+
+<Layout title={title} description={description}>
+  <script type="application/json" data-dados set:html={dadosJson}></script>
+
+  <main id="conteudo" class="ft" data-game role="application" aria-label="Futsal dos Poderes: futebol 3D com superpoderes">
+    <header class="hud">
+      <div class="hud__placar">
+        <span class="time time--a">{times[0].nome}</span>
+        <strong data-placar-a>0</strong>
+        <span class="x">×</span>
+        <strong data-placar-b>0</strong>
+        <span class="time time--b">{times[1].nome}</span>
+      </div>
+      <div class="hud__tempo" data-tempo>2:30</div>
+      <div class="hud__btns">
+        <button class="hud-btn" type="button" data-pause aria-label="Pausar" hidden>⏸</button>
+        <button class="hud-btn" type="button" data-mute aria-pressed="false" aria-label="Ligar ou desligar o som"><span data-mute-icon>🔊</span></button>
+      </div>
+    </header>
+
+    <div class="cena" data-cena>
+      <div class="poder">
+        <div class="poder__barra-fundo"><div class="poder__barra" data-poder-barra></div></div>
+        <span class="poder__nome" data-poder-nome>—</span>
+      </div>
+
+      <div class="controles" data-controles hidden>
+        <div class="stick" data-stick><div class="stick__knob" data-knob></div></div>
+        <div class="botoes">
+          <button class="ctl ctl--poder" type="button" data-ctl="poder" aria-label="Poder">⚡</button>
+          <button class="ctl ctl--chutar" type="button" data-ctl="chutar" aria-label="Chutar">🦵</button>
+          <button class="ctl ctl--correr" type="button" data-ctl="correr" aria-label="Correr">💨</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="sr-only" data-anuncio aria-live="assertive"></p>
+    <div class="toast" data-toast></div>
+
+    <div class="modal" data-intro>
+      <div class="placa">
+        <div class="placa__topo">⚽ Futsal dos Poderes</div>
+        <div class="placa__corpo">
+          <p class="chamada">Você comanda os <b>{times[0].nome}</b>! Cada criança tem um <b>superpoder</b>. Faça mais gols que os <b>{times[1].nome}</b> antes do tempo acabar.</p>
+          <p class="dica"><b>W A S D</b> ou setas movem · <b>ESPAÇO</b> chuta (segure pra bater forte) · <b>J</b> usa o poder · <b>SHIFT</b> corre</p>
+          <button class="botao botao--go" type="button" data-comecar>▶ Jogar</button>
+          <button class="botao botao--sec" type="button" data-ver-recordes>🏆 Recordes</button>
+          <a class="voltar" href="/class/games/">← voltar pros jogos</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-pausa hidden>
+      <div class="placa">
+        <div class="placa__topo">⏸ Pausa</div>
+        <div class="placa__corpo">
+          <button class="botao botao--go" type="button" data-continuar>▶ Continuar</button>
+          <button class="botao botao--sec" type="button" data-recomecar>🔄 Recomeçar</button>
+          <button class="botao botao--sec" type="button" data-sair>🚪 Sair</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-fim hidden>
+      <div class="placa">
+        <div class="placa__topo" data-fim-titulo>Fim de jogo</div>
+        <div class="placa__corpo">
+          <p class="chamada" data-fim-placar>0 × 0</p>
+          <button class="botao botao--go" type="button" data-salvar>💾 Salvar recorde</button>
+          <button class="botao botao--sec" type="button" data-de-novo>🔄 Jogar de novo</button>
+          <button class="botao botao--sec" type="button" data-recordes-btn>🏆 Recordes</button>
+          <button class="botao botao--sec" type="button" data-sair>🚪 Sair</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-entrada hidden>
+      <div class="placa">
+        <div class="placa__topo">🏆 Seu nome</div>
+        <div class="placa__corpo">
+          <p class="slots" data-entrada-slots>_ _</p>
+          <div class="teclado">
+            {letras.map((l) => <button class="tecla" type="button" data-tecla-nome={l}>{l}</button>)}
+          </div>
+          <div class="entrada-acoes">
+            <button class="botao botao--sec" type="button" data-nome-apagar>⌫ Apagar</button>
+            <button class="botao botao--go" type="button" data-nome-ok>✔ Confirmar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" data-recordes hidden>
+      <div class="placa">
+        <div class="placa__topo">🏆 Recordes</div>
+        <div class="placa__corpo">
+          <ol class="tabela" data-tabela></ol>
+          <p class="vazio" data-recordes-vazio hidden>Ainda não tem recordes. Seja o primeiro!</p>
+          <p class="fonte" data-recordes-fonte></p>
+          <button class="botao botao--go" type="button" data-recordes-fechar>Fechar</button>
+          <button class="botao botao--sec" type="button" data-voltar-intro hidden>← voltar</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  body.is-game { background: #163a24; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; width: 100%; touch-action: none; }
+  body.is-game::before { display: none !important; }
+  .ft { position: fixed; inset: 0; overflow: clip; display: flex; flex-direction: column; font-family: 'Oxanium', Verdana, sans-serif; color: #eef6ee; user-select: none; }
+  .ft .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+  .hud { position: absolute; top: 0; left: 0; right: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; pointer-events: none; }
+  .hud__placar { display: flex; align-items: center; gap: 8px; background: rgba(8, 20, 12, 0.72); padding: 5px 14px; border-radius: 999px; font-weight: 800; }
+  .hud__placar strong { font-size: 1.25rem; min-width: 1ch; text-align: center; }
+  .hud__placar .x { opacity: 0.6; }
+  .time { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .time--a { color: #7fb0ff; } .time--b { color: #ff9a9a; }
+  .hud__tempo { position: absolute; left: 50%; transform: translateX(-50%); top: 46px; background: rgba(8, 20, 12, 0.72); padding: 3px 14px; border-radius: 999px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .hud__tempo.aviso { color: #ffce54; animation: pisca 1s steps(2) infinite; }
+  @keyframes pisca { 50% { opacity: 0.4; } }
+  .hud__btns { display: flex; gap: 8px; pointer-events: auto; }
+  .hud-btn { width: 40px; height: 40px; border: 0; border-radius: 12px; background: rgba(8, 20, 12, 0.72); color: #fff; font-size: 1.1rem; cursor: pointer; }
+  .hud-btn[hidden] { display: none; }
+
+  .cena { position: relative; z-index: 10; flex: 1; min-height: 0; overflow: hidden; }
+  .cena canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  .poder { position: absolute; left: 12px; bottom: 12px; z-index: 25; display: flex; flex-direction: column; gap: 4px; pointer-events: none; }
+  .poder__barra-fundo { width: 150px; height: 12px; border-radius: 999px; background: rgba(8, 20, 12, 0.6); overflow: hidden; border: 1px solid rgba(255,255,255,0.25); }
+  .poder__barra { height: 100%; width: 0%; background: #ffd23f; transition: width .1s linear; }
+  .poder__nome { font-size: 0.78rem; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  .poder__nome.pronto { color: #ffe14d; }
+
+  .controles { position: absolute; inset: 0; z-index: 26; pointer-events: none; }
+  .controles[hidden] { display: none; }
+  .stick { position: absolute; left: 18px; bottom: 40px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.28); pointer-events: auto; touch-action: none; }
+  .stick__knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: rgba(255,255,255,0.55); }
+  .botoes { position: absolute; right: 18px; bottom: 34px; display: grid; grid-template-columns: 74px 74px; gap: 12px; pointer-events: auto; }
+  .ctl { width: 74px; height: 74px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); background: rgba(8,20,12,0.55); color: #fff; font-size: 1.7rem; cursor: pointer; touch-action: manipulation; }
+  .ctl.on { background: rgba(120,200,140,0.6); }
+  .ctl--chutar { background: rgba(60,120,220,0.6); }
+  .ctl--poder { background: rgba(220,120,60,0.6); }
+
+  .modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(6, 16, 10, 0.72); padding: 14px; }
+  .modal[hidden] { display: none; }
+  .placa { width: min(440px, 94vw); max-height: 92vh; overflow: auto; background: linear-gradient(160deg, #1a3a26, #0e2417); border: 1px solid rgba(120, 220, 150, 0.4); border-radius: 18px; box-shadow: 0 0 40px rgba(0,0,0,.5); }
+  .placa__topo { padding: 14px; text-align: center; font-weight: 800; font-size: 1.25rem; background: rgba(255,255,255,0.06); }
+  .placa__corpo { padding: 16px; display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; }
+  .chamada { margin: 0; line-height: 1.4; }
+  .dica { margin: 0; font-size: 0.82rem; opacity: 0.85; line-height: 1.5; }
+  .botao { width: 100%; padding: 12px; border: 0; border-radius: 12px; font: inherit; font-weight: 800; cursor: pointer; }
+  .botao--go { background: #35c25a; color: #06210f; }
+  .botao--sec { background: rgba(255,255,255,0.12); color: #eef6ee; }
+  .voltar { color: #9fe0b5; text-decoration: none; font-size: 0.85rem; margin-top: 4px; }
+  .slots { font-size: 1.8rem; font-weight: 800; letter-spacing: 0.3em; margin: 4px 0; }
+  .teclado { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; width: 100%; }
+  .tecla { padding: 8px 0; border: 0; border-radius: 8px; background: rgba(255,255,255,0.12); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+  .entrada-acoes { display: flex; gap: 8px; width: 100%; }
+  .tabela { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 4px; }
+  .tabela li { display: grid; grid-template-columns: 2.2rem 1fr auto auto; gap: 8px; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.06); border-radius: 8px; }
+  .tabela li.novo { background: rgba(120,220,150,0.22); }
+  .tabela .pos { opacity: 0.7; } .tabela .pts { font-weight: 800; } .tabela .det { opacity: 0.75; font-size: 0.85rem; }
+  .fonte { font-size: 0.75rem; opacity: 0.7; margin: 0; }
+  .vazio { opacity: 0.8; }
+  .toast { position: absolute; left: 50%; top: 92px; transform: translateX(-50%) translateY(-10px); z-index: 40; padding: 8px 18px; border-radius: 999px; background: rgba(8,20,12,0.85); font-weight: 800; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (min-width: 900px) and (hover: hover) { .controles { display: none !important; } }
+</style>
+
+<script>
+  import { iniciarJogo } from '../../../games/futsal-poderes/main';
+  iniciarJogo();
+</script>

@@ -17,6 +17,7 @@ export interface Stage3DOptions {
   far: number;
   onFrame(dt: number): void;
   maxPixelRatio?: number;
+  renderFn?: () => void;
 }
 
 export function createStage3D(sceneEl: HTMLElement, opts: Stage3DOptions): Stage3D {
@@ -38,6 +39,7 @@ export function createStage3D(sceneEl: HTMLElement, opts: Stage3DOptions): Stage
   let lastTs = 0;
   let avgDt = 16;
   let degrade = 0;
+  const renderScene = () => (opts.renderFn ? opts.renderFn() : renderer.render(scene, camera));
 
   function measure() {
     const w = sceneEl.clientWidth || 1;
@@ -45,7 +47,7 @@ export function createStage3D(sceneEl: HTMLElement, opts: Stage3DOptions): Stage
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    if (!rafId) renderer.render(scene, camera);
+    if (!rafId) renderScene();
   }
   window.addEventListener('resize', measure);
   renderer.domElement.addEventListener('webglcontextrestored', () => measure());
@@ -64,7 +66,7 @@ export function createStage3D(sceneEl: HTMLElement, opts: Stage3DOptions): Stage
       measure();
     }
     opts.onFrame(Math.min(dtMs / 1000, 0.05));
-    renderer.render(scene, camera);
+    renderScene();
   }
 
   return {
@@ -84,6 +86,6 @@ export function createStage3D(sceneEl: HTMLElement, opts: Stage3DOptions): Stage
       rafId = 0;
     },
     running: () => rafId !== 0,
-    render: () => renderer.render(scene, camera),
+    render: renderScene,
   };
 }
