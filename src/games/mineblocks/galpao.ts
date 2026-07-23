@@ -8,13 +8,13 @@ export const PATROL_FROM_SIGN = [
   { x: 0, z: -4 },
 ];
 
-export function buildShed(ctx: Ctx, rng: () => number, pampaTop: (x: number, z: number) => number): boolean {
+export function buildShed(ctx: Ctx, rng: () => number, pampaTop: (x: number, z: number) => number, center: { x: number; z: number }): boolean {
   const { world: mundo, cfg } = ctx;
   const { SX, SZ } = cfg.mundo;
   const P = cfg.geracao.pampa;
   for (let tries = 0; tries < 300; tries++) {
-    const cx = Math.max(10, Math.min(SX - 11, Math.floor(P.x - P.raio / 2 + rng() * P.raio)));
-    const cz = Math.max(10, Math.min(SZ - 11, Math.floor(P.z - P.raio / 2 + rng() * P.raio)));
+    const cx = Math.max(10, Math.min(SX - 11, Math.floor(center.x - P.raio / 2 + rng() * P.raio)));
+    const cz = Math.max(10, Math.min(SZ - 11, Math.floor(center.z - P.raio / 2 + rng() * P.raio)));
     const h0 = pampaTop(cx, cz);
     if (h0 <= cfg.mundo.nivelAgua + 2) continue;
     let flat = true;

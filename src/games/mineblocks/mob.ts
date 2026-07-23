@@ -175,6 +175,9 @@ const BUB_STRUCT: BubPart[] = [
 
 interface Yujack {
   group: THREE.Group;
+  limbs: { armL: THREE.Group; armR: THREE.Group; legL: THREE.Group; legR: THREE.Group };
+  walkPhase: number;
+  moving: boolean;
   x: number; y: number; z: number;
   yaw: number;
   sitting: boolean;
@@ -212,21 +215,12 @@ const YU_BELT_TONES: FaceTones = { top: new THREE.Color('#38616f'), side: new TH
 const YU_HAT_TONES: FaceTones = { top: new THREE.Color('#4ea6bb'), side: new THREE.Color('#4ea6bb'), sideLow: new THREE.Color('#3d8496'), bottom: new THREE.Color('#3d8496') };
 const YU_SCARF_TONES: FaceTones = { top: new THREE.Color('#2ecc71'), side: new THREE.Color('#2ecc71'), sideLow: new THREE.Color('#1e8e5e'), bottom: new THREE.Color('#1e8e5e') };
 const YU_LIME_TONES: FaceTones = { top: YU_LIME, side: YU_LIME, bottom: YU_LIME };
-const AXE_ROT = { z: 0.55 };
+const YU_FURDARK_TONES: FaceTones = { top: new THREE.Color('#8c7456'), side: new THREE.Color('#8c7456'), bottom: new THREE.Color('#8c7456') };
 
-const YU_STRUCT: BubPart[] = [
-  { w: 0.26, h: 0.26, d: 0.3, x: -0.2, y: 0.13, z: 0.04, tones: YU_FUR },
-  { w: 0.26, h: 0.26, d: 0.3, x: 0.2, y: 0.13, z: 0.04, tones: YU_FUR },
+const YU_BODY: BubPart[] = [
   { w: 0.74, h: 0.44, d: 0.54, x: 0, y: 0.48, z: 0.02, tones: YU_FUR },
   { w: 0.78, h: 0.1, d: 0.58, x: 0, y: 0.72, z: 0.02, tones: YU_BELT_TONES },
   { w: 0.64, h: 0.4, d: 0.46, x: 0, y: 0.96, z: 0, tones: YU_VEST },
-  { w: 0.18, h: 0.44, d: 0.2, x: -0.46, y: 0.86, z: 0.02, tones: YU_FUR },
-  { w: 0.2, h: 0.08, d: 0.22, x: -0.46, y: 0.66, z: 0.02, tones: YU_LIME_TONES },
-  { w: 0.17, h: 0.14, d: 0.19, x: -0.46, y: 0.56, z: 0.02, tones: { top: YU.furDark, side: YU.furDark, bottom: YU.furDark } },
-  { w: 0.18, h: 0.22, d: 0.2, x: 0.44, y: 1.0, z: -0.02, tones: YU_FUR },
-  { w: 0.16, h: 0.3, d: 0.18, x: 0.46, y: 1.26, z: -0.08, tones: YU_FUR },
-  { w: 0.2, h: 0.06, d: 0.2, x: 0.46, y: 1.36, z: -0.09, tones: YU_LIME_TONES },
-  { w: 0.18, h: 0.14, d: 0.2, x: 0.46, y: 1.46, z: -0.1, tones: { top: YU.furDark, side: YU.furDark, bottom: YU.furDark } },
   { w: 0.62, h: 0.16, d: 0.54, x: 0, y: 1.22, z: -0.02, tones: YU_SCARF_TONES },
   { w: 0.34, h: 0.1, d: 0.28, x: -0.42, y: 1.14, z: 0.26, tones: YU_SCARF_TONES },
   { w: 0.28, h: 0.09, d: 0.24, x: -0.58, y: 1.0, z: 0.42, tones: YU_SCARF_TONES },
@@ -240,13 +234,39 @@ const YU_STRUCT: BubPart[] = [
   { w: 0.56, h: 0.11, d: 0.48, x: 0, y: 1.82, z: -0.06, tones: YU_HAT_TONES },
   { w: 0.36, h: 0.08, d: 0.3, x: 0, y: 1.91, z: -0.06, tones: YU_HAT_TONES },
   { w: 0.36, h: 0.05, d: 0.2, x: 0, y: 1.8, z: -0.38, tones: YU_HAT_TONES },
-  { w: 0.42, h: 0.1, d: 0.6, x: 0, y: 0.1, z: 0.6, tones: { top: YU.furDark, side: YU.furDark, bottom: YU.furDark } },
-  { w: 0.08, h: 1.0, d: 0.08, x: 0.22, y: 1.62, z: -0.1, tones: { top: YU.axeHandle, side: YU_LIME, sideLow: YU.axeHandle, bottom: YU.axeHandle }, rot: AXE_ROT },
-  { w: 0.24, h: 0.34, d: 0.1, x: -0.06, y: 2.06, z: -0.1, tones: { top: YU.axeMetal, side: YU.axeMetal, bottom: YU.axeMetal }, rot: AXE_ROT },
+  { w: 0.42, h: 0.1, d: 0.6, x: 0, y: 0.1, z: 0.6, tones: YU_FURDARK_TONES },
 ];
 
+const YU_LEG: BubPart[] = [
+  { w: 0.24, h: 0.3, d: 0.28, x: 0, y: -0.15, z: 0, tones: YU_FUR },
+  { w: 0.26, h: 0.14, d: 0.36, x: 0, y: -0.35, z: -0.03, tones: YU_FURDARK_TONES },
+];
+
+const YU_ARM: BubPart[] = [
+  { w: 0.18, h: 0.4, d: 0.2, x: 0, y: -0.2, z: 0, tones: YU_FUR },
+  { w: 0.2, h: 0.08, d: 0.22, x: 0, y: -0.42, z: 0, tones: YU_LIME_TONES },
+  { w: 0.17, h: 0.14, d: 0.19, x: 0, y: -0.53, z: 0, tones: YU_FURDARK_TONES },
+];
+
+function limbGeometries(struct: BubPart[], claws: boolean): [THREE.BufferGeometry, THREE.BufferGeometry] {
+  const p: THREE.BufferGeometry[] = struct.map((b) => shadedPart(b.w, b.h, b.d, b.x, b.y, b.z, b.tones, b.rot));
+  if (claws) {
+    p.push(
+      part(0.07, 0.05, 0.06, -0.08, -0.4, -0.19, YU.white),
+      part(0.07, 0.05, 0.06, 0, -0.4, -0.2, YU.white),
+      part(0.07, 0.05, 0.06, 0.08, -0.4, -0.19, YU.white),
+    );
+  }
+  const shaded = mergeGeometries(p)!;
+  p.forEach((g) => g.dispose());
+  const o = struct.map((b) => outlinePart(b.w, b.h, b.d, b.x, b.y, b.z, b.rot));
+  const outline = mergeGeometries(o)!;
+  o.forEach((g) => g.dispose());
+  return [shaded, outline];
+}
+
 function yujackGeometry(): THREE.BufferGeometry {
-  const p: THREE.BufferGeometry[] = YU_STRUCT.map((b) => shadedPart(b.w, b.h, b.d, b.x, b.y, b.z, b.tones, b.rot));
+  const p: THREE.BufferGeometry[] = YU_BODY.map((b) => shadedPart(b.w, b.h, b.d, b.x, b.y, b.z, b.tones, b.rot));
   p.push(
     part(0.15, 0.17, 0.04, -0.15, 1.6, -0.295, YU.white),
     part(0.15, 0.17, 0.04, 0.15, 1.6, -0.295, YU.white),
@@ -268,12 +288,6 @@ function yujackGeometry(): THREE.BufferGeometry {
     part(0.055, 0.055, 0.02, 0.045, 0.685, -0.31, YU.eye),
     part(0.06, 0.06, 0.02, -0.16, 1.06, -0.232, YU.gold),
     part(0.06, 0.06, 0.02, -0.16, 0.92, -0.232, YU.gold),
-    part(0.07, 0.05, 0.06, -0.28, 0.02, -0.12, YU.white),
-    part(0.07, 0.05, 0.06, -0.2, 0.02, -0.13, YU.white),
-    part(0.07, 0.05, 0.06, -0.12, 0.02, -0.12, YU.white),
-    part(0.07, 0.05, 0.06, 0.12, 0.02, -0.12, YU.white),
-    part(0.07, 0.05, 0.06, 0.2, 0.02, -0.13, YU.white),
-    part(0.07, 0.05, 0.06, 0.28, 0.02, -0.12, YU.white),
     part(0.44, 0.025, 0.06, 0, 0.155, 0.44, YU.furLight),
     part(0.44, 0.025, 0.06, 0, 0.155, 0.62, YU.furLight),
     part(0.06, 0.025, 0.56, 0, 0.155, 0.6, YU.furLight),
@@ -284,7 +298,7 @@ function yujackGeometry(): THREE.BufferGeometry {
 }
 
 function yujackOutlineGeometry(): THREE.BufferGeometry {
-  const p = YU_STRUCT.map((b) => outlinePart(b.w, b.h, b.d, b.x, b.y, b.z, b.rot));
+  const p = YU_BODY.map((b) => outlinePart(b.w, b.h, b.d, b.x, b.y, b.z, b.rot));
   const geo = mergeGeometries(p)!;
   p.forEach((g) => g.dispose());
   return geo;
@@ -365,6 +379,8 @@ export function criarMob(ctx: Ctx): Mob {
   const ploverOutlineGeo = ploverOutlineGeometry();
   const yujackGeo = yujackGeometry();
   const yujackOutlineGeo = yujackOutlineGeometry();
+  const [yuArmGeo, yuArmOutlineGeo] = limbGeometries(YU_ARM, false);
+  const [yuLegGeo, yuLegOutlineGeo] = limbGeometries(YU_LEG, true);
   let yujack: Yujack | null = null;
   const outlineMaterial = new THREE.MeshBasicMaterial({ color: 0x1a1e24, side: THREE.BackSide });
   const alive: Winpup[] = [];
@@ -423,12 +439,27 @@ export function criarMob(ctx: Ctx): Mob {
     const group = new THREE.Group();
     group.add(new THREE.Mesh(yujackGeo, material));
     group.add(new THREE.Mesh(yujackOutlineGeo, outlineMaterial));
+    const makeLimb = (geo: THREE.BufferGeometry, outline: THREE.BufferGeometry, x: number, y: number, z: number) => {
+      const limb = new THREE.Group();
+      limb.add(new THREE.Mesh(geo, material));
+      limb.add(new THREE.Mesh(outline, outlineMaterial));
+      limb.position.set(x, y, z);
+      group.add(limb);
+      return limb;
+    };
+    const limbs = {
+      armL: makeLimb(yuArmGeo, yuArmOutlineGeo, -0.44, 1.08, 0.02),
+      armR: makeLimb(yuArmGeo, yuArmOutlineGeo, 0.44, 1.08, 0.02),
+      legL: makeLimb(yuLegGeo, yuLegOutlineGeo, -0.2, 0.42, 0.04),
+      legR: makeLimb(yuLegGeo, yuLegOutlineGeo, 0.2, 0.42, 0.04),
+    };
     ctx.scene.add(group);
     const start = patrol[0];
     const y = groundAt(start.x, start.z) + 1;
     group.position.set(start.x, y, start.z);
     yujack = {
-      group, x: start.x, y, z: start.z, yaw: 0,
+      group, limbs, walkPhase: 0, moving: false,
+      x: start.x, y, z: start.z, yaw: 0,
       sitting: false, sitUntilMs: 0,
       patrolIdx: 1, restUntilMs: 0,
       benchX, benchY, benchZ, patrol,
@@ -439,6 +470,7 @@ export function criarMob(ctx: Ctx): Mob {
   function stepYujack(dt: number) {
     const b = yujack;
     if (!b) return;
+    b.moving = false;
     if (b.sitting) {
       if (timeMs >= b.sitUntilMs) {
         b.sitting = false;
@@ -458,6 +490,7 @@ export function criarMob(ctx: Ctx): Mob {
         b.z += (dz / dist) * step;
         b.yaw = Math.atan2(-dx, -dz);
         b.y = groundAt(b.x, b.z) + 1;
+        b.moving = true;
       } else if (b.patrolIdx < 0) {
         b.sitting = true;
         b.sitUntilMs = timeMs + 8000 + Math.random() * 10000;
@@ -473,6 +506,20 @@ export function criarMob(ctx: Ctx): Mob {
           b.patrolIdx = (b.patrolIdx + 1) % b.patrol.length;
         }
       }
+    }
+    if (b.moving) b.walkPhase += dt * 7;
+    const swing = b.moving ? Math.sin(b.walkPhase) * 0.55 : 0;
+    const L = b.limbs;
+    if (b.sitting) {
+      L.legL.rotation.x = -1.5;
+      L.legR.rotation.x = -1.5;
+      L.armL.rotation.x = -0.25;
+      L.armR.rotation.x = -0.25;
+    } else {
+      L.legL.rotation.x = swing;
+      L.legR.rotation.x = -swing;
+      L.armL.rotation.x = -swing * 0.8;
+      L.armR.rotation.x = swing * 0.8;
     }
     const bob = b.sitting ? 0 : Math.sin(timeMs / 1000 * Math.PI * 2 * 0.9 + b.phase) * 0.025;
     b.group.position.set(b.x, b.y + bob, b.z);

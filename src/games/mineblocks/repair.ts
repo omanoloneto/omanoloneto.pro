@@ -95,7 +95,7 @@ export function naturalizeLegacyLake(ctx: Ctx, blocks: Uint8Array, seed: number,
     }
   }
 
-  gerarMundo(ctx, seed);
+  gerarMundo(ctx, seed, { semPampa: true });
   const pristine = ctx.world.data;
 
   const gridCache = new Map<number, number>();

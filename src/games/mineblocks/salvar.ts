@@ -4,6 +4,7 @@ import { naturalizeLegacyLake } from './repair';
 import type { Ctx, Save } from './types';
 
 const LEGACY_SIZES = [
+  { sx: 384, sz: 384, sy: 80 },
   { sx: 192, sz: 192, sy: 40 },
   { sx: 96, sz: 96, sy: 40 },
 ];
@@ -28,7 +29,7 @@ export function criarSalvar(ctx: Ctx): Save {
   function expandLegacyWorld(legacy: Uint8Array, seed: number, L: LegacySize): Uint8Array {
     const { SX, SZ } = ctx.cfg.mundo;
     const { offX, offZ, offY } = legacyOffsets(L);
-    gerarMundo(ctx, seed);
+    gerarMundo(ctx, seed, { semPampa: L.sx === 384 });
     const out = new Uint8Array(ctx.world.data);
     for (let y = 0; y < L.sy; y++) {
       for (let z = 0; z < L.sz; z++) {

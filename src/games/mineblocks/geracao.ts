@@ -230,7 +230,7 @@ function digDungeon(ctx: Ctx, rng: () => number, heightAt: (x: number, z: number
   for (let d = 0; d < D.n; d++) digOne(baseGlobal + (d * Math.PI * 2) / D.n);
 }
 
-export function gerarMundo(ctx: Ctx, seed: number) {
+export function gerarMundo(ctx: Ctx, seed: number, opts: { semPampa?: boolean } = {}) {
   const { world: mundo, cfg } = ctx;
   const { SX, SZ, SY, nivelAgua } = cfg.mundo;
   const G = cfg.geracao;
@@ -239,10 +239,24 @@ export function gerarMundo(ctx: Ctx, seed: number) {
 
   const meioX = SX / 2;
   const meioZ = SZ / 2;
-  const meia = SX / 2;
+  const meia = 192;
 
   // ----- relevo + camadas -----
   const P = G.pampa;
+  const rngPampa = mulberry32((seed ^ 0xba3a11) >>> 0);
+  const margem = P.raio + 10;
+  let pampaX = margem;
+  let pampaZ = margem;
+  const angBase = rngPampa() * Math.PI * 2;
+  for (let i = 0; i < 24; i++) {
+    const ang = angBase + i * 0.7;
+    const dist = 200 + rngPampa() * 18;
+    const px = Math.max(margem, Math.min(SX - margem, Math.round(meioX + Math.cos(ang) * dist)));
+    const pz = Math.max(margem, Math.min(SZ - margem, Math.round(meioZ + Math.sin(ang) * dist)));
+    pampaX = px;
+    pampaZ = pz;
+    if (Math.hypot(px - meioX, pz - meioZ) >= 190) break;
+  }
   const alturas = new Int16Array(SX * SZ);
   const pampaMask = new Uint8Array(SX * SZ);
   for (let z = 0; z < SZ; z++) {
@@ -252,15 +266,24 @@ export function gerarMundo(ctx: Ctx, seed: number) {
       const borda = suave(Math.min(1, Math.max(0, (r - G.ilhaInicioR) / (1.08 - G.ilhaInicioR))));
       let h = Math.round(G.alturaBase + (n * 2 - 1) * G.amplitude - borda * G.ilhaQueda);
 
-      const rp = Math.hypot(x - P.x, z - P.z) / P.raio;
       let pampa = false;
-      if (rp < 1.2) {
-        const np = relevo(x, z, seed ^ 0x5199, 0.012);
-        const bordaP = suave(Math.min(1, Math.max(0, (rp - 0.55) / (1.2 - 0.55))));
-        const hp = Math.round(nivelAgua + 4 + (np * 2 - 1) * 2.5 - bordaP * 14);
-        if (hp > h) {
-          h = hp;
-          pampa = hp > nivelAgua + 1;
+      if (!opts.semPampa) {
+        const dxp = x - pampaX;
+        const dzp = z - pampaZ;
+        const distP = Math.hypot(dxp, dzp);
+        if (distP < P.raio * 1.6) {
+          const angP = Math.atan2(dzp, dxp);
+          const forma = 0.72 + 0.55 * ruido2D(Math.cos(angP) * 2.3 + 9, Math.sin(angP) * 2.3 + 9, seed ^ 0x77aa);
+          const rp = distP / (P.raio * forma);
+          if (rp < 1.2) {
+            const np = relevo(x, z, seed ^ 0x5199, 0.012);
+            const bordaP = suave(Math.min(1, Math.max(0, (rp - 0.55) / (1.2 - 0.55))));
+            const hp = Math.round(nivelAgua + 4 + (np * 2 - 1) * 2.5 - bordaP * 14);
+            if (hp > h) {
+              h = hp;
+              pampa = hp > nivelAgua + 1;
+            }
+          }
         }
       }
       h = Math.max(2, Math.min(SY - 16, h));
@@ -345,11 +368,15 @@ export function gerarMundo(ctx: Ctx, seed: number) {
     return pampaMask[x + z * SX] === 1 && mundo.get(x, h, z) === 47 && mundo.get(x, h + 1, z) === 0 ? h : -1;
   };
   const pampaSpot = () => {
-    const x = Math.max(2, Math.min(SX - 3, Math.floor(P.x - P.raio + rng() * P.raio * 2)));
-    const z = Math.max(2, Math.min(SZ - 3, Math.floor(P.z - P.raio + rng() * P.raio * 2)));
+    const x = Math.max(2, Math.min(SX - 3, Math.floor(pampaX - P.raio + rng() * P.raio * 2)));
+    const z = Math.max(2, Math.min(SZ - 3, Math.floor(pampaZ - P.raio + rng() * P.raio * 2)));
     return { x, z };
   };
-  buildShed(ctx, mulberry32((seed ^ 0x6a19a0) >>> 0), pampaTop);
+  if (opts.semPampa) {
+    mundo.dirty.clear();
+    return;
+  }
+  buildShed(ctx, mulberry32((seed ^ 0x6a19a0) >>> 0), pampaTop, { x: pampaX, z: pampaZ });
 
   for (let i = 0; i < P.capim; i++) {
     const { x, z } = pampaSpot();

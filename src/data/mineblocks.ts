@@ -111,8 +111,8 @@ export const receitas: Receita[] = [
 
 export const config = {
   mundo: {
-    SX: 384,
-    SZ: 384,
+    SX: 448,
+    SZ: 448,
     SY: 80,
     CHUNK: 16,
     nivelAgua: 50,
@@ -133,12 +133,10 @@ export const config = {
       ouro: { n: 350, sizeMin: 1, sizeMax: 3, yMin: 2, yMax: 20 },
     },
     pampa: {
-      x: 64,
-      z: 320,
-      raio: 62,
-      capim: 1200,
-      moitas: 45,
-      umbus: 2,
+      raio: 66,
+      capim: 1400,
+      moitas: 50,
+      umbus: 7,
       ametista: { n: 90, sizeMin: 1, sizeMax: 3, yMin: 2, yMax: 15 },
     },
   },

@@ -50,12 +50,12 @@ const ATIVO_S = 12;             // visto há <12s conta pra eleger anfitrião
 // tem que ser MAIOR que isso, senão alt-tab de 2min expulsa a criança
 const SUMIU_S = 120;            // visto há >120s sai da sala sozinho
 
-// mundo 384×384×80; MAX_BLOCO tem que casar com a tabela do cliente
+// mundo 448×448×80; MAX_BLOCO tem que casar com a tabela do cliente
 // (id acima da tabela envenena o save do dono: o decodificarRLE recusa
 // o mundo inteiro no próximo carregar)
-const MAX_X = 384;
+const MAX_X = 448;
 const MAX_Y = 80;
-const MAX_Z = 384;
+const MAX_Z = 448;
 const MAX_BLOCO = 51;   // maior id colocável no mundo (pampa 47-49, butiá 50, ametista 51)
 const MAX_BICHOS = 16;  // teto de Winpups no blackboard (só posição)
 // ciclo dia/noite (casa com DIA_S+NOITE_S do ceu.ts): a sala ancora o horário
