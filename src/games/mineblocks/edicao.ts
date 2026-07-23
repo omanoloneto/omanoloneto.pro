@@ -19,6 +19,16 @@ const AXE_WOOD = 32;
 const AXE_IRON = 33;
 const SHOVEL_WOOD = 45;
 const SHOVEL_IRON = 46;
+const FURNITURE_MIN = 52;
+const FURNITURE_MAX = 59;
+const FURNITURE_PAIR: Record<number, { partner: number; along: 'front' | 'right' | 'up' } | undefined> = {
+  52: { partner: 53, along: 'front' },
+  54: { partner: 55, along: 'right' },
+  58: { partner: 59, along: 'up' },
+};
+const FURNITURE_BASE: Record<number, number | undefined> = { 53: 52, 55: 54, 59: 58 };
+const isFurniture = (id: number) => id >= FURNITURE_MIN && id <= FURNITURE_MAX;
+const ROT_DIR: Array<[number, number]> = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const MELEE = 3.2;
 const CONE = 0.6;
 const SWING_MS = 350;
@@ -156,6 +166,7 @@ export function createEditing(ctx: Ctx): Editing {
   }
 
   function removeBlock(a: Target): boolean {
+    if (isFurniture(a.id)) return removeFurniture(a);
     clearMetaOnBreak(a.x, a.y, a.z);
     if (isDoor(a.id)) {
       const oy = isDoor(world.get(a.x, a.y + 1, a.z)) ? a.y + 1
@@ -179,6 +190,40 @@ export function createEditing(ctx: Ctx): Editing {
     if (a.id === TRUNK || isDecayLeaf(a.id) || a.id === LEAF_PLACED) {
       queueNeighbors(a.x, a.y, a.z);
     }
+    ctx.audio.soundBreak(a.id);
+    ctx.save.schedule();
+    ctx.flow.onFirstInput();
+    return true;
+  }
+
+  function removeFurniture(a: Target): boolean {
+    const m = ctx.metas.get(a.x, a.y, a.z);
+    const rot = m && m.tipo === 'movel' ? m.rot & 3 : 0;
+    const baseId = FURNITURE_BASE[a.id] ?? a.id;
+    const pair = FURNITURE_PAIR[baseId];
+    ctx.metas.remove(a.x, a.y, a.z);
+    world.set(a.x, a.y, a.z, 0);
+    if (pair) {
+      const sign = a.id === baseId ? 1 : -1;
+      const [dx, dy, dz] = furniturePartnerDir(baseId, rot);
+      const ox = a.x + dx * sign;
+      const oy = a.y + dy * sign;
+      const oz = a.z + dz * sign;
+      const expected = a.id === baseId ? pair.partner : baseId;
+      if (world.get(ox, oy, oz) === expected) {
+        ctx.metas.remove(ox, oy, oz);
+        world.set(ox, oy, oz, 0);
+      } else if (pair.along !== 'up') {
+        for (const [nx, nz] of ROT_DIR) {
+          if (world.get(a.x + nx, a.y, a.z + nz) === expected) {
+            ctx.metas.remove(a.x + nx, a.y, a.z + nz);
+            world.set(a.x + nx, a.y, a.z + nz, 0);
+            break;
+          }
+        }
+      }
+    }
+    gainItem(a.id);
     ctx.audio.soundBreak(a.id);
     ctx.save.schedule();
     ctx.flow.onFirstInput();
@@ -485,6 +530,7 @@ export function createEditing(ctx: Ctx): Editing {
     if (occupant !== 0 && byId(occupant).render === 'cubo') return false;
     if (occupant !== 0 && byId(occupant).render === 'recorte') return false;
     if (occupant !== 0 && byId(occupant).render === 'porta') return false;
+    if (occupant !== 0 && byId(occupant).render === 'movel') return false;
     if (def.solido && intersectsPlayer(cx, cy, cz)) return false;
     if (def.render === 'cruz' && !byId(world.get(cx, cy - 1, cz)).solido) {
       warn('🌼 Isso precisa de um chão pra plantar!');
@@ -505,6 +551,7 @@ export function createEditing(ctx: Ctx): Editing {
       gainItem(occupant);
       ctx.metas.remove(cx, cy, cz);
     }
+    if (isFurniture(id)) return placeFurniture(id, cx, cy, cz);
     if (id === DOOR_CLOSED) {
       if (cy + 1 > ctx.cfg.mundo.tetoConstrucao || world.get(cx, cy + 1, cz) !== 0) {
         warn('🚪 Precisa de 2 blocos de altura livre pra porta!');
@@ -519,6 +566,56 @@ export function createEditing(ctx: Ctx): Editing {
       saplings.push({ x: cx, y: cy, z: cz, quandoMs: timeMs + C.minMs + Math.random() * (C.maxMs - C.minMs) });
     }
     if (id === CHEST) ctx.metas.set(cx, cy, cz, { tipo: 'bau', dono: myName(), itens: [] });
+    ctx.ui.updateCounts();
+    ctx.audio.soundPlace();
+    ctx.save.schedule();
+    ctx.flow.onFirstInput();
+    return true;
+  }
+
+  function furniturePartnerDir(baseId: number, rot: number): [number, number, number] {
+    const pair = FURNITURE_PAIR[baseId]!;
+    if (pair.along === 'up') return [0, 1, 0];
+    const dir = pair.along === 'front' ? ROT_DIR[rot] : ROT_DIR[(rot + 1) % 4];
+    return [dir[0], 0, dir[1]];
+  }
+
+  function placeFurniture(id: number, cx: number, cy: number, cz: number): boolean {
+    const dx = player.x - (cx + 0.5);
+    const dz = player.z - (cz + 0.5);
+    const rot = Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 1 : 3) : (dz > 0 ? 2 : 0);
+    const pair = FURNITURE_PAIR[id];
+    if (pair) {
+      const [ox, oy, oz] = furniturePartnerDir(id, rot);
+      const px = cx + ox;
+      const py = cy + oy;
+      const pz = cz + oz;
+      const { SX, SZ, tetoConstrucao } = ctx.cfg.mundo;
+      if (px < 0 || px >= SX || pz < 0 || pz >= SZ || py > tetoConstrucao) {
+        if (warn('🛋 Esse móvel ocupa 2 espaços e aqui não cabe!')) ctx.audio.soundError();
+        return false;
+      }
+      const occ = world.get(px, py, pz);
+      if (occ !== 0 && byId(occ).render !== 'cruz') {
+        if (warn('🛋 Precisa de 2 espaços livres pra esse móvel!')) ctx.audio.soundError();
+        return false;
+      }
+      const prot = protectorAt(px, py, pz);
+      if (prot !== null && !canUse(prot)) {
+        if (warn('🔒 Essa casa é do(a) ' + prot + '! Só ele(a) mexe aqui.')) ctx.audio.soundError();
+        return false;
+      }
+      if (intersectsPlayer(px, py, pz)) return false;
+      if (occ !== 0) {
+        gainItem(occ);
+        ctx.metas.remove(px, py, pz);
+      }
+      world.set(px, py, pz, pair.partner);
+      ctx.metas.set(px, py, pz, { tipo: 'movel', rot });
+    }
+    world.set(cx, cy, cz, id);
+    ctx.metas.set(cx, cy, cz, { tipo: 'movel', rot });
+    ctx.state.inventory[id]--;
     ctx.ui.updateCounts();
     ctx.audio.soundPlace();
     ctx.save.schedule();
@@ -545,8 +642,25 @@ export function createEditing(ctx: Ctx): Editing {
     });
   }
 
+  function tryOpenShop(): boolean {
+    const s = ctx.mob.yujackState();
+    if (!s) return false;
+    const dx = s.x - player.x;
+    const dz = s.z - player.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > 2.6) return false;
+    const fx = -Math.sin(player.yaw);
+    const fz = -Math.cos(player.yaw);
+    if ((dx * fx + dz * fz) / (dist || 1) < 0.55) return false;
+    ctx.flow.releaseInputs();
+    ctx.ui.openShop();
+    ctx.flow.onFirstInput();
+    return true;
+  }
+
   function interact(forcedTarget?: Target): boolean {
     if (ctx.state.phase !== 'playing') return false;
+    if (!forcedTarget && tryOpenShop()) return false;
     const a = forcedTarget || ctx.aim.target();
     if (!a) return place();
     if (a.id === CHEST) { openChest(a); return false; }

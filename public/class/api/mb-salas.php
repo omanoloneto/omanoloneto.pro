@@ -56,7 +56,7 @@ const SUMIU_S = 120;            // visto há >120s sai da sala sozinho
 const MAX_X = 448;
 const MAX_Y = 80;
 const MAX_Z = 448;
-const MAX_BLOCO = 51;   // maior id colocável no mundo (pampa 47-49, butiá 50, ametista 51)
+const MAX_BLOCO = 59;   // maior id colocável no mundo (móveis 52-59)
 const MAX_BICHOS = 16;  // teto de Winpups no blackboard (só posição)
 // ciclo dia/noite (casa com DIA_S+NOITE_S do ceu.ts): a sala ancora o horário
 // e todo cliente deriva a mesma fase de (agora - cicloInicioMs) % CICLO_S
@@ -85,6 +85,10 @@ function metaLimpa($m) {
     if (!isset($m['autor'], $m['texto']) || !is_string($m['autor']) || !is_string($m['texto'])) return false;
     if (strlen($m['autor']) > 16 || mb_strlen($m['texto']) > 64) return false;
     return ['tipo' => 'placa', 'autor' => $m['autor'], 'texto' => $m['texto']];
+  }
+  if ($tipo === 'movel') {
+    if (!isset($m['rot']) || !is_int($m['rot']) || $m['rot'] < 0 || $m['rot'] > 3) return false;
+    return ['tipo' => 'movel', 'rot' => $m['rot']];
   }
   if ($tipo === 'caixa') {
     if (!isset($m['dono']) || !is_string($m['dono']) || strlen($m['dono']) > 16) return false;

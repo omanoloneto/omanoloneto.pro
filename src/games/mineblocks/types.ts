@@ -125,6 +125,7 @@ export interface Mob {
 export type Meta =
   | { tipo: 'bau'; dono: string; itens: number[]; publico?: boolean }
   | { tipo: 'placa'; autor: string; texto: string }
+  | { tipo: 'movel'; rot: number }
   | { tipo: 'caixa'; dono: string; casa?: number; cols?: number[] }
   | { tipo: 'drop'; item: number; n: number };
 
@@ -222,6 +223,7 @@ export interface UI {
   updateHunger(): void;
   openFurnace(): void;
   openVending(): void;
+  openShop(): void;
   closeFurnace(): void;
   furnaceOpen(): boolean;
   openChest(key: number, title: string, isOwner: boolean): void;

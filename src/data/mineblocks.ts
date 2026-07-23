@@ -1,5 +1,5 @@
 
-export type RenderBloco = 'cubo' | 'cruz' | 'agua' | 'recorte' | 'porta';
+export type RenderBloco = 'cubo' | 'cruz' | 'agua' | 'recorte' | 'porta' | 'movel';
 
 export interface Bloco {
   id: number;
@@ -72,8 +72,16 @@ export const blocos: Bloco[] = [
   { id: 49, nome: 'pé de butiá', tiles: [53, 53, 53], solido: false, render: 'cruz', drop: 50, dropSorte: { id: 50, chance: 1 }, dureza: 300 },
   { id: 50, nome: 'butiá', tiles: [54, 54, 54], solido: false, render: 'cruz' },
   { id: 51, nome: 'minério de ametista', tiles: [55, 55, 55], solido: true, render: 'cubo', dureza: 1400, durezaFerro: 500, precisaPicareta: true },
+  { id: 52, nome: 'cama', tiles: [56, 56, 56], solido: true, render: 'movel', drop: 52, dureza: 600, madeira: true },
+  { id: 53, nome: 'cama', tiles: [56, 56, 56], solido: true, render: 'movel', drop: 52, dureza: 600, madeira: true },
+  { id: 54, nome: 'sofá', tiles: [57, 57, 57], solido: true, render: 'movel', drop: 54, dureza: 600, madeira: true },
+  { id: 55, nome: 'sofá', tiles: [57, 57, 57], solido: true, render: 'movel', drop: 54, dureza: 600, madeira: true },
+  { id: 56, nome: 'cômoda', tiles: [58, 58, 58], solido: true, render: 'movel', drop: 56, dureza: 600, madeira: true },
+  { id: 57, nome: 'mesa', tiles: [59, 59, 59], solido: true, render: 'movel', drop: 57, dureza: 600, madeira: true },
+  { id: 58, nome: 'estante', tiles: [60, 60, 60], solido: true, render: 'movel', drop: 58, dureza: 600, madeira: true },
+  { id: 59, nome: 'estante', tiles: [60, 60, 60], solido: true, render: 'movel', drop: 58, dureza: 600, madeira: true },
 ];
-export const itens = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36, 45, 46];
+export const itens = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 15, 17, 18, 20, 24, 27, 28, 29, 30, 31, 32, 33, 34, 36, 45, 46, 52, 54, 56, 57, 58];
 export const materiais = [21, 23, 25, 26, 38, 39, 40, 50, 51];
 export interface Receita {
   de: number;
@@ -141,6 +149,13 @@ export const config = {
     },
   },
   maquina: { precoFerro: 5, precoOuro: 20, precoAmetista: 50 },
+  loja: [
+    { id: 57, preco: 15 },
+    { id: 56, preco: 20 },
+    { id: 58, preco: 25 },
+    { id: 54, preco: 25 },
+    { id: 52, preco: 30 },
+  ],
   fisica: {
     gravidade: 25,
     pulo: 8.2,

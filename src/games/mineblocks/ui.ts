@@ -55,6 +55,10 @@ export function createUI(ctx: Ctx): UI {
     vendingList: $('[data-maquina-painel]'),
     vendingClose: $('[data-maquina-fechar]'),
     vendingBalance: $('[data-maquina-saldo]'),
+    shopPanel: $('[data-loja]'),
+    shopList: $('[data-loja-painel]'),
+    shopClose: $('[data-loja-fechar]'),
+    shopBalance: $('[data-loja-saldo]'),
     signForm: $('[data-placa-form]'),
     signInput: $('[data-placa-input]'),
     signOk: $('[data-placa-ok]'),
@@ -412,6 +416,50 @@ export function createUI(ctx: Ctx): UI {
   }
   els.vendingClose.addEventListener('click', () => closeVending());
 
+  function renderShop() {
+    const inv = ctx.state.inventory;
+    els.shopBalance.textContent = String(inv[40] | 0);
+    els.shopList.innerHTML = '';
+    for (const offer of ctx.cfg.loja) {
+      const coins = inv[40] | 0;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'receita' + (coins >= offer.preco ? ' pode' : '');
+      btn.disabled = coins < offer.preco;
+      const nome = ctx.byId(offer.id).nome;
+      btn.setAttribute('aria-label', 'Comprar 1 ' + nome + ' por ' + offer.preco + ' moedas.');
+      btn.innerHTML =
+        '<span class="receita__lado">' + offer.preco + '× ' + blockImg(40) + '</span>' +
+        '<span class="receita__seta">→</span>' +
+        '<span class="receita__lado">1× ' + blockImg(offer.id) + ' <small>' + nome + '</small></span>';
+      btn.addEventListener('click', () => {
+        if ((inv[40] | 0) < offer.preco) return;
+        inv[40] -= offer.preco;
+        ctx.editing.gainItem(offer.id, 1);
+        ctx.audio.soundSaved();
+        api.showToast('🦫 Comprou ' + nome + '! Coloque no chão pra montar.', 'ok', 2000);
+        renderShop();
+        api.updateCounts();
+      });
+      els.shopList.appendChild(btn);
+    }
+  }
+  function openShop() {
+    api.toggleCraftPanel(false);
+    renderShop();
+    els.shopPanel.hidden = false;
+    api.updateCounts();
+    ctx.lock.release();
+    ctx.audio.soundUI();
+    api.announce('Loja do Yujack aberta — compre móveis com suas moedas.');
+  }
+  function closeShop() {
+    if (els.shopPanel.hidden) return;
+    els.shopPanel.hidden = true;
+    ctx.lock.request();
+  }
+  els.shopClose.addEventListener('click', () => closeShop());
+
   function closeSignForm(text: string | null) {
     if (!signCb) return;
     const cb = signCb;
@@ -446,6 +494,7 @@ export function createUI(ctx: Ctx): UI {
     updateChest() { if (chestKey >= 0) renderChest(); },
     openFurnace,
     openVending,
+    openShop,
     closeFurnace,
     furnaceOpen: () => !els.furnacePanel.hidden,
     askSignText(cb) {
@@ -458,7 +507,7 @@ export function createUI(ctx: Ctx): UI {
     showSign(text, author) {
       api.showToast('📜 <b>' + esc(text || '(placa em branco)') + '</b>' + (author ? ' <span class="placa__autor">— ' + esc(author) + '</span>' : ''), 'info', 4200);
     },
-    isPanelOpen: () => !els.invPanel.hidden || !els.chestPanel.hidden || !els.signForm.hidden || !els.furnacePanel.hidden || !els.vendingPanel.hidden || !els.mapPanel.hidden,
+    isPanelOpen: () => !els.invPanel.hidden || !els.chestPanel.hidden || !els.signForm.hidden || !els.furnacePanel.hidden || !els.vendingPanel.hidden || !els.shopPanel.hidden || !els.mapPanel.hidden,
     closeTopPanel() {
       if (!els.mapPanel.hidden) {
         els.mapPanel.hidden = true;
@@ -471,6 +520,7 @@ export function createUI(ctx: Ctx): UI {
       if (chestKey >= 0) { closeChest(); return true; }
       if (!els.furnacePanel.hidden) { closeFurnace(); return true; }
       if (!els.vendingPanel.hidden) { closeVending(); return true; }
+      if (!els.shopPanel.hidden) { closeShop(); return true; }
       if (!els.invPanel.hidden) {
         api.toggleCraftPanel(false);
         ctx.lock.request();

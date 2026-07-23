@@ -35,6 +35,125 @@ const OUTLINE_GROUP: Record<number, number> = { 7: 38, 16: 38, 37: 38, 5: 39 };
 const OUTLINE_WIDTH = 0.08;
 const OUTLINE_LIFT = 0.004;
 
+type FurniturePiece = { box: [number, number, number, number, number, number]; cor: string; semBorda?: boolean };
+
+const MADEIRA = '#a06b3a';
+const MADEIRA_ESCURA = '#7c4f28';
+const MADEIRA_CLARA = '#b9884e';
+const VERDE = '#3fae8f';
+const VERDE_ESCURO = '#2c8a6e';
+const DOURADO = '#e0c35a';
+const CREME = '#e8e2d0';
+const CREME_ESCURO = '#d6cfba';
+
+const FURNITURE: Record<number, FurniturePiece[]> = {
+  52: [
+    { box: [0, 0, 12, 3, 14, 15], cor: MADEIRA },
+    { box: [13, 0, 12, 16, 14, 15], cor: MADEIRA },
+    { box: [0, 12, 12, 3, 14, 15], cor: VERDE, semBorda: true },
+    { box: [13, 12, 12, 16, 14, 15], cor: VERDE, semBorda: true },
+    { box: [3, 4, 12, 13, 11, 15], cor: MADEIRA_CLARA },
+    { box: [4, 5, 11.5, 12, 10, 12], cor: VERDE, semBorda: true },
+    { box: [6.5, 6.5, 11, 9.5, 9, 11.6], cor: DOURADO, semBorda: true },
+    { box: [0, 2, 0, 16, 4, 16], cor: MADEIRA },
+    { box: [1, 4, 0, 15, 7, 16], cor: CREME },
+    { box: [3, 7, 8, 13, 9, 14], cor: CREME_ESCURO },
+    { box: [0, 0, 0, 3, 2, 3], cor: MADEIRA_ESCURA },
+    { box: [13, 0, 0, 16, 2, 3], cor: MADEIRA_ESCURA },
+  ],
+  53: [
+    { box: [0, 2, 0, 16, 4, 16], cor: MADEIRA },
+    { box: [1, 4, 0, 15, 7, 16], cor: CREME },
+    { box: [1, 6.9, 2, 15, 7.7, 12], cor: VERDE, semBorda: true },
+    { box: [0, 0, 13, 3, 9, 16], cor: MADEIRA },
+    { box: [13, 0, 13, 16, 9, 16], cor: MADEIRA },
+    { box: [0, 7, 13, 3, 9, 16], cor: VERDE, semBorda: true },
+    { box: [13, 7, 13, 16, 9, 16], cor: VERDE, semBorda: true },
+    { box: [3, 4, 13.5, 13, 8, 15.5], cor: MADEIRA_CLARA },
+    { box: [0, 0, 0, 3, 2, 3], cor: MADEIRA_ESCURA },
+    { box: [13, 0, 0, 16, 2, 3], cor: MADEIRA_ESCURA },
+  ],
+  54: [
+    { box: [0, 0, 0, 4, 10, 16], cor: MADEIRA },
+    { box: [0.5, 10, 2, 3.5, 11.5, 14], cor: VERDE_ESCURO, semBorda: true },
+    { box: [1.2, 5.5, 1.5, 2.9, 8.5, 3.2], cor: DOURADO, semBorda: true },
+    { box: [4, 0, 0, 16, 3, 16], cor: MADEIRA },
+    { box: [4, 3, 2, 16, 7, 15], cor: VERDE },
+    { box: [4, 7, 11, 16, 14, 15.5], cor: VERDE },
+    { box: [0, 0, 0, 3, 2, 3], cor: MADEIRA_ESCURA },
+  ],
+  55: [
+    { box: [12, 0, 0, 16, 10, 16], cor: MADEIRA },
+    { box: [12.5, 10, 2, 15.5, 11.5, 14], cor: VERDE_ESCURO, semBorda: true },
+    { box: [13.1, 5.5, 1.5, 14.8, 8.5, 3.2], cor: DOURADO, semBorda: true },
+    { box: [0, 0, 0, 12, 3, 16], cor: MADEIRA },
+    { box: [0, 3, 2, 12, 7, 15], cor: VERDE },
+    { box: [0, 7, 11, 12, 14, 15.5], cor: VERDE },
+    { box: [13, 0, 0, 16, 2, 3], cor: MADEIRA_ESCURA },
+  ],
+  56: [
+    { box: [1, 2, 4, 15, 13, 14], cor: MADEIRA },
+    { box: [0, 13, 3, 16, 15, 15], cor: MADEIRA_CLARA },
+    { box: [2, 9.5, 3, 7.5, 12.5, 4.4], cor: MADEIRA_ESCURA },
+    { box: [8.5, 9.5, 3, 14, 12.5, 4.4], cor: MADEIRA_ESCURA },
+    { box: [2, 5.8, 3, 7.5, 8.8, 4.4], cor: MADEIRA_ESCURA },
+    { box: [8.5, 5.8, 3, 14, 8.8, 4.4], cor: MADEIRA_ESCURA },
+    { box: [2, 2.2, 3, 7.5, 5.2, 4.4], cor: MADEIRA_ESCURA },
+    { box: [8.5, 2.2, 3, 14, 5.2, 4.4], cor: MADEIRA_ESCURA },
+    { box: [4.2, 10.5, 2.4, 5.4, 11.7, 3.2], cor: VERDE, semBorda: true },
+    { box: [10.7, 10.5, 2.4, 11.9, 11.7, 3.2], cor: VERDE, semBorda: true },
+    { box: [4.2, 6.8, 2.4, 5.4, 8, 3.2], cor: VERDE, semBorda: true },
+    { box: [10.7, 6.8, 2.4, 11.9, 8, 3.2], cor: VERDE, semBorda: true },
+    { box: [4.2, 3.2, 2.4, 5.4, 4.4, 3.2], cor: VERDE, semBorda: true },
+    { box: [10.7, 3.2, 2.4, 11.9, 4.4, 3.2], cor: VERDE, semBorda: true },
+    { box: [1, 0, 4, 4, 2, 7], cor: MADEIRA_ESCURA },
+    { box: [12, 0, 4, 15, 2, 7], cor: MADEIRA_ESCURA },
+    { box: [1, 0, 11, 4, 2, 14], cor: MADEIRA_ESCURA },
+    { box: [12, 0, 11, 15, 2, 14], cor: MADEIRA_ESCURA },
+  ],
+  57: [
+    { box: [0, 10, 0, 16, 13, 16], cor: MADEIRA },
+    { box: [1.5, 12.9, 1.5, 14.5, 13.02, 14.5], cor: MADEIRA_CLARA, semBorda: true },
+    { box: [1, 0, 1, 4, 10, 4], cor: MADEIRA },
+    { box: [12, 0, 1, 15, 10, 4], cor: MADEIRA },
+    { box: [1, 0, 12, 4, 10, 15], cor: MADEIRA },
+    { box: [12, 0, 12, 15, 10, 15], cor: MADEIRA },
+    { box: [0.5, 8, 0.5, 4.5, 10, 4.5], cor: VERDE, semBorda: true },
+    { box: [11.5, 8, 0.5, 15.5, 10, 4.5], cor: VERDE, semBorda: true },
+    { box: [0.5, 8, 11.5, 4.5, 10, 15.5], cor: VERDE, semBorda: true },
+    { box: [11.5, 8, 11.5, 15.5, 10, 15.5], cor: VERDE, semBorda: true },
+    { box: [1.8, 8.8, 0.4, 3.2, 9.6, 0.9], cor: DOURADO, semBorda: true },
+    { box: [12.8, 8.8, 0.4, 14.2, 9.6, 0.9], cor: DOURADO, semBorda: true },
+  ],
+  58: [
+    { box: [0, 0, 5, 2, 16, 13], cor: MADEIRA },
+    { box: [14, 0, 5, 16, 16, 13], cor: MADEIRA },
+    { box: [2, 0, 11, 14, 16, 13], cor: MADEIRA_ESCURA, semBorda: true },
+    { box: [0, 0, 5, 16, 2, 13], cor: MADEIRA },
+    { box: [2, 9, 5.5, 14, 10.5, 12], cor: MADEIRA_CLARA },
+    { box: [2.5, 2, 6.5, 5, 8.5, 11], cor: '#2e8c7b', semBorda: true },
+    { box: [5.4, 2, 6.5, 7.9, 7.8, 11], cor: '#59a24c', semBorda: true },
+    { box: [8.3, 2, 6.5, 10.6, 8.2, 11], cor: '#ddd6c0', semBorda: true },
+    { box: [11, 2, 6.5, 13.4, 7.5, 11], cor: '#2e8c7b', semBorda: true },
+    { box: [2.5, 10.5, 6.5, 6, 15.5, 11], cor: '#59a24c', semBorda: true },
+    { box: [6.4, 10.5, 6.5, 9.6, 14.8, 11], cor: '#ddd6c0', semBorda: true },
+    { box: [10, 10.5, 6.5, 13.4, 15.2, 11], cor: '#2e8c7b', semBorda: true },
+  ],
+  59: [
+    { box: [0, 0, 5, 2, 14, 13], cor: MADEIRA },
+    { box: [14, 0, 5, 16, 14, 13], cor: MADEIRA },
+    { box: [2, 0, 11, 14, 14, 13], cor: MADEIRA_ESCURA, semBorda: true },
+    { box: [0, 14, 4, 16, 16, 14], cor: MADEIRA_CLARA },
+    { box: [2, 7, 5.5, 14, 8.5, 12], cor: MADEIRA_CLARA },
+    { box: [2.5, 0, 6.5, 5.5, 6.5, 11], cor: '#ddd6c0', semBorda: true },
+    { box: [6, 0, 6.5, 8.6, 6, 11], cor: '#2e8c7b', semBorda: true },
+    { box: [9, 0, 6.5, 13.5, 5.5, 11], cor: '#59a24c', semBorda: true },
+    { box: [2.5, 8.5, 6.5, 6.5, 13.5, 11], cor: '#2e8c7b', semBorda: true },
+    { box: [7, 8.5, 6.5, 10, 12.8, 11], cor: '#59a24c', semBorda: true },
+    { box: [10.4, 8.5, 6.5, 13.5, 13.2, 11], cor: '#ddd6c0', semBorda: true },
+  ],
+};
+
 export function criarMalha(ctx: Ctx): Meshes {
   const { scene, world: mundo, texture: textura, byId: porId, cfg } = ctx;
   const { SX, SY, CHUNK } = cfg.mundo;
@@ -115,6 +234,75 @@ export function criarMalha(ctx: Ctx): Meshes {
       c.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     } else {
       c.idx.push(base + 1, base + 2, base + 3, base + 1, base + 3, base);
+    }
+  }
+
+  const corCache: Record<string, [number, number, number]> = {};
+  const corDe = (hex: string): [number, number, number] => {
+    if (!corCache[hex]) {
+      const c = new THREE.Color(hex);
+      corCache[hex] = [c.r, c.g, c.b];
+    }
+    return corCache[hex];
+  };
+
+  function rotBox(b: [number, number, number, number, number, number], rot: number): [number, number, number, number, number, number] {
+    let [x0, y0, z0, x1, y1, z1] = b;
+    for (let k = 0; k < rot; k++) {
+      const nx0 = 16 - z1;
+      const nx1 = 16 - z0;
+      const nz0 = x0;
+      const nz1 = x1;
+      x0 = nx0; x1 = nx1; z0 = nz0; z1 = nz1;
+    }
+    return [x0, y0, z0, x1, y1, z1];
+  }
+
+  function empurrarCaixa(c: Camada, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, rgb: [number, number, number], luzExtra: number, invertida: boolean, u: number, v: number) {
+    const quads: Array<[number[], number[], number[], number[], number]> = [
+      [[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1], 0],
+      [[x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [x0, y0, z0], 1],
+      [[x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], 2],
+      [[x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], 3],
+      [[x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [x0, y0, z1], 4],
+      [[x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0], 5],
+    ];
+    for (const [v0, v1q, v2, v3, f] of quads) {
+      const base = c.pos.length / 3;
+      const luz = (invertida ? 1 : SOMBRA_FACE[f]) * luzExtra;
+      for (const p of [v0, v1q, v2, v3]) {
+        c.pos.push(p[0], p[1], p[2]);
+        c.uv.push(u, v);
+        c.cor.push(rgb[0] * luz, rgb[1] * luz, rgb[2] * luz);
+      }
+      if (invertida) c.idx.push(base, base + 2, base + 1, base, base + 3, base + 2);
+      else c.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+  }
+
+  const OUTLINE_RGB: [number, number, number] = [26 / 255, 30 / 255, 36 / 255];
+
+  function empurrarMovel(c: Camada, bx: number, by: number, bz: number, id: number) {
+    const pecas = FURNITURE[id];
+    if (!pecas) return;
+    const m = ctx.metas.get(bx, by, bz);
+    const rot = m && m.tipo === 'movel' ? m.rot & 3 : 0;
+    const [wu0, wv0, wu1, wv1] = textura.uv(61);
+    const u = (wu0 + wu1) / 2;
+    const v = (wv0 + wv1) / 2;
+    for (const peca of pecas) {
+      const [x0, y0, z0, x1, y1, z1] = rotBox(peca.box, rot);
+      const rgb = corDe(peca.cor);
+      const inflar = 0.36;
+      empurrarCaixa(c, bx + x0 / 16, by + y0 / 16, bz + z0 / 16, bx + x1 / 16, by + y1 / 16, bz + z1 / 16, rgb, 1, false, u, v);
+      if (!peca.semBorda) {
+        empurrarCaixa(
+          c,
+          bx + (x0 - inflar) / 16, by + (y0 - inflar) / 16, bz + (z0 - inflar) / 16,
+          bx + (x1 + inflar) / 16, by + (y1 + inflar) / 16, bz + (z1 + inflar) / 16,
+          OUTLINE_RGB, 1, true, u, v,
+        );
+      }
     }
   }
 
@@ -240,6 +428,10 @@ export function criarMalha(ctx: Ctx): Meshes {
           }
           if (def.render === 'porta') {
             empurrarPorta(camadas[1], x, y, z, id);
+            continue;
+          }
+          if (def.render === 'movel') {
+            empurrarMovel(camadas[0], x, y, z, id);
             continue;
           }
           const camada = def.render === 'agua' ? camadas[2] : def.render === 'recorte' ? camadas[1] : camadas[0];

@@ -7,10 +7,15 @@
 import type { Ctx, Meta, MetaStore } from './types';
 
 export function criarMetas(ctx: Ctx): MetaStore {
-  const { SX, SZ } = ctx.cfg.mundo;
+  const { SX, SZ, CHUNK } = ctx.cfg.mundo;
   const mapa = new Map<number, Meta>();
 
   const chave = (x: number, y: number, z: number) => x + z * SX + y * SX * SZ;
+
+  function remeshFurniture(x: number, z: number, meta?: Meta, antiga?: Meta) {
+    if (meta?.tipo !== 'movel' && antiga?.tipo !== 'movel') return;
+    ctx.world.dirty.add(Math.floor(x / CHUNK) + Math.floor(z / CHUNK) * (SX / CHUNK));
+  }
 
   const api: MetaStore = {
     onChange: undefined,
@@ -23,19 +28,27 @@ export function criarMetas(ctx: Ctx): MetaStore {
 
     set(x, y, z, meta) {
       const k = chave(x, y, z);
+      const antiga = mapa.get(k);
       mapa.set(k, normalizada(meta));
+      remeshFurniture(x, z, meta, antiga);
       api.onChange?.(k, mapa.get(k)!);
     },
 
     remove(x, y, z) {
       const k = chave(x, y, z);
-      if (mapa.delete(k)) api.onChange?.(k, null);
+      const antiga = mapa.get(k);
+      if (mapa.delete(k)) {
+        remeshFurniture(x, z, undefined, antiga);
+        api.onChange?.(k, null);
+      }
     },
 
     // aplica uma metadata vinda da REDE por chave (sem re-emitir)
     apply(k, meta) {
+      const antiga = mapa.get(k);
       if (meta === null) mapa.delete(k);
       else mapa.set(k, normalizada(meta));
+      remeshFurniture(k % SX, Math.floor(k / SX) % SZ, meta ?? undefined, antiga);
     },
 
     // a UI/entrega mutou o objeto no lugar (itens do baú) → normaliza e
@@ -105,6 +118,9 @@ export function metaValida(m: any): m is Meta {
   }
   if (m.tipo === 'placa') {
     return typeof m.autor === 'string' && typeof m.texto === 'string';
+  }
+  if (m.tipo === 'movel') {
+    return typeof m.rot === 'number' && m.rot >= 0 && m.rot <= 3;
   }
   if (m.tipo === 'caixa') {
     if (typeof m.dono !== 'string') return false;
