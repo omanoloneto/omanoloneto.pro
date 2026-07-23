@@ -501,3 +501,109 @@ function seedAmethyst(ctx: Ctx, rng: () => number) {
     seeded++;
   }
 }
+
+const NATURAL_SEA_IDS = new Set([0, 1, 2, 3, 4, 7, 13, 14, 22, 25, 37, 38, 51]);
+
+export function ensurePampa(ctx: Ctx, seed: number): boolean {
+  const { world: mundo, cfg } = ctx;
+  const { SX, SZ, SY, nivelAgua } = cfg.mundo;
+  const P = cfg.geracao.pampa;
+  for (let i = 0; i < mundo.data.length; i++) {
+    if (mundo.data[i] === 47) return false;
+  }
+
+  const meioX = SX / 2;
+  const meioZ = SZ / 2;
+  const margem = P.raio + 10;
+  const alcance = Math.ceil(P.raio * 1.6);
+  const rngPos = mulberry32((seed ^ 0xba3a11) >>> 0);
+  const angBase = rngPos() * Math.PI * 2;
+
+  const carve = (cx: number, cz: number, dry: boolean): boolean => {
+    for (let z = Math.max(1, cz - alcance); z <= Math.min(SZ - 2, cz + alcance); z++) {
+      for (let x = Math.max(1, cx - alcance); x <= Math.min(SX - 2, cx + alcance); x++) {
+        const dxp = x - cx;
+        const dzp = z - cz;
+        const distP = Math.hypot(dxp, dzp);
+        if (distP >= P.raio * 1.6) continue;
+        const angP = Math.atan2(dzp, dxp);
+        const forma = 0.72 + 0.55 * ruido2D(Math.cos(angP) * 2.3 + 9, Math.sin(angP) * 2.3 + 9, seed ^ 0x77aa);
+        const rp = distP / (P.raio * forma);
+        if (rp >= 1.2) continue;
+        const np = relevo(x, z, seed ^ 0x5199, 0.012);
+        const bordaP = suave(Math.min(1, Math.max(0, (rp - 0.55) / (1.2 - 0.55))));
+        const hp = Math.max(2, Math.min(SY - 16, Math.round(nivelAgua + 4 + (np * 2 - 1) * 2.5 - bordaP * 14)));
+        const h = mundo.highestGround(x, z);
+        if (hp <= h) continue;
+        if (dry) {
+          for (let y = 1; y < SY - 1; y++) {
+            if (!NATURAL_SEA_IDS.has(mundo.get(x, y, z))) return false;
+          }
+          continue;
+        }
+        const praia = hp <= nivelAgua + 1;
+        for (let y = 1; y <= hp; y++) {
+          let id: number;
+          if (y >= hp - 2 && praia) id = 4;
+          else if (y === hp) id = 47;
+          else if (y >= hp - 2) id = 2;
+          else id = 3;
+          mundo.data[x + z * SX + y * SX * SZ] = id;
+        }
+        for (let y = hp + 1; y < SY - 1; y++) {
+          mundo.data[x + z * SX + y * SX * SZ] = y <= nivelAgua ? 13 : 0;
+        }
+      }
+    }
+    return true;
+  };
+
+  let pampaX = -1;
+  let pampaZ = -1;
+  for (let i = 0; i < 24; i++) {
+    const ang = angBase + i * 0.7;
+    const dist = 200 + rngPos() * 18;
+    const px = Math.max(margem, Math.min(SX - margem, Math.round(meioX + Math.cos(ang) * dist)));
+    const pz = Math.max(margem, Math.min(SZ - margem, Math.round(meioZ + Math.sin(ang) * dist)));
+    if (Math.hypot(px - meioX, pz - meioZ) < 190) continue;
+    if (!carve(px, pz, true)) continue;
+    pampaX = px;
+    pampaZ = pz;
+    break;
+  }
+  if (pampaX < 0) return false;
+  carve(pampaX, pampaZ, false);
+
+  const rng = mulberry32((seed ^ 0x7a3b11) >>> 0);
+  const pampaTop = (x: number, z: number) => {
+    const h = mundo.highestGround(x, z);
+    return mundo.get(x, h, z) === 47 && mundo.get(x, h + 1, z) === 0 ? h : -1;
+  };
+  const pampaSpot = () => {
+    const x = Math.max(2, Math.min(SX - 3, Math.floor(pampaX - P.raio + rng() * P.raio * 2)));
+    const z = Math.max(2, Math.min(SZ - 3, Math.floor(pampaZ - P.raio + rng() * P.raio * 2)));
+    return { x, z };
+  };
+
+  buildShed(ctx, mulberry32((seed ^ 0x6a19a0) >>> 0), pampaTop, { x: pampaX, z: pampaZ });
+  for (let i = 0; i < P.capim; i++) {
+    const { x, z } = pampaSpot();
+    const h = pampaTop(x, z);
+    if (h > 0) mundo.set(x, h + 1, z, 48);
+  }
+  for (let i = 0; i < P.moitas; i++) {
+    const { x, z } = pampaSpot();
+    const h = pampaTop(x, z);
+    if (h > 0) mundo.set(x, h + 1, z, 49);
+  }
+  let umbus = 0;
+  for (let tries = 0; tries < 400 && umbus < P.umbus; tries++) {
+    const { x, z } = pampaSpot();
+    if (x < 6 || z < 6 || x >= SX - 6 || z >= SZ - 6) continue;
+    const h = pampaTop(x, z);
+    if (h <= nivelAgua + 2) continue;
+    brotarUmbu(ctx, x, h, z, rng);
+    umbus++;
+  }
+  return true;
+}

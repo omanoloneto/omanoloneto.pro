@@ -7,7 +7,7 @@ import { criarAudio } from './audio';
 import { criarTextura } from './textura';
 import { criarMundo } from './mundo';
 import { criarMetas } from './meta';
-import { gerarMundo, reseedOres } from './geracao';
+import { gerarMundo, reseedOres, ensurePampa } from './geracao';
 import { criarMalha } from './malha';
 import { criarCeu, DIA_S } from './ceu';
 import { criarKotsooh } from './kotsooh';
@@ -395,6 +395,7 @@ export function startGame() {
         player.pitch = 0;
         ctx.sky.setTime(Math.round(DIA_S * 0.13));
       }
+      const pampaNovo = loaded ? ensurePampa(ctx, seed) : false;
       if (loaded) reseedOres(ctx);
       spawnVendingMachine(ctx);
       ctx.meshes.buildAll();
@@ -403,6 +404,7 @@ export function startGame() {
       ctx.kotsooh.spawn();
       if (!loaded) ctx.physics.settle();
       flow.enterWorld();
+      if (pampaNovo) ui.showToast('🌾 Uma ilha nova apareceu no mar! Procura ela no mapa (M).', 'ok', 5000);
       if (!loaded) save.saveNow('auto');
       if (onReady) onReady();
     }, 30));
@@ -538,6 +540,11 @@ export function startGame() {
     reseedOres: () => {
       reseedOres(ctx);
       ctx.meshes.buildAll();
+    },
+    ensurePampa: () => {
+      const r = ensurePampa(ctx, state.seed);
+      ctx.meshes.buildAll();
+      return r;
     },
     repairNow: () => {
       const buf = new Uint8Array(ctx.world.data);
