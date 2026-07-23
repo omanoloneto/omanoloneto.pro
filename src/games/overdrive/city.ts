@@ -496,20 +496,47 @@ export function createCity(ctx: Ctx): City {
 
   function emitGinasio(m: (typeof map.marcos)[number]) {
     const g = cfg.marcos.ginasio;
-    stampDisk(m.x, m.z, g.drumR, BUILD, g.drumH + g.domeH);
-    const drum = new THREE.CylinderGeometry(g.drumR, g.drumR, g.drumH, 28);
-    drum.translate(m.x, g.drumH / 2, m.z);
+    stampDisk(m.x, m.z, g.drumR + 1, BUILD, g.base + g.drumH + g.domeH + 2);
+    const baseColor = new THREE.Color(K.ginasioBase);
+    const base = new THREE.CylinderGeometry(g.drumR + 1.2, g.drumR + 1.8, g.base, 36);
+    base.translate(m.x, g.base / 2, m.z);
+    parts.push(shadeInto(base, baseColor));
+    const drumY = g.base;
+    const drum = new THREE.CylinderGeometry(g.drumR, g.drumR, g.drumH, 36);
+    drum.translate(m.x, drumY + g.drumH / 2, m.z);
     parts.push(shadeInto(drum, new THREE.Color(K.ginasioDrum)));
-    const dome = new THREE.SphereGeometry(g.domeR, 28, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    const cornice = new THREE.CylinderGeometry(g.drumR + 0.7, g.drumR + 0.7, 0.8, 36);
+    cornice.translate(m.x, drumY + g.drumH, m.z);
+    parts.push(shadeInto(cornice, baseColor));
+    const domeY = drumY + g.drumH + 0.2;
+    const dome = new THREE.SphereGeometry(g.domeR, 36, 12, 0, Math.PI * 2, 0, Math.PI / 2);
     dome.scale(1, g.domeH / g.domeR, 1);
-    dome.translate(m.x, g.drumH, m.z);
+    dome.translate(m.x, domeY, m.z);
     parts.push(shadeInto(dome, new THREE.Color(K.ginasioDome)));
+    const ribColor = new THREE.Color(K.ginasioRib);
+    const ribLen = Math.hypot(g.domeR, g.domeH) + 0.5;
+    const ribAng = Math.atan2(g.domeH, -g.domeR);
+    for (let i = 0; i < g.ribs; i++) {
+      const a = (i / g.ribs) * Math.PI * 2;
+      const rib = new THREE.BoxGeometry(ribLen, 0.4, g.ribW);
+      rib.rotateZ(ribAng);
+      rib.translate(g.domeR / 2, domeY + g.domeH / 2 + 0.25, 0);
+      rib.rotateY(-a);
+      rib.translate(m.x, 0, m.z);
+      parts.push(shadeInto(rib, ribColor));
+    }
+    const finial = new THREE.CylinderGeometry(0.4, 0.95, 1.6, 12);
+    finial.translate(m.x, domeY + g.domeH + 0.5, m.z);
+    parts.push(shadeInto(finial, baseColor));
     const colColor = new THREE.Color(K.ginasioColuna);
     for (let i = 0; i < g.colunas; i++) {
       const a = (i / g.colunas) * Math.PI * 2;
       const ux = -Math.sin(a);
       const uz = Math.cos(a);
-      parts.push(orientedBox(m.x + Math.cos(a) * (g.drumR + 0.2), m.z + Math.sin(a) * (g.drumR + 0.2), ux, uz, g.colW, g.colD, g.colH, g.colH / 2, colColor));
+      const cx = m.x + Math.cos(a) * (g.drumR + 0.3);
+      const cz = m.z + Math.sin(a) * (g.drumR + 0.3);
+      parts.push(orientedBox(cx, cz, ux, uz, g.colW, g.colD, g.drumH, drumY + g.drumH / 2, colColor));
+      parts.push(orientedBox(cx, cz, ux, uz, g.colW + 0.5, g.colD + 0.35, 0.55, drumY + g.drumH - 0.3, colColor));
     }
     const janela = new THREE.Color(K.ginasioJanela);
     const bandLen = (2 * Math.PI * g.drumR / g.bandaSegs) * 1.06;
@@ -517,26 +544,62 @@ export function createCity(ctx: Ctx): City {
       const a = (j / g.bandaSegs) * Math.PI * 2;
       const ux = -Math.sin(a);
       const uz = Math.cos(a);
-      emissiveParts.push(orientedBox(m.x + Math.cos(a) * (g.drumR + 0.1), m.z + Math.sin(a) * (g.drumR + 0.1), ux, uz, bandLen, 0.3, g.bandaH, g.bandaY, janela));
+      const cx = m.x + Math.cos(a) * (g.drumR + 0.05);
+      const cz = m.z + Math.sin(a) * (g.drumR + 0.05);
+      emissiveParts.push(orientedBox(cx, cz, ux, uz, bandLen, 0.25, 1.5, drumY + g.drumH * 0.7, janela));
+      emissiveParts.push(orientedBox(cx, cz, ux, uz, bandLen * 0.62, 0.25, 2.0, drumY + g.drumH * 0.26, janela));
     }
+    const tunEndZ = m.z + g.drumR + g.tunelLen / 2 - 2;
+    const tun = new THREE.CylinderGeometry(g.tunelR, g.tunelR, g.tunelLen, 18, 1, true, 0, Math.PI);
+    tun.rotateX(Math.PI / 2);
+    tun.rotateZ(Math.PI / 2);
+    tun.translate(m.x, 0, tunEndZ);
+    parts.push(shadeInto(tun, new THREE.Color(K.ginasioTunel)));
+    parts.push(coloredBox(g.tunelR * 2 + 0.6, 0.4, g.tunelLen, m.x, g.base, tunEndZ, baseColor));
+    emissiveParts.push(coloredBox(g.tunelR * 1.6, 3.2, 0.3, m.x, 1.9, m.z + g.drumR - 0.3, new THREE.Color(K.ginasioJanela)));
+    fillCells(m.x, tunEndZ, g.tunelR * 2 + 1, g.tunelLen, BUILD, g.base + g.tunelR);
   }
 
   function emitPrefeitura(m: (typeof map.marcos)[number]) {
     const p = cfg.marcos.prefeitura;
     fillCells(m.x, m.z, p.w, p.d, BUILD, p.h);
-    parts.push(coloredBox(p.w - p.terreoInset * 2, p.terreoH, p.d - p.terreoInset * 2, m.x, p.terreoH / 2, m.z, new THREE.Color(K.prefeituraTerreo)));
-    const bodyH = p.h - p.terreoH;
-    parts.push(coloredBox(p.w, bodyH, p.d, m.x, p.terreoH + bodyH / 2, m.z, new THREE.Color(K.prefeituraCorpo)));
+    const white = new THREE.Color(K.prefeituraCorpo);
+    const glass = new THREE.Color(K.prefeituraGlass);
     const jan = new THREE.Color(K.prefeituraJanela);
-    const nFloors = Math.floor(bodyH / p.andarH);
-    for (let f = 1; f <= nFloors; f++) {
-      const y = p.terreoH + f * p.andarH - 0.9;
-      emissiveParts.push(coloredBox(p.w - 1.2, p.bandaH, 0.25, m.x, y, m.z + p.d / 2, jan));
-      emissiveParts.push(coloredBox(p.w - 1.2, p.bandaH, 0.25, m.x, y, m.z - p.d / 2, jan));
-      emissiveParts.push(coloredBox(0.25, p.bandaH, p.d - 1.2, m.x + p.w / 2, y, m.z, jan));
-      emissiveParts.push(coloredBox(0.25, p.bandaH, p.d - 1.2, m.x - p.w / 2, y, m.z, jan));
+    const terreo = new THREE.Color(K.prefeituraTerreo);
+    const vidro = new THREE.Color(K.prefeituraVidro);
+    parts.push(coloredBox(p.w - p.terreoInset * 2, p.terreoH, p.d - p.terreoInset * 2, m.x, p.terreoH / 2, m.z, terreo));
+    for (const sxx of [-1, 1]) for (const szz of [-1, 1]) {
+      parts.push(coloredBox(0.9, p.terreoH, 0.9, m.x + sxx * (p.w / 2 - 0.7), p.terreoH / 2, m.z + szz * (p.d / 2 - 0.7), white));
     }
-    parts.push(coloredBox(4, bodyH - 2, 0.2, m.x - 4, p.terreoH + bodyH / 2, m.z + p.d / 2 + 0.15, new THREE.Color(K.prefeituraVidro)));
+    const bodyH = p.h - p.terreoH;
+    const y0 = p.terreoH;
+    parts.push(coloredBox(p.w - 0.6, bodyH, p.d - 0.6, m.x, y0 + bodyH / 2, m.z, glass));
+    for (const sxx of [-1, 1]) for (const szz of [-1, 1]) {
+      parts.push(coloredBox(1.5, bodyH, 1.5, m.x + sxx * (p.w / 2 - 0.5), y0 + bodyH / 2, m.z + szz * (p.d / 2 - 0.5), white));
+    }
+    const nFloors = Math.round(bodyH / p.andarH);
+    for (let f = 0; f <= nFloors; f++) {
+      const y = y0 + f * p.andarH;
+      parts.push(coloredBox(p.w + 0.5, 0.55, p.d + 0.5, m.x, y, m.z, white));
+    }
+    for (let f = 0; f < nFloors; f++) {
+      const y = y0 + f * p.andarH + p.andarH / 2;
+      const fz = p.d / 2 - 0.28;
+      const fx = p.w / 2 - 0.28;
+      emissiveParts.push(coloredBox(p.w - 3.4, p.andarH - 1.1, 0.16, m.x, y, m.z + fz, jan));
+      emissiveParts.push(coloredBox(p.w - 3.4, p.andarH - 1.1, 0.16, m.x, y, m.z - fz, jan));
+      emissiveParts.push(coloredBox(0.16, p.andarH - 1.1, p.d - 3.4, m.x + fx, y, m.z, jan));
+      emissiveParts.push(coloredBox(0.16, p.andarH - 1.1, p.d - 3.4, m.x - fx, y, m.z, jan));
+    }
+    const coreH = bodyH + 2.6;
+    const coreX = m.x - p.w / 2 + p.coreW / 2;
+    parts.push(coloredBox(p.coreW, coreH, p.d * 0.55, coreX, y0 + coreH / 2, m.z - p.d * 0.12, white));
+    parts.push(coloredBox(p.coreW - 1.6, coreH - 1.4, 0.25, coreX, y0 + coreH / 2, m.z + p.d * 0.14, vidro));
+    parts.push(coloredBox(p.w + 0.7, 0.7, p.d + 0.7, m.x, p.h + 0.35, m.z, white));
+    parts.push(coloredBox(p.w * 0.38, 1.8, p.d * 0.4, m.x + p.w * 0.16, p.h + 1.2, m.z, terreo));
+    parts.push(coloredBox(7, 0.3, 3.2, m.x + 1.5, p.terreoH * 0.72, m.z + p.d / 2 + 1.3, white));
+    parts.push(coloredBox(6.4, p.terreoH - 0.8, 0.22, m.x + 1.5, (p.terreoH - 0.8) / 2 + 0.3, m.z + p.d / 2 + 0.02, vidro));
   }
 
   function emitSkate(m: (typeof map.marcos)[number]) {
