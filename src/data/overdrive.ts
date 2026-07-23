@@ -93,13 +93,17 @@ export interface Via {
   pontos: [number, number][];
 }
 
+export type PredioTipo = 'torre' | 'predio' | 'loja' | 'galpao' | 'box';
+
 export interface Predio {
+  tipo?: PredioTipo;
   x: number;
   z: number;
   w: number;
   d: number;
   h: number;
   cor: string;
+  rot?: number;
 }
 
 export type MarcoTipo = 'ginasio' | 'prefeitura' | 'skate' | 'casa' | 'bourbon';
@@ -141,7 +145,12 @@ export const mapa = {
     { tipo: 'rua', nome: 'R. Julio de Castilhos', pontos: [[0, -154], [0, 14]] },
     { tipo: 'rua', nome: 'R. Amadeo Rossi', pontos: [[230, -188], [248, -110], [210, -64]] },
   ] as Via[],
-  predios: [] as Predio[],
+  predios: [
+    { tipo: 'torre', x: -60, z: 430, w: 16, d: 16, h: 42, cor: '#2b3242' },
+    { tipo: 'predio', x: 0, z: 430, w: 20, d: 14, h: 24, cor: '#8d7f6e' },
+    { tipo: 'loja', x: 60, z: 430, w: 18, d: 14, h: 7, cor: '#b5563f' },
+    { tipo: 'galpao', x: 140, z: 430, w: 34, d: 20, h: 8, cor: '#7d8794' },
+  ] as Predio[],
   marcos: [
     { tipo: 'ginasio', x: -256, z: -210 },
     { tipo: 'skate', x: -216, z: -200 },
@@ -267,6 +276,11 @@ export const config = {
     bourbonSign: '#e23b3b',
     bourbonMarquise: '#d8d3c8',
     bourbonGranito: '#7a4a42',
+    janelaFria: '#9fc6ef',
+    janelaQuente: '#ffdf9e',
+    vitrineLoja: '#bfe0e6',
+    telhadoGen: '#9aa0a8',
+    portaGen: '#33383f',
   },
   somLigadoInicial: true,
 };

@@ -658,6 +658,7 @@ export function createCity(ctx: Ctx): City {
     const cornija = new THREE.Color(K.casaCornija);
     const frame = new THREE.Color(K.casaJanelaFrame);
     const jan = new THREE.Color(K.casaJanela);
+    parts.push(coloredBox(c.w + 0.5, 0.7, c.d + 0.5, m.x, 0.35, m.z, frame));
     parts.push(coloredBox(c.w + 0.6, 1.0, c.d + 0.6, m.x, c.h + 0.3, m.z, cornija));
     parts.push(coloredBox(c.w + 0.3, 0.7, c.d + 0.3, m.x, c.h - 1.7, m.z, cornija));
     parts.push(coloredBox(9, 1.7, c.d * 0.55, m.x, c.h + 1.1, m.z, cornija));
@@ -708,6 +709,95 @@ export function createCity(ctx: Ctx): City {
     arch.rotateZ(Math.PI / 2);
     arch.translate(m.x, 16.2, front + 0.1);
     emissiveParts.push(shadeInto(arch, glass, true));
+    parts.push(coloredBox(11, 4.6, 0.3, m.x, 2.9, front + 0.15, new THREE.Color(K.portaGen)));
+    const tx = m.x - bb.w / 2 + tw / 2;
+    const tz = m.z - bb.d / 2 + tw / 2;
+    facadeWindows(tx, tz, tw, tw, bb.h + 1, tH - bb.h - 3, 3, glass);
+  }
+
+  function facadeWindows(cx: number, cz: number, w: number, d: number, y0: number, h: number, floors: number, color: THREE.Color) {
+    const fh = h / floors;
+    const colsW = Math.max(2, Math.round(w / 3.2));
+    const colsD = Math.max(2, Math.round(d / 3.2));
+    const winW = (w / colsW) * 0.62;
+    const winD = (d / colsD) * 0.62;
+    for (let f = 0; f < floors; f++) {
+      const y = y0 + f * fh + fh * 0.5;
+      const wh = fh * 0.55;
+      for (let c = 0; c < colsW; c++) {
+        const x = cx - w / 2 + (c + 0.5) * (w / colsW);
+        emissiveParts.push(coloredBox(winW, wh, 0.16, x, y, cz + d / 2 + 0.04, color));
+        emissiveParts.push(coloredBox(winW, wh, 0.16, x, y, cz - d / 2 - 0.04, color));
+      }
+      for (let c = 0; c < colsD; c++) {
+        const z = cz - d / 2 + (c + 0.5) * (d / colsD);
+        emissiveParts.push(coloredBox(0.16, wh, winD, cx + w / 2 + 0.04, y, z, color));
+        emissiveParts.push(coloredBox(0.16, wh, winD, cx - w / 2 - 0.04, y, z, color));
+      }
+    }
+  }
+
+  function emitTorre(b: (typeof map.predios)[number]) {
+    const roof = new THREE.Color(K.telhadoGen);
+    parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, new THREE.Color(b.cor)));
+    facadeWindows(b.x, b.z, b.w, b.d, 1.0, b.h - 1.5, Math.max(6, Math.round(b.h / 3.2)), new THREE.Color(K.janelaFria));
+    parts.push(coloredBox(b.w + 0.5, 0.7, b.d + 0.5, b.x, b.h + 0.35, b.z, roof));
+    parts.push(coloredBox(b.w * 0.42, 1.8, b.d * 0.42, b.x, b.h + 1.6, b.z, roof));
+    parts.push(coloredBox(0.2, 4, 0.2, b.x, b.h + 4, b.z, roof));
+    emissiveParts.push(coloredBox(0.5, 0.5, 0.5, b.x, b.h + 6, b.z, new THREE.Color('#ff3b3b')));
+  }
+
+  function emitPredio(b: (typeof map.predios)[number]) {
+    const cor = new THREE.Color(b.cor);
+    parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, cor));
+    const floors = Math.max(3, Math.round(b.h / 3.2));
+    facadeWindows(b.x, b.z, b.w, b.d, 0.8, b.h - 1.2, floors, new THREE.Color(K.janelaQuente));
+    const light = cor.clone().multiplyScalar(1.28);
+    const fh = (b.h - 1.2) / floors;
+    for (let f = 1; f < floors; f++) {
+      const y = 0.8 + f * fh;
+      parts.push(coloredBox(b.w + 0.5, 0.25, 0.5, b.x, y, b.z + b.d / 2 + 0.12, light));
+      parts.push(coloredBox(b.w + 0.5, 0.25, 0.5, b.x, y, b.z - b.d / 2 - 0.12, light));
+    }
+    parts.push(coloredBox(b.w + 0.4, 0.7, b.d + 0.4, b.x, b.h + 0.35, b.z, light));
+    const tank = new THREE.CylinderGeometry(1.4, 1.4, 2.2, 12);
+    tank.translate(b.x + b.w * 0.22, b.h + 1.4, b.z - b.d * 0.15);
+    parts.push(shadeInto(tank, new THREE.Color(K.telhadoGen)));
+  }
+
+  function emitLoja(b: (typeof map.predios)[number]) {
+    const cor = new THREE.Color(b.cor);
+    const dark = cor.clone().multiplyScalar(0.62);
+    parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, cor));
+    parts.push(coloredBox(b.w + 0.3, 1.1, b.d + 0.3, b.x, b.h * 0.5, b.z, dark));
+    facadeWindows(b.x, b.z, b.w, b.d, b.h * 0.6, b.h * 0.34, 1, new THREE.Color(K.janelaQuente));
+    const vitrine = new THREE.Color(K.vitrineLoja);
+    const porta = new THREE.Color(K.portaGen);
+    for (const fz of [1, -1]) {
+      const zf = b.z + fz * (b.d / 2);
+      emissiveParts.push(coloredBox(b.w - 1.2, b.h * 0.4, 0.2, b.x, b.h * 0.22, zf + fz * 0.06, vitrine));
+      parts.push(coloredBox(b.w - 0.6, 0.3, 1.8, b.x, b.h * 0.44, zf + fz * 0.9, dark));
+      parts.push(coloredBox(1.4, b.h * 0.42, 0.22, b.x + b.w * 0.32, b.h * 0.21, zf + fz * 0.07, porta));
+    }
+    parts.push(coloredBox(b.w + 0.3, 0.5, b.d + 0.3, b.x, b.h + 0.25, b.z, dark));
+  }
+
+  function emitGalpao(b: (typeof map.predios)[number]) {
+    const cor = new THREE.Color(b.cor);
+    const roofCol = new THREE.Color(K.telhadoGen);
+    const roofDark = roofCol.clone().multiplyScalar(0.8);
+    const porta = new THREE.Color(K.portaGen);
+    const cool = new THREE.Color(K.janelaFria);
+    parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, cor));
+    parts.push(coloredBox(b.w + 0.6, 0.5, b.d + 0.6, b.x, b.h + 0.25, b.z, roofCol));
+    for (let i = -2; i <= 2; i++) parts.push(coloredBox(b.w + 0.6, 0.14, 0.22, b.x, b.h + 0.52, b.z + i * (b.d / 5), roofDark));
+    for (const fz of [1, -1]) {
+      const zf = b.z + fz * (b.d / 2);
+      parts.push(coloredBox(b.w + 0.7, 0.9, 0.45, b.x, b.h + 0.45, zf + fz * 0.1, roofCol));
+      parts.push(coloredBox(b.w * 0.34, b.h * 0.72, 0.2, b.x, b.h * 0.36, zf + fz * 0.06, porta));
+      emissiveParts.push(coloredBox(b.w * 0.72, 0.8, 0.14, b.x, b.h * 0.82, zf + fz * 0.06, cool));
+    }
+    for (const cx of [-0.22, 0.22]) parts.push(coloredBox(2.2, 1.2, 2.2, b.x + b.w * cx, b.h + 0.9, b.z, roofDark));
   }
 
   map.vias.forEach((via, vi) => {
@@ -729,7 +819,11 @@ export function createCity(ctx: Ctx): City {
 
   for (const b of map.predios) {
     fillCells(b.x, b.z, b.w, b.d, BUILD, b.h);
-    parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, new THREE.Color(b.cor)));
+    if (b.tipo === 'torre') emitTorre(b);
+    else if (b.tipo === 'predio') emitPredio(b);
+    else if (b.tipo === 'loja') emitLoja(b);
+    else if (b.tipo === 'galpao') emitGalpao(b);
+    else parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, new THREE.Color(b.cor)));
   }
   for (const m of map.marcos) {
     if (m.tipo === 'ginasio') emitGinasio(m);

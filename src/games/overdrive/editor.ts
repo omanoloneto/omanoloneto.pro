@@ -2,14 +2,16 @@ type Pt = [number, number];
 
 interface Via { tipo: string; nome?: string; pontos: Pt[] }
 interface Marco { tipo: string; x: number; z: number; rot?: number }
+interface Predio { tipo?: string; x: number; z: number; w: number; d: number; h: number; cor: string; rot?: number }
 interface Rotatoria { x: number; z: number; raioInterno: number; raioExterno: number }
 interface Spawn { x: number; z: number; heading: number }
-interface Mapa { nome: string; vias: Via[]; predios: unknown[]; marcos: Marco[]; rotatorias: Rotatoria[]; spawn: Spawn }
+interface Mapa { nome: string; vias: Via[]; predios: Predio[]; marcos: Marco[]; rotatorias: Rotatoria[]; spawn: Spawn }
 
 type Sel =
   | { kind: 'vertex'; via: number; i: number }
   | { kind: 'viaBody'; via: number }
   | { kind: 'marco'; i: number }
+  | { kind: 'predio'; i: number }
   | { kind: 'rotCenter'; i: number }
   | { kind: 'rotIn'; i: number }
   | { kind: 'rotOut'; i: number }
@@ -126,6 +128,15 @@ export function startEditor() {
       centerDot(r.x, r.z, '#ffd23f', 'rotatória');
     }
 
+    for (const b of mapa.predios) {
+      g.save();
+      g.globalAlpha = 0.5;
+      g.fillStyle = b.cor || '#888';
+      g.fillRect(sx(b.x - b.w / 2), sy(b.z - b.d / 2), b.w * view.scale, b.d * view.scale);
+      g.restore();
+      handleDot(b.x, b.z, '#c9d2e0');
+    }
+
     for (const m of mapa.marcos) {
       g.save();
       g.globalAlpha = 0.5;
@@ -234,6 +245,7 @@ export function startEditor() {
     let p: Pt | null = null;
     if (sel.kind === 'vertex') p = mapa.vias[sel.via].pontos[sel.i];
     else if (sel.kind === 'marco') p = [mapa.marcos[sel.i].x, mapa.marcos[sel.i].z];
+    else if (sel.kind === 'predio') p = [mapa.predios[sel.i].x, mapa.predios[sel.i].z];
     else if (sel.kind === 'rotCenter') p = [mapa.rotatorias[sel.i].x, mapa.rotatorias[sel.i].z];
     else if (sel.kind === 'spawn') p = [mapa.spawn.x, mapa.spawn.z];
     if (!p) return;
@@ -271,6 +283,7 @@ export function startEditor() {
     }
     if (near(s.x, s.z, 12)) return { kind: 'spawn' };
     for (let i = 0; i < mapa.marcos.length; i++) if (near(mapa.marcos[i].x, mapa.marcos[i].z, 12)) return { kind: 'marco', i };
+    for (let i = 0; i < mapa.predios.length; i++) if (near(mapa.predios[i].x, mapa.predios[i].z, 11)) return { kind: 'predio', i };
     for (let i = 0; i < mapa.rotatorias.length; i++) if (near(mapa.rotatorias[i].x, mapa.rotatorias[i].z, 12)) return { kind: 'rotCenter', i };
     for (let v = 0; v < mapa.vias.length; v++) {
       const via = mapa.vias[v];
@@ -334,6 +347,9 @@ export function startEditor() {
     } else if (d.kind === 'marco') {
       mapa.marcos[d.i].x = mx;
       mapa.marcos[d.i].z = mz;
+    } else if (d.kind === 'predio') {
+      mapa.predios[d.i].x = mx;
+      mapa.predios[d.i].z = mz;
     } else if (d.kind === 'rotCenter') {
       mapa.rotatorias[d.i].x = mx;
       mapa.rotatorias[d.i].z = mz;
@@ -415,6 +431,7 @@ export function startEditor() {
       if (!sel) return;
       if (sel.kind === 'vertex') { mapa.vias[sel.via].pontos[sel.i][0] += dx; mapa.vias[sel.via].pontos[sel.i][1] += dz; }
       else if (sel.kind === 'marco') { mapa.marcos[sel.i].x += dx; mapa.marcos[sel.i].z += dz; }
+      else if (sel.kind === 'predio') { mapa.predios[sel.i].x += dx; mapa.predios[sel.i].z += dz; }
       else if (sel.kind === 'rotCenter') { mapa.rotatorias[sel.i].x += dx; mapa.rotatorias[sel.i].z += dz; }
       else if (sel.kind === 'spawn') { mapa.spawn.x += dx; mapa.spawn.z += dz; }
       buildPanel();
@@ -445,6 +462,14 @@ export function startEditor() {
       rows.push(`<h3>marco · ${m.tipo}</h3>`);
       rows.push(num('x', m.x, 'mx'));
       rows.push(num('z', m.z, 'mz'));
+    } else if (sel.kind === 'predio') {
+      const b = mapa.predios[sel.i];
+      rows.push(`<h3>prédio · ${b.tipo ?? 'box'}</h3>`);
+      rows.push(num('x', b.x, 'px'));
+      rows.push(num('z', b.z, 'pz'));
+      rows.push(num('largura', b.w, 'pw'));
+      rows.push(num('profund.', b.d, 'pd'));
+      rows.push(num('altura', b.h, 'ph'));
     } else if (sel.kind === 'rotCenter' || sel.kind === 'rotIn' || sel.kind === 'rotOut') {
       const r = mapa.rotatorias[sel.i];
       rows.push('<h3>rotatória</h3>');
@@ -475,7 +500,14 @@ export function startEditor() {
     if (!sel) return;
     if (sel.kind === 'vertex') { if (field === 'vx') mapa.vias[sel.via].pontos[sel.i][0] = val; else mapa.vias[sel.via].pontos[sel.i][1] = val; }
     else if (sel.kind === 'marco') { if (field === 'mx') mapa.marcos[sel.i].x = val; else mapa.marcos[sel.i].z = val; }
-    else if (sel.kind === 'rotCenter' || sel.kind === 'rotIn' || sel.kind === 'rotOut') {
+    else if (sel.kind === 'predio') {
+      const b = mapa.predios[sel.i];
+      if (field === 'px') b.x = val;
+      else if (field === 'pz') b.z = val;
+      else if (field === 'pw') b.w = val;
+      else if (field === 'pd') b.d = val;
+      else if (field === 'ph') b.h = val;
+    } else if (sel.kind === 'rotCenter' || sel.kind === 'rotIn' || sel.kind === 'rotOut') {
       const r = mapa.rotatorias[sel.i];
       if (field === 'rx') r.x = val;
       else if (field === 'rz') r.z = val;
@@ -493,11 +525,12 @@ export function startEditor() {
     const via = (v: Via) => `    { tipo: '${v.tipo}',${v.nome ? ` nome: '${v.nome.replace(/'/g, "\\'")}',` : ''} pontos: [${v.pontos.map((p) => `[${ri(p[0])}, ${ri(p[1])}]`).join(', ')}] },`;
     const marco = (m: Marco) => `    { tipo: '${m.tipo}', x: ${ri(m.x)}, z: ${ri(m.z)}${m.rot !== undefined ? `, rot: ${m.rot}` : ''} },`;
     const rota = (r: Rotatoria) => `    { x: ${ri(r.x)}, z: ${ri(r.z)}, raioInterno: ${ri(r.raioInterno)}, raioExterno: ${ri(r.raioExterno)} },`;
+    const predio = (b: Predio) => `    { tipo: '${b.tipo ?? 'box'}', x: ${ri(b.x)}, z: ${ri(b.z)}, w: ${ri(b.w)}, d: ${ri(b.d)}, h: ${ri(b.h)}, cor: '${b.cor}'${b.rot !== undefined ? `, rot: ${b.rot}` : ''} },`;
     return [
       '  vias: [',
       mapa.vias.map(via).join('\n'),
       '  ] as Via[],',
-      '  predios: [] as Predio[],',
+      mapa.predios.length ? `  predios: [\n${mapa.predios.map(predio).join('\n')}\n  ] as Predio[],` : '  predios: [] as Predio[],',
       '  marcos: [',
       mapa.marcos.map(marco).join('\n'),
       '  ] as Marco[],',
