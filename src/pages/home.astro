@@ -94,8 +94,41 @@ const letras = ['C', 'e', 'l', 'i', 't', 'a'];
       }
       .btn--img:hover { background: #f6faff; box-shadow: 0 3px 10px rgba(60, 64, 67, 0.22); }
 
+      .apps {
+        display: flex;
+        gap: 26px;
+        margin-top: 46px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .app {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 76px;
+        text-decoration: none;
+        color: #5f6368;
+      }
+      .tile {
+        width: 62px;
+        height: 62px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(60, 64, 67, 0.25);
+        transition: transform .14s ease, box-shadow .2s ease;
+      }
+      .app:hover .tile { transform: translateY(-3px); box-shadow: 0 7px 18px rgba(60, 64, 67, 0.32); }
+      .app .lbl { margin-top: 9px; font-size: 12.5px; font-weight: 500; }
+      .tile--drive { background: #fff; }
+      .tile--poki { background: linear-gradient(135deg, #7c4bff, #5b2be0); }
+      .tile--jogos { background: linear-gradient(135deg, #ff8a3d, #ff5e3a); }
+      .tile--canva { background: #fff; }
+
       @media (max-width: 560px) {
         .logo { font-size: 68px; letter-spacing: -4px; }
+        .apps { gap: 18px; }
       }
     </style>
   </head>
@@ -127,6 +160,51 @@ const letras = ['C', 'e', 'l', 'i', 't', 'a'];
         Imagens
       </button>
     </div>
+
+    <nav class="apps" aria-label="Atalhos">
+      <a class="app" href="https://drive.google.com/drive/folders/0AE4S6Qlu3VF2Uk9PVA" target="_blank" rel="noopener">
+        <span class="tile tile--drive">
+          <svg width="34" height="34" viewBox="0 0 1443 1250" aria-hidden="true">
+            <path fill="#3777e3" d="M240.5 1250l240.5-416.7h962l-240.5 416.7z" />
+            <path fill="#ffcf63" d="M962 833.3h481L962 0H481z" />
+            <path fill="#11a861" d="M0 833.3l240.5 416.7L962 0H481z" />
+          </svg>
+        </span>
+        <span class="lbl">Drive</span>
+      </a>
+      <a class="app" href="https://poki.com/" target="_blank" rel="noopener">
+        <span class="tile tile--poki">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+            <path d="M17 6H7a5 5 0 00-5 5 4 4 0 007.1 2.5l.4-.5h5l.4.5A4 4 0 0022 11a5 5 0 00-5-5zM9 12H7.5v1.5h-1V12H5v-1h1.5V9.5h1V11H9v1zm6.2-1.2a1 1 0 110-2 1 1 0 010 2zm1.8 2a1 1 0 110-2 1 1 0 010 2z" />
+          </svg>
+        </span>
+        <span class="lbl">Poki</span>
+      </a>
+      <a class="app" href="https://omanoloneto.pro/class/games/" target="_blank" rel="noopener">
+        <span class="tile tile--jogos">
+          <svg width="30" height="30" viewBox="0 0 512 512" fill="#fff" aria-hidden="true">
+            <path d="M461 21c-11-2-100-18-179 61-15 15-27 31-36 46l-70 8c-8 1-16 5-22 11l-53 53 60 18-8 8c-8 8-8 21 0 29l66 66c8 8 21 8 29 0l8-8 18 60 53-53c6-6 10-14 11-22l8-70c15-9 31-21 46-36 79-79 63-168 61-179zM336 176a32 32 0 1145-45 32 32 0 01-45 45zM86 356c-24 24-22 92-22 92s68 2 92-22c14-14 14-36 0-50s-36-14-50 0z" />
+          </svg>
+        </span>
+        <span class="lbl">Jogos</span>
+      </a>
+      <a class="app" href="https://www.canva.com/" target="_blank" rel="noopener">
+        <span class="tile tile--canva">
+          <svg width="42" height="42" viewBox="0 0 48 48" aria-hidden="true">
+            <defs>
+              <linearGradient id="cv" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#823af3" />
+                <stop offset=".5" stop-color="#4b66e1" />
+                <stop offset="1" stop-color="#01f1c4" />
+              </linearGradient>
+            </defs>
+            <circle cx="24" cy="24" r="22" fill="url(#cv)" />
+            <text x="24" y="33" font-size="26" text-anchor="middle" fill="#fff" font-family="Georgia, serif">C</text>
+          </svg>
+        </span>
+        <span class="lbl">Canva</span>
+      </a>
+    </nav>
 
     <script>
       const imgBtn = document.querySelector('[data-img]');
