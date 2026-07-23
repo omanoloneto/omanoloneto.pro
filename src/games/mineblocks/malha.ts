@@ -167,10 +167,14 @@ export function criarMalha(ctx: Ctx): Meshes {
     map: textura.atlas, vertexColors: true, transparent: true, opacity: 0.65,
     depthWrite: false, side: THREE.DoubleSide,
   });
-  // camada de tocha: NUNCA recebe o tint de noite — faces iluminadas ficam acesas
+  // camada de tocha: overlay ADITIVO por cima da geometria normal. A cor do
+  // material é (1 − tint da noite): de dia soma zero, de noite soma a tocha —
+  // sem emenda na fronteira iluminado/escuro e sem overbright ao meio-dia.
   const matLuz = new THREE.MeshBasicMaterial({
-    map: textura.atlas, vertexColors: true, alphaTest: 0.5, side: THREE.DoubleSide,
+    map: textura.atlas, vertexColors: true, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
   });
+  matLuz.color.setScalar(0);
 
   // meshes[ci] = [opaca, recorte, agua, luz] (null onde a camada é vazia)
   const meshes: Array<Array<THREE.Mesh | null>> = [];
@@ -187,7 +191,7 @@ export function criarMalha(ctx: Ctx): Meshes {
 
   function empurrarFace(
     c: Camada, f: number, bx: number, by: number, bz: number,
-    tile: number, comAO: boolean, afundarTopo: number, recuo: number, luzTocha = 0
+    tile: number, comAO: boolean, afundarTopo: number, recuo: number, overlayLuz?: Camada
   ) {
     const face = FACES[f];
     const [u0, v0, u1, v1] = textura.uv(tile);
@@ -197,16 +201,18 @@ export function criarMalha(ctx: Ctx): Meshes {
     const base = c.pos.length / 3;
     const sombra = SOMBRA_FACE[f];
     const ao: number[] = [0, 0, 0, 0];
+    const posFace: number[] = [];
+    const luzV: number[] = [0, 0, 0, 0];
     for (let i = 0; i < 4; i++) {
       const cv = face.v[i];
       let brilho = 1;
+      const [nx, ny, nz] = face.n;
+      // tangentes apontando pro canto: coordenada 0 → -1, 1 → +1 (só nos eixos ⊥ à normal)
+      const sx = nx !== 0 ? 0 : cv[0] * 2 - 1;
+      const sy = ny !== 0 ? 0 : cv[1] * 2 - 1;
+      const sz = nz !== 0 ? 0 : cv[2] * 2 - 1;
       if (comAO) {
         // vizinhos do canto no plano da face (deslocados pela normal)
-        const [nx, ny, nz] = face.n;
-        // tangentes apontando pro canto: coordenada 0 → -1, 1 → +1 (só nos eixos ⊥ à normal)
-        const sx = nx !== 0 ? 0 : cv[0] * 2 - 1;
-        const sy = ny !== 0 ? 0 : cv[1] * 2 - 1;
-        const sz = nz !== 0 ? 0 : cv[2] * 2 - 1;
         // os dois lados = zerar uma tangente de cada vez
         let l1: boolean, l2: boolean;
         if (nx !== 0) {
@@ -225,19 +231,50 @@ export function criarMalha(ctx: Ctx): Meshes {
       } else {
         ao[i] = 3;
       }
+      if (overlayLuz) {
+        // luz de tocha por VÉRTICE: média das 4 células do plano do vizinho
+        // (mesma vizinhança do AO) → gradiente suave dentro e entre faces
+        let soma: number;
+        if (nx !== 0) {
+          soma = luzBloco.level(bx + nx, by, bz) + luzBloco.level(bx + nx, by + sy, bz)
+            + luzBloco.level(bx + nx, by, bz + sz) + luzBloco.level(bx + nx, by + sy, bz + sz);
+        } else if (ny !== 0) {
+          soma = luzBloco.level(bx, by + ny, bz) + luzBloco.level(bx + sx, by + ny, bz)
+            + luzBloco.level(bx, by + ny, bz + sz) + luzBloco.level(bx + sx, by + ny, bz + sz);
+        } else {
+          soma = luzBloco.level(bx, by, bz + nz) + luzBloco.level(bx + sx, by, bz + nz)
+            + luzBloco.level(bx, by + sy, bz + nz) + luzBloco.level(bx + sx, by + sy, bz + nz);
+        }
+        luzV[i] = soma / (4 * 12);
+      }
       let vy = by + cv[1];
       if (afundarTopo > 0 && cv[1] === 1) vy -= afundarTopo;
       const [rx, ry, rz] = face.n;
-      c.pos.push(bx + cv[0] - rx * recuo, vy - ry * recuo, bz + cv[2] - rz * recuo);
+      posFace.push(bx + cv[0] - rx * recuo, vy - ry * recuo, bz + cv[2] - rz * recuo);
+      c.pos.push(posFace[i * 3], posFace[i * 3 + 1], posFace[i * 3 + 2]);
       c.uv.push(uvs[i][0], uvs[i][1]);
-      const luz = Math.max(sombra * brilho, luzTocha);
+      const luz = sombra * brilho;
       c.cor.push(luz, luz, luz);
     }
     // diagonal consistente com o AO (evita o "X" invertido nas quinas)
-    if (ao[0] + ao[2] > ao[1] + ao[3]) {
+    const diagonalA = ao[0] + ao[2] > ao[1] + ao[3];
+    if (diagonalA) {
       c.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     } else {
       c.idx.push(base + 1, base + 2, base + 3, base + 1, base + 3, base);
+    }
+    if (overlayLuz && (luzV[0] > 0 || luzV[1] > 0 || luzV[2] > 0 || luzV[3] > 0)) {
+      const ob = overlayLuz.pos.length / 3;
+      for (let i = 0; i < 4; i++) {
+        overlayLuz.pos.push(posFace[i * 3], posFace[i * 3 + 1], posFace[i * 3 + 2]);
+        overlayLuz.uv.push(uvs[i][0], uvs[i][1]);
+        overlayLuz.cor.push(luzV[i], luzV[i], luzV[i]);
+      }
+      if (diagonalA) {
+        overlayLuz.idx.push(ob, ob + 1, ob + 2, ob, ob + 2, ob + 3);
+      } else {
+        overlayLuz.idx.push(ob + 1, ob + 2, ob + 3, ob + 1, ob + 3, ob);
+      }
     }
   }
 
@@ -286,7 +323,7 @@ export function criarMalha(ctx: Ctx): Meshes {
 
   const OUTLINE_RGB: [number, number, number] = [26 / 255, 30 / 255, 36 / 255];
 
-  function empurrarMovel(c: Camada, bx: number, by: number, bz: number, id: number) {
+  function empurrarMovel(c: Camada, bx: number, by: number, bz: number, id: number, luzExtra = 1, semContorno = false) {
     const pecas = FURNITURE[id];
     if (!pecas) return;
     const m = ctx.metas.get(bx, by, bz);
@@ -298,8 +335,8 @@ export function criarMalha(ctx: Ctx): Meshes {
       const [x0, y0, z0, x1, y1, z1] = rotBox(peca.box, rot);
       const rgb = corDe(peca.cor);
       const inflar = 0.36;
-      empurrarCaixa(c, bx + x0 / 16, by + y0 / 16, bz + z0 / 16, bx + x1 / 16, by + y1 / 16, bz + z1 / 16, rgb, 1, false, u, v);
-      if (!peca.semBorda) {
+      empurrarCaixa(c, bx + x0 / 16, by + y0 / 16, bz + z0 / 16, bx + x1 / 16, by + y1 / 16, bz + z1 / 16, rgb, luzExtra, false, u, v);
+      if (!semContorno && !peca.semBorda) {
         empurrarCaixa(
           c,
           bx + (x0 - inflar) / 16, by + (y0 - inflar) / 16, bz + (z0 - inflar) / 16,
@@ -428,9 +465,9 @@ export function criarMalha(ctx: Ctx): Meshes {
           const def = porId(id);
           if (!def) continue; // id desconhecido (save de versão futura?): pula
           if (def.render === 'cruz') {
+            empurrarCruz(camadas[1], x, y, z, def.tiles[0]);
             const Lc = id === 62 ? 12 : luzBloco.level(x, y, z);
-            if (Lc > 0) empurrarCruz(camadas[3], x, y, z, def.tiles[0], id === 62 ? 1 : Math.max(0.4, 0.35 + 0.65 * (Lc / 12)));
-            else empurrarCruz(camadas[1], x, y, z, def.tiles[0]);
+            if (Lc > 0) empurrarCruz(camadas[3], x, y, z, def.tiles[0], Lc / 12);
             continue;
           }
           if (def.render === 'porta') {
@@ -438,7 +475,9 @@ export function criarMalha(ctx: Ctx): Meshes {
             continue;
           }
           if (def.render === 'movel') {
-            empurrarMovel(luzBloco.level(x, y, z) > 0 ? camadas[3] : camadas[0], x, y, z, id);
+            empurrarMovel(camadas[0], x, y, z, id);
+            const Lm = luzBloco.level(x, y, z);
+            if (Lm > 0) empurrarMovel(camadas[3], x, y, z, id, Lm / 12, true);
             continue;
           }
           const comAO = def.render === 'cubo';
@@ -448,13 +487,11 @@ export function criarMalha(ctx: Ctx): Meshes {
             const n = FACES[f].n;
             const viz = mundo.get(x + n[0], y + n[1], z + n[2]);
             if (!faceVisivel(id, viz)) continue;
-            const Lf = def.render === 'cubo' ? luzBloco.level(x + n[0], y + n[1], z + n[2]) : 0;
-            const luzTocha = Lf > 0 ? 0.35 + 0.65 * (Lf / 12) : 0;
-            const camada = def.render === 'agua' ? camadas[2] : def.render === 'recorte' ? camadas[1] : luzTocha > 0 ? camadas[3] : camadas[0];
+            const camada = def.render === 'agua' ? camadas[2] : def.render === 'recorte' ? camadas[1] : camadas[0];
             const tile = f === 2 ? def.tiles[0] : f === 3 ? def.tiles[2] : def.tiles[1];
             const vizDef = viz === 0 ? null : porId(viz);
             const recuo = def.render === 'agua' && vizDef && vizDef.render === 'recorte' ? 0.0045 : 0;
-            empurrarFace(camada, f, x, y, z, tile, comAO, superficie, recuo, luzTocha);
+            empurrarFace(camada, f, x, y, z, tile, comAO, superficie, recuo, def.render === 'cubo' ? camadas[3] : undefined);
             if (OUTLINE_GROUP[id] !== undefined) empurrarBordas(camadas[0], f, x, y, z, id);
           }
         }
@@ -479,6 +516,7 @@ export function criarMalha(ctx: Ctx): Meshes {
       const mesh = new THREE.Mesh(geo, materiais[l]);
       mesh.matrixAutoUpdate = false;
       if (l === 2) mesh.renderOrder = 2; // água por último (blend)
+      if (l === 3) mesh.renderOrder = 1; // overlay de tocha depois do opaco, antes da água
       scene.add(mesh);
       meshes[ci][l] = mesh;
     }
@@ -501,6 +539,7 @@ export function criarMalha(ctx: Ctx): Meshes {
       matOpaca.color.copy(cor);
       matRecorte.color.copy(cor);
       matAgua.color.copy(cor);
+      matLuz.color.setScalar(Math.min(1, Math.max(0, 1 - (cor.r + cor.g + cor.b) / 3)));
     },
   };
 }
