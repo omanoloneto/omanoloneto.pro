@@ -134,6 +134,7 @@ export function startGame() {
     car: ctx.car.state,
     telemetry: () => ctx.driving.telemetry(),
     surfaceAt: (x: number, z: number) => ctx.city.surfaceAt(x, z),
+    gridAt: (x: number, z: number) => ctx.city.gridAt(x, z),
     solidAt: (x: number, z: number) => ctx.city.solidAt(x, z),
     streetAt: (x: number, z: number) => ctx.city.streetAt(x, z),
     minimap: ctx.minimap,

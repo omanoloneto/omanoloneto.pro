@@ -11,7 +11,7 @@ export type SlotId = keyof PartsData;
 
 export type Phase = 'intro' | 'playing' | 'paused';
 
-export type SurfaceKind = 'rua' | 'grama' | 'agua' | 'trilho';
+export type SurfaceKind = 'rua' | 'grama';
 
 export interface State {
   phase: Phase;
@@ -25,8 +25,8 @@ export interface City {
   nightDecals: THREE.MeshBasicMaterial;
   solidAt(x: number, z: number): boolean;
   surfaceAt(x: number, z: number): SurfaceKind;
+  gridAt(x: number, z: number): number;
   buildingTopAt(x: number, z: number): number;
-  nearestLandmark(x: number, z: number): { nome: string; emoji: string; dist: number } | null;
   streetAt(x: number, z: number, current?: string | null): string | null;
   paintMap(canvas: HTMLCanvasElement, style?: 'padrao' | 'gps'): void;
 }
@@ -109,5 +109,5 @@ export interface Ctx {
   ui: UI;
   audio: Audio;
   flow: Flow;
-  surfaces: Record<'rua' | 'grama' | 'trilho', Surface>;
+  surfaces: Record<'rua' | 'grama', Surface>;
 }

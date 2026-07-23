@@ -1,45 +1,46 @@
 import * as THREE from 'three';
-import { mulberry32 } from '../../lib/rng';
-import { coloredBox, mergeParts, QuadBatch, textSprite } from './mesh';
+import { coloredBox, mergeParts, orientedBox, QuadBatch } from './mesh';
 import { createAsphaltTexture } from './city-texture';
 import type { City, Ctx, SurfaceKind } from './types';
 
 const GRASS = 0;
 const ROAD = 1;
-const WATER = 2;
-const RAIL = 3;
+const MEDIAN = 2;
+const PILLAR = 3;
 const BUILD = 4;
-const PARK = 5;
-const BRIDGE = 6;
-const RAILBRIDGE = 7;
+
+interface Seg {
+  ax: number;
+  az: number;
+  bx: number;
+  bz: number;
+  halfW: number;
+  tipo: string;
+  via: number;
+  nome?: string;
+}
 
 export function createCity(ctx: Ctx): City {
   const { cfg, map } = ctx;
   const K = cfg.cores;
+  const V = cfg.vias;
   const T = cfg.mundo.tamanho;
   const CELL = cfg.mundo.celula;
   const N = Math.floor(T / CELL);
   const HALF = T / 2;
   const grid = new Uint8Array(N * N);
   const tops = new Float32Array(N * N);
-  const rng = mulberry32(20260722);
 
   const cellOf = (v: number) => Math.max(0, Math.min(N - 1, Math.floor((v + HALF) / CELL)));
   const centerOf = (c: number) => c * CELL - HALF + CELL / 2;
   const at = (cx: number, cz: number) => grid[cx + cz * N];
   const set = (cx: number, cz: number, t: number) => { grid[cx + cz * N] = t; };
 
-  function fillRect(x1: number, z1: number, x2: number, z2: number, t: number) {
-    const cx1 = cellOf(Math.min(x1, x2));
-    const cx2 = cellOf(Math.max(x1, x2) - 0.01);
-    const cz1 = cellOf(Math.min(z1, z2));
-    const cz2 = cellOf(Math.max(z1, z2) - 0.01);
-    for (let cz = cz1; cz <= cz2; cz++) {
-      for (let cx = cx1; cx <= cx2; cx++) set(cx, cz, t);
-    }
-  }
+  const halfWidth = (tipo: string) =>
+    tipo === 'avenida' ? V.avenida.pista + V.avenida.canteiro / 2 : tipo === 'br' ? V.br.largura / 2 : V.rua.largura / 2;
 
-  function paintSegment(x1: number, z1: number, x2: number, z2: number, w: number, t: number, skip?: number) {
+  interface PaintOpts { skip?: number; only?: number }
+  function paintSegment(x1: number, z1: number, x2: number, z2: number, w: number, t: number, opts?: PaintOpts) {
     const half = w / 2;
     const cx1 = cellOf(Math.min(x1, x2) - half);
     const cx2 = cellOf(Math.max(x1, x2) + half);
@@ -50,7 +51,9 @@ export function createCity(ctx: Ctx): City {
     const len2 = dx * dx + dz * dz || 1;
     for (let cz = cz1; cz <= cz2; cz++) {
       for (let cx = cx1; cx <= cx2; cx++) {
-        if (skip !== undefined && at(cx, cz) === skip) continue;
+        const cur = at(cx, cz);
+        if (opts?.skip !== undefined && cur === opts.skip) continue;
+        if (opts?.only !== undefined && cur !== opts.only) continue;
         const px = centerOf(cx);
         const pz = centerOf(cz);
         const u = Math.max(0, Math.min(1, ((px - x1) * dx + (pz - z1) * dz) / len2));
@@ -61,111 +64,380 @@ export function createCity(ctx: Ctx): City {
     }
   }
 
-  const rio = map.rio;
-  const riverCenter = (x: number) =>
-    rio.zCentro + rio.onda1.amp * Math.sin(x / rio.onda1.freq + rio.onda1.fase) + rio.onda2.amp * Math.sin(x / rio.onda2.freq + rio.onda2.fase);
-  const riverHalf = (x: number) => rio.meia + rio.meiaOnda.amp * Math.sin(x / rio.meiaOnda.freq + rio.meiaOnda.fase);
-  const inRiver = (x: number, z: number) => Math.abs(z - riverCenter(x)) <= riverHalf(x);
-
-  for (const p of map.pracas) fillRect(p.x1, p.z1, p.x2, p.z2, PARK);
-  for (const r of map.ruas) paintSegment(r.x1, r.z1, r.x2, r.z2, r.w, ROAD);
-  paintSegment(map.trilho.x1, map.trilho.z1, map.trilho.x2, map.trilho.z2, map.trilho.w, RAIL, ROAD);
-  for (let cz = 0; cz < N; cz++) {
-    for (let cx = 0; cx < N; cx++) {
-      const x = centerOf(cx);
-      const z = centerOf(cz);
-      if (!inRiver(x, z)) continue;
-      const t = at(cx, cz);
-      if (t === ROAD && map.pontes.some((p) => Math.abs(x - p.x) <= p.w / 2)) set(cx, cz, BRIDGE);
-      else if (t === RAIL) set(cx, cz, RAILBRIDGE);
-      else set(cx, cz, WATER);
-    }
-  }
-
-  interface Building { x: number; z: number; w: number; d: number; h: number; body: string; win: string | null; roof: boolean }
-  const buildings: Building[] = [];
-
-  function stampBuilding(b: Building) {
-    const cx1 = cellOf(b.x - b.w / 2);
-    const cx2 = cellOf(b.x + b.w / 2 - 0.01);
-    const cz1 = cellOf(b.z - b.d / 2);
-    const cz2 = cellOf(b.z + b.d / 2 - 0.01);
+  function fillCells(x: number, z: number, w: number, d: number, t: number, top: number) {
+    const cx1 = cellOf(x - w / 2);
+    const cx2 = cellOf(x + w / 2 - 0.01);
+    const cz1 = cellOf(z - d / 2);
+    const cz2 = cellOf(z + d / 2 - 0.01);
     for (let cz = cz1; cz <= cz2; cz++) {
       for (let cx = cx1; cx <= cx2; cx++) {
-        set(cx, cz, BUILD);
-        tops[cx + cz * N] = b.h;
+        set(cx, cz, t);
+        tops[cx + cz * N] = top;
       }
     }
-    buildings.push(b);
   }
 
-  for (const m of map.marcos) {
-    if (!m.predio) continue;
-    stampBuilding({ x: m.x, z: m.z, w: m.predio.w, d: m.predio.d, h: m.predio.h, body: m.predio.cor, win: K.janelas[0], roof: false });
+  const allSegs: Seg[] = [];
+  map.vias.forEach((via, vi) => {
+    const hw = halfWidth(via.tipo);
+    for (let i = 0; i < via.pontos.length - 1; i++) {
+      const [ax, az] = via.pontos[i];
+      const [bx, bz] = via.pontos[i + 1];
+      allSegs.push({ ax, az, bx, bz, halfW: hw, tipo: via.tipo, via: vi, nome: via.nome });
+    }
+  });
+
+  function distSeg2(px: number, pz: number, s: Seg) {
+    const dx = s.bx - s.ax;
+    const dz = s.bz - s.az;
+    const len2 = dx * dx + dz * dz || 1;
+    const u = Math.max(0, Math.min(1, ((px - s.ax) * dx + (pz - s.az) * dz) / len2));
+    const qx = s.ax + dx * u - px;
+    const qz = s.az + dz * u - pz;
+    return qx * qx + qz * qz;
   }
 
-  const centro = map.centro;
-  for (let cz = 1; cz < N - 3; cz += 3) {
-    for (let cx = 1; cx < N - 3; cx += 3) {
-      let free = true;
-      for (let dz = 0; dz < 2 && free; dz++) {
-        for (let dx = 0; dx < 2 && free; dx++) {
-          if (at(cx + dx, cz + dz) !== GRASS) free = false;
-        }
+  function blockedNear(px: number, pz: number, viaIdx: number, margin: number) {
+    for (const s of allSegs) {
+      if (s.via === viaIdx || s.tipo === 'br') continue;
+      const lim = s.halfW + margin;
+      if (distSeg2(px, pz, s) <= lim * lim) return true;
+    }
+    return false;
+  }
+
+  function arcCum(pts: [number, number][]) {
+    const cum = [0];
+    for (let i = 0; i < pts.length - 1; i++) {
+      cum.push(cum[i] + Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]));
+    }
+    return cum;
+  }
+
+  function sampleAt(pts: [number, number][], cum: number[], arc: number) {
+    const total = cum[cum.length - 1];
+    arc = Math.max(0, Math.min(total, arc));
+    let i = 0;
+    while (i < cum.length - 2 && cum[i + 1] < arc) i++;
+    const segLen = cum[i + 1] - cum[i] || 1;
+    const t = (arc - cum[i]) / segLen;
+    const ax = pts[i][0];
+    const az = pts[i][1];
+    const dx = pts[i + 1][0] - ax;
+    const dz = pts[i + 1][1] - az;
+    const l = Math.hypot(dx, dz) || 1;
+    return { x: ax + dx * t, z: az + dz * t, ux: dx / l, uz: dz / l };
+  }
+
+  function nearVertex(cum: number[], arc: number, margin: number) {
+    for (let i = 1; i < cum.length - 1; i++) if (Math.abs(arc - cum[i]) < margin) return true;
+    return false;
+  }
+
+  function offsetPolyline(pts: [number, number][], d: number): [number, number][] {
+    const n = pts.length;
+    const segN: [number, number][] = [];
+    for (let i = 0; i < n - 1; i++) {
+      const dx = pts[i + 1][0] - pts[i][0];
+      const dz = pts[i + 1][1] - pts[i][1];
+      const l = Math.hypot(dx, dz) || 1;
+      segN.push([-dz / l, dx / l]);
+    }
+    const out: [number, number][] = [];
+    for (let i = 0; i < n; i++) {
+      let nx: number;
+      let nz: number;
+      if (i === 0) [nx, nz] = segN[0];
+      else if (i === n - 1) [nx, nz] = segN[n - 2];
+      else {
+        const a = segN[i - 1];
+        const b = segN[i];
+        let mx = a[0] + b[0];
+        let mz = a[1] + b[1];
+        const ml = Math.hypot(mx, mz) || 1;
+        mx /= ml;
+        mz /= ml;
+        const cos = mx * b[0] + mz * b[1];
+        const scale = cos > 0.25 ? 1 / cos : 1;
+        nx = mx * scale;
+        nz = mz * scale;
       }
-      if (!free) continue;
-      let nearRoad = false;
-      for (let dz = -2; dz <= 3 && !nearRoad; dz++) {
-        for (let dx = -2; dx <= 3 && !nearRoad; dx++) {
-          const nx = cx + dx;
-          const nz = cz + dz;
-          if (nx < 0 || nz < 0 || nx >= N || nz >= N) continue;
-          const t = at(nx, nz);
-          if (t === ROAD || t === BRIDGE) nearRoad = true;
-        }
-      }
-      if (!nearRoad || rng() > 0.72) continue;
-      const wx = centerOf(cx) + CELL / 2;
-      const wz = centerOf(cz) + CELL / 2;
-      const inCentro = wx >= centro.x1 && wx <= centro.x2 && wz >= centro.z1 && wz <= centro.z2;
-      if (inCentro) {
-        stampBuilding({
-          x: wx,
-          z: wz,
-          w: 7,
-          d: 7,
-          h: 9 + rng() * 19,
-          body: K.predios[Math.floor(rng() * K.predios.length)],
-          win: K.janelas[Math.floor(rng() * K.janelas.length)],
-          roof: false,
-        });
-      } else {
-        stampBuilding({
-          x: wx,
-          z: wz,
-          w: 5.5 + rng() * 1.5,
-          d: 5.5 + rng() * 1.5,
-          h: 3.2 + rng() * 2.4,
-          body: K.casas[Math.floor(rng() * K.casas.length)],
-          win: rng() < 0.6 ? K.janelaCasa : null,
-          roof: true,
-        });
+      out.push([pts[i][0] + nx * d, pts[i][1] + nz * d]);
+    }
+    return out;
+  }
+
+  for (const via of map.vias) {
+    if (via.tipo === 'br') continue;
+    const w = via.tipo === 'avenida' ? V.avenida.pista * 2 + V.avenida.canteiro : V.rua.largura;
+    for (let i = 0; i < via.pontos.length - 1; i++) {
+      const [x1, z1] = via.pontos[i];
+      const [x2, z2] = via.pontos[i + 1];
+      paintSegment(x1, z1, x2, z2, w, ROAD);
+    }
+  }
+
+  const deco = new QuadBatch();
+  const glowDecals = new QuadBatch();
+  const parts: THREE.BufferGeometry[] = [];
+  const emissiveParts: THREE.BufferGeometry[] = [];
+  const laneWhite = new THREE.Color(K.faixa);
+  const laneYellow = new THREE.Color(K.faixaAmarela);
+  const canteiroColor = new THREE.Color(K.canteiro);
+  const guiaColor = new THREE.Color(K.guia);
+  const poleColor = new THREE.Color(K.poste);
+  const lampColor = new THREE.Color(K.luzPoste);
+  const pool = new THREE.Color(K.poolLuz);
+  const deckColor = new THREE.Color(K.deckBR);
+  const muretaColor = new THREE.Color(K.muretaBR);
+  const pilarColor = new THREE.Color(K.pilarBR);
+  const asfaltoColor = new THREE.Color(K.asfalto);
+
+  function emitMedian(via: (typeof map.vias)[number], vi: number) {
+    const pts = via.pontos;
+    const cum = arcCum(pts);
+    const total = cum[cum.length - 1];
+    const step = V.amostraPasso;
+    const nS = Math.floor(total / step);
+    const blocked: boolean[] = [];
+    const arcs: number[] = [];
+    for (let k = 0; k <= nS; k++) {
+      const arc = Math.min(k * step, total);
+      arcs.push(arc);
+      const s = sampleAt(pts, cum, arc);
+      blocked.push(blockedNear(s.x, s.z, vi, V.gapMargem));
+    }
+    const runs: Array<[number, number]> = [];
+    let rs: number | null = null;
+    for (let k = 0; k < blocked.length; k++) {
+      if (!blocked[k]) {
+        if (rs === null) rs = k;
+      } else if (rs !== null) {
+        runs.push([rs, k - 1]);
+        rs = null;
       }
     }
+    if (rs !== null) runs.push([rs, blocked.length - 1]);
+
+    const shrink = V.avenida.canteiro / 2;
+    const guiaOff = V.avenida.canteiro / 2 - V.avenida.guia / 2;
+    for (const [i0, i1] of runs) {
+      const runStart = arcs[i0];
+      const runEnd = arcs[i1];
+      if (runEnd - runStart < 6) continue;
+      const gapStart = i0 !== 0;
+      const gapEnd = i1 !== blocked.length - 1;
+
+      const cuts = [runStart];
+      for (let vv = 1; vv < cum.length - 1; vv++) if (cum[vv] > runStart && cum[vv] < runEnd) cuts.push(cum[vv]);
+      cuts.push(runEnd);
+      for (let c = 0; c < cuts.length - 1; c++) {
+        let a = cuts[c];
+        let b = cuts[c + 1];
+        if (c === 0 && gapStart) a += shrink;
+        if (c === cuts.length - 2 && gapEnd) b -= shrink;
+        if (b - a < 2) continue;
+        const pa = sampleAt(pts, cum, a);
+        const pb = sampleAt(pts, cum, b);
+        const cx = (pa.x + pb.x) / 2;
+        const cz = (pa.z + pb.z) / 2;
+        const ddx = pb.x - pa.x;
+        const ddz = pb.z - pa.z;
+        const len = Math.hypot(ddx, ddz) || 1;
+        const ux = ddx / len;
+        const uz = ddz / len;
+        const nx = -uz;
+        const nz = ux;
+        paintSegment(pa.x, pa.z, pb.x, pb.z, V.avenida.canteiro, MEDIAN, { only: ROAD });
+        parts.push(orientedBox(cx, cz, ux, uz, len, V.avenida.canteiro - 0.7, V.avenida.alturaCanteiro, V.avenida.alturaCanteiro / 2, canteiroColor));
+        for (const side of [-1, 1]) {
+          parts.push(orientedBox(cx + nx * guiaOff * side, cz + nz * guiaOff * side, ux, uz, len, V.avenida.guia, 0.26, 0.13, guiaColor));
+        }
+      }
+
+      for (let arc = runStart + 8; arc < runEnd - 6; arc += V.avenida.postePasso) {
+        const s = sampleAt(pts, cum, arc);
+        const nx = -s.uz;
+        const nz = s.ux;
+        parts.push(coloredBox(0.25, V.avenida.posteAltura, 0.25, s.x, V.avenida.posteAltura / 2, s.z, poleColor));
+        parts.push(orientedBox(s.x, s.z, s.ux, s.uz, 0.25, 3.4, 0.15, V.avenida.posteAltura - 0.1, poleColor));
+        for (const side of [-1, 1]) {
+          emissiveParts.push(coloredBox(0.6, 0.25, 0.6, s.x + nx * 1.5 * side, V.avenida.posteAltura - 0.05, s.z + nz * 1.5 * side, lampColor));
+          const gx = s.x + nx * 3.2 * side;
+          const gz = s.z + nz * 3.2 * side;
+          glowDecals.quad(gx - 2.6, gz - 2.6, gx + 2.6, gz + 2.6, 0.02, pool);
+        }
+      }
+    }
+  }
+
+  function emitDashes(via: (typeof map.vias)[number], vi: number) {
+    const pts = via.pontos;
+    const cum = arcCum(pts);
+    const total = cum[cum.length - 1];
+    const p = via.tipo === 'avenida' ? V.avenida : via.tipo === 'br' ? V.br : V.rua;
+    const isBR = via.tipo === 'br';
+    const offsets = via.tipo === 'avenida'
+      ? [-(V.avenida.canteiro / 2 + V.avenida.pista / 2), V.avenida.canteiro / 2 + V.avenida.pista / 2]
+      : isBR
+        ? [-V.br.faixaOffsets[1], -V.br.faixaOffsets[0], V.br.faixaOffsets[0], V.br.faixaOffsets[1]]
+        : [0];
+    const color = via.tipo === 'rua' ? laneYellow : laneWhite;
+    const y = isBR ? V.br.deckTopo + 0.04 : 0.04;
+    for (let arc = p.faixaPasso / 2; arc < total; arc += p.faixaPasso) {
+      if (nearVertex(cum, arc, p.faixaLen / 2 + 0.5)) continue;
+      const s = sampleAt(pts, cum, arc);
+      if (!isBR && blockedNear(s.x, s.z, vi, 1)) continue;
+      const nx = -s.uz;
+      const nz = s.ux;
+      for (const off of offsets) {
+        deco.quadRot(s.x + nx * off, s.z + nz * off, s.ux, s.uz, p.faixaLen, p.faixaLarg, y, color);
+      }
+    }
+  }
+
+  function emitRuaLamps(via: (typeof map.vias)[number]) {
+    const pts = via.pontos;
+    const cum = arcCum(pts);
+    const total = cum[cum.length - 1];
+    const off = V.rua.largura / 2 + 1.2;
+    let flip = 1;
+    for (let arc = 10; arc < total - 10; arc += V.rua.postePasso) {
+      flip = -flip;
+      const s = sampleAt(pts, cum, arc);
+      const px = s.x + -s.uz * off * flip;
+      const pz = s.z + s.ux * off * flip;
+      const t = at(cellOf(px), cellOf(pz));
+      if (t === BUILD || t === PILLAR) continue;
+      parts.push(coloredBox(0.2, V.rua.posteAltura, 0.2, px, V.rua.posteAltura / 2, pz, poleColor));
+      emissiveParts.push(coloredBox(0.6, 0.3, 0.6, px, V.rua.posteAltura + 0.1, pz, lampColor));
+      glowDecals.quad(px - 2.6, pz - 2.6, px + 2.6, pz + 2.6, 0.02, pool);
+    }
+  }
+
+  const asphaltGround = new QuadBatch(8);
+
+  function emitBR(via: (typeof map.vias)[number]) {
+    const pts = via.pontos;
+    const hw = V.br.largura / 2;
+    const deckY = V.br.deckTopo - V.br.deckEspessura / 2;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, az] = pts[i];
+      const [bx, bz] = pts[i + 1];
+      let dx = bx - ax;
+      let dz = bz - az;
+      const l = Math.hypot(dx, dz) || 1;
+      const ux = dx / l;
+      const uz = dz / l;
+      const turnExt = (vi: number) => {
+        if (vi <= 0 || vi >= pts.length - 1) return 0;
+        const p0 = pts[vi - 1];
+        const p1 = pts[vi];
+        const p2 = pts[vi + 1];
+        const a1 = Math.atan2(p1[0] - p0[0], p1[1] - p0[1]);
+        const a2 = Math.atan2(p2[0] - p1[0], p2[1] - p1[1]);
+        let d = Math.abs(a2 - a1);
+        if (d > Math.PI) d = 2 * Math.PI - d;
+        return Math.min(6, hw * Math.tan(d / 2));
+      };
+      const startExt = turnExt(i);
+      const endExt = turnExt(i + 1);
+      const sax = ax - ux * startExt;
+      const saz = az - uz * startExt;
+      const sbx = bx + ux * endExt;
+      const sbz = bz + uz * endExt;
+      const cx = (sax + sbx) / 2;
+      const cz = (saz + sbz) / 2;
+      const len = Math.hypot(sbx - sax, sbz - saz) || 1;
+      parts.push(orientedBox(cx, cz, ux, uz, len, V.br.largura, V.br.deckEspessura, deckY, deckColor));
+      asphaltGround.quadRot(cx, cz, ux, uz, len, V.br.largura - 1, V.br.deckTopo + 0.02, asfaltoColor);
+    }
+
+    const muretaY = V.br.deckTopo + V.br.mureta.alt / 2;
+    for (const d of [hw - V.br.mureta.larg / 2, -(hw - V.br.mureta.larg / 2), 0]) {
+      const op = offsetPolyline(pts, d);
+      for (let i = 0; i < op.length - 1; i++) {
+        const [ax, az] = op[i];
+        const [bx, bz] = op[i + 1];
+        const dx = bx - ax;
+        const dz = bz - az;
+        const l = Math.hypot(dx, dz) || 1;
+        parts.push(orientedBox((ax + bx) / 2, (az + bz) / 2, dx / l, dz / l, l + 0.1, V.br.mureta.larg, V.br.mureta.alt, muretaY, muretaColor));
+      }
+    }
+
+    const cum = arcCum(pts);
+    const total = cum[cum.length - 1];
+    const checkHalf = V.br.pilarLarg / 2 + CELL;
+    const stampHalf = V.br.pilarLarg / 2;
+    for (let arc = V.br.pilarPasso / 2; arc < total; arc += V.br.pilarPasso) {
+      const s = sampleAt(pts, cum, arc);
+      const nx = -s.uz;
+      const nz = s.ux;
+      let any = false;
+      for (const side of [-1, 1]) {
+        const px = s.x + nx * V.br.pilarOffset * side;
+        const pz = s.z + nz * V.br.pilarOffset * side;
+        let block = false;
+        const cx1 = cellOf(px - checkHalf);
+        const cx2 = cellOf(px + checkHalf);
+        const cz1 = cellOf(pz - checkHalf);
+        const cz2 = cellOf(pz + checkHalf);
+        for (let cz = cz1; cz <= cz2 && !block; cz++) {
+          for (let cx = cx1; cx <= cx2; cx++) {
+            const t = at(cx, cz);
+            if (t === ROAD || t === MEDIAN) { block = true; break; }
+          }
+        }
+        if (block) continue;
+        any = true;
+        const sx1 = cellOf(px - stampHalf);
+        const sx2 = cellOf(px + stampHalf);
+        const sz1 = cellOf(pz - stampHalf);
+        const sz2 = cellOf(pz + stampHalf);
+        for (let cz = sz1; cz <= sz2; cz++) for (let cx = sx1; cx <= sx2; cx++) set(cx, cz, PILLAR);
+        parts.push(coloredBox(V.br.pilarLarg, 6.4, V.br.pilarLarg, px, 3.2, pz, pilarColor));
+      }
+      if (any) parts.push(orientedBox(s.x, s.z, s.ux, s.uz, 1.6, 16, V.br.vigaAltura, V.br.deckTopo - V.br.deckEspessura - V.br.vigaAltura / 2, pilarColor));
+    }
+
+    const lampOff = hw - 0.6;
+    let flip = 1;
+    for (let arc = V.br.postePasso / 2; arc < total; arc += V.br.postePasso) {
+      flip = -flip;
+      const s = sampleAt(pts, cum, arc);
+      const px = s.x + -s.uz * lampOff * flip;
+      const pz = s.z + s.ux * lampOff * flip;
+      parts.push(coloredBox(0.2, V.br.posteAltura, 0.2, px, V.br.deckTopo + V.br.posteAltura / 2, pz, poleColor));
+      emissiveParts.push(coloredBox(0.6, 0.3, 0.6, px, V.br.deckTopo + V.br.posteAltura + 0.15, pz, lampColor));
+      glowDecals.quad(px - 2.5, pz - 2.5, px + 2.5, pz + 2.5, V.br.deckTopo + 0.06, pool);
+    }
+  }
+
+  map.vias.forEach((via, vi) => {
+    if (via.tipo === 'avenida') emitMedian(via, vi);
+  });
+  map.vias.forEach((via) => {
+    if (via.tipo === 'br') emitBR(via);
+  });
+  map.vias.forEach((via) => {
+    if (via.tipo === 'rua') emitRuaLamps(via);
+  });
+  map.vias.forEach((via, vi) => emitDashes(via, vi));
+
+  for (const b of map.predios) {
+    fillCells(b.x, b.z, b.w, b.d, BUILD, b.h);
+    parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, new THREE.Color(b.cor)));
   }
 
   const ground = new QuadBatch();
-  const asphaltGround = new QuadBatch(8);
-  const asphaltTypes = new Set([ROAD, BRIDGE, BUILD]);
+  const asphaltTypes = new Set([ROAD, MEDIAN, BUILD]);
   const paint: Record<number, THREE.Color> = {
     [GRASS]: new THREE.Color(K.grama),
-    [ROAD]: new THREE.Color(K.asfalto),
-    [WATER]: new THREE.Color(K.agua),
-    [RAIL]: new THREE.Color(K.trilho),
-    [BUILD]: new THREE.Color(K.asfalto),
-    [PARK]: new THREE.Color(K.praca),
-    [BRIDGE]: new THREE.Color(K.deckPonte),
-    [RAILBRIDGE]: new THREE.Color(K.trilho),
+    [ROAD]: asfaltoColor,
+    [MEDIAN]: asfaltoColor,
+    [PILLAR]: new THREE.Color(K.grama),
+    [BUILD]: asfaltoColor,
   };
   for (let cz = 0; cz < N; cz++) {
     let runStart = 0;
@@ -182,137 +454,6 @@ export function createCity(ctx: Ctx): City {
         runType = t;
       }
     }
-  }
-
-  const deco = new QuadBatch();
-  const glowDecals = new QuadBatch();
-  const parts: THREE.BufferGeometry[] = [];
-  const emissiveParts: THREE.BufferGeometry[] = [];
-  const lane = new THREE.Color(K.faixa);
-  const pool = new THREE.Color(K.poolLuz);
-  const poleColor = new THREE.Color(K.poste);
-  const lampColor = new THREE.Color(K.luzPoste);
-  let lampFlip = 1;
-
-  for (const r of map.ruas) {
-    const dx = r.x2 - r.x1;
-    const dz = r.z2 - r.z1;
-    const len = Math.hypot(dx, dz);
-    const ux = dx / len;
-    const uz = dz / len;
-    const nx = -uz;
-    const nz = ux;
-    if (r.w >= 10) {
-      for (let s = 6; s < len - 6; s += 10) {
-        const px = r.x1 + ux * s;
-        const pz = r.z1 + uz * s;
-        const t = at(cellOf(px), cellOf(pz));
-        if (t !== ROAD && t !== BRIDGE) continue;
-        if (Math.abs(ux) >= Math.abs(uz)) deco.quad(px, pz - 0.2, px + 2.8 * Math.sign(ux || 1), pz + 0.2, 0.03, lane);
-        else deco.quad(px - 0.2, pz, px + 0.2, pz + 2.8 * Math.sign(uz || 1), 0.03, lane);
-      }
-    }
-    for (let s = 10; s < len - 10; s += 26) {
-      lampFlip = -lampFlip;
-      const off = (r.w / 2 + 1.2) * lampFlip;
-      const px = r.x1 + ux * s + nx * off;
-      const pz = r.z1 + uz * s + nz * off;
-      const t = at(cellOf(px), cellOf(pz));
-      if (t === WATER || t === BUILD || t === RAILBRIDGE) continue;
-      parts.push(coloredBox(0.2, 4.6, 0.2, px, 2.3, pz, poleColor));
-      emissiveParts.push(coloredBox(0.6, 0.3, 0.6, px, 4.7, pz, lampColor));
-      glowDecals.quad(px - 2.6, pz - 2.6, px + 2.6, pz + 2.6, 0.02, pool);
-    }
-  }
-
-  const shine = new THREE.Color(K.aguaBrilho);
-  for (let i = 0; i < 170; i++) {
-    const x = -HALF + rng() * T;
-    const zc = riverCenter(x);
-    const z = zc - riverHalf(x) + rng() * riverHalf(x) * 2;
-    if (at(cellOf(x), cellOf(z)) !== WATER) continue;
-    deco.quad(x, z, x + 1.6 + rng() * 2, z + 0.4, 0.02, shine);
-  }
-
-  {
-    const tr = map.trilho;
-    const dx = tr.x2 - tr.x1;
-    const dz = tr.z2 - tr.z1;
-    const len = Math.hypot(dx, dz);
-    const ux = dx / len;
-    const uz = dz / len;
-    const angle = Math.atan2(dx, dz);
-    const sleeper = new THREE.Color(K.dormente);
-    for (let s = 2; s < len - 2; s += 3.2) {
-      const px = tr.x1 + ux * s;
-      const pz = tr.z1 + uz * s;
-      if (Math.abs(px) > HALF - 2 || Math.abs(pz) > HALF - 2) continue;
-      const g = coloredBox(tr.w - 3, 0.12, 0.6, 0, 0.06, 0, sleeper);
-      g.rotateY(angle);
-      g.translate(px, 0, pz);
-      parts.push(g);
-    }
-    const railColor = new THREE.Color('#6a6f7a');
-    for (const side of [-1.4, 1.4]) {
-      const g = coloredBox(0.3, 0.22, len, 0, 0.14, 0, railColor);
-      g.rotateY(angle);
-      g.translate((tr.x1 + tr.x2) / 2 + side, 0, (tr.z1 + tr.z2) / 2);
-      parts.push(g);
-    }
-    const railXAt = (z: number) => tr.x1 + (tr.x2 - tr.x1) * ((z - tr.z1) / (tr.z2 - tr.z1));
-    const trainBody = new THREE.Color(K.trem);
-    const trainFace = new THREE.Color(K.tremFrente);
-    for (let i = 0; i < 3; i++) {
-      const z = map.estacaoTrem.z - 16 + i * 13;
-      const x = railXAt(z);
-      for (const [w, h, d, y, c] of [[3.2, 3, 12, 1.6, trainBody], [3.3, 0.8, 12.1, 1.1, trainFace]] as const) {
-        const g = coloredBox(w, h, d, 0, y, 0, c);
-        g.rotateY(angle);
-        g.translate(x, 0, z);
-        parts.push(g);
-      }
-    }
-    const platform = coloredBox(2.4, 0.5, 34, 0, 0.25, 0, new THREE.Color(K.deckPonte));
-    platform.rotateY(angle);
-    platform.translate(railXAt(map.estacaoTrem.z) - 4.4, 0, map.estacaoTrem.z);
-    parts.push(platform);
-  }
-
-  const guard = new THREE.Color(K.guardaPonte);
-  for (const p of map.pontes) {
-    const zc = riverCenter(p.x);
-    const half = riverHalf(p.x) + 6;
-    parts.push(coloredBox(0.5, 1.1, half * 2, p.x - p.w / 2 + 0.4, 0.55, zc, guard));
-    parts.push(coloredBox(0.5, 1.1, half * 2, p.x + p.w / 2 - 0.4, 0.55, zc, guard));
-  }
-
-  for (const b of buildings) {
-    const body = new THREE.Color(b.body);
-    parts.push(coloredBox(b.w, b.h, b.d, b.x, b.h / 2, b.z, body));
-    if (b.win) {
-      const win = new THREE.Color(b.win);
-      if (b.roof) {
-        emissiveParts.push(coloredBox(b.w * 0.4, 0.7, 0.14, b.x, b.h * 0.5, b.z - b.d / 2 - 0.02, win));
-      } else {
-        emissiveParts.push(coloredBox(b.w + 0.12, 0.9, b.d + 0.12, b.x, b.h * 0.38, b.z, win));
-        if (b.h > 13) emissiveParts.push(coloredBox(b.w + 0.12, 0.9, b.d + 0.12, b.x, b.h * 0.72, b.z, win));
-      }
-    }
-    if (b.roof) {
-      parts.push(coloredBox(b.w + 0.7, 1.1, b.d + 0.7, b.x, b.h + 0.45, b.z, new THREE.Color(K.telhado)));
-    }
-  }
-
-  const trunk = new THREE.Color(K.arvoreTronco);
-  const leaf = new THREE.Color(K.arvoreCopa);
-  for (let i = 0; i < 260; i++) {
-    const x = -HALF + rng() * T;
-    const z = -HALF + rng() * T;
-    const t = at(cellOf(x), cellOf(z));
-    if (t !== GRASS && t !== PARK) continue;
-    const s = 0.8 + rng() * 0.9;
-    parts.push(coloredBox(0.5 * s, 2.2 * s, 0.5 * s, x, 1.1 * s, z, trunk));
-    parts.push(coloredBox(2.4 * s, 2.6 * s, 2.4 * s, x, 3.4 * s, z, leaf));
   }
 
   const material = new THREE.MeshBasicMaterial({ vertexColors: true });
@@ -334,13 +475,6 @@ export function createCity(ctx: Ctx): City {
   const glowGeo = glowDecals.build();
   if (glowGeo) ctx.scene.add(new THREE.Mesh(glowGeo, glowDecalMaterial));
 
-  for (const m of map.marcos) {
-    const sprite = textSprite(m.emoji + ' ' + m.nome, 26);
-    const h = m.predio ? m.predio.h + 5 : 9;
-    sprite.position.set(m.x, h, m.z);
-    ctx.scene.add(sprite);
-  }
-
   function typeAt(x: number, z: number): number {
     return at(cellOf(x), cellOf(z));
   }
@@ -348,23 +482,17 @@ export function createCity(ctx: Ctx): City {
   const MAP_COLORS: Record<number, [number, number, number]> = {
     [GRASS]: [24, 41, 29],
     [ROAD]: [70, 77, 96],
-    [WATER]: [30, 92, 143],
-    [RAIL]: [88, 74, 60],
+    [MEDIAN]: [40, 72, 48],
+    [PILLAR]: [120, 124, 134],
     [BUILD]: [39, 46, 64],
-    [PARK]: [33, 80, 49],
-    [BRIDGE]: [83, 91, 112],
-    [RAILBRIDGE]: [88, 74, 60],
   };
 
   const GPS_COLORS: Record<number, [number, number, number]> = {
     [GRASS]: [15, 16, 18],
     [ROAD]: [178, 182, 189],
-    [WATER]: [22, 32, 44],
-    [RAIL]: [74, 66, 56],
+    [MEDIAN]: [178, 182, 189],
+    [PILLAR]: [90, 94, 100],
     [BUILD]: [36, 38, 43],
-    [PARK]: [22, 31, 24],
-    [BRIDGE]: [204, 208, 214],
-    [RAILBRIDGE]: [88, 78, 66],
   };
 
   return {
@@ -385,25 +513,48 @@ export function createCity(ctx: Ctx): City {
         img.data[i * 4 + 3] = 255;
       }
       g.putImageData(img, 0, 0);
+      const s = N / T;
+      g.lineJoin = 'round';
+      g.lineCap = 'round';
+      for (const via of map.vias) {
+        if (via.tipo !== 'br') continue;
+        g.beginPath();
+        via.pontos.forEach(([x, z], i) => {
+          const px = (x + HALF) * s;
+          const py = (z + HALF) * s;
+          if (i) g.lineTo(px, py);
+          else g.moveTo(px, py);
+        });
+        if (style === 'gps') {
+          g.strokeStyle = '#b26a1e';
+          g.lineWidth = 9;
+          g.stroke();
+          g.strokeStyle = '#f6a33a';
+          g.lineWidth = 7;
+          g.stroke();
+        } else {
+          g.strokeStyle = '#8b93a6';
+          g.lineWidth = 8;
+          g.stroke();
+          g.strokeStyle = '#565e72';
+          g.lineWidth = 6.4;
+          g.stroke();
+        }
+      }
     },
     streetAt(x, z, current = null) {
       let best: string | null = null;
       let bestD2 = Infinity;
       let currentHolds = false;
-      for (const r of map.ruas) {
-        const dx = r.x2 - r.x1;
-        const dz = r.z2 - r.z1;
-        const len2 = dx * dx + dz * dz || 1;
-        const u = Math.max(0, Math.min(1, ((x - r.x1) * dx + (z - r.z1) * dz) / len2));
-        const qx = r.x1 + dx * u - x;
-        const qz = r.z1 + dz * u - z;
-        const d2 = qx * qx + qz * qz;
-        const lim = r.w / 2 + 6;
+      for (const s of allSegs) {
+        if (s.tipo === 'br') continue;
+        const d2 = distSeg2(x, z, s);
+        const lim = s.halfW + 6;
         if (d2 > lim * lim) continue;
-        if (current && r.nome === current) currentHolds = true;
+        if (current && s.nome === current) currentHolds = true;
         if (d2 < bestD2) {
           bestD2 = d2;
-          best = r.nome ?? null;
+          best = s.nome ?? null;
         }
       }
       return currentHolds ? current : best;
@@ -411,25 +562,16 @@ export function createCity(ctx: Ctx): City {
     solidAt(x, z) {
       if (Math.abs(x) > HALF - 2 || Math.abs(z) > HALF - 2) return true;
       const t = typeAt(x, z);
-      return t === BUILD || t === WATER || t === RAILBRIDGE;
+      return t === BUILD || t === PILLAR;
     },
     surfaceAt(x, z): SurfaceKind {
-      const t = typeAt(x, z);
-      if (t === ROAD || t === BRIDGE) return 'rua';
-      if (t === WATER) return 'agua';
-      if (t === RAIL) return 'trilho';
-      return 'grama';
+      return typeAt(x, z) === ROAD ? 'rua' : 'grama';
+    },
+    gridAt(x, z) {
+      return typeAt(x, z);
     },
     buildingTopAt(x, z) {
       return tops[cellOf(x) + cellOf(z) * N];
-    },
-    nearestLandmark(x, z) {
-      let best = null as { nome: string; emoji: string; dist: number } | null;
-      for (const m of map.marcos) {
-        const d = Math.hypot(m.x - x, m.z - z);
-        if (!best || d < best.dist) best = { nome: m.nome, emoji: m.emoji, dist: d };
-      }
-      return best;
     },
   };
 }

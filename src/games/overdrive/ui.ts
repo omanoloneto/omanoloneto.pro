@@ -40,7 +40,7 @@ export function createUI(_ctx: Ctx): UI {
       els.speed.textContent = String(v);
     },
     setPlace(nome, emoji) {
-      const next = nome ? (emoji ? emoji + ' ' : '') + nome : 'Centro';
+      const next = nome ? (emoji ? emoji + ' ' : '') + nome : 'São Leopoldo';
       if (next === place) return;
       place = next;
       els.place.textContent = next;

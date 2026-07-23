@@ -6,7 +6,7 @@ const dadosJson = JSON.stringify({ config, mapa, carros, pecas });
 
 const title = 'Overdrive — corrida arcade à noite em São Leopoldo! | Manolo Neto';
 const description =
-  'Jogo de corrida arcade no navegador: acelere e derrape pelas ruas de São Leopoldo à noite, passando pela Rua Grande, Trensurb, Rio dos Sinos e Unisinos.';
+  'Jogo de corrida arcade no navegador: acelere e derrape pelas avenidas de São Leopoldo à noite, da Av. João Corrêa à Av. Unisinos, sob o viaduto da BR-116.';
 ---
 
 <Layout title={title} description={description}>
@@ -18,7 +18,7 @@ const description =
       <div class="gps" data-gps hidden>
         <canvas class="minimapa" data-minimapa width="150" height="150" aria-label="Minimapa — toque pra abrir o mapa de São Leopoldo"></canvas>
         <div class="gps__label">
-          <span class="gps__rua" data-lugar>Centro</span>
+          <span class="gps__rua" data-lugar>São Leopoldo</span>
           <span class="gps__cidade">São Leopoldo - RS</span>
         </div>
       </div>
@@ -29,7 +29,7 @@ const description =
             <span>🗺️ São Leopoldo</span>
             <button class="mapa__fechar" type="button" data-mapa-fechar aria-label="Fechar o mapa">✖</button>
           </div>
-          <canvas class="mapa__tela" data-mapa-canvas width="540" height="540"></canvas>
+          <canvas class="mapa__tela" data-mapa-canvas width="800" height="800"></canvas>
           <p class="mapa__dica">O triângulo amarelo é você · M abre e fecha</p>
         </div>
       </div>
@@ -68,7 +68,7 @@ const description =
       <div class="placa" role="dialog" aria-modal="true" aria-labelledby="slr-title">
         <div class="placa__topo" id="slr-title">🏎️ Overdrive</div>
         <div class="placa__corpo">
-          <p class="chamada">Noite fechada em <b>São Leopoldo</b> — mas o sol vai nascer! As ruas são suas: da <b>Rua Grande</b> até a <b>Unisinos</b> — e atravesse o <b>Rio dos Sinos</b> pra <b>Feitoria</b>.</p>
+          <p class="chamada">Noite fechada em <b>São Leopoldo</b> — mas o sol vai nascer! As avenidas são suas: da <b>Av. João Corrêa</b> à <b>Av. Unisinos</b>, cruzando por baixo do viaduto da <b>BR-116</b>.</p>
           <p class="dica">Dirija com <b>W A S D</b> ou setas · segure <b>ESPAÇO</b> pra derrapar nas curvas</p>
           <button class="botao botao--go" type="button" data-acelerar>🏁 Acelerar</button>
           <a class="voltar" href="/class/games/">← voltar pros jogos</a>

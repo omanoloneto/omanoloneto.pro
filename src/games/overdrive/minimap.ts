@@ -26,23 +26,6 @@ export function createMinimap(ctx: Ctx): Minimap {
     markers(g, project, pxPerUnit, isBig, rotation) {
       g.textAlign = 'center';
       g.textBaseline = 'middle';
-      for (const m of ctx.map.marcos) {
-        const [px, py] = project(m.x, m.z);
-        if (px < -8 || py < -8 || px > g.canvas.width + 8 || py > g.canvas.height + 8) continue;
-        if (isBig) {
-          g.font = '12px sans-serif';
-          g.fillText(m.emoji, px, py);
-          g.font = '700 10px Oxanium, Verdana, sans-serif';
-          g.lineWidth = 3;
-          g.strokeStyle = 'rgba(4, 6, 16, 0.9)';
-          g.strokeText(m.nome, px, py + 11);
-          g.fillStyle = '#e8ecf8';
-          g.fillText(m.nome, px, py + 11);
-        } else {
-          g.font = '11px sans-serif';
-          g.fillText(m.emoji, px, py);
-        }
-      }
       const car = ctx.car.state;
       const [cx, cy] = project(car.x, car.z);
       const size = isBig ? 8 : 7;

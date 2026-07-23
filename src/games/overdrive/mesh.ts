@@ -441,6 +441,13 @@ export function buildWheel(st: WheelStyle): THREE.BufferGeometry {
   return g;
 }
 
+export function orientedBox(cx: number, cz: number, ux: number, uz: number, len: number, wid: number, h: number, yCenter: number, color: THREE.Color): THREE.BufferGeometry {
+  const g = coloredBox(wid, h, len, 0, yCenter, 0, color);
+  g.rotateY(Math.atan2(ux, uz));
+  g.translate(cx, 0, cz);
+  return g;
+}
+
 export function mergeParts(parts: THREE.BufferGeometry[]): THREE.BufferGeometry | null {
   if (!parts.length) return null;
   const geo = mergeGeometries(parts);
@@ -463,6 +470,29 @@ export class QuadBatch {
     if (this.uvScale) {
       const s = this.uvScale;
       this.uv.push(x0 / s, z0 / s, x1 / s, z0 / s, x1 / s, z1 / s, x0 / s, z1 / s);
+    }
+    this.idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
+  }
+
+  quadRot(cx: number, cz: number, ux: number, uz: number, len: number, wid: number, y: number, color: THREE.Color) {
+    const hl = len / 2;
+    const hw = wid / 2;
+    const nx = -uz;
+    const nz = ux;
+    const ax = cx - ux * hl;
+    const az = cz - uz * hl;
+    const bx = cx + ux * hl;
+    const bz = cz + uz * hl;
+    const c0x = ax - nx * hw, c0z = az - nz * hw;
+    const c1x = bx - nx * hw, c1z = bz - nz * hw;
+    const c2x = bx + nx * hw, c2z = bz + nz * hw;
+    const c3x = ax + nx * hw, c3z = az + nz * hw;
+    const b = this.pos.length / 3;
+    this.pos.push(c0x, y, c0z, c1x, y, c1z, c2x, y, c2z, c3x, y, c3z);
+    for (let i = 0; i < 4; i++) this.col.push(color.r, color.g, color.b);
+    if (this.uvScale) {
+      const s = this.uvScale;
+      this.uv.push(c0x / s, c0z / s, c1x / s, c1z / s, c2x / s, c2z / s, c3x / s, c3z / s);
     }
     this.idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
   }

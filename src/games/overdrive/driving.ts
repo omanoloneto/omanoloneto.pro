@@ -51,7 +51,7 @@ export function createDriving(ctx: Ctx): Driving {
     step(dt: number) {
       const car = ctx.car.state;
       const kind = ctx.city.surfaceAt(car.x, car.z);
-      const surface = kind === 'rua' ? ctx.surfaces.rua : kind === 'trilho' ? ctx.surfaces.trilho : ctx.surfaces.grama;
+      const surface = kind === 'rua' ? ctx.surfaces.rua : ctx.surfaces.grama;
       tel = stepArcadeCar(car, ctx.carData.fisica, ctx.input, surface, dt);
       collide();
       ctx.car.update(dt, tel);
@@ -61,16 +61,7 @@ export function createDriving(ctx: Ctx): Driving {
         placeMs = 0;
         const street = ctx.city.streetAt(car.x, car.z, lastStreet);
         lastStreet = street;
-        if (street) ctx.ui.setPlace(street);
-        else {
-          const near = ctx.city.nearestLandmark(car.x, car.z);
-          if (near && near.dist < cfg.hud.marcoDist) ctx.ui.setPlace(near.nome, near.emoji);
-          else {
-            const c = ctx.map.centro;
-            const inCentro = car.x >= c.x1 && car.x <= c.x2 && car.z >= c.z1 && car.z <= c.z2;
-            ctx.ui.setPlace(inCentro ? 'Centro' : 'São Leopoldo');
-          }
-        }
+        ctx.ui.setPlace(street ?? 'São Leopoldo');
       }
     },
     telemetry: () => tel,
