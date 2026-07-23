@@ -1,6 +1,6 @@
 ---
 const cores = ['#4285F4', '#EA4335', '#FBBC05', '#4285F4', '#34A853', '#EA4335'];
-const letras = ['G', 'o', 'o', 'g', 'l', 'e'];
+const letras = ['C', 'e', 'l', 'i', 't', 'a'];
 ---
 
 <!doctype html>
@@ -8,11 +8,11 @@ const letras = ['G', 'o', 'o', 'g', 'l', 'e'];
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Google</title>
+    <title>Celita</title>
     <meta name="robots" content="noindex" />
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%234285F4' d='M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.5 5.4 2.5 13.2l7.8 6.1C12.2 13.5 17.6 9.5 24 9.5z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.4 0-11.9-4.3-13.8-10.1l-7.9 6.1C6.5 42.6 14.6 48 24 48z'/%3E%3Cpath fill='%23FBBC05' d='M10.2 28.7c-.5-1.4-.7-2.9-.7-4.7s.3-3.3.7-4.7l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.4 10.8l7.8-6.1z'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='22' fill='%234285F4'/%3E%3Ctext x='24' y='34' font-size='30' text-anchor='middle' fill='white' font-family='Arial' font-weight='bold'%3EC%3C/text%3E%3C/svg%3E"
     />
     <style>
       * { box-sizing: border-box; }
@@ -42,8 +42,8 @@ const letras = ['G', 'o', 'o', 'g', 'l', 'e'];
         align-items: center;
         width: 100%;
         max-width: 584px;
-        height: 46px;
-        padding: 0 14px;
+        height: 48px;
+        padding: 0 16px;
         border: 1px solid #dfe1e5;
         border-radius: 24px;
         transition: box-shadow .2s, border-color .2s;
@@ -63,29 +63,44 @@ const letras = ['G', 'o', 'o', 'g', 'l', 'e'];
         background: transparent;
         color: #202124;
       }
-      .btns { margin-top: 29px; }
-      .btns button {
-        background: #f8f9fa;
-        border: 1px solid #f8f9fa;
-        border-radius: 4px;
-        color: #3c4043;
-        font-size: 14px;
-        padding: 0 16px;
-        height: 36px;
+
+      .btns { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; justify-content: center; }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        height: 46px;
+        padding: 0 26px;
+        border-radius: 23px;
+        font-size: 15px;
+        font-weight: 600;
         cursor: pointer;
+        border: 1px solid transparent;
+        transition: transform .12s ease, box-shadow .2s ease, background .2s ease;
       }
-      .btns button:hover {
-        border-color: #dadce0;
-        box-shadow: 0 1px 1px rgba(0,0,0,.1);
-        color: #202124;
+      .btn svg { width: 20px; height: 20px; }
+      .btn:active { transform: translateY(1px); }
+      .btn--web {
+        background: linear-gradient(135deg, #4285F4, #1a73e8);
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(26, 115, 232, 0.35);
       }
+      .btn--web:hover { box-shadow: 0 4px 14px rgba(26, 115, 232, 0.45); }
+      .btn--img {
+        background: #fff;
+        color: #1a73e8;
+        border-color: #d2e3fc;
+        box-shadow: 0 1px 3px rgba(60, 64, 67, 0.16);
+      }
+      .btn--img:hover { background: #f6faff; box-shadow: 0 3px 10px rgba(60, 64, 67, 0.22); }
+
       @media (max-width: 560px) {
         .logo { font-size: 68px; letter-spacing: -4px; }
       }
     </style>
   </head>
   <body>
-    <div class="logo" aria-label="Google">
+    <div class="logo" aria-label="Celita">
       {letras.map((l, i) => <span style={`color:${cores[i]}`}>{l}</span>)}
     </div>
 
@@ -99,7 +114,26 @@ const letras = ['G', 'o', 'o', 'g', 'l', 'e'];
     </form>
 
     <div class="btns">
-      <button type="submit" form="f">Pesquisar</button>
+      <button type="submit" form="f" class="btn btn--web">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 10-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z" />
+        </svg>
+        Pesquisar
+      </button>
+      <button type="button" class="btn btn--img" data-img>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M21 19V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+        </svg>
+        Imagens
+      </button>
     </div>
+
+    <script>
+      const imgBtn = document.querySelector('[data-img]');
+      imgBtn?.addEventListener('click', () => {
+        const q = (document.querySelector('input[name="q"]') as HTMLInputElement).value.trim();
+        location.href = 'https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(q);
+      });
+    </script>
   </body>
 </html>
