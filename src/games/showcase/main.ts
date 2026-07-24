@@ -1,17 +1,78 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Sky } from 'three/addons/objects/Sky.js';
-import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 
 const MODELO_CARRO = '/class/models/toycar.glb';
+
+const ColorGradeShader = {
+  uniforms: {
+    tDiffuse: { value: null as THREE.Texture | null },
+    resolution: { value: new THREE.Vector2(1, 1) },
+    time: { value: 0 },
+    lift: { value: new THREE.Vector3(-0.012, 0.0, 0.02) },
+    gamma: { value: new THREE.Vector3(1.06, 1.0, 0.95) },
+    gain: { value: new THREE.Vector3(1.06, 1.0, 0.94) },
+    shadowTint: { value: new THREE.Vector3(0.35, 0.72, 0.85) },
+    highlightTint: { value: new THREE.Vector3(1.0, 0.66, 0.32) },
+    tintStrength: { value: 0.34 },
+    contrast: { value: 1.16 },
+    saturation: { value: 1.12 },
+    vignette: { value: 0.5 },
+    grain: { value: 0.045 },
+  },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: [
+    'uniform sampler2D tDiffuse;',
+    'uniform vec2 resolution; uniform float time;',
+    'uniform vec3 lift, gamma, gain, shadowTint, highlightTint;',
+    'uniform float tintStrength, contrast, saturation, vignette, grain;',
+    'varying vec2 vUv;',
+    'float luma(vec3 c){ return dot(c, vec3(0.2126,0.7152,0.0722)); }',
+    'void main(){',
+    '  vec4 tex = texture2D(tDiffuse, vUv);',
+    '  vec3 col = tex.rgb * gain + lift;',
+    '  col = pow(max(col, 0.0), 1.0 / gamma);',
+    '  col = (col - 0.5) * contrast + 0.5;',
+    '  float l = luma(clamp(col, 0.0, 1.0));',
+    '  vec3 sh = mix(vec3(1.0), shadowTint, (1.0 - smoothstep(0.0, 0.55, l)) * tintStrength);',
+    '  vec3 hl = mix(vec3(1.0), highlightTint, smoothstep(0.45, 1.0, l) * tintStrength);',
+    '  col *= sh * hl;',
+    '  col = mix(vec3(luma(col)), col, saturation);',
+    '  col = clamp(col, 0.0, 1.0);',
+    '  vec2 d = (vUv - 0.5) * vec2(resolution.x / resolution.y, 1.0);',
+    '  float vig = smoothstep(0.55, 1.1, length(d));',
+    '  col *= mix(1.0, vignette, vig);',
+    '  float n = fract(sin(dot(vUv * resolution + time, vec2(12.9898, 78.233))) * 43758.5453);',
+    '  col += (n - 0.5) * grain;',
+    '  gl_FragColor = vec4(col, tex.a);',
+    '}',
+  ].join('\n'),
+};
+
+function haloSprite(scale: number): THREE.Sprite {
+  const c = document.createElement('canvas');
+  c.width = c.height = 128;
+  const g = c.getContext('2d')!;
+  const gr = g.createRadialGradient(64, 64, 2, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,190,110,0.5)');
+  gr.addColorStop(0.35, 'rgba(255,140,50,0.16)');
+  gr.addColorStop(1, 'rgba(255,120,30,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 128, 128);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+  s.scale.setScalar(scale);
+  return s;
+}
 
 function noiseCanvas(size: number, base: [number, number, number], spread: number, seed = 1): HTMLCanvasElement {
   const c = document.createElement('canvas');
@@ -67,17 +128,17 @@ function normalFromHeight(src: HTMLCanvasElement, strength: number): THREE.Canva
 export function iniciarShowcase() {
   const host = document.querySelector('[data-cena]') as HTMLElement;
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(host.clientWidth, host.clientHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.62;
+  renderer.toneMappingExposure = 0.54;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(new THREE.Color(0xcdddea), 52, 185);
+  scene.fog = new THREE.Fog(new THREE.Color(0x0a1420), 40, 150);
   const camera = new THREE.PerspectiveCamera(38, host.clientWidth / host.clientHeight, 0.1, 2000);
   camera.position.set(7.5, 3.4, 8);
 
@@ -95,11 +156,11 @@ export function iniciarShowcase() {
   sky.scale.setScalar(6000);
   scene.add(sky);
   const su = sky.material.uniforms;
-  su.turbidity.value = 3.2;
-  su.rayleigh.value = 0.9;
-  su.mieCoefficient.value = 0.003;
-  su.mieDirectionalG.value = 0.8;
-  const elev = 22;
+  su.turbidity.value = 10;
+  su.rayleigh.value = 2.5;
+  su.mieCoefficient.value = 0.005;
+  su.mieDirectionalG.value = 0.85;
+  const elev = 2.5;
   const azim = 135;
   const phi = THREE.MathUtils.degToRad(90 - elev);
   const theta = THREE.MathUtils.degToRad(azim);
@@ -107,22 +168,34 @@ export function iniciarShowcase() {
   su.sunPosition.value.copy(sunDir);
 
   const pmrem = new THREE.PMREMGenerator(renderer);
-  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  const envScene = new THREE.Scene();
+  const envSky = new Sky();
+  envSky.scale.setScalar(100);
+  const eu = envSky.material.uniforms;
+  eu.turbidity.value = 10;
+  eu.rayleigh.value = 2.5;
+  eu.mieCoefficient.value = 0.005;
+  eu.mieDirectionalG.value = 0.85;
+  eu.sunPosition.value.copy(sunDir);
+  envScene.add(envSky);
+  scene.environment = pmrem.fromScene(envScene, 0.04).texture;
 
-  const sun = new THREE.DirectionalLight(0xfff3e0, 2.1);
+  const sun = new THREE.DirectionalLight(0xff7a30, 2.0);
   sun.position.copy(sunDir).multiplyScalar(60);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.near = 1;
-  sun.shadow.camera.far = 160;
+  sun.shadow.camera.far = 200;
   const sc = sun.shadow.camera as THREE.OrthographicCamera;
-  sc.left = -30; sc.right = 30; sc.top = 30; sc.bottom = -30;
+  sc.left = -45; sc.right = 45; sc.top = 45; sc.bottom = -45;
   sun.shadow.bias = -0.0002;
-  sun.shadow.normalBias = 0.02;
+  sun.shadow.normalBias = 0.03;
   scene.add(sun);
-  scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x33422a, 0.5));
+  scene.add(new THREE.HemisphereLight(0x223a55, 0x140a06, 0.30));
 
-  buildRoad(scene);
+  const { mirror } = buildRoad(scene, renderer, host);
+  buildSodiumLights(scene);
+  buildSkyline(scene);
   const fallback = buildCar(scene);
   let rodas = fallback.rodas;
   carregarModelo(scene, () => {
@@ -142,12 +215,15 @@ export function iniciarShowcase() {
   composer.addPass(new RenderPass(scene, camera));
   const gtao = new GTAOPass(scene, camera, host.clientWidth, host.clientHeight);
   gtao.output = GTAOPass.OUTPUT.Default;
-  (gtao as unknown as { blendIntensity: number }).blendIntensity = 0.55;
+  (gtao as unknown as { blendIntensity: number }).blendIntensity = 0.5;
   composer.addPass(gtao);
-  const bloom = new UnrealBloomPass(new THREE.Vector2(host.clientWidth, host.clientHeight), 0.16, 0.5, 1.55);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(host.clientWidth, host.clientHeight), 0.32, 0.6, 0.92);
   composer.addPass(bloom);
-  composer.addPass(new SMAAPass(host.clientWidth * renderer.getPixelRatio(), host.clientHeight * renderer.getPixelRatio()));
   composer.addPass(new OutputPass());
+  const grade = new ShaderPass(ColorGradeShader);
+  grade.uniforms.resolution.value.set(host.clientWidth, host.clientHeight);
+  composer.addPass(grade);
+  composer.addPass(new SMAAPass(host.clientWidth * renderer.getPixelRatio(), host.clientHeight * renderer.getPixelRatio()));
 
   function resize() {
     const w = host.clientWidth;
@@ -156,6 +232,9 @@ export function iniciarShowcase() {
     composer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    grade.uniforms.resolution.value.set(w, h);
+    const rdpr = Math.min(renderer.getPixelRatio(), 1.5);
+    mirror.getRenderTarget().setSize(Math.max(2, Math.floor(w * rdpr)), Math.max(2, Math.floor(h * rdpr)));
   }
   window.addEventListener('resize', resize);
   resize();
@@ -167,6 +246,7 @@ export function iniciarShowcase() {
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
     for (const w of rodas) w.rotation.x -= dt * 3.5;
+    grade.uniforms.time.value = now / 1000;
     controls.update();
     composer.render();
   }
@@ -219,6 +299,11 @@ function carregarModelo(scene: THREE.Scene, onLoad: () => void) {
         if (m.isMesh) {
           m.castShadow = true;
           m.receiveShadow = false;
+          const mats = Array.isArray(m.material) ? m.material : [m.material];
+          for (const mm of mats) {
+            const sm = mm as THREE.MeshStandardMaterial;
+            if ('envMapIntensity' in sm) sm.envMapIntensity = 0.9;
+          }
         }
       });
       const wrap = new THREE.Group();
@@ -235,13 +320,13 @@ function carregarModelo(scene: THREE.Scene, onLoad: () => void) {
   );
 }
 
-function buildRoad(scene: THREE.Scene) {
+function buildRoad(scene: THREE.Scene, renderer: THREE.WebGLRenderer, host: HTMLElement) {
   const len = 140;
   const grass = new THREE.Mesh(
     new THREE.PlaneGeometry(200, len),
-    new THREE.MeshStandardMaterial({ color: 0x3f6b34, roughness: 1 }),
+    new THREE.MeshStandardMaterial({ color: 0x16281a, roughness: 1 }),
   );
-  const grassTex = new THREE.CanvasTexture(noiseCanvas(256, [70, 120, 58], 40, 7));
+  const grassTex = new THREE.CanvasTexture(noiseCanvas(256, [26, 46, 28], 26, 7));
   grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
   grassTex.repeat.set(40, 40);
   (grass.material as THREE.MeshStandardMaterial).map = grassTex;
@@ -271,8 +356,31 @@ function buildRoad(scene: THREE.Scene) {
   road.receiveShadow = true;
   scene.add(road);
 
-  const linhaMat = new THREE.MeshStandardMaterial({ color: 0xf3f3f0, roughness: 0.5, emissive: 0x222220, emissiveIntensity: 0.25 });
-  const amareloMat = new THREE.MeshStandardMaterial({ color: 0xf2c21a, roughness: 0.5, emissive: 0x3a2c00, emissiveIntensity: 0.3 });
+  const dpr = Math.min(renderer.getPixelRatio(), 1.5);
+  const mirror = new Reflector(new THREE.PlaneGeometry(roadW, len), {
+    clipBias: 0.003,
+    textureWidth: Math.max(2, Math.floor(host.clientWidth * dpr)),
+    textureHeight: Math.max(2, Math.floor(host.clientHeight * dpr)),
+    color: 0x0a0e14,
+  });
+  mirror.rotation.x = -Math.PI / 2;
+  mirror.position.y = 0.006;
+  scene.add(mirror);
+
+  const puddle = new THREE.CanvasTexture(noiseCanvas(512, [90, 90, 90], 150, 11));
+  puddle.wrapS = puddle.wrapT = THREE.RepeatWrapping;
+  puddle.repeat.set(3, 26);
+  const wet = new THREE.Mesh(
+    new THREE.PlaneGeometry(roadW, len),
+    new THREE.MeshStandardMaterial({ color: 0x05070a, roughness: 0.52, metalness: 0, transparent: true, opacity: 0.5, depthWrite: false, alphaMap: puddle, normalMap: normTex, normalScale: new THREE.Vector2(0.22, 0.22) }),
+  );
+  wet.rotation.x = -Math.PI / 2;
+  wet.position.y = 0.007;
+  wet.renderOrder = 1;
+  scene.add(wet);
+
+  const linhaMat = new THREE.MeshStandardMaterial({ color: 0xf3f3f0, roughness: 0.5, emissive: 0x222220, emissiveIntensity: 0.15 });
+  const amareloMat = new THREE.MeshStandardMaterial({ color: 0xf2c21a, roughness: 0.5, emissive: 0x3a2c00, emissiveIntensity: 0.2 });
   const faixaGeo = new THREE.PlaneGeometry(0.16, len);
   for (const x of [-roadW / 2 + 0.5, roadW / 2 - 0.5]) {
     const l = new THREE.Mesh(faixaGeo, linhaMat);
@@ -298,6 +406,84 @@ function buildRoad(scene: THREE.Scene) {
     calc.position.set(s * (roadW / 2 + 0.5 + 1.5), 0.15, 0);
     calc.receiveShadow = true;
     scene.add(calc);
+  }
+
+  return { mirror };
+}
+
+function buildSodiumLights(scene: THREE.Scene) {
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x23262c, roughness: 0.8, metalness: 0.2 });
+  const lampMat = new THREE.MeshStandardMaterial({ color: 0x160a00, emissive: 0xff8a2e, emissiveIntensity: 2.1, roughness: 0.5 });
+  const poleGeo = new THREE.CylinderGeometry(0.12, 0.16, 4.6, 10);
+  const armGeo = new THREE.BoxGeometry(1.2, 0.12, 0.12);
+  const lampGeo = new THREE.BoxGeometry(0.5, 0.2, 0.7);
+  for (const sx of [-1, 1]) {
+    for (let z = -60; z <= 60; z += 15) {
+      const pole = new THREE.Mesh(poleGeo, poleMat);
+      pole.position.set(sx * 7.6, 2.3, z);
+      pole.castShadow = true;
+      scene.add(pole);
+      const arm = new THREE.Mesh(armGeo, poleMat);
+      arm.position.set(sx * 7.0, 4.55, z);
+      scene.add(arm);
+      const lamp = new THREE.Mesh(lampGeo, lampMat);
+      lamp.position.set(sx * 6.7, 4.42, z);
+      scene.add(lamp);
+      const halo = haloSprite(1.4);
+      halo.position.set(sx * 6.7, 4.42, z);
+      scene.add(halo);
+      if (z > -20 && z < 20 && z !== 0) {
+        const pl = new THREE.PointLight(0xff7a1e, 2.6, 14, 2);
+        pl.position.set(sx * 6.7, 4.3, z);
+        scene.add(pl);
+      }
+    }
+  }
+}
+
+function buildSkyline(scene: THREE.Scene) {
+  let seed = 91;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+  const win = document.createElement('canvas');
+  win.width = win.height = 128;
+  const wg = win.getContext('2d')!;
+  wg.fillStyle = '#05070c';
+  wg.fillRect(0, 0, 128, 128);
+  for (let gx = 0; gx < 16; gx++) {
+    for (let gy = 0; gy < 16; gy++) {
+      const on = rnd();
+      if (on < 0.5) continue;
+      wg.fillStyle = on < 0.8 ? 'rgba(255,170,80,0.95)' : 'rgba(200,220,255,0.85)';
+      wg.fillRect(gx * 8 + 2, gy * 8 + 2, 4, 5);
+    }
+  }
+  const winTex = new THREE.CanvasTexture(win);
+  const bMat = new THREE.MeshStandardMaterial({ color: 0x070a12, roughness: 1, emissive: 0xffa64d, emissiveIntensity: 0.9, emissiveMap: winTex });
+  let x = -100;
+  while (x < 100) {
+    const w = 9 + rnd() * 13;
+    const h = 9 + rnd() * 17;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 10), bMat);
+    b.position.set(x + w / 2, h / 2, -96 - rnd() * 14);
+    scene.add(b);
+    x += w + 2 + rnd() * 5;
+  }
+
+  const estruturaMat = new THREE.MeshStandardMaterial({ color: 0x0b0f18, roughness: 1 });
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(150, 1.4, 6), estruturaMat);
+  deck.position.set(0, 6.2, -70);
+  scene.add(deck);
+  const lampRowMat = new THREE.MeshStandardMaterial({ color: 0x160c00, emissive: 0xffb455, emissiveIntensity: 3.2, roughness: 0.6 });
+  const lampRowGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+  for (let i = -72; i <= 72; i += 6) {
+    const q = new THREE.Mesh(lampRowGeo, lampRowMat);
+    q.position.set(i, 7.1, -70);
+    scene.add(q);
+  }
+  for (const px of [-46, -16, 18, 48]) {
+    const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.6, 12, 1.6), estruturaMat);
+    pillar.position.set(px, 3, -70);
+    scene.add(pillar);
   }
 }
 
