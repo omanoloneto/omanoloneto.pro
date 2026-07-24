@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+const SHOT='/private/tmp/claude-501/-Users-omanoloneto-GitHub-website-omanoloneto/4e18cecd-700b-4d08-bc6f-8d18ee0107c3/scratchpad';
+const b=await chromium.launch({args:['--use-gl=angle','--ignore-gpu-blocklist']});
+const p=await b.newPage({viewport:{width:1280,height:760}});
+const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(m.type()==='error')errs.push(m.text());});
+await p.goto('http://localhost:4349/class/games/showcase/',{waitUntil:'networkidle'});
+await p.waitForTimeout(2500); await p.screenshot({path:SHOT+'/sc5-a.png'});
+await p.waitForTimeout(3500); await p.screenshot({path:SHOT+'/sc5-b.png'});
+console.log('errors',JSON.stringify(errs.slice(0,5)));
+await b.close();
