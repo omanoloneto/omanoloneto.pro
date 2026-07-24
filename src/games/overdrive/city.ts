@@ -305,11 +305,27 @@ export function createCity(ctx: Ctx): City {
         const uz = ddz / len;
         const nx = -uz;
         const nz = ux;
-        const hm = heightAt(cx, cz);
         paintSegment(pa.x, pa.z, pb.x, pb.z, V.avenida.canteiro, MEDIAN, { only: ROAD });
-        parts.push(orientedBox(cx, cz, ux, uz, len, V.avenida.canteiro - 0.7, V.avenida.alturaCanteiro, hm + V.avenida.alturaCanteiro / 2, canteiroColor));
-        for (const side of [-1, 1]) {
-          parts.push(orientedBox(cx + nx * guiaOff * side, cz + nz * guiaOff * side, ux, uz, len, V.avenida.guia, 0.26, hm + 0.13, guiaColor));
+        const bedHalf = V.avenida.canteiro / 2 - V.avenida.guia;
+        const guiaOut = V.avenida.canteiro / 2;
+        const bedTop = V.avenida.alturaCanteiro;
+        const guiaTop = 0.26;
+        const yAt = (px: number, pz: number, up: number) => heightAt(px, pz) + up;
+        const nSub = Math.max(1, Math.round(len / 3));
+        const paP: Pt = [pa.x, pa.z];
+        const pbP: Pt = [pb.x, pb.z];
+        for (let k = 0; k < nSub; k++) {
+          const A = lerp2(paP, pbP, k / nSub);
+          const Bp = lerp2(paP, pbP, (k + 1) / nSub);
+          const eA = (o: number): Pt => [A[0] + nx * o, A[1] + nz * o];
+          const eB = (o: number): Pt => [Bp[0] + nx * o, Bp[1] + nz * o];
+          const l1 = eA(-bedHalf), r1 = eA(bedHalf), r2 = eB(bedHalf), l2 = eB(-bedHalf);
+          curbs.quad3(l1[0], yAt(l1[0], l1[1], bedTop), l1[1], r1[0], yAt(r1[0], r1[1], bedTop), r1[1], r2[0], yAt(r2[0], r2[1], bedTop), r2[1], l2[0], yAt(l2[0], l2[1], bedTop), l2[1], canteiroColor);
+          for (const side of [-1, 1]) {
+            const iA = eA(side * bedHalf), oA = eA(side * guiaOut), oB = eB(side * guiaOut), iB = eB(side * bedHalf);
+            curbs.quad3(iA[0], yAt(iA[0], iA[1], guiaTop), iA[1], oA[0], yAt(oA[0], oA[1], guiaTop), oA[1], oB[0], yAt(oB[0], oB[1], guiaTop), oB[1], iB[0], yAt(iB[0], iB[1], guiaTop), iB[1], guiaColor);
+            curbs.quadWall3(oA[0], oA[1], oB[0], oB[1], heightAt(oA[0], oA[1]), yAt(oA[0], oA[1], guiaTop), heightAt(oB[0], oB[1]), yAt(oB[0], oB[1], guiaTop), guiaColor);
+          }
         }
       }
 
@@ -351,7 +367,7 @@ export function createCity(ctx: Ctx): City {
       for (const off of offsets) {
         const dx = s.x + nx * off;
         const dz = s.z + nz * off;
-        const y = isBR ? V.br.deckTopo + 0.04 : heightAt(dx, dz) + 0.06;
+        const y = isBR ? V.br.deckTopo + 0.04 : heightAt(dx, dz) + 0.1;
         deco.quadRot(dx, dz, s.ux, s.uz, p.faixaLen, p.faixaLarg, y, color);
       }
     }
@@ -361,24 +377,24 @@ export function createCity(ctx: Ctx): City {
     const hw = halfWidth(via.tipo);
     const L = offsetPolyline(via.pontos, hw);
     const R = offsetPolyline(via.pontos, -hw);
-    const yoff = 0.02 + vi * 0.001;
+    const yoff = 0.06 + vi * 0.001;
+    const wSteps = Math.max(2, Math.round((hw * 2) / 5));
+    const y = (p: Pt) => heightAt(p[0], p[1]) + yoff;
     for (let i = 0; i < via.pontos.length - 1; i++) {
       const segLen = Math.hypot(L[i + 1][0] - L[i][0], L[i + 1][1] - L[i][1]);
-      const steps = Math.max(1, Math.round(segLen / 6));
-      for (let k = 0; k < steps; k++) {
-        const t0 = k / steps;
-        const t1 = (k + 1) / steps;
-        const la = lerp2(L[i], L[i + 1], t0);
-        const lb = lerp2(L[i], L[i + 1], t1);
-        const ra = lerp2(R[i], R[i + 1], t0);
-        const rb = lerp2(R[i], R[i + 1], t1);
-        asphaltGround.quad3(
-          la[0], heightAt(la[0], la[1]) + yoff, la[1],
-          ra[0], heightAt(ra[0], ra[1]) + yoff, ra[1],
-          rb[0], heightAt(rb[0], rb[1]) + yoff, rb[1],
-          lb[0], heightAt(lb[0], lb[1]) + yoff, lb[1],
-          asfaltoColor,
-        );
+      const lSteps = Math.max(1, Math.round(segLen / 5));
+      for (let k = 0; k < lSteps; k++) {
+        const la = lerp2(L[i], L[i + 1], k / lSteps);
+        const lb = lerp2(L[i], L[i + 1], (k + 1) / lSteps);
+        const ra = lerp2(R[i], R[i + 1], k / lSteps);
+        const rb = lerp2(R[i], R[i + 1], (k + 1) / lSteps);
+        for (let w = 0; w < wSteps; w++) {
+          const a0 = lerp2(la, ra, w / wSteps);
+          const a1 = lerp2(la, ra, (w + 1) / wSteps);
+          const b0 = lerp2(lb, rb, w / wSteps);
+          const b1 = lerp2(lb, rb, (w + 1) / wSteps);
+          asphaltGround.quad3(a0[0], y(a0), a0[1], a1[0], y(a1), a1[1], b1[0], y(b1), b1[1], b0[0], y(b0), b0[1], asfaltoColor);
+        }
       }
     }
   }
@@ -391,7 +407,7 @@ export function createCity(ctx: Ctx): City {
       const outer = offsetPolyline(via.pontos, side * (hw + S.larg));
       for (let i = 0; i < inner.length - 1; i++) {
         const segLen = Math.hypot(inner[i + 1][0] - inner[i][0], inner[i + 1][1] - inner[i][1]);
-        const steps = Math.max(1, Math.round(segLen / S.passo));
+        const steps = Math.max(1, Math.round(segLen / 4));
         for (let k = 0; k < steps; k++) {
           const t0 = k / steps;
           const t1 = (k + 1) / steps;
