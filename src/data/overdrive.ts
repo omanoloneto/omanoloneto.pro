@@ -195,7 +195,7 @@ export const config = {
   vias: {
     amostraPasso: 2,
     gapMargem: 2.5,
-    calcada: { larg: 2.0, alt: 0.15, gap: 2.5, passo: 6 },
+    calcada: { larg: 2.0, alt: 0.15, gap: 2.5, passo: 6, raioEsquina: 3 },
     avenida: {
       pista: 7.5,
       canteiro: 3,

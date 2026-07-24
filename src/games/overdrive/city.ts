@@ -417,7 +417,7 @@ export function createCity(ctx: Ctx): City {
           const oB = lerp2(outer[i], outer[i + 1], t1);
           const mx = (iA[0] + iB[0] + oA[0] + oB[0]) / 4;
           const mz = (iA[1] + iB[1] + oA[1] + oB[1]) / 4;
-          if (blockedNear(mx, mz, vi, S.gap)) continue;
+          if (blockedNear(mx, mz, vi, S.raioEsquina)) continue;
           const hiA = heightAt(iA[0], iA[1]);
           const hiB = heightAt(iB[0], iB[1]);
           const hoA = heightAt(oA[0], oA[1]);
@@ -425,6 +425,93 @@ export function createCity(ctx: Ctx): City {
           curbs.quad3(iA[0], hiA + S.alt, iA[1], oA[0], hoA + S.alt, oA[1], oB[0], hoB + S.alt, oB[1], iB[0], hiB + S.alt, iB[1], calcadaColor);
           curbs.quadWall3(iA[0], iA[1], iB[0], iB[1], hiA, hiA + S.alt, hiB, hiB + S.alt, calcadaMuretaColor);
           curbs.quadWall3(oA[0], oA[1], oB[0], oB[1], hoA, hoA + S.alt, hoB, hoB + S.alt, calcadaMuretaColor);
+        }
+      }
+    }
+  }
+
+  function fanArc(ocx: number, ocz: number, r0: number, r1: number, angA: number, angB: number, up: number, batch: QuadBatch, topColor: THREE.Color, wallColor?: THREE.Color) {
+    let a0 = angA;
+    let da = angB - angA;
+    while (da > Math.PI) da -= 2 * Math.PI;
+    while (da < -Math.PI) da += 2 * Math.PI;
+    if (da < 0) { a0 = angB; da = -da; }
+    const n = Math.max(3, Math.round(da / (Math.PI / 10)));
+    const y = (x: number, z: number) => heightAt(x, z) + up;
+    for (let i = 0; i < n; i++) {
+      const t0 = a0 + da * (i / n);
+      const t1 = a0 + da * ((i + 1) / n);
+      const ix0 = ocx + Math.cos(t0) * r0, iz0 = ocz + Math.sin(t0) * r0;
+      const ix1 = ocx + Math.cos(t1) * r0, iz1 = ocz + Math.sin(t1) * r0;
+      const ox0 = ocx + Math.cos(t0) * r1, oz0 = ocz + Math.sin(t0) * r1;
+      const ox1 = ocx + Math.cos(t1) * r1, oz1 = ocz + Math.sin(t1) * r1;
+      batch.quad3(ix0, y(ix0, iz0), iz0, ox0, y(ox0, oz0), oz0, ox1, y(ox1, oz1), oz1, ix1, y(ix1, iz1), iz1, topColor);
+      if (wallColor) {
+        batch.quadWall3(ox0, oz0, ox1, oz1, heightAt(ox0, oz0), y(ox0, oz0), heightAt(ox1, oz1), y(ox1, oz1), wallColor);
+        if (r0 > 0.05) batch.quadWall3(ix0, iz0, ix1, iz1, heightAt(ix0, iz0), y(ix0, iz0), heightAt(ix1, iz1), y(ix1, iz1), wallColor);
+      }
+    }
+  }
+
+  function emitJuncoes() {
+    const rfBase = V.calcada.raioEsquina;
+    const sw = V.calcada.larg;
+    const info = allSegs
+      .filter((s) => s.tipo !== 'br')
+      .map((s) => {
+        const dx = s.bx - s.ax;
+        const dz = s.bz - s.az;
+        const len = Math.hypot(dx, dz) || 1;
+        return { s, dx: dx / len, dz: dz / len, len };
+      });
+    for (let i = 0; i < info.length; i++) {
+      for (let k = i + 1; k < info.length; k++) {
+        const A = info[i];
+        const B = info[k];
+        if (A.s.via === B.s.via) continue;
+        const den = A.dx * B.dz - A.dz * B.dx;
+        if (Math.abs(den) < 0.12) continue;
+        const rx = B.s.ax - A.s.ax;
+        const rz = B.s.az - A.s.az;
+        const tA = (rx * B.dz - rz * B.dx) / den;
+        const tB = (rx * A.dz - rz * A.dx) / den;
+        if (tA < -0.5 || tA > A.len + 0.5 || tB < -0.5 || tB > B.len + 0.5) continue;
+        const Px = A.s.ax + A.dx * tA;
+        const Pz = A.s.az + A.dz * tA;
+        const hwA = A.s.halfW;
+        const hwB = B.s.halfW;
+        const naX = -A.dz, naZ = A.dx;
+        const nbX = -B.dz, nbZ = B.dx;
+        const tol = 1.0;
+        const aInt = tA > tol && tA < A.len - tol;
+        const bInt = tB > tol && tB < B.len - tol;
+        let combos: [number, number][];
+        if (aInt && bInt) combos = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+        else if (aInt && !bInt) {
+          const d = tB < B.len / 2 ? 1 : -1;
+          const sa = (B.dx * d * naX + B.dz * d * naZ) >= 0 ? 1 : -1;
+          combos = [[sa, 1], [sa, -1]];
+        } else if (!aInt && bInt) {
+          const d = tA < A.len / 2 ? 1 : -1;
+          const sb = (A.dx * d * nbX + A.dz * d * nbZ) >= 0 ? 1 : -1;
+          combos = [[1, sb], [-1, sb]];
+        } else continue;
+        const rf = Math.min(rfBase, hwA - 0.2, hwB - 0.2);
+        if (rf < 1) continue;
+        for (const [sa, sb] of combos) {
+          const eAx = naX * sa, eAz = naZ * sa;
+          const eBx = nbX * sb, eBz = nbZ * sb;
+          const p1x = Px + eAx * hwA, p1z = Pz + eAz * hwA;
+          const p2x = Px + eBx * hwB, p2z = Pz + eBz * hwB;
+          const t1 = ((p2x - p1x) * B.dz - (p2z - p1z) * B.dx) / den;
+          const Cix = p1x + A.dx * t1;
+          const Ciz = p1z + A.dz * t1;
+          const Ocx = Cix + eAx * rf + eBx * rf;
+          const Ocz = Ciz + eAz * rf + eBz * rf;
+          const angA = Math.atan2(-eAz, -eAx);
+          const angB = Math.atan2(-eBz, -eBx);
+          fanArc(Ocx, Ocz, 0, rf + 0.4, angA, angB, 0.07, asphaltGround, asfaltoColor);
+          fanArc(Ocx, Ocz, rf, rf + sw, angA, angB, V.calcada.alt, curbs, calcadaColor, calcadaMuretaColor);
         }
       }
     }
@@ -860,6 +947,7 @@ export function createCity(ctx: Ctx): City {
       buildSidewalks(via, vi);
     }
   });
+  emitJuncoes();
   map.vias.forEach((via, vi) => {
     if (via.tipo === 'avenida') emitMedian(via, vi);
   });
