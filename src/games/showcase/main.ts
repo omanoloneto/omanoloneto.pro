@@ -9,6 +9,9 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const MODELO_CARRO = '/class/models/toycar.glb';
 
 function noiseCanvas(size: number, base: [number, number, number], spread: number, seed = 1): HTMLCanvasElement {
   const c = document.createElement('canvas');
@@ -120,7 +123,20 @@ export function iniciarShowcase() {
   scene.add(new THREE.HemisphereLight(0xbfd8ff, 0x33422a, 0.5));
 
   buildRoad(scene);
-  const carro = buildCar(scene);
+  const fallback = buildCar(scene);
+  let rodas = fallback.rodas;
+  carregarModelo(scene, () => {
+    scene.remove(fallback.grupo);
+    fallback.grupo.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) {
+        m.geometry.dispose();
+        const mat = m.material as THREE.Material | THREE.Material[];
+        (Array.isArray(mat) ? mat : [mat]).forEach((x) => x.dispose());
+      }
+    });
+    rodas = [];
+  });
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
@@ -150,11 +166,73 @@ export function iniciarShowcase() {
     const now = performance.now();
     const dt = Math.min((now - last) / 1000, 0.05);
     last = now;
-    for (const w of carro.rodas) w.rotation.x -= dt * 3.5;
+    for (const w of rodas) w.rotation.x -= dt * 3.5;
     controls.update();
     composer.render();
   }
   loop();
+}
+
+function sombraContato(w: number, d: number): THREE.Mesh {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d')!;
+  const grad = g.createRadialGradient(128, 128, 16, 128, 128, 128);
+  grad.addColorStop(0, 'rgba(0,0,0,0.5)');
+  grad.addColorStop(0.7, 'rgba(0,0,0,0.22)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 256, 256);
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, d),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }),
+  );
+  m.rotation.x = -Math.PI / 2;
+  m.position.y = 0.018;
+  m.renderOrder = 2;
+  return m;
+}
+
+function carregarModelo(scene: THREE.Scene, onLoad: () => void) {
+  const loader = new GLTFLoader();
+  loader.load(
+    MODELO_CARRO,
+    (gltf) => {
+      const modelo = gltf.scene;
+      const lixo: THREE.Object3D[] = [];
+      modelo.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh && /fabric|cloth|base|pano/i.test(m.name + '|' + (m.material as THREE.Material)?.name)) lixo.push(o);
+      });
+      lixo.forEach((o) => o.parent?.remove(o));
+      modelo.updateWorldMatrix(true, true);
+      const box = new THREE.Box3().setFromObject(modelo);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+      const escala = 4.4 / Math.max(size.x, size.z);
+      modelo.position.sub(center);
+      modelo.position.y += size.y / 2;
+      modelo.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh) {
+          m.castShadow = true;
+          m.receiveShadow = false;
+        }
+      });
+      const wrap = new THREE.Group();
+      wrap.add(modelo);
+      wrap.scale.setScalar(escala);
+      wrap.position.y = 0.02;
+      wrap.rotation.y = Math.PI;
+      scene.add(wrap);
+      scene.add(sombraContato(size.x * escala * 1.25, size.z * escala * 1.2));
+      onLoad();
+    },
+    undefined,
+    (err) => console.warn('showcase: falha ao carregar modelo', err),
+  );
 }
 
 function buildRoad(scene: THREE.Scene) {
